@@ -11,7 +11,7 @@ def test_chat_completions_returns_openai_like_payload() -> None:
                 "model": "nebula-auto",
                 "messages": [
                     {"role": "system", "content": "You are Nebula."},
-                    {"role": "user", "content": "Hola Nebula"},
+                    {"role": "user", "content": "Hello Nebula"},
                 ],
             },
         )
@@ -21,7 +21,13 @@ def test_chat_completions_returns_openai_like_payload() -> None:
     assert response.status_code == 200
     assert body["object"] == "chat.completion"
     assert body["choices"][0]["message"]["role"] == "assistant"
-    assert body["model"] in {"llama3.2:3b", "gpt-4o-mini", "nebula-cache"}
+    assert body["model"] in {"llama3.2:3b", "gpt-4o-mini", "openai/gpt-4o-mini", "nebula-cache"}
+    assert response.headers["X-Nebula-Route-Target"] in {"local", "premium", "cache"}
+    assert response.headers["X-Nebula-Provider"] in {"ollama", "openai-compatible", "cache"}
+    assert response.headers["X-Nebula-Cache-Hit"] in {"true", "false"}
+    assert response.headers["X-Nebula-Fallback-Used"] in {"true", "false"}
+    assert body["usage"]["prompt_tokens"] >= 0
+    assert body["usage"]["completion_tokens"] >= 0
 
 
 def test_chat_completions_streams_sse() -> None:
@@ -33,12 +39,16 @@ def test_chat_completions_streams_sse() -> None:
                 "model": "nebula-auto",
                 "stream": True,
                 "messages": [
-                    {"role": "user", "content": "Hola streaming"},
+                    {"role": "user", "content": "Hello streaming"},
                 ],
             },
         ) as response:
             body = b"".join(response.iter_bytes())
 
     assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Target"] in {"local", "premium", "cache"}
+    assert response.headers["X-Nebula-Provider"] in {"ollama", "openai-compatible", "cache"}
+    assert response.headers["X-Nebula-Cache-Hit"] in {"true", "false"}
+    assert response.headers["X-Nebula-Fallback-Used"] in {"true", "false"}
     assert b"chat.completion.chunk" in body
     assert b"[DONE]" in body

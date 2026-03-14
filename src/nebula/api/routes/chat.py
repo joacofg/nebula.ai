@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request, status
+from fastapi import APIRouter, Depends, Request, Response, status
 from starlette.responses import StreamingResponse
 
 from nebula.api.dependencies import get_chat_service
@@ -16,18 +16,33 @@ router = APIRouter(tags=["chat"])
 async def create_chat_completion(
     payload: ChatCompletionRequest,
     request: Request,
+    response: Response,
     service: ChatService = Depends(get_chat_service),
 ) -> ChatCompletionResponse | StreamingResponse:
     request_id = getattr(request.state, "request_id", None)
     if payload.stream:
+        stream_envelope = await service.stream_completion_with_metadata(payload, request_id=request_id)
         return StreamingResponse(
-            service.stream_completion(payload, request_id=request_id),
+            stream_envelope.stream,
             media_type="text/event-stream",
             headers={
                 "Cache-Control": "no-cache",
                 "Connection": "keep-alive",
                 "X-Request-ID": request_id or "",
+                **_nebula_headers(stream_envelope.metadata),
             },
         )
 
-    return await service.create_completion(payload, request_id=request_id)
+    completion_envelope = await service.create_completion_with_metadata(payload, request_id=request_id)
+    response.headers.update(_nebula_headers(completion_envelope.metadata))
+    return completion_envelope.response
+
+
+def _nebula_headers(metadata) -> dict[str, str]:
+    return {
+        "X-Nebula-Route-Target": metadata.route_target,
+        "X-Nebula-Route-Reason": metadata.route_reason,
+        "X-Nebula-Provider": metadata.provider,
+        "X-Nebula-Cache-Hit": str(metadata.cache_hit).lower(),
+        "X-Nebula-Fallback-Used": str(metadata.fallback_used).lower(),
+    }

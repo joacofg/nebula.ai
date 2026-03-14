@@ -11,11 +11,19 @@ class ProviderError(Exception):
 
 
 @dataclass(slots=True)
+class CompletionUsage:
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    total_tokens: int = 0
+
+
+@dataclass(slots=True)
 class CompletionResult:
     content: str
     model: str
     provider: str
     finish_reason: str = "stop"
+    usage: CompletionUsage | None = None
 
 
 @dataclass(slots=True)

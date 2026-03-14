@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -33,6 +33,28 @@ class Settings(BaseSettings):
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")
     router_complexity_chars: int = Field(default=400, alias="NEBULA_ROUTER_COMPLEXITY_CHARS")
     enable_metrics: bool = Field(default=True, alias="NEBULA_ENABLE_METRICS")
+
+    @model_validator(mode="after")
+    def validate_premium_provider_settings(self) -> "Settings":
+        if self.premium_provider != "openai_compatible":
+            return self
+
+        if not self.premium_base_url or not self.premium_base_url.strip():
+            raise ValueError(
+                "NEBULA_PREMIUM_BASE_URL is required when "
+                "NEBULA_PREMIUM_PROVIDER=openai_compatible."
+            )
+        if not self.premium_api_key or not self.premium_api_key.strip():
+            raise ValueError(
+                "NEBULA_PREMIUM_API_KEY is required when "
+                "NEBULA_PREMIUM_PROVIDER=openai_compatible."
+            )
+        if not self.premium_model.strip():
+            raise ValueError(
+                "NEBULA_PREMIUM_MODEL is required when "
+                "NEBULA_PREMIUM_PROVIDER=openai_compatible."
+            )
+        return self
 
     model_config = SettingsConfigDict(
         env_file=".env",

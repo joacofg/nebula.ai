@@ -29,3 +29,15 @@ FALLBACK_COUNT = Counter(
     "Total fallbacks from local to premium provider.",
     ["reason"],
 )
+
+ROUTE_DECISION_COUNT = Counter(
+    "nebula_route_decisions_total",
+    "Total routing decisions before provider execution.",
+    ["target", "reason", "stream"],
+)
+
+PROVIDER_LATENCY = Histogram(
+    "nebula_provider_duration_seconds",
+    "Provider completion latency in seconds.",
+    ["provider", "mode", "result"],
+)

@@ -14,8 +14,8 @@ class MockPremiumProvider(CompletionProvider):
     async def complete(self, request: ChatCompletionRequest) -> CompletionResult:
         prompt = self._extract_prompt(request)
         content = (
-            "Mock premium response. Configura NEBULA_PREMIUM_PROVIDER=openai_compatible "
-            f"para conectar un proveedor real. prompt={prompt}"
+            "Mock premium response. Set NEBULA_PREMIUM_PROVIDER=openai_compatible "
+            f"to connect a real provider. prompt={prompt}"
         )
         return CompletionResult(
             content=content,
@@ -26,8 +26,8 @@ class MockPremiumProvider(CompletionProvider):
     def stream_complete(self, request: ChatCompletionRequest):
         prompt = self._extract_prompt(request)
         text = (
-            "Mock premium streaming response. Configura NEBULA_PREMIUM_PROVIDER="
-            f"openai_compatible para usar OpenAI u OpenRouter. prompt={prompt}"
+            "Mock premium streaming response. Set NEBULA_PREMIUM_PROVIDER="
+            f"openai_compatible to use OpenAI or OpenRouter. prompt={prompt}"
         )
 
         async def iterator():

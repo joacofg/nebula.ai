@@ -4,7 +4,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark
 
 setup:
 	/opt/homebrew/bin/python3.12 -m venv .venv
@@ -32,3 +32,12 @@ ollama-pull:
 
 run:
 	$(UVICORN) nebula.main:app --reload
+
+smoke-openrouter:
+	PORT=8000 ./scripts/smoke_openrouter.sh
+
+smoke-fallback:
+	PORT=8002 MODE=fallback ./scripts/smoke_openrouter.sh
+
+benchmark:
+	$(PYTHON) -m nebula.benchmarking.run

@@ -7,7 +7,13 @@ import httpx
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest, ChatMessage
-from nebula.providers.base import CompletionChunk, CompletionProvider, CompletionResult, ProviderError
+from nebula.providers.base import (
+    CompletionChunk,
+    CompletionProvider,
+    CompletionResult,
+    CompletionUsage,
+    ProviderError,
+)
 
 
 class OllamaProvider(CompletionProvider):
@@ -34,6 +40,11 @@ class OllamaProvider(CompletionProvider):
             model=body.get("model", payload["model"]),
             provider=self.name,
             finish_reason="stop",
+            usage=CompletionUsage(
+                prompt_tokens=body.get("prompt_eval_count", 0),
+                completion_tokens=body.get("eval_count", 0),
+                total_tokens=body.get("prompt_eval_count", 0) + body.get("eval_count", 0),
+            ),
         )
 
     def stream_complete(self, request: ChatCompletionRequest):

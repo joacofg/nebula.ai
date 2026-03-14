@@ -7,7 +7,13 @@ import httpx
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import CompletionChunk, CompletionProvider, CompletionResult, ProviderError
+from nebula.providers.base import (
+    CompletionChunk,
+    CompletionProvider,
+    CompletionResult,
+    CompletionUsage,
+    ProviderError,
+)
 
 
 class OpenAICompatibleProvider(CompletionProvider):
@@ -28,6 +34,7 @@ class OpenAICompatibleProvider(CompletionProvider):
             model=body.get("model", self.settings.premium_model),
             provider=self.name,
             finish_reason=body["choices"][0].get("finish_reason", "stop"),
+            usage=self._extract_usage(body.get("usage")),
         )
 
     def stream_complete(self, request: ChatCompletionRequest):
@@ -35,7 +42,7 @@ class OpenAICompatibleProvider(CompletionProvider):
             try:
                 async with self.client.stream(
                     "POST",
-                    "/chat/completions",
+                    "chat/completions",
                     json=self._build_payload(request, stream=True),
                     headers=self._headers(),
                 ) as response:
@@ -65,7 +72,7 @@ class OpenAICompatibleProvider(CompletionProvider):
     async def _post(self, request: ChatCompletionRequest, stream: bool) -> httpx.Response:
         try:
             response = await self.client.post(
-                "/chat/completions",
+                "chat/completions",
                 json=self._build_payload(request, stream=stream),
                 headers=self._headers(),
             )
@@ -82,7 +89,7 @@ class OpenAICompatibleProvider(CompletionProvider):
 
     def _build_payload(self, request: ChatCompletionRequest, stream: bool) -> dict[str, Any]:
         requested_model = request.model if request.model != self.settings.default_model else None
-        return {
+        payload = {
             "model": requested_model or self.settings.premium_model,
             "messages": [message.model_dump(mode="json") for message in request.messages],
             "temperature": request.temperature,
@@ -95,3 +102,14 @@ class OpenAICompatibleProvider(CompletionProvider):
             "frequency_penalty": request.frequency_penalty,
             "user": request.user,
         }
+        return {key: value for key, value in payload.items() if value is not None}
+
+    def _extract_usage(self, usage: dict[str, Any] | None) -> CompletionUsage | None:
+        if not usage:
+            return None
+
+        return CompletionUsage(
+            prompt_tokens=usage.get("prompt_tokens", 0),
+            completion_tokens=usage.get("completion_tokens", 0),
+            total_tokens=usage.get("total_tokens", 0),
+        )

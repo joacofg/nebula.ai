@@ -1,8 +1,8 @@
 # Nebula
 
-Semantic AI Gateway para optimizar costo, latencia y resiliencia en flujos con LLMs.
+Semantic AI Gateway for optimizing cost, latency, and resilience across LLM workflows.
 
-## Stack base
+## Core Stack
 
 - Python 3.12+
 - FastAPI
@@ -11,7 +11,7 @@ Semantic AI Gateway para optimizar costo, latencia y resiliencia en flujos con L
 - Ollama
 - Prometheus
 
-## Estructura
+## Structure
 
 ```text
 .
@@ -29,7 +29,7 @@ Semantic AI Gateway para optimizar costo, latencia y resiliencia en flujos con L
 └── tests/
 ```
 
-## Desarrollo local
+## Local Development
 
 ```bash
 python3.12 -m venv .venv
@@ -40,26 +40,81 @@ docker compose up -d qdrant
 uvicorn nebula.main:app --reload
 ```
 
-Instalá Ollama y descargá los modelos recomendados:
+Install Ollama and pull the recommended models:
 
 ```bash
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 ```
 
+To enable a real premium provider, update `.env` with:
+
+```bash
+NEBULA_PREMIUM_PROVIDER=openai_compatible
+NEBULA_PREMIUM_BASE_URL=https://openrouter.ai/api/v1
+NEBULA_PREMIUM_API_KEY=your_openrouter_api_key
+NEBULA_PREMIUM_MODEL=openai/gpt-4o-mini
+```
+
+The application now fails fast at startup if `openai_compatible` is selected without the required premium credentials.
+Premium and fallback requests are billed against the OpenRouter credits attached to the configured API key.
+
+## Smoke Tests
+
+After configuring `.env`, run:
+
+```bash
+make smoke-openrouter
+```
+
+This starts Nebula locally, verifies `/health`, forces a premium non-streaming request, and verifies premium streaming.
+
+To verify local-to-premium fallback with one command, run:
+
+```bash
+make smoke-fallback
+```
+
+This starts Nebula with an intentionally invalid local Ollama URL so `nebula-auto` falls back to the premium provider.
+
+## Benchmarking
+
+Run the full benchmark suite with:
+
+```bash
+make benchmark
+```
+
+This starts managed local Nebula instances for the normal and fallback scenario groups, runs the versioned dataset in `benchmarks/v1/scenarios.jsonl`, and writes `report.json` plus `report.md` under `artifacts/benchmarks/<timestamp>/`.
+Benchmark cost fields are estimated from `benchmarks/pricing.json`; they are not invoice reconciliation.
+
+If you want to target an already-running Nebula instance, pass `BASE_URL`:
+
+```bash
+BASE_URL=http://127.0.0.1:8000 .venv/bin/python -m nebula.benchmarking.run
+```
+
+When `BASE_URL` is provided, fallback-only scenarios are skipped because the runner cannot safely mutate the external server configuration.
+
 ## Endpoints
 
 `POST /v1/chat/completions`
 
-Compatible con el contrato base de OpenAI para requests y responses streaming y no streaming.
+Implements the base OpenAI-compatible contract for both streaming and non-streaming requests.
 
 `GET /health`
 
+Returns the application status and whether the semantic cache is enabled.
+
 `GET /metrics`
 
-## Configuración recomendada del MVP
+Exposes Prometheus metrics when metrics are enabled.
 
-- `llama3.2:3b` como modelo local principal
-- `nomic-embed-text` para embeddings
-- `mock` como provider premium por defecto para no gastar dinero
-- `openai_compatible` como opción cuando quieras conectar OpenAI u OpenRouter
+Key metrics include HTTP request counts and latency, semantic cache outcomes, routing decisions, provider execution latency, completion totals, and fallback totals.
+
+## Recommended MVP Configuration
+
+- `llama3.2:3b` as the primary local completion model
+- `nomic-embed-text` for embeddings
+- `mock` as the default premium provider to avoid external spend during local development
+- `openai_compatible` when connecting a real premium provider such as OpenAI or OpenRouter
