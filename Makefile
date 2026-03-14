@@ -1,3 +1,4 @@
+PYTHON_BOOTSTRAP ?= python3.12
 PYTHON := .venv/bin/python
 PIP := .venv/bin/pip
 PYTEST := .venv/bin/pytest
@@ -7,7 +8,7 @@ UVICORN := .venv/bin/uvicorn
 .PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark
 
 setup:
-	/opt/homebrew/bin/python3.12 -m venv .venv
+	$(PYTHON_BOOTSTRAP) -m venv .venv
 	$(PIP) install -e '.[dev]'
 	cp -n .env.example .env || true
 

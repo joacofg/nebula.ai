@@ -5,6 +5,10 @@ __pycache__/
 .ruff_cache/
 .env
 .DS_Store
+.nebula/
+*.db
+*.sqlite
+*.sqlite3
 *.egg-info/
 dist/
 build/

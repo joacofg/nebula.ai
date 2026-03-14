@@ -62,12 +62,12 @@ Premium and fallback requests are billed against the OpenRouter credits attached
 Nebula now boots with a lightweight SQLite governance store and a bootstrap tenant/API key for local development:
 
 ```bash
-X-Nebula-API-Key: nebula-dev-key
-X-Nebula-Tenant-ID: default
-X-Nebula-Admin-Key: nebula-admin-key
+X-Nebula-API-Key: <NEBULA_BOOTSTRAP_API_KEY>
+X-Nebula-Tenant-ID: <NEBULA_BOOTSTRAP_TENANT_ID>
+X-Nebula-Admin-Key: <NEBULA_ADMIN_API_KEY>
 ```
 
-Override those defaults in `.env` before using Nebula outside local development.
+By default those resolve to local-only dev values from `.env.example`. Override them in `.env` before using Nebula outside local development.
 
 ## Smoke Tests
 
