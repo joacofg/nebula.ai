@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import httpx
+import pytest
+
 from nebula.benchmarking.dataset import SCENARIO_MODE_ORDER, group_scenarios, load_scenarios
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.benchmarking.run import BenchmarkResult, BenchmarkRunner
@@ -98,3 +101,43 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
     assert "auto-fallback-hello" in report["summary"]["scenario_failures"]
     assert "# Nebula Benchmark Report" in markdown
     assert "| local-direct-brief |" in markdown
+
+
+@pytest.mark.asyncio
+async def test_benchmark_runner_authenticates_requests_as_a_tenant(tmp_path) -> None:
+    runner = BenchmarkRunner(
+        base_url="http://127.0.0.1:8000",
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+    scenario = load_scenarios(PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl")[0]
+    captured_headers = {}
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        captured_headers["X-Nebula-API-Key"] = request.headers.get("X-Nebula-API-Key")
+        captured_headers["X-Nebula-Tenant-ID"] = request.headers.get("X-Nebula-Tenant-ID")
+        return httpx.Response(
+            200,
+            headers={
+                "X-Nebula-Route-Target": "local",
+                "X-Nebula-Route-Reason": "explicit_local_model",
+                "X-Nebula-Provider": "ollama",
+                "X-Nebula-Cache-Hit": "false",
+                "X-Nebula-Fallback-Used": "false",
+            },
+            json={
+                "model": "llama3.2:3b",
+                "choices": [{"message": {"content": "ok"}}],
+                "usage": {"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12},
+            },
+        )
+
+    async with httpx.AsyncClient(
+        base_url="http://127.0.0.1:8000",
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        await runner._run_scenario(client=client, scenario=scenario, prompt_baselines={})
+
+    assert captured_headers["X-Nebula-API-Key"] == runner.settings.bootstrap_api_key
+    assert captured_headers["X-Nebula-Tenant-ID"] == runner.settings.bootstrap_tenant_id

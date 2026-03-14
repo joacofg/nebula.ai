@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from nebula.core.config import Settings
+from nebula.models.governance import RoutingMode
 from nebula.models.openai import ChatCompletionRequest
 
 RouteTarget = Literal["local", "premium"]
@@ -24,12 +25,17 @@ class RouterService:
         self,
         prompt: str,
         request: ChatCompletionRequest,
+        routing_mode: RoutingMode = "auto",
     ) -> RouteDecision:
         requested_model = request.model != self.settings.default_model
         if requested_model and request.model == self.settings.local_model:
             return RouteDecision(target="local", reason="explicit_local_model")
-        if requested_model and request.model == self.settings.premium_model:
+        if requested_model:
             return RouteDecision(target="premium", reason="explicit_premium_model")
+        if routing_mode == "local_only":
+            return RouteDecision(target="local", reason="policy_local_only")
+        if routing_mode == "premium_only":
+            return RouteDecision(target="premium", reason="policy_premium_only")
 
         complexity_hints = ("analyze", "reason", "contract", "debug", "architecture", "design")
         contains_complexity_hint = any(hint in prompt.lower() for hint in complexity_hints)

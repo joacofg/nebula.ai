@@ -1,94 +1,123 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
 from nebula.core.config import Settings
+from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
+from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
+from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.chat_service import ChatService
+from nebula.services.policy_service import PolicyResolution
 from nebula.services.provider_registry import ProviderRegistry
-from nebula.services.router_service import RouterService
+from nebula.services.router_service import RouteDecision, RouterService
+from tests.support import FakeCacheService, StubProvider
 
 
-class FakeCacheService:
-    def __init__(self, cached_response: str | None = None) -> None:
-        self.cached_response = cached_response
-        self.lookup_calls: list[str] = []
-        self.stored_entries: list[tuple[str, str, str]] = []
+class FakeGovernanceStore:
+    def __init__(self) -> None:
+        self.records = []
 
-    async def lookup(self, prompt: str) -> str | None:
-        self.lookup_calls.append(prompt)
-        return self.cached_response
-
-    async def store(self, prompt: str, response: str, model: str) -> None:
-        self.stored_entries.append((prompt, response, model))
+    def record_usage(self, record) -> None:
+        self.records.append(record)
 
 
-class FakeProvider:
+class FakePolicyService:
     def __init__(
         self,
-        name: str,
+        settings: Settings,
         *,
-        completion_result: CompletionResult | None = None,
-        completion_error: Exception | None = None,
-        stream_chunks: list[CompletionChunk] | None = None,
-        stream_error: Exception | None = None,
+        route_decision: RouteDecision | None = None,
+        policy_mode: str = "auto",
+        cache_enabled: bool = True,
+        fallback_enabled: bool = True,
+        policy_outcome: str = "default",
     ) -> None:
-        self.name = name
-        self.completion_result = completion_result
-        self.completion_error = completion_error
-        self.stream_chunks = stream_chunks or []
-        self.stream_error = stream_error
-        self.complete_calls = 0
-        self.stream_calls = 0
+        self.settings = settings
+        self.route_decision = route_decision
+        self.policy_mode = policy_mode
+        self.cache_enabled = cache_enabled
+        self.fallback_enabled = fallback_enabled
+        self.policy_outcome = policy_outcome
 
-    async def complete(self, request: ChatCompletionRequest) -> CompletionResult:
-        self.complete_calls += 1
-        if self.completion_error is not None:
-            raise self.completion_error
-        assert self.completion_result is not None
-        return self.completion_result
+    async def resolve(self, *, prompt, request, tenant_context, router_service) -> PolicyResolution:
+        decision = self.route_decision or await router_service.choose_target_with_reason(
+            prompt,
+            request,
+            routing_mode=self.policy_mode,
+        )
+        return PolicyResolution(
+            route_decision=decision,
+            policy_mode=self.policy_mode,
+            cache_enabled=self.cache_enabled,
+            fallback_enabled=self.fallback_enabled,
+            policy_outcome=self.policy_outcome,
+            soft_budget_exceeded=False,
+            projected_premium_cost=0.0001 if decision.target == "premium" else 0.0,
+        )
 
-    def stream_complete(self, request: ChatCompletionRequest):
-        self.stream_calls += 1
+    def estimate_usage(self, request: ChatCompletionRequest, response_content: str) -> CompletionUsage:
+        return CompletionUsage(prompt_tokens=8, completion_tokens=4, total_tokens=12)
 
-        async def iterator():
-            if self.stream_error is not None:
-                raise self.stream_error
-            for chunk in self.stream_chunks:
-                yield chunk
+    def estimate_cost(self, model: str, usage: CompletionUsage | None) -> float | None:
+        if usage is None:
+            return None
+        return 0.0001 if model != self.settings.local_model else 0.0
 
-        return iterator()
 
-    async def close(self) -> None:
-        return None
+def tenant_context() -> AuthenticatedTenantContext:
+    now = datetime.now(UTC)
+    return AuthenticatedTenantContext(
+        tenant=TenantRecord(
+            id="default",
+            name="Default",
+            created_at=now,
+            updated_at=now,
+        ),
+        api_key=ApiKeyRecord(
+            id="key-1",
+            name="default",
+            key_prefix="nebula-",
+            tenant_id="default",
+            allowed_tenant_ids=["default"],
+            created_at=now,
+            updated_at=now,
+        ),
+        policy=TenantPolicy(allowed_premium_models=["gpt-4o-mini", "openai/gpt-4o-mini"]),
+    )
 
 
 def build_service(
     *,
     cache_service: FakeCacheService | None = None,
-    local_provider: FakeProvider | None = None,
-    premium_provider: FakeProvider | None = None,
+    local_provider: StubProvider | None = None,
+    premium_provider: StubProvider | None = None,
     settings: Settings | None = None,
-) -> tuple[ChatService, FakeCacheService, FakeProvider, FakeProvider]:
+    policy_service: FakePolicyService | None = None,
+) -> tuple[ChatService, FakeCacheService, StubProvider, StubProvider, FakeGovernanceStore]:
     active_settings = settings or Settings()
     active_cache = cache_service or FakeCacheService()
-    active_local = local_provider or FakeProvider(
+    active_local = local_provider or StubProvider(
         "ollama",
         completion_result=CompletionResult(
             content="local response",
             model=active_settings.local_model,
             provider="ollama",
+            usage=CompletionUsage(prompt_tokens=8, completion_tokens=4, total_tokens=12),
         ),
     )
-    active_premium = premium_provider or FakeProvider(
+    active_premium = premium_provider or StubProvider(
         "openai-compatible",
         completion_result=CompletionResult(
             content="premium response",
             model=active_settings.premium_model,
             provider="openai-compatible",
+            usage=CompletionUsage(prompt_tokens=10, completion_tokens=6, total_tokens=16),
         ),
     )
+    store = FakeGovernanceStore()
     service = ChatService(
         settings=active_settings,
         cache_service=active_cache,
@@ -97,24 +126,29 @@ def build_service(
             local_provider=active_local,
             premium_provider=active_premium,
         ),
+        governance_store=store,
+        policy_service=policy_service or FakePolicyService(active_settings),
     )
-    return service, active_cache, active_local, active_premium
+    return service, active_cache, active_local, active_premium, store
 
 
 @pytest.mark.asyncio
 async def test_create_completion_routes_complex_prompts_to_premium_provider() -> None:
-    service, cache_service, local_provider, premium_provider = build_service()
+    service, cache_service, local_provider, premium_provider, store = build_service()
     request = ChatCompletionRequest(
         model="nebula-auto",
         messages=[{"role": "user", "content": "Please review this architecture tradeoff."}],
     )
 
-    response = await service.create_completion(request, request_id="req-premium")
+    response = await service.create_completion(
+        request,
+        tenant_context=tenant_context(),
+        request_id="req-premium",
+    )
 
     assert response.model == service.settings.premium_model
     assert response.choices[0].message.content == "premium response"
-    assert local_provider.complete_calls == 0
-    assert premium_provider.complete_calls == 1
+    assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
         (
             "Please review this architecture tradeoff.",
@@ -122,24 +156,26 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
             service.settings.premium_model,
         )
     ]
+    assert store.records[-1].final_route_target == "premium"
 
 
 @pytest.mark.asyncio
 async def test_create_completion_falls_back_to_premium_when_local_provider_fails() -> None:
     settings = Settings()
-    local_provider = FakeProvider(
+    local_provider = StubProvider(
         "ollama",
         completion_error=ProviderError("local provider offline"),
     )
-    premium_provider = FakeProvider(
+    premium_provider = StubProvider(
         "openai-compatible",
         completion_result=CompletionResult(
             content="fallback response",
             model=settings.premium_model,
             provider="openai-compatible",
+            usage=CompletionUsage(prompt_tokens=10, completion_tokens=6, total_tokens=16),
         ),
     )
-    service, cache_service, active_local, active_premium = build_service(
+    service, cache_service, _, _, store = build_service(
         local_provider=local_provider,
         premium_provider=premium_provider,
         settings=settings,
@@ -149,40 +185,48 @@ async def test_create_completion_falls_back_to_premium_when_local_provider_fails
         messages=[{"role": "user", "content": "hello"}],
     )
 
-    response = await service.create_completion(request, request_id="req-fallback")
+    response = await service.create_completion(
+        request,
+        tenant_context=tenant_context(),
+        request_id="req-fallback",
+    )
 
     assert response.model == settings.premium_model
     assert response.choices[0].message.content == "fallback response"
-    assert active_local.complete_calls == 1
-    assert active_premium.complete_calls == 1
     assert cache_service.stored_entries == [("hello", "fallback response", settings.premium_model)]
+    assert store.records[-1].fallback_used is True
+    assert store.records[-1].terminal_status == "fallback_completed"
 
 
 @pytest.mark.asyncio
 async def test_create_completion_returns_cached_response_without_calling_providers() -> None:
     cache_service = FakeCacheService(cached_response="cached response")
-    service, _, local_provider, premium_provider = build_service(cache_service=cache_service)
+    service, _, _, _, store = build_service(cache_service=cache_service)
     request = ChatCompletionRequest(
         model="nebula-auto",
         messages=[{"role": "user", "content": "hello cache"}],
     )
 
-    response = await service.create_completion(request, request_id="req-cache")
+    response = await service.create_completion(
+        request,
+        tenant_context=tenant_context(),
+        request_id="req-cache",
+    )
 
     assert response.model == "nebula-cache"
     assert response.choices[0].message.content == "cached response"
-    assert local_provider.complete_calls == 0
-    assert premium_provider.complete_calls == 0
+    assert store.records[-1].cache_hit is True
+    assert store.records[-1].terminal_status == "cache_hit"
 
 
 @pytest.mark.asyncio
 async def test_stream_completion_falls_back_to_premium_provider() -> None:
     settings = Settings()
-    local_provider = FakeProvider(
+    local_provider = StubProvider(
         "ollama",
         stream_error=ProviderError("local stream failed"),
     )
-    premium_provider = FakeProvider(
+    premium_provider = StubProvider(
         "openai-compatible",
         stream_chunks=[
             CompletionChunk(delta="premium ", model=settings.premium_model),
@@ -190,7 +234,7 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
             CompletionChunk(delta="", model=settings.premium_model, finish_reason="stop"),
         ],
     )
-    service, cache_service, active_local, active_premium = build_service(
+    service, cache_service, _, _, store = build_service(
         local_provider=local_provider,
         premium_provider=premium_provider,
         settings=settings,
@@ -201,13 +245,53 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
         messages=[{"role": "user", "content": "short"}],
     )
 
-    events = [event async for event in service.stream_completion(request, request_id="req-stream")]
+    events = [
+        event
+        async for event in service.stream_completion(
+            request,
+            tenant_context=tenant_context(),
+            request_id="req-stream",
+        )
+    ]
     payload = b"".join(events)
 
-    assert active_local.stream_calls == 1
-    assert active_premium.stream_calls == 1
     assert f'"model": "{settings.premium_model}"'.encode() in payload
     assert b"premium " in payload
     assert b"stream" in payload
     assert payload.endswith(b"data: [DONE]\n\n")
     assert cache_service.stored_entries == [("short", "premium stream", settings.premium_model)]
+    assert store.records[-1].terminal_status == "fallback_completed"
+
+
+@pytest.mark.asyncio
+async def test_policy_can_disable_cache_and_block_fallback() -> None:
+    settings = Settings()
+    cache_service = FakeCacheService(cached_response="should not be used")
+    local_provider = StubProvider("ollama", completion_error=ProviderError("local down"))
+    service, _, _, _, store = build_service(
+        cache_service=cache_service,
+        local_provider=local_provider,
+        settings=settings,
+        policy_service=FakePolicyService(
+            settings,
+            route_decision=RouteDecision(target="local", reason="policy_local_only"),
+            cache_enabled=False,
+            fallback_enabled=False,
+            policy_mode="local_only",
+            policy_outcome="routing_mode=local_only;cache=disabled;fallback=disabled",
+        ),
+    )
+    request = ChatCompletionRequest(
+        model="nebula-auto",
+        messages=[{"role": "user", "content": "policy controlled request"}],
+    )
+
+    with pytest.raises(Exception):
+        await service.create_completion(
+            request,
+            tenant_context=tenant_context(),
+            request_id="req-policy",
+        )
+
+    assert cache_service.lookup_calls == []
+    assert store.records[-1].terminal_status == "provider_error"

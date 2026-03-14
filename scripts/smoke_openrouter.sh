@@ -73,6 +73,24 @@ print(get_settings().premium_provider)
 PY
 )"
 
+BOOTSTRAP_API_KEY="$("$VENV_PYTHON" - <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd() / "src"))
+from nebula.core.config import get_settings
+print(get_settings().bootstrap_api_key)
+PY
+)"
+
+BOOTSTRAP_TENANT_ID="$("$VENV_PYTHON" - <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path.cwd() / "src"))
+from nebula.core.config import get_settings
+print(get_settings().bootstrap_tenant_id)
+PY
+)"
+
 if [[ "$PREMIUM_PROVIDER" != "openai_compatible" ]]; then
   echo "Expected NEBULA_PREMIUM_PROVIDER=openai_compatible in .env" >&2
   exit 1
@@ -100,6 +118,8 @@ assert_contains "$HEALTH_RESPONSE" '"status":"ok"'
 
 PREMIUM_RESPONSE="$(curl -fsS "$BASE_URL/v1/chat/completions" \
   -H 'Content-Type: application/json' \
+  -H "X-Nebula-API-Key: $BOOTSTRAP_API_KEY" \
+  -H "X-Nebula-Tenant-ID: $BOOTSTRAP_TENANT_ID" \
   -d "{
     \"model\": \"$PREMIUM_MODEL\",
     \"messages\": [{\"role\": \"user\", \"content\": \"Reply with the word premium.\"}]
@@ -109,6 +129,8 @@ assert_contains "$PREMIUM_RESPONSE" '"role":"assistant"'
 
 STREAM_RESPONSE="$(curl -fsS "$BASE_URL/v1/chat/completions" \
   -H 'Content-Type: application/json' \
+  -H "X-Nebula-API-Key: $BOOTSTRAP_API_KEY" \
+  -H "X-Nebula-Tenant-ID: $BOOTSTRAP_TENANT_ID" \
   -d "{
     \"model\": \"$PREMIUM_MODEL\",
     \"stream\": true,
@@ -120,6 +142,8 @@ assert_contains "$STREAM_RESPONSE" '[DONE]'
 if [[ "$MODE" == "fallback" ]]; then
   FALLBACK_RESPONSE="$(curl -fsS "$BASE_URL/v1/chat/completions" \
     -H 'Content-Type: application/json' \
+    -H "X-Nebula-API-Key: $BOOTSTRAP_API_KEY" \
+    -H "X-Nebula-Tenant-ID: $BOOTSTRAP_TENANT_ID" \
     -d '{
       "model": "nebula-auto",
       "messages": [{"role": "user", "content": "hello"}]

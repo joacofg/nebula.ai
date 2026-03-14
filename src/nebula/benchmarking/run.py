@@ -211,9 +211,13 @@ class BenchmarkRunner:
             "model": self._requested_model_for_mode(scenario.mode),
             "messages": self._effective_messages(scenario),
         }
+        headers = {
+            "X-Nebula-API-Key": self.settings.bootstrap_api_key,
+            "X-Nebula-Tenant-ID": self.settings.bootstrap_tenant_id,
+        }
         started_at = time.perf_counter()
         try:
-            response = await client.post("/v1/chat/completions", json=payload)
+            response = await client.post("/v1/chat/completions", json=payload, headers=headers)
         except httpx.HTTPError as exc:
             return BenchmarkResult(
                 scenario_id=scenario.id,

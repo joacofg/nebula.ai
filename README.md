@@ -59,6 +59,16 @@ NEBULA_PREMIUM_MODEL=openai/gpt-4o-mini
 The application now fails fast at startup if `openai_compatible` is selected without the required premium credentials.
 Premium and fallback requests are billed against the OpenRouter credits attached to the configured API key.
 
+Nebula now boots with a lightweight SQLite governance store and a bootstrap tenant/API key for local development:
+
+```bash
+X-Nebula-API-Key: nebula-dev-key
+X-Nebula-Tenant-ID: default
+X-Nebula-Admin-Key: nebula-admin-key
+```
+
+Override those defaults in `.env` before using Nebula outside local development.
+
 ## Smoke Tests
 
 After configuring `.env`, run:
@@ -101,6 +111,22 @@ When `BASE_URL` is provided, fallback-only scenarios are skipped because the run
 `POST /v1/chat/completions`
 
 Implements the base OpenAI-compatible contract for both streaming and non-streaming requests.
+Requires `X-Nebula-API-Key`; `X-Nebula-Tenant-ID` resolves the tenant explicitly when needed.
+Responses now include tenant/policy headers alongside route, provider, cache, and fallback metadata.
+
+`GET /v1/admin/tenants`
+
+`POST /v1/admin/tenants`
+
+`GET|PUT /v1/admin/tenants/{tenant_id}/policy`
+
+`GET|POST /v1/admin/api-keys`
+
+`POST /v1/admin/api-keys/{api_key_id}/revoke`
+
+`GET /v1/admin/usage/ledger`
+
+Operator APIs are protected with `X-Nebula-Admin-Key` and expose tenant, API key, policy, and usage-ledger management without returning downstream provider secrets.
 
 `GET /health`
 

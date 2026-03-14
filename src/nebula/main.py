@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from prometheus_client import make_asgi_app
 
 from nebula.api.dependencies import get_container
+from nebula.api.routes.admin import router as admin_router
 from nebula.api.routes.chat import router as chat_router
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
@@ -33,6 +34,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestContextMiddleware)
     app.include_router(chat_router, prefix=settings.api_v1_prefix)
+    app.include_router(admin_router, prefix=settings.api_v1_prefix)
     if settings.enable_metrics:
         app.mount("/metrics", make_asgi_app())
 

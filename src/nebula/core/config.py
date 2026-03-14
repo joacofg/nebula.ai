@@ -33,6 +33,21 @@ class Settings(BaseSettings):
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")
     router_complexity_chars: int = Field(default=400, alias="NEBULA_ROUTER_COMPLEXITY_CHARS")
     enable_metrics: bool = Field(default=True, alias="NEBULA_ENABLE_METRICS")
+    data_store_path: str = Field(default=".nebula/nebula.db", alias="NEBULA_DATA_STORE_PATH")
+    admin_api_key: str = Field(default="nebula-admin-key", alias="NEBULA_ADMIN_API_KEY")
+    bootstrap_tenant_id: str = Field(default="default", alias="NEBULA_BOOTSTRAP_TENANT_ID")
+    bootstrap_tenant_name: str = Field(
+        default="Default Workspace",
+        alias="NEBULA_BOOTSTRAP_TENANT_NAME",
+    )
+    bootstrap_api_key_name: str = Field(
+        default="default-workspace-key",
+        alias="NEBULA_BOOTSTRAP_API_KEY_NAME",
+    )
+    bootstrap_api_key: str = Field(
+        default="nebula-dev-key",
+        alias="NEBULA_BOOTSTRAP_API_KEY",
+    )
 
     @model_validator(mode="after")
     def validate_premium_provider_settings(self) -> "Settings":
