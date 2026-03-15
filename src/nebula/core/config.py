@@ -8,6 +8,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     app_name: str = Field(default="Nebula", alias="NEBULA_APP_NAME")
     env: str = Field(default="local", alias="NEBULA_ENV")
+    runtime_profile: Literal["local_dev", "premium_first"] = Field(
+        default="local_dev",
+        alias="NEBULA_RUNTIME_PROFILE",
+    )
     api_v1_prefix: str = Field(default="/v1", alias="NEBULA_API_V1_PREFIX")
     default_model: str = Field(default="nebula-auto", alias="NEBULA_DEFAULT_MODEL")
     log_level: str = Field(default="INFO", alias="NEBULA_LOG_LEVEL")
@@ -51,6 +55,24 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_premium_provider_settings(self) -> "Settings":
+        if self.env != "local":
+            if self.runtime_profile != "premium_first":
+                raise ValueError(
+                    "NEBULA_RUNTIME_PROFILE must be premium_first when NEBULA_ENV is not local."
+                )
+            if self.admin_api_key == "nebula-admin-key":
+                raise ValueError(
+                    "NEBULA_ADMIN_API_KEY must be changed before running outside local mode."
+                )
+            if self.bootstrap_api_key == "nebula-dev-key":
+                raise ValueError(
+                    "NEBULA_BOOTSTRAP_API_KEY must be changed before running outside local mode."
+                )
+            if self.premium_provider == "mock":
+                raise ValueError(
+                    "NEBULA_PREMIUM_PROVIDER=mock is not allowed when NEBULA_ENV is not local."
+                )
+
         if self.premium_provider != "openai_compatible":
             return self
 

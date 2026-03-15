@@ -17,6 +17,7 @@ Nebula Phase 1 supports one serious deployment path: a premium-first Docker Comp
    ```
 
 2. Edit `deploy/selfhosted.env` and replace these placeholders before startup:
+   - `NEBULA_RUNTIME_PROFILE=premium_first`
    - `NEBULA_PREMIUM_API_KEY`
    - `NEBULA_ADMIN_API_KEY`
    - `NEBULA_BOOTSTRAP_API_KEY`
@@ -33,8 +34,17 @@ Nebula Phase 1 supports one serious deployment path: a premium-first Docker Comp
    curl http://localhost:8000/health
    ```
 
+5. Verify readiness and dependency detail before sending traffic.
+
+   ```bash
+   curl http://localhost:8000/health/ready
+   curl http://localhost:8000/health/dependencies
+   ```
+
 ## Notes
 
 - This is the only supported self-hosted path for Phase 1.
 - `NEBULA_PREMIUM_PROVIDER=openai_compatible` is the intended production-facing configuration.
+- `NEBULA_RUNTIME_PROFILE=premium_first` is required outside local development.
 - Local Ollama remains optional and is configured as an advanced optimization path, not a deployment prerequisite.
+- A `degraded` readiness state means Nebula can still serve traffic while optional dependencies such as Qdrant or local Ollama are unavailable.
