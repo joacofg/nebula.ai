@@ -136,7 +136,15 @@ Operator APIs are protected with `X-Nebula-Admin-Key` and expose tenant, API key
 
 `GET /health`
 
-Returns the application status and whether the semantic cache is enabled.
+Returns the application liveness status.
+
+`GET /health/ready`
+
+Returns readiness for the gateway and governance store, while allowing optional dependencies such as Qdrant or local Ollama to show as `degraded`.
+
+`GET /health/dependencies`
+
+Returns component-level dependency detail for gateway, governance store, semantic cache, and local Ollama.
 
 `GET /metrics`
 
