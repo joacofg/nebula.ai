@@ -29,10 +29,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. Nebula refuses unsafe non-local startup defaults and uses explicit runtime configuration.
   3. Persistence changes follow a migration workflow instead of implicit bootstrap-only schema creation.
   4. Operators can verify readiness for gateway, governance store, and cache before trusting the deployment.
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
-- [ ] 01-01: Define the self-hosted packaging and runtime topology
+- [x] 01-01: Define the self-hosted packaging and runtime topology
 - [ ] 01-02: Harden configuration, secrets, and health/readiness behavior
 - [ ] 01-03: Introduce a durable persistence and migration path
 
@@ -104,7 +104,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Self-Hosted Foundation | 0/3 | Not started | - |
+| 1. Self-Hosted Foundation | 1/3 | In Progress|  |
 | 2. Operator Console | 0/3 | Not started | - |
 | 3. Playground & Observability | 0/3 | Not started | - |
 | 4. Governance Hardening | 0/2 | Not started | - |
