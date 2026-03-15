@@ -28,6 +28,7 @@ class Settings(BaseSettings):
         default=0.90,
         alias="NEBULA_SEMANTIC_CACHE_THRESHOLD",
     )
+    database_url: str | None = Field(default=None, alias="NEBULA_DATABASE_URL")
     premium_provider: Literal["mock", "openai_compatible"] = Field(
         default="mock",
         alias="NEBULA_PREMIUM_PROVIDER",
@@ -71,6 +72,10 @@ class Settings(BaseSettings):
             if self.premium_provider == "mock":
                 raise ValueError(
                     "NEBULA_PREMIUM_PROVIDER=mock is not allowed when NEBULA_ENV is not local."
+                )
+            if not self.database_url:
+                raise ValueError(
+                    "NEBULA_DATABASE_URL must be set when NEBULA_ENV is not local."
                 )
 
         if self.premium_provider != "openai_compatible":
