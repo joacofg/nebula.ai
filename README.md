@@ -106,6 +106,12 @@ BASE_URL=http://127.0.0.1:8000 .venv/bin/python -m nebula.benchmarking.run
 
 When `BASE_URL` is provided, fallback-only scenarios are skipped because the runner cannot safely mutate the external server configuration.
 
+## Self-Hosted Deployment
+
+Nebula's supported Phase 1 deployment path is the premium-first Docker Compose stack in
+[`docs/self-hosting.md`](docs/self-hosting.md). Follow that runbook instead of treating the local
+development steps above as a second deployment flow.
+
 ## Endpoints
 
 `POST /v1/chat/completions`
