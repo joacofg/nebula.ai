@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark selfhost-up selfhost-down selfhost-logs
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark selfhost-up selfhost-down selfhost-logs migrate migrate-create
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -42,6 +42,12 @@ smoke-fallback:
 
 benchmark:
 	$(PYTHON) -m nebula.benchmarking.run
+
+migrate:
+	./.venv/bin/alembic upgrade head
+
+migrate-create:
+	./.venv/bin/alembic revision --autogenerate -m "$(MSG)"
 
 selfhost-up:
 	docker compose -f docker-compose.selfhosted.yml up -d
