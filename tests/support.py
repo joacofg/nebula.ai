@@ -7,6 +7,9 @@ from tempfile import TemporaryDirectory
 from typing import Iterator
 from uuid import uuid4
 
+from alembic import command
+from alembic.config import Config
+
 from nebula.core.config import get_settings
 from nebula.main import create_app
 from nebula.models.openai import ChatCompletionRequest
@@ -16,8 +19,10 @@ from nebula.providers.base import CompletionChunk, CompletionResult, CompletionU
 @contextmanager
 def configured_app(**env_overrides: str) -> Iterator:
     temp_dir = TemporaryDirectory()
+    database_path = Path(temp_dir.name) / "nebula.db"
     default_overrides = {
-        "NEBULA_DATA_STORE_PATH": str(Path(temp_dir.name) / "nebula.db"),
+        "NEBULA_DATA_STORE_PATH": str(database_path),
+        "NEBULA_DATABASE_URL": f"sqlite+pysqlite:///{database_path}",
         "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-test-cache-{uuid4().hex}",
     }
     merged_overrides = {**default_overrides, **env_overrides}
@@ -25,6 +30,7 @@ def configured_app(**env_overrides: str) -> Iterator:
     for key, value in merged_overrides.items():
         os.environ[key] = value
     get_settings.cache_clear()
+    _run_migrations(os.environ["NEBULA_DATABASE_URL"])
     app = create_app()
     try:
         yield app
@@ -118,3 +124,11 @@ def usage(prompt_tokens: int = 8, completion_tokens: int = 4) -> CompletionUsage
 
 def provider_error(message: str) -> ProviderError:
     return ProviderError(message)
+
+
+def _run_migrations(database_url: str) -> None:
+    root = Path(__file__).resolve().parents[1]
+    config = Config(str(root / "alembic.ini"))
+    config.set_main_option("script_location", str(root / "migrations"))
+    config.set_main_option("sqlalchemy.url", database_url)
+    command.upgrade(config, "head")

@@ -2,6 +2,7 @@ from pathlib import Path
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
+from nebula.db.session import create_session_factory
 from nebula.providers.mock_premium import MockPremiumProvider
 from nebula.providers.ollama import OllamaProvider
 from nebula.providers.openai_compatible import OpenAICompatibleProvider
@@ -21,7 +22,10 @@ class ServiceContainer:
         self.settings = settings
         pricing_path = Path(__file__).resolve().parents[3] / "benchmarks" / "pricing.json"
         self.pricing_catalog = PricingCatalog.from_path(pricing_path)
-        self.governance_store = GovernanceStore(settings)
+        self.governance_store = GovernanceStore(
+            settings=settings,
+            session_factory=create_session_factory(settings),
+        )
         self.auth_service = AuthService(settings, self.governance_store)
         self.policy_service = PolicyService(
             settings=settings,
