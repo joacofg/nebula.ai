@@ -37,3 +37,19 @@ class OllamaEmbeddingsService:
 
     async def close(self) -> None:
         await self.client.aclose()
+
+    async def health_status(self) -> dict[str, object]:
+        try:
+            response = await self.client.get("/api/tags")
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            return {
+                "status": "degraded",
+                "required": False,
+                "detail": f"Local Ollama unavailable: {exc}",
+            }
+        return {
+            "status": "ready",
+            "required": False,
+            "detail": "Local Ollama endpoint is reachable.",
+        }

@@ -27,6 +27,7 @@ class SemanticCacheService:
             check_compatibility=False,
         )
         self.enabled = False
+        self.degraded_reason: str | None = None
 
     async def initialize(self) -> None:
         try:
@@ -40,9 +41,11 @@ class SemanticCacheService:
                     ),
                 )
             self.enabled = True
+            self.degraded_reason = None
         except Exception as exc:
             logger.warning("semantic_cache_disabled: %s", exc)
             self.enabled = False
+            self.degraded_reason = str(exc)
 
     async def lookup(self, prompt: str) -> str | None:
         if not self.enabled:
@@ -106,3 +109,27 @@ class SemanticCacheService:
 
     async def close(self) -> None:
         await self.client.close()
+
+    async def health_status(self) -> dict[str, object]:
+        try:
+            exists = await self.client.collection_exists(self.settings.semantic_cache_collection)
+        except Exception as exc:
+            return {
+                "status": "degraded",
+                "required": False,
+                "detail": f"Qdrant unavailable: {exc}",
+                "enabled": self.enabled,
+            }
+        if exists:
+            return {
+                "status": "ready",
+                "required": False,
+                "detail": "Semantic cache collection is reachable.",
+                "enabled": self.enabled,
+            }
+        return {
+            "status": "degraded",
+            "required": False,
+            "detail": self.degraded_reason or "Semantic cache collection is missing.",
+            "enabled": self.enabled,
+        }

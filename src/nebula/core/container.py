@@ -12,6 +12,7 @@ from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouterService
+from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
 
 
@@ -37,6 +38,12 @@ class ServiceContainer:
         )
         self.cache_service = SemanticCacheService(
             settings=settings,
+            embeddings_service=self.embeddings_service,
+        )
+        self.runtime_health_service = RuntimeHealthService(
+            settings=settings,
+            governance_store=self.governance_store,
+            semantic_cache=self.cache_service,
             embeddings_service=self.embeddings_service,
         )
         self.chat_service = ChatService(

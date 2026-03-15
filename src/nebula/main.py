@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.responses import JSONResponse
 from prometheus_client import make_asgi_app
 
 from nebula.api.dependencies import get_container
@@ -40,8 +41,19 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["health"])
     async def healthcheck() -> dict[str, str]:
+        return {"status": "ok"}
+
+    @app.get("/health/ready", tags=["health"])
+    async def readiness() -> JSONResponse:
         container = get_container(app)
-        return {"status": "ok", "cache_enabled": str(container.cache_service.enabled).lower()}
+        report = await container.runtime_health_service.readiness()
+        status_code = 200 if report["status"] in {"ready", "degraded"} else 503
+        return JSONResponse(content=report, status_code=status_code)
+
+    @app.get("/health/dependencies", tags=["health"])
+    async def health_dependencies() -> dict[str, object]:
+        container = get_container(app)
+        return await container.runtime_health_service.readiness()
 
     return app
 

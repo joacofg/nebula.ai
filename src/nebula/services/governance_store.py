@@ -494,6 +494,40 @@ class GovernanceStore:
         ).fetchone()
         return float(row["total"]) if row else 0.0
 
+    def health_status(self) -> dict[str, object]:
+        if self.connection is None:
+            return {
+                "status": "not_ready",
+                "required": True,
+                "detail": "Governance store connection is not initialized.",
+            }
+        try:
+            self._execute("SELECT 1").fetchone()
+            schema_row = self._execute(
+                """
+                SELECT name
+                FROM sqlite_master
+                WHERE type = 'table' AND name IN ('tenants', 'tenant_policies', 'api_keys', 'usage_ledger')
+                """
+            ).fetchall()
+        except sqlite3.Error as exc:
+            return {
+                "status": "not_ready",
+                "required": True,
+                "detail": f"Governance store query failed: {exc}",
+            }
+        if len(schema_row) < 4:
+            return {
+                "status": "not_ready",
+                "required": True,
+                "detail": "Governance schema is incomplete.",
+            }
+        return {
+            "status": "ready",
+            "required": True,
+            "detail": "Governance store is connected and schema is present.",
+        }
+
     def _execute(
         self,
         statement: str,
