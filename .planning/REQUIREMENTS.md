@@ -9,7 +9,7 @@
 
 - [x] **PLAT-01**: Operator can deploy Nebula through one documented self-hosted path without manual code edits
 - [x] **PLAT-02**: Operator can run Nebula outside local development with non-default secrets and explicit environment configuration
-- [ ] **PLAT-03**: Operator can evolve governance persistence through an explicit migration workflow
+- [x] **PLAT-03**: Operator can evolve governance persistence through an explicit migration workflow
 - [x] **PLAT-04**: Operator can verify gateway readiness, cache health, and governance-store health before sending production traffic
 
 ### Operator Console
@@ -71,7 +71,7 @@
 |-------------|-------|--------|
 | PLAT-01 | Phase 1 | Complete |
 | PLAT-02 | Phase 1 | Complete |
-| PLAT-03 | Phase 1 | Pending |
+| PLAT-03 | Phase 1 | Complete |
 | PLAT-04 | Phase 1 | Complete |
 | CONS-01 | Phase 2 | Pending |
 | CONS-02 | Phase 2 | Pending |
