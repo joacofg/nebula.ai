@@ -61,10 +61,10 @@ Plans:
   2. Each playground request displays provider, route target, cache/fallback status, latency, and policy outcome.
   3. Operator can inspect usage-ledger data through the console with meaningful filters.
   4. Operator can tell when cache or provider dependencies are degraded.
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
-- [ ] 03-01: Build the playground request/response workflow
+- [x] 03-01: Build the playground request/response workflow
 - [ ] 03-02: Surface route and cost metadata in the UI
 - [ ] 03-03: Build observability views for ledger and dependency health
 
@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
-| 3. Playground & Observability | 0/3 | Not started | - |
+| 3. Playground & Observability | 1/3 | In Progress |  |
 | 4. Governance Hardening | 0/2 | Not started | - |
 | 5. Product Proof & Delivery | 0/3 | Not started | - |
