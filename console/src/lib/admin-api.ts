@@ -59,6 +59,78 @@ export type PolicyOptionsResponse = {
   default_premium_model: string;
 };
 
+export type PlaygroundInput = {
+  tenantId: string;
+  model: string;
+  prompt: string;
+};
+
+export type PlaygroundUsage = {
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+};
+
+export type PlaygroundResponse = {
+  id: string;
+  object: "chat.completion";
+  created: number;
+  model: string;
+  choices: Array<{
+    index: number;
+    message: {
+      role: "assistant";
+      content: string;
+    };
+    finish_reason: "stop" | "length" | "content_filter" | "tool_calls";
+  }>;
+  usage: PlaygroundUsage;
+  system_fingerprint: string | null;
+  request_id?: string | null;
+};
+
+export type PlaygroundCompletionResult = {
+  body: PlaygroundResponse;
+  requestId: string;
+  tenantId: string;
+  routeTarget: string;
+  routeReason: string;
+  provider: string;
+  cacheHit: boolean;
+  fallbackUsed: boolean;
+  policyMode: string;
+  policyOutcome: string;
+};
+
+export type UsageLedgerRecord = {
+  request_id: string;
+  tenant_id: string;
+  requested_model: string;
+  final_route_target: string;
+  final_provider: string | null;
+  fallback_used: boolean;
+  cache_hit: boolean;
+  response_model: string | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  estimated_cost: number | null;
+  latency_ms: number | null;
+  timestamp: string;
+  terminal_status: string;
+  route_reason: string | null;
+  policy_outcome: string | null;
+};
+
+export type UsageLedgerFilters = {
+  tenantId?: string;
+  routeTarget?: string;
+  terminalStatus?: string;
+  fromTimestamp?: string;
+  toTimestamp?: string;
+  requestId?: string;
+};
+
 type RequestOptions = {
   adminKey: string;
   method?: "GET" | "POST" | "PATCH" | "PUT";
@@ -86,6 +158,7 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
 
 export const ADMIN_TENANTS_ENDPOINT = "/api/admin/tenants";
 export const ADMIN_API_KEYS_ENDPOINT = "/api/admin/api-keys";
+export const ADMIN_USAGE_LEDGER_ENDPOINT = "/api/admin/usage/ledger";
 
 export function listTenants(adminKey: string) {
   return adminRequest<TenantRecord[]>(ADMIN_TENANTS_ENDPOINT, { adminKey });
@@ -141,4 +214,79 @@ export function updateTenantPolicy(adminKey: string, tenantId: string, payload: 
 
 export function getPolicyOptions(adminKey: string) {
   return adminRequest<PolicyOptionsResponse>("/api/admin/policy/options", { adminKey });
+}
+
+export async function createPlaygroundCompletion(
+  adminKey: string,
+  payload: PlaygroundInput,
+): Promise<PlaygroundCompletionResult> {
+  const response = await fetch("/api/playground/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Nebula-Admin-Key": adminKey,
+    },
+    body: JSON.stringify({
+      tenant_id: payload.tenantId,
+      model: payload.model,
+      messages: [{ role: "user", content: payload.prompt }],
+      stream: false,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "Nebula playground request failed.");
+  }
+
+  const body = (await response.json()) as PlaygroundResponse;
+  return {
+    body,
+    requestId: response.headers.get("X-Request-ID") ?? body.request_id ?? "",
+    tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,
+    routeTarget: response.headers.get("X-Nebula-Route-Target") ?? "",
+    routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
+    provider: response.headers.get("X-Nebula-Provider") ?? "",
+    cacheHit: response.headers.get("X-Nebula-Cache-Hit") === "true",
+    fallbackUsed: response.headers.get("X-Nebula-Fallback-Used") === "true",
+    policyMode: response.headers.get("X-Nebula-Policy-Mode") ?? "",
+    policyOutcome: response.headers.get("X-Nebula-Policy-Outcome") ?? "",
+  };
+}
+
+function buildUsageLedgerQuery(filters: UsageLedgerFilters) {
+  const searchParams = new URLSearchParams();
+  if (filters.tenantId) {
+    searchParams.set("tenant_id", filters.tenantId);
+  }
+  if (filters.routeTarget) {
+    searchParams.set("route_target", filters.routeTarget);
+  }
+  if (filters.terminalStatus) {
+    searchParams.set("terminal_status", filters.terminalStatus);
+  }
+  if (filters.fromTimestamp) {
+    searchParams.set("from_timestamp", filters.fromTimestamp);
+  }
+  if (filters.toTimestamp) {
+    searchParams.set("to_timestamp", filters.toTimestamp);
+  }
+  if (filters.requestId) {
+    searchParams.set("request_id", filters.requestId);
+  }
+  const query = searchParams.toString();
+  return query.length > 0 ? `?${query}` : "";
+}
+
+export function listUsageLedger(adminKey: string, filters: UsageLedgerFilters = {}) {
+  return adminRequest<UsageLedgerRecord[]>(
+    `${ADMIN_USAGE_LEDGER_ENDPOINT}${buildUsageLedgerQuery(filters)}`,
+    { adminKey },
+  );
+}
+
+export async function getUsageLedgerEntry(adminKey: string, requestId: string) {
+  const entries = await listUsageLedger(adminKey, { requestId });
+  return entries[0] ?? null;
 }
