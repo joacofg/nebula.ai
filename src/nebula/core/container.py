@@ -11,6 +11,7 @@ from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
+from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
@@ -36,6 +37,7 @@ class ServiceContainer:
         self.embeddings_service = OllamaEmbeddingsService(settings)
         self.local_provider = OllamaProvider(settings)
         self.premium_provider = self._build_premium_provider()
+        self.premium_provider_health_service = PremiumProviderHealthService(settings)
         self.provider_registry = ProviderRegistry(
             local_provider=self.local_provider,
             premium_provider=self.premium_provider,
@@ -49,6 +51,7 @@ class ServiceContainer:
             governance_store=self.governance_store,
             semantic_cache=self.cache_service,
             embeddings_service=self.embeddings_service,
+            premium_provider_health=self.premium_provider_health_service,
         )
         self.chat_service = ChatService(
             settings=settings,
@@ -65,6 +68,7 @@ class ServiceContainer:
 
     async def shutdown(self) -> None:
         await self.provider_registry.close()
+        await self.premium_provider_health_service.close()
         await self.embeddings_service.close()
         await self.cache_service.close()
         self.governance_store.close()
