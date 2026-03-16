@@ -104,6 +104,29 @@ def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
     assert listed_keys.json()[0]["tenant_id"] == "team-a"
 
 
+def test_admin_session_endpoint() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            unauthorized = client.get("/v1/admin/session")
+            authorized = client.get("/v1/admin/session", headers=admin_headers())
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert authorized.json() == {"status": "ok"}
+
+
+def test_policy_options_endpoint_is_admin_protected_and_includes_default_model() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            unauthorized = client.get("/v1/admin/policy/options")
+            authorized = client.get("/v1/admin/policy/options", headers=admin_headers())
+
+    assert unauthorized.status_code == 401
+    assert authorized.status_code == 200
+    assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
+    assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
+
+
 def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None:
     with configured_app() as app:
         with TestClient(app) as client:

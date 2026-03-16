@@ -355,6 +355,14 @@ class GovernanceStore:
             "detail": "Governance store is connected and schema is present.",
         }
 
+    def list_known_premium_models(self) -> list[str]:
+        models = {self.settings.premium_model}
+        with self._session() as session:
+            rows = session.scalars(select(TenantPolicyModel.allowed_premium_models_json)).all()
+        for row in rows:
+            models.update(model for model in row if model)
+        return sorted(models)
+
     def _tenant_from_model(self, row: TenantModel) -> TenantRecord:
         return TenantRecord(
             id=row.id,

@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark selfhost-up selfhost-down selfhost-logs migrate migrate-create
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -57,3 +57,15 @@ selfhost-down:
 
 selfhost-logs:
 	docker compose -f docker-compose.selfhosted.yml logs -f nebula
+
+console-install:
+	npm --prefix console install
+
+console-dev:
+	npm --prefix console run dev
+
+console-test:
+	npm --prefix console run test -- --run
+
+console-e2e:
+	npm --prefix console run e2e
