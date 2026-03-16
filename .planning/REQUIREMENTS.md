@@ -22,9 +22,9 @@
 ### Playground & Observability
 
 - [x] **PLAY-01**: Operator can send a test prompt through Nebula from a playground UI
-- [ ] **PLAY-02**: Playground shows route target, provider, cache-hit status, fallback status, latency, and policy outcome for each request
-- [ ] **OBS-01**: Operator can inspect usage-ledger entries by tenant, route outcome, and time window
-- [ ] **OBS-02**: Operator can see whether cache and upstream providers are healthy or degraded
+- [x] **PLAY-02**: Playground shows route target, provider, cache-hit status, fallback status, latency, and policy outcome for each request
+- [x] **OBS-01**: Operator can inspect usage-ledger entries by tenant, route outcome, and time window
+- [x] **OBS-02**: Operator can see whether cache and upstream providers are healthy or degraded
 
 ### Governance & Routing
 
@@ -78,9 +78,9 @@
 | CONS-03 | Phase 2 | Complete |
 | CONS-04 | Phase 2 | Complete |
 | PLAY-01 | Phase 3 | Complete |
-| PLAY-02 | Phase 3 | Pending |
-| OBS-01 | Phase 3 | Pending |
-| OBS-02 | Phase 3 | Pending |
+| PLAY-02 | Phase 3 | Complete |
+| OBS-01 | Phase 3 | Complete |
+| OBS-02 | Phase 3 | Complete |
 | GOV-01 | Phase 4 | Pending |
 | GOV-02 | Phase 4 | Pending |
 | ROUT-01 | Phase 4 | Pending |
@@ -95,4 +95,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-16 after 03-01 completion*
+*Last updated: 2026-03-16 after Phase 3 completion*
