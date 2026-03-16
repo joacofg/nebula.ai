@@ -76,11 +76,12 @@ Plans:
   1. Policy controls exposed in the API/UI always correspond to enforced runtime behavior.
   2. Invalid or forbidden admin and tenant operations return clear, predictable error states.
   3. Operators can explain request routing decisions from recorded metadata and runtime outputs.
-**Plans**: 2 plans
+**Plans**: 3 plans
 
 Plans:
 - [ ] 04-01: Align policy surface with enforced backend behavior
-- [ ] 04-02: Harden request metadata, errors, and governance tests
+- [ ] 04-02: Harden backend denied-path metadata, errors, and governance tests
+- [ ] 04-03: Align console policy contract, copy, and browser coverage
 
 ### Phase 5: Product Proof & Delivery
 **Goal**: Nebula has a measurable product story and polished documentation suitable for demos, academic evaluation, and pilot onboarding.
@@ -107,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
 | 3. Playground & Observability | 3/3 | Complete    | 2026-03-16 |
-| 4. Governance Hardening | 0/2 | Not started | - |
+| 4. Governance Hardening | 0/3 | Not started | - |
 | 5. Product Proof & Delivery | 0/3 | Not started | - |

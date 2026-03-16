@@ -10,9 +10,9 @@ last_activity: 2026-03-16 — Phase 3 completed and Phase 4 is now active
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 14
+  total_plans: 15
   completed_plans: 10
-  percent: 71
+  percent: 67
 ---
 
 # Project State
@@ -27,13 +27,13 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 4 of 5 (Governance Hardening)
-Plan: 0 of 2 started in current phase
+Plan: 0 of 3 started in current phase
 **Current Plan:** Not started
-**Total Plans in Phase:** 2
+**Total Plans in Phase:** 3
 **Status:** Ready to plan
 **Last Activity:** 2026-03-16 — Phase 3 completed and Phase 4 is now active
 
-**Progress:** [██████████████░░░░░░] 71%
+**Progress:** [█████████████░░░░░░░] 67%
 
 ## Performance Metrics
 
