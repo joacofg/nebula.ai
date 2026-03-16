@@ -14,10 +14,10 @@
 
 ### Operator Console
 
-- [ ] **CONS-01**: Operator can open a web console and authenticate as an administrator for a Nebula deployment
-- [ ] **CONS-02**: Operator can create, view, update, and deactivate tenants from the console
-- [ ] **CONS-03**: Operator can create and revoke API keys from the console
-- [ ] **CONS-04**: Operator can update tenant routing policy from the console
+- [x] **CONS-01**: Operator can open a web console and authenticate as an administrator for a Nebula deployment
+- [x] **CONS-02**: Operator can create, view, update, and deactivate tenants from the console
+- [x] **CONS-03**: Operator can create and revoke API keys from the console
+- [x] **CONS-04**: Operator can update tenant routing policy from the console
 
 ### Playground & Observability
 
@@ -73,10 +73,10 @@
 | PLAT-02 | Phase 1 | Complete |
 | PLAT-03 | Phase 1 | Complete |
 | PLAT-04 | Phase 1 | Complete |
-| CONS-01 | Phase 2 | Pending |
-| CONS-02 | Phase 2 | Pending |
-| CONS-03 | Phase 2 | Pending |
-| CONS-04 | Phase 2 | Pending |
+| CONS-01 | Phase 2 | Complete |
+| CONS-02 | Phase 2 | Complete |
+| CONS-03 | Phase 2 | Complete |
+| CONS-04 | Phase 2 | Complete |
 | PLAY-01 | Phase 3 | Pending |
 | PLAY-02 | Phase 3 | Pending |
 | OBS-01 | Phase 3 | Pending |
@@ -95,4 +95,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-15 after initial definition*
+*Last updated: 2026-03-16 after Phase 2 completion*

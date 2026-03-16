@@ -4,6 +4,7 @@ __pycache__/
 .mypy_cache/
 .ruff_cache/
 .env
+*.env
 .DS_Store
 .nebula/
 *.db
@@ -13,3 +14,13 @@ __pycache__/
 dist/
 build/
 artifacts/
+node_modules/
+.next/
+test-results/
+playwright-report/
+console/node_modules/
+console/.next/
+console/test-results/
+console/playwright-report/
+!console/.env.example
+!deploy/selfhosted.env.example

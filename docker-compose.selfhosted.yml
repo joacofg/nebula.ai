@@ -1,4 +1,17 @@
 services:
+  console:
+    build:
+      context: .
+      dockerfile: console/Dockerfile
+    environment:
+      NEBULA_API_BASE_URL: http://nebula:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      nebula:
+        condition: service_started
+    restart: unless-stopped
+
   nebula:
     build:
       context: .

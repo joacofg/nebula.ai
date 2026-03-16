@@ -7,9 +7,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from nebula.api.dependencies import require_admin
 from nebula.core.container import ServiceContainer
 from nebula.models.governance import (
+    AdminSessionStatus,
     ApiKeyCreateRequest,
     ApiKeyCreateResponse,
     ApiKeyRecord,
+    PolicyOptionsResponse,
     TenantCreateRequest,
     TenantPolicy,
     TenantRecord,
@@ -18,6 +20,13 @@ from nebula.models.governance import (
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
+
+
+@router.get("/session", response_model=AdminSessionStatus)
+async def get_admin_session(
+    container: ServiceContainer = Depends(require_admin),
+) -> AdminSessionStatus:
+    return AdminSessionStatus(status="ok")
 
 
 @router.get("/tenants", response_model=list[TenantRecord])
@@ -90,6 +99,17 @@ async def upsert_tenant_policy(
     if container.governance_store.get_tenant(tenant_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
     return container.governance_store.upsert_policy(tenant_id, payload)
+
+
+@router.get("/policy/options", response_model=PolicyOptionsResponse)
+async def get_policy_options(
+    container: ServiceContainer = Depends(require_admin),
+) -> PolicyOptionsResponse:
+    return PolicyOptionsResponse(
+        routing_modes=["auto", "local_only", "premium_only"],
+        known_premium_models=container.governance_store.list_known_premium_models(),
+        default_premium_model=container.settings.premium_model,
+    )
 
 
 @router.get("/api-keys", response_model=list[ApiKeyRecord])

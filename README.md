@@ -69,6 +69,13 @@ X-Nebula-Admin-Key: <NEBULA_ADMIN_API_KEY>
 
 By default those resolve to local-only dev values from `.env.example`. Override them in `.env` before using Nebula outside local development.
 
+## Operator Console
+
+Nebula Phase 2 introduces a focused operator console at `http://localhost:3000` for tenant, API key,
+and policy management. The console expects `NEBULA_API_BASE_URL` to point at the FastAPI service and
+proxies browser requests to `/v1/admin/*`, so operators only paste the deployment admin key into the
+console UI instead of calling raw admin endpoints directly.
+
 ## Smoke Tests
 
 After configuring `.env`, run:
@@ -111,7 +118,9 @@ When `BASE_URL` is provided, fallback-only scenarios are skipped because the run
 Nebula's supported Phase 1 deployment path is the premium-first Docker Compose stack in
 [`docs/self-hosting.md`](docs/self-hosting.md). That path uses PostgreSQL as the canonical
 governance store and runs `alembic upgrade head` before the API starts. Follow that runbook instead
-of treating the local development steps above as a second deployment flow.
+of treating the local development steps above as a second deployment flow. The supported stack now
+also includes the operator console on `http://localhost:3000`, while the API remains on
+`http://localhost:8000`.
 
 ## Endpoints
 
@@ -124,6 +133,8 @@ Responses now include tenant/policy headers alongside route, provider, cache, an
 `GET /v1/admin/tenants`
 
 `POST /v1/admin/tenants`
+
+`GET /v1/admin/session`
 
 `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
 

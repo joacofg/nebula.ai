@@ -1,10 +1,13 @@
 # Self-Hosting Nebula
 
-Nebula Phase 1 supports one serious deployment path: a premium-first Docker Compose stack with the Nebula API, PostgreSQL, and Qdrant. PostgreSQL is the canonical governance store for self-hosted deployments.
+Nebula supports one serious deployment path: a premium-first Docker Compose stack with the operator
+console, the Nebula API, PostgreSQL, and Qdrant. PostgreSQL is the canonical governance store for
+self-hosted deployments.
 
 ## Supported Topology
 
 - `nebula` serves the FastAPI gateway on port `8000`
+- `console` serves the operator console on port `3000`
 - `postgres` is the canonical governance datastore for self-hosted runtime
 - `qdrant` stores semantic cache vectors
 
@@ -31,13 +34,22 @@ Nebula Phase 1 supports one serious deployment path: a premium-first Docker Comp
 
    The `nebula` container runs `alembic upgrade head` before starting `uvicorn`, so the governance schema is migrated on every boot.
 
-4. Verify the API is alive.
+4. Open the operator console.
+
+   ```bash
+   open http://localhost:3000
+   ```
+
+   Paste the configured `NEBULA_ADMIN_API_KEY` into the login screen. The console keeps that key in
+   browser memory only and forwards admin requests to the API internally.
+
+5. Verify the API is alive.
 
    ```bash
    curl http://localhost:8000/health
    ```
 
-5. Verify readiness and dependency detail before sending traffic.
+6. Verify readiness and dependency detail before sending traffic.
 
    ```bash
    curl http://localhost:8000/health/ready
@@ -47,6 +59,7 @@ Nebula Phase 1 supports one serious deployment path: a premium-first Docker Comp
 ## Notes
 
 - This is the only supported self-hosted path for Phase 1.
+- The supported operator entrypoint is the console at `http://localhost:3000`.
 - `NEBULA_PREMIUM_PROVIDER=openai_compatible` is the intended production-facing configuration.
 - `NEBULA_RUNTIME_PROFILE=premium_first` is required outside local development.
 - `NEBULA_DATABASE_URL` should target PostgreSQL for the supported self-hosted runtime.

@@ -93,3 +93,13 @@ class UsageLedgerRecord(BaseModel):
     terminal_status: TerminalStatus
     route_reason: str | None = None
     policy_outcome: str | None = None
+
+
+class AdminSessionStatus(BaseModel):
+    status: Literal["ok"] = "ok"
+
+
+class PolicyOptionsResponse(BaseModel):
+    routing_modes: list[RoutingMode]
+    known_premium_models: list[str] = Field(default_factory=list)
+    default_premium_model: str
