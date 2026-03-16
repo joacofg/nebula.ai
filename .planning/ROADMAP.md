@@ -12,7 +12,7 @@ This roadmap turns Nebula from a promising gateway prototype into a self-hosted 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Self-Hosted Foundation** - Make Nebula deployable and operationally safe beyond local development
+- [x] **Phase 1: Self-Hosted Foundation** - Make Nebula deployable and operationally safe beyond local development (completed 2026-03-16)
 - [ ] **Phase 2: Operator Console** - Add the admin UI for tenants, API keys, and policy management
 - [ ] **Phase 3: Playground & Observability** - Expose the product’s routing and cost behavior in an operator-facing workflow
 - [ ] **Phase 4: Governance Hardening** - Close policy/runtime gaps and strengthen the control plane
@@ -104,7 +104,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Self-Hosted Foundation | 3/3 | Awaiting verification | - |
+| 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 0/3 | Not started | - |
 | 3. Playground & Observability | 0/3 | Not started | - |
 | 4. Governance Hardening | 0/2 | Not started | - |
