@@ -6,6 +6,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { FlaskConical, LoaderCircle } from "lucide-react";
 
 import { PlaygroundForm } from "@/components/playground/playground-form";
+import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
 import { PlaygroundResponse } from "@/components/playground/playground-response";
 import {
   createPlaygroundCompletion,
@@ -39,7 +40,12 @@ export default function PlaygroundPage() {
       if (!adminKey) {
         throw new Error("Operator session missing.");
       }
-      return createPlaygroundCompletion(adminKey, payload);
+      const startedAt = performance.now();
+      const result = await createPlaygroundCompletion(adminKey, payload);
+      return {
+        ...result,
+        latencyMs: Math.round(performance.now() - startedAt),
+      };
     },
   });
 
@@ -109,7 +115,11 @@ function PlaygroundResponseCard({
   result,
   error,
 }: {
-  result: PlaygroundCompletionResult | undefined;
+  result:
+    | (PlaygroundCompletionResult & {
+        latencyMs: number;
+      })
+    | undefined;
   error: Error | null;
 }) {
   if (error) {
@@ -128,5 +138,18 @@ function PlaygroundResponseCard({
     );
   }
 
-  return <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} requestId={result.requestId} />;
+  return (
+    <div className="space-y-4">
+      <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} />
+      <PlaygroundMetadata
+        requestId={result.requestId}
+        routeTarget={result.routeTarget}
+        provider={result.provider}
+        cacheHit={result.cacheHit}
+        fallbackUsed={result.fallbackUsed}
+        latencyMs={result.latencyMs}
+        policyOutcome={result.policyOutcome}
+      />
+    </div>
+  );
 }
