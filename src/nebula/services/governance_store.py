@@ -298,6 +298,7 @@ class GovernanceStore:
     def list_usage_records(
         self,
         *,
+        request_id: str | None = None,
         tenant_id: str | None = None,
         terminal_status: str | None = None,
         route_target: str | None = None,
@@ -307,6 +308,8 @@ class GovernanceStore:
     ) -> list[UsageLedgerRecord]:
         with self._session() as session:
             stmt = select(UsageLedgerModel)
+            if request_id:
+                stmt = stmt.where(UsageLedgerModel.request_id == request_id)
             if tenant_id:
                 stmt = stmt.where(UsageLedgerModel.tenant_id == tenant_id)
             if terminal_status:
