@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Self-Hosted Foundation** - Make Nebula deployable and operationally safe beyond local development (completed 2026-03-16)
 - [x] **Phase 2: Operator Console** - Add the admin UI for tenants, API keys, and policy management (completed 2026-03-16)
-- [ ] **Phase 3: Playground & Observability** - Expose the product’s routing and cost behavior in an operator-facing workflow
+- [x] **Phase 3: Playground & Observability** - Expose the product’s routing and cost behavior in an operator-facing workflow (completed 2026-03-16)
 - [ ] **Phase 4: Governance Hardening** - Close policy/runtime gaps and strengthen the control plane
 - [ ] **Phase 5: Product Proof & Delivery** - Finish benchmark proof, documentation, and pilot/demo packaging
 
@@ -61,12 +61,12 @@ Plans:
   2. Each playground request displays provider, route target, cache/fallback status, latency, and policy outcome.
   3. Operator can inspect usage-ledger data through the console with meaningful filters.
   4. Operator can tell when cache or provider dependencies are degraded.
-**Plans**: 1/3 plans executed
+**Plans**: 3/3 plans executed
 
 Plans:
 - [x] 03-01: Build the playground request/response workflow
-- [ ] 03-02: Surface route and cost metadata in the UI
-- [ ] 03-03: Build observability views for ledger and dependency health
+- [x] 03-02: Surface route and cost metadata in the UI
+- [x] 03-03: Build observability views for ledger and dependency health
 
 ### Phase 4: Governance Hardening
 **Goal**: Policy controls and runtime behavior are aligned well enough for real B2B internal use.
@@ -106,6 +106,6 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 |-------|----------------|--------|-----------|
 | 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
-| 3. Playground & Observability | 1/3 | In Progress |  |
+| 3. Playground & Observability | 3/3 | Complete    | 2026-03-16 |
 | 4. Governance Hardening | 0/2 | Not started | - |
 | 5. Product Proof & Delivery | 0/3 | Not started | - |
