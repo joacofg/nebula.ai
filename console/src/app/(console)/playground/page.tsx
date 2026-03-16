@@ -7,9 +7,11 @@ import { FlaskConical, LoaderCircle } from "lucide-react";
 
 import { PlaygroundForm } from "@/components/playground/playground-form";
 import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
+import { PlaygroundRecordedOutcome } from "@/components/playground/playground-recorded-outcome";
 import { PlaygroundResponse } from "@/components/playground/playground-response";
 import {
   createPlaygroundCompletion,
+  getUsageLedgerEntry,
   listTenants,
   type PlaygroundInput,
   type PlaygroundCompletionResult,
@@ -105,7 +107,7 @@ export default function PlaygroundPage() {
           )}
         </div>
 
-        <PlaygroundResponseCard result={mutation.data} error={mutation.error} />
+        <PlaygroundResponseCard result={mutation.data} error={mutation.error} adminKey={adminKey} />
       </div>
     </section>
   );
@@ -114,6 +116,7 @@ export default function PlaygroundPage() {
 function PlaygroundResponseCard({
   result,
   error,
+  adminKey,
 }: {
   result:
     | (PlaygroundCompletionResult & {
@@ -121,7 +124,20 @@ function PlaygroundResponseCard({
       })
     | undefined;
   error: Error | null;
+  adminKey: string | null;
 }) {
+  const requestId = result?.requestId ?? "";
+  const recordedOutcomeQuery = useQuery({
+    queryKey: queryKeys.usageLedgerEntry(requestId),
+    queryFn: async () => {
+      if (!adminKey) {
+        return null;
+      }
+      return getUsageLedgerEntry(adminKey, requestId);
+    },
+    enabled: Boolean(adminKey && requestId),
+  });
+
   if (error) {
     return (
       <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
@@ -150,6 +166,17 @@ function PlaygroundResponseCard({
         latencyMs={result.latencyMs}
         policyOutcome={result.policyOutcome}
       />
+      {recordedOutcomeQuery.isLoading ? (
+        <div className="panel px-6 py-5 text-sm text-slate-500">Loading recorded outcome...</div>
+      ) : recordedOutcomeQuery.isError ? (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-5 text-sm text-amber-900">
+          {recordedOutcomeQuery.error instanceof Error
+            ? recordedOutcomeQuery.error.message
+            : "Unable to load recorded outcome."}
+        </div>
+      ) : recordedOutcomeQuery.data ? (
+        <PlaygroundRecordedOutcome entry={recordedOutcomeQuery.data} />
+      ) : null}
     </div>
   );
 }
