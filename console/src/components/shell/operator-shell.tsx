@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 
-import { KeyRound, LogOut, Orbit, ShieldEllipsis } from "lucide-react";
+import { FlaskConical, KeyRound, LogOut, Orbit, ShieldEllipsis } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { href: "/tenants", label: "Tenants", icon: Orbit },
   { href: "/api-keys", label: "API Keys", icon: KeyRound },
   { href: "/policy", label: "Policy", icon: ShieldEllipsis },
+  { href: "/playground", label: "Playground", icon: FlaskConical },
 ];
 
 export function OperatorShell({ children }: OperatorShellProps) {

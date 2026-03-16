@@ -1,6 +1,6 @@
 "use client";
 
-import { LoaderCircle, SendHorizonal } from "lucide-react";
+import { LoaderCircle, SendHorizontal } from "lucide-react";
 
 import type { TenantRecord } from "@/lib/admin-api";
 
@@ -102,7 +102,7 @@ export function PlaygroundForm({
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-slate-500">The first response shows the completion text and request id only.</p>
         <button type="submit" className="action-button gap-2" disabled={submitDisabled}>
-          {isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizonal className="h-4 w-4" />}
+          {isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
           Run prompt
         </button>
       </div>
