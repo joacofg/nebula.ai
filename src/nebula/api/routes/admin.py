@@ -2,22 +2,26 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
 from nebula.api.dependencies import require_admin
+from nebula.api.routes.chat import _nebula_headers
 from nebula.core.container import ServiceContainer
 from nebula.models.governance import (
     AdminSessionStatus,
+    AdminPlaygroundRequest,
     ApiKeyCreateRequest,
     ApiKeyCreateResponse,
     ApiKeyRecord,
     PolicyOptionsResponse,
+    PlaygroundResponse,
     TenantCreateRequest,
     TenantPolicy,
     TenantRecord,
     TenantUpdateRequest,
     UsageLedgerRecord,
 )
+from nebula.models.openai import ChatCompletionRequest
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -147,6 +151,7 @@ async def revoke_api_key(
 
 @router.get("/usage/ledger", response_model=list[UsageLedgerRecord])
 async def list_usage_ledger(
+    request_id: str | None = Query(default=None),
     tenant_id: str | None = Query(default=None),
     terminal_status: str | None = Query(default=None),
     route_target: str | None = Query(default=None),
@@ -156,10 +161,39 @@ async def list_usage_ledger(
     container: ServiceContainer = Depends(require_admin),
 ) -> list[UsageLedgerRecord]:
     return container.governance_store.list_usage_records(
+        request_id=request_id,
         tenant_id=tenant_id,
         terminal_status=terminal_status,
         route_target=route_target,
         from_timestamp=from_timestamp,
         to_timestamp=to_timestamp,
         limit=limit,
+    )
+
+
+@router.post("/playground/completions", response_model=PlaygroundResponse)
+async def create_playground_completion(
+    payload: AdminPlaygroundRequest,
+    request: Request,
+    response: Response,
+    container: ServiceContainer = Depends(require_admin),
+) -> PlaygroundResponse:
+    if payload.stream:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Playground only supports non-streaming requests in Phase 3.",
+        )
+
+    tenant_context = container.auth_service.resolve_playground_context(payload.tenant_id)
+    request_id = getattr(request.state, "request_id", None)
+    completion_envelope = await container.chat_service.create_completion_with_metadata(
+        ChatCompletionRequest.model_validate(payload.model_dump(exclude={"tenant_id"})),
+        tenant_context=tenant_context,
+        request_id=request_id,
+    )
+    response.headers["X-Request-ID"] = request_id or ""
+    response.headers.update(_nebula_headers(completion_envelope.metadata))
+    return PlaygroundResponse(
+        **completion_envelope.response.model_dump(),
+        request_id=request_id,
     )

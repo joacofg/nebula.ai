@@ -5,6 +5,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
+from nebula.models.openai import ChatCompletionRequest, ChatCompletionResponse
+
 RoutingMode = Literal["auto", "local_only", "premium_only"]
 TerminalStatus = Literal[
     "completed",
@@ -73,6 +75,14 @@ class ApiKeyCreateRequest(BaseModel):
 class ApiKeyCreateResponse(BaseModel):
     api_key: str
     record: ApiKeyRecord
+
+
+class AdminPlaygroundRequest(ChatCompletionRequest):
+    tenant_id: str = Field(min_length=1)
+
+
+class PlaygroundResponse(ChatCompletionResponse):
+    request_id: str | None = None
 
 
 class UsageLedgerRecord(BaseModel):

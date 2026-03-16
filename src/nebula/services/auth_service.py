@@ -80,3 +80,33 @@ class AuthService:
             api_key=stored_key.to_record(),
             policy=self.store.get_policy(tenant.id),
         )
+
+    def resolve_playground_context(self, tenant_id: str) -> AuthenticatedTenantContext:
+        tenant = self.store.get_tenant(tenant_id)
+        if tenant is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Tenant not found.",
+            )
+        if not tenant.active:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Tenant is inactive.",
+            )
+
+        bootstrap_key = self.store.find_api_key(self.settings.bootstrap_api_key)
+        if bootstrap_key is None:
+            bootstrap_record = self.store.ensure_api_key(
+                raw_key=self.settings.bootstrap_api_key,
+                name=self.settings.bootstrap_api_key_name,
+                tenant_id=self.settings.bootstrap_tenant_id,
+                allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
+            )
+        else:
+            bootstrap_record = bootstrap_key.to_record()
+
+        return AuthenticatedTenantContext(
+            tenant=tenant,
+            api_key=bootstrap_record,
+            policy=self.store.get_policy(tenant.id),
+        )
