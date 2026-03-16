@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("operator can submit a playground prompt and see the request id", async ({ page }) => {
+test("operator can submit a playground prompt and see metadata plus recorded outcome", async ({ page }) => {
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
   });
@@ -32,9 +32,9 @@ test("operator can submit a playground prompt and see the request id", async ({ 
         "X-Nebula-Tenant-ID": "default",
         "X-Nebula-Route-Target": "premium",
         "X-Nebula-Route-Reason": "direct_premium_model",
-        "X-Nebula-Provider": "mock-premium",
+        "X-Nebula-Provider": "openai-compatible",
         "X-Nebula-Cache-Hit": "false",
-        "X-Nebula-Fallback-Used": "false",
+        "X-Nebula-Fallback-Used": "true",
         "X-Nebula-Policy-Mode": "auto",
         "X-Nebula-Policy-Outcome": "allowed",
       },
@@ -46,10 +46,7 @@ test("operator can submit a playground prompt and see the request id", async ({ 
         choices: [
           {
             index: 0,
-            message: {
-              role: "assistant",
-              content: "Playground response content",
-            },
+            message: { role: "assistant", content: "Playground response content" },
             finish_reason: "stop",
           },
         ],
@@ -61,6 +58,34 @@ test("operator can submit a playground prompt and see the request id", async ({ 
         system_fingerprint: null,
         request_id: "req-play-001",
       }),
+    });
+  });
+
+  await page.route("**/api/admin/usage/ledger?request_id=req-play-001", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify([
+        {
+          request_id: "req-play-001",
+          tenant_id: "default",
+          requested_model: "openai/gpt-4o-mini",
+          final_route_target: "premium",
+          final_provider: "openai-compatible",
+          fallback_used: true,
+          cache_hit: false,
+          response_model: "openai/gpt-4o-mini",
+          prompt_tokens: 19,
+          completion_tokens: 8,
+          total_tokens: 27,
+          estimated_cost: 0.016,
+          latency_ms: 180,
+          timestamp: "2026-03-16T22:00:00Z",
+          terminal_status: "fallback_completed",
+          route_reason: "fallback",
+          policy_outcome: "allowed",
+        },
+      ]),
     });
   });
 
@@ -79,4 +104,12 @@ test("operator can submit a playground prompt and see the request id", async ({ 
   await expect(page.getByText("Playground response content")).toBeVisible();
   await expect(page.getByText("Request ID", { exact: true })).toBeVisible();
   await expect(page.getByText("req-play-001")).toBeVisible();
+  await expect(page.getByText("Route target")).toBeVisible();
+  await expect(page.getByText("Provider")).toBeVisible();
+  await expect(page.getByText("Fallback", { exact: true })).toBeVisible();
+  await expect(page.getByText("Yes")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Recorded outcome" })).toBeVisible();
+  await expect(page.getByText("fallback_completed")).toBeVisible();
+  await expect(page.getByText("Estimated cost")).toBeVisible();
+  await expect(page.getByText("$0.0160")).toBeVisible();
 });
