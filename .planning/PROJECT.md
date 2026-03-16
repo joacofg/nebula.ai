@@ -20,10 +20,10 @@ Reduce cost per successful LLM request while preserving reliability, control, an
 - ✓ Multi-tenant governance primitives exist for tenants, API keys, policy, and usage ledger — existing
 - ✓ Benchmark tooling exists for route, cache, and fallback scenario runs — existing
 - ✓ Nebula can be deployed through a documented self-hosted path suitable for demos and early customer pilots — Phase 1
+- ✓ Operators can manage tenants, API keys, and routing policy through a small web console — Phase 2
 
 ### Active
 
-- [ ] Operators can manage tenants, API keys, and routing policy through a small web console
 - [ ] Operators can run prompts through a playground and immediately see route, provider, cache, fallback, latency, and cost metadata
 - [ ] Policy and observability behavior is hardened enough to support real internal B2B usage
 - [ ] Benchmarking and documentation clearly prove the product's cost-optimization value
@@ -58,7 +58,7 @@ The best initial market fit is startup and scale-up product teams building AI fe
 |----------|-----------|---------|
 | Target startup and scale-up AI product teams first | Best fit for a self-hosted cost-optimization gateway without enterprise overhead | — Pending |
 | Keep v1 onboarding admin-managed, not self-serve | Avoid auth/billing/account lifecycle scope before the core operator workflow is solid | — Pending |
-| Add a small operator web console plus playground | Improves demoability and product completeness for a B2B infrastructure product | — Pending |
+| Add a small operator web console plus playground | Improves demoability and product completeness for a B2B infrastructure product | Operator console shipped in Phase 2; playground remains Phase 3 |
 | Keep the backend as FastAPI and add a separate frontend for the console | Preserves the gateway core while allowing a more credible operator UX | Confirmed by Phase 1 foundation work |
 | Prioritize self-hosted production readiness before public launch concerns | The current product gap is operational trust, not more speculative surface area | Validated by Phase 1 completion |
 | Docker Compose is the single supported self-hosted entrypoint for Phase 1 | Keeps the operator deployment story narrow and documented in one place | Shipped in Phase 1 |
@@ -68,4 +68,4 @@ The best initial market fit is startup and scale-up product teams building AI fe
 | `NEBULA_DATABASE_URL` is the primary persistence setting for self-hosted runtime, with SQLite retained only as the local fallback | Lets the canonical deployment target PostgreSQL while preserving the local developer path through the same migration workflow | Shipped in Phase 1 |
 
 ---
-*Last updated: 2026-03-16 after Phase 1 completion*
+*Last updated: 2026-03-16 after Phase 2 completion and Phase 3 planning*
