@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
+import { RuntimeHealthCards } from "@/components/health/runtime-health-cards";
 import { LedgerFilters } from "@/components/ledger/ledger-filters";
 import { LedgerRequestDetail } from "@/components/ledger/ledger-request-detail";
 import { LedgerTable } from "@/components/ledger/ledger-table";
@@ -38,6 +39,18 @@ export default function ObservabilityPage() {
     queryKey: queryKeys.usageLedger(ledgerFilters),
     queryFn: () => listUsageLedger(adminKey ?? "", ledgerFilters),
     enabled: Boolean(adminKey),
+  });
+  const runtimeHealthQuery = useQuery({
+    queryKey: queryKeys.runtimeHealth,
+    queryFn: async () => {
+      const response = await fetch("/api/runtime/health", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Unable to load runtime health.");
+      }
+      return (await response.json()) as {
+        dependencies: Record<string, { status: string; required: boolean; detail: string }>;
+      };
+    },
   });
 
   useEffect(() => {
@@ -94,6 +107,28 @@ export default function ObservabilityPage() {
 
         <LedgerRequestDetail entry={selectedEntry} />
       </div>
+
+      <section className="space-y-4">
+        <header className="panel px-6 py-5">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Dependency health</div>
+          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            Dependency health
+          </h2>
+        </header>
+
+        {runtimeHealthQuery.isError ? (
+          <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+            {runtimeHealthQuery.error instanceof Error
+              ? runtimeHealthQuery.error.message
+              : "Unable to load dependency health."}
+          </div>
+        ) : (
+          <RuntimeHealthCards
+            dependencies={runtimeHealthQuery.data?.dependencies ?? {}}
+            isLoading={runtimeHealthQuery.isLoading}
+          />
+        )}
+      </section>
     </section>
   );
 }
