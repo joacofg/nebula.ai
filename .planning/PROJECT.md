@@ -19,10 +19,10 @@ Reduce cost per successful LLM request while preserving reliability, control, an
 - ✓ Semantic cache lookup/storage is wired to Qdrant and can short-circuit repeated prompts — existing
 - ✓ Multi-tenant governance primitives exist for tenants, API keys, policy, and usage ledger — existing
 - ✓ Benchmark tooling exists for route, cache, and fallback scenario runs — existing
+- ✓ Nebula can be deployed through a documented self-hosted path suitable for demos and early customer pilots — Phase 1
 
 ### Active
 
-- [ ] Nebula can be deployed through a documented self-hosted path suitable for demos and early customer pilots
 - [ ] Operators can manage tenants, API keys, and routing policy through a small web console
 - [ ] Operators can run prompts through a playground and immediately see route, provider, cache, fallback, latency, and cost metadata
 - [ ] Policy and observability behavior is hardened enough to support real internal B2B usage
@@ -59,8 +59,13 @@ The best initial market fit is startup and scale-up product teams building AI fe
 | Target startup and scale-up AI product teams first | Best fit for a self-hosted cost-optimization gateway without enterprise overhead | — Pending |
 | Keep v1 onboarding admin-managed, not self-serve | Avoid auth/billing/account lifecycle scope before the core operator workflow is solid | — Pending |
 | Add a small operator web console plus playground | Improves demoability and product completeness for a B2B infrastructure product | — Pending |
-| Keep the backend as FastAPI and add a separate frontend for the console | Preserves the gateway core while allowing a more credible operator UX | — Pending |
-| Prioritize self-hosted production readiness before public launch concerns | The current product gap is operational trust, not more speculative surface area | — Pending |
+| Keep the backend as FastAPI and add a separate frontend for the console | Preserves the gateway core while allowing a more credible operator UX | Confirmed by Phase 1 foundation work |
+| Prioritize self-hosted production readiness before public launch concerns | The current product gap is operational trust, not more speculative surface area | Validated by Phase 1 completion |
+| Docker Compose is the single supported self-hosted entrypoint for Phase 1 | Keeps the operator deployment story narrow and documented in one place | Shipped in Phase 1 |
+| The canonical runtime topology is Nebula plus PostgreSQL and Qdrant, with local Ollama kept optional | Matches the premium-first self-hosted runtime profile while preserving local optimization as a non-blocking enhancement | Shipped in Phase 1 |
+| Nebula must reject local_dev runtime profile, default secrets, and the mock premium provider outside local mode | Prevents unsafe production-ish startup defaults from leaking into the self-hosted path | Shipped in Phase 1 |
+| Readiness remains HTTP 200 for degraded optional dependencies and only fails when required services are not ready | Operators need visibility into degraded cache and local optimization without treating those states as hard outages | Shipped in Phase 1 |
+| `NEBULA_DATABASE_URL` is the primary persistence setting for self-hosted runtime, with SQLite retained only as the local fallback | Lets the canonical deployment target PostgreSQL while preserving the local developer path through the same migration workflow | Shipped in Phase 1 |
 
 ---
-*Last updated: 2026-03-15 after initialization*
+*Last updated: 2026-03-16 after Phase 1 completion*
