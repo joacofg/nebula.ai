@@ -48,6 +48,25 @@ def test_phase5_comparison_group_mapping_matches_product_story() -> None:
     assert comparison_group_for_mode("auto_complex") == "premium_supporting_evidence"
 
 
+def test_phase5_demo_subset_preserves_story_beats_and_order() -> None:
+    demo_scenarios = load_scenarios(PROJECT_ROOT / "benchmarks" / "v1" / "demo-scenarios.jsonl")
+
+    assert [scenario.mode for scenario in demo_scenarios] == [
+        "premium_direct",
+        "local_direct",
+        "auto_simple_cold",
+        "auto_simple_warm",
+        "auto_fallback",
+    ]
+    assert [scenario.id for scenario in demo_scenarios] == [
+        "premium-direct-brief",
+        "local-direct-brief",
+        "auto-simple-cold-1",
+        "auto-simple-warm-1",
+        "auto-fallback-hello",
+    ]
+
+
 def test_pricing_catalog_estimates_paid_and_free_models() -> None:
     pricing = PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")
     usage = CompletionUsage(prompt_tokens=1000, completion_tokens=500, total_tokens=1500)
@@ -237,6 +256,15 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
     assert "| local-direct-brief |" in markdown
     assert "premium_supporting_evidence" not in markdown
     assert "Supporting premium-routed evidence" in markdown
+
+
+def test_makefile_exposes_demo_benchmark_target() -> None:
+    makefile = (PROJECT_ROOT / "Makefile").read_text(encoding="utf-8")
+
+    assert "benchmark-demo:" in makefile
+    assert "--dataset benchmarks/v1/demo-scenarios.jsonl" in makefile
+
+
 @pytest.mark.asyncio
 async def test_benchmark_runner_authenticates_requests_as_a_tenant(tmp_path) -> None:
     runner = BenchmarkRunner(
