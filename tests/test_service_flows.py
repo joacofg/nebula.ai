@@ -1,19 +1,23 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 
 import pytest
 
+from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
 from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.chat_service import ChatService
-from nebula.services.policy_service import PolicyResolution
+from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouteDecision, RouterService
 from tests.support import FakeCacheService, StubProvider
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeGovernanceStore:
@@ -295,3 +299,45 @@ async def test_policy_can_disable_cache_and_block_fallback() -> None:
 
     assert cache_service.lookup_calls == []
     assert store.records[-1].terminal_status == "provider_error"
+
+
+class RuntimePolicyStore:
+    def __init__(self, *, spend_total: float = 0.0) -> None:
+        self.spend_total = spend_total
+
+    def tenant_spend_total(self, tenant_id: str) -> float:
+        assert tenant_id == "default"
+        return self.spend_total
+
+
+@pytest.mark.asyncio
+async def test_runtime_policy_resolution_enforces_toggles_and_soft_budget_signal() -> None:
+    settings = Settings()
+    policy_service = PolicyService(
+        settings,
+        RuntimePolicyStore(spend_total=5.0),
+        PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+    )
+    request = ChatCompletionRequest(
+        model="nebula-auto",
+        messages=[{"role": "user", "content": "simple request"}],
+    )
+    resolution = await policy_service.resolve(
+        prompt="simple request",
+        request=request,
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                semantic_cache_enabled=False,
+                fallback_enabled=False,
+                soft_budget_usd=1.0,
+            ),
+        ),
+        router_service=RouterService(settings),
+    )
+
+    assert resolution.cache_enabled is False
+    assert resolution.fallback_enabled is False
+    assert resolution.soft_budget_exceeded is True
+    assert resolution.policy_outcome == "cache=disabled;fallback=disabled;soft_budget=exceeded"

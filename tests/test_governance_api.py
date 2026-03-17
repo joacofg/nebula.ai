@@ -125,6 +125,18 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     assert authorized.status_code == 200
     assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
     assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
+    assert authorized.json()["runtime_enforced_fields"] == [
+        "routing_mode_default",
+        "allowed_premium_models",
+        "semantic_cache_enabled",
+        "fallback_enabled",
+        "max_premium_cost_per_request",
+    ]
+    assert authorized.json()["soft_signal_fields"] == ["soft_budget_usd"]
+    assert authorized.json()["advisory_fields"] == [
+        "prompt_capture_enabled",
+        "response_capture_enabled",
+    ]
 
 
 def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None:
