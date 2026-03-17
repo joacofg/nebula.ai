@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: product proof & delivery
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 05-01-PLAN.md
-last_updated: "2026-03-17T15:33:23.140Z"
+stopped_at: Completed 05-02-PLAN.md
+last_updated: "2026-03-17T15:37:32.917Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 5
   completed_phases: 4
   total_plans: 15
-  completed_plans: 13
-  percent: 87
+  completed_plans: 14
+  percent: 93
 ---
 
 # Project State
@@ -31,14 +31,14 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 Phase: 5 of 5 (Product Proof & Delivery)
 **Current Phase:** 5
 **Current Phase Name:** product proof & delivery
-Plan: 2 of 3 in current phase
-**Current Plan:** 05-02
+Plan: 3 of 3 in current phase
+**Current Plan:** 05-03
 **Total Plans in Phase:** 3
 **Total Phases:** 5
 **Status:** Executing
 **Last Activity:** 2026-03-17
 
-**Progress:** [█████████░] 87%
+**Progress:** [█████████░] 93%
 
 ## Performance Metrics
 
@@ -67,6 +67,7 @@ Plan: 2 of 3 in current phase
 | Phase 04-governance-hardening P02 | 2m | 2 tasks | 6 files |
 | Phase 04 P03 | 6 min | 2 tasks | 6 files |
 | Phase 05 P01 | 1m | 2 tasks | 5 files |
+| Phase 05 P02 | 2m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -98,6 +99,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Prompt and response capture settings remain persisted but are shown only as deferred non-editable copy in Phase 4.
 - [Phase 05]: Phase 5 benchmark storytelling is modeled as comparison-group metadata in the dataset layer so the report renderer can stay black-box and dataset-driven.
 - [Phase 05]: The live demo path reuses the existing benchmark runner with a dedicated dataset instead of adding a second CLI or alternate artifact flow.
+- [Phase 05]: README becomes a navigation layer and product-proof entrypoint rather than a mixed local-development dump.
+- [Phase 05]: Deployment guidance remains singular around docker-compose.selfhosted.yml and deploy/selfhosted.env.example.
 
 ### Pending Todos
 
@@ -111,5 +114,5 @@ None yet.
 ## Session Continuity
 
 **Last session:** 2026-03-17T03:09:30.801Z
-**Stopped At:** Completed 05-01-PLAN.md
+**Stopped At:** Completed 05-02-PLAN.md
 **Resume File:** None

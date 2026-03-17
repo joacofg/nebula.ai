@@ -36,7 +36,7 @@
 
 - [x] **EVAL-01**: Operator can run a repeatable benchmark suite that compares local, premium, cache-hit, and fallback scenarios
 - [x] **EVAL-02**: Benchmark artifacts summarize latency, route outcome, token usage, and estimated premium cost
-- [ ] **DOCS-01**: Repository documentation includes a demo script, deployment guide, and architecture explanation suitable for academic review and pilot onboarding
+- [x] **DOCS-01**: Repository documentation includes a demo script, deployment guide, and architecture explanation suitable for academic review and pilot onboarding
 
 ## v2 Requirements
 
@@ -86,7 +86,7 @@
 | ROUT-01 | Phase 4 | Complete |
 | EVAL-01 | Phase 5 | Complete |
 | EVAL-02 | Phase 5 | Complete |
-| DOCS-01 | Phase 5 | Pending |
+| DOCS-01 | Phase 5 | Complete |
 
 **Coverage:**
 - v1 requirements: 18 total
@@ -95,4 +95,4 @@
 
 ---
 *Requirements defined: 2026-03-15*
-*Last updated: 2026-03-17 after Phase 5 Plan 01 completion*
+*Last updated: 2026-03-17 after Phase 5 Plan 02 completion*
