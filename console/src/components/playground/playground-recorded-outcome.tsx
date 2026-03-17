@@ -21,7 +21,9 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
           Recorded outcome
         </h3>
-        <p className="mt-2 text-sm text-slate-600">Recorded usage from the Nebula ledger.</p>
+        <p className="mt-2 text-sm text-slate-600">
+          Persisted ledger record for the same request after Nebula finishes writing usage data.
+        </p>
       </div>
 
       <dl className="grid gap-4 sm:grid-cols-2">

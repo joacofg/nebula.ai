@@ -26,8 +26,11 @@ export function PlaygroundMetadata({
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Metadata</div>
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
-          Immediate request details
+          Immediate response evidence
         </h3>
+        <p className="mt-2 text-sm text-slate-600">
+          These fields describe the live response before the ledger finishes recording the same request.
+        </p>
       </div>
 
       <dl className="grid gap-4 sm:grid-cols-2">
