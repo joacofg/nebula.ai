@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 5
 current_phase_name: product proof & delivery
-current_plan: Not started
-status: planning
-stopped_at: Completed 04-03-PLAN.md
-last_updated: "2026-03-17T03:18:59.542Z"
+current_plan: 2
+status: executing
+stopped_at: Completed 05-01-PLAN.md
+last_updated: "2026-03-17T15:33:23.140Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 5
   completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
+  total_plans: 15
+  completed_plans: 13
+  percent: 87
 ---
 
 # Project State
@@ -24,21 +24,21 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-16)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
-**Current focus:** Phase 4 - Governance Hardening
+**Current focus:** Phase 5 - Product Proof & Delivery
 
 ## Current Position
 
-Phase: 4 of 5 (Governance Hardening)
+Phase: 5 of 5 (Product Proof & Delivery)
 **Current Phase:** 5
 **Current Phase Name:** product proof & delivery
-Plan: 1 of 3 in current phase
-**Current Plan:** Not started
+Plan: 2 of 3 in current phase
+**Current Plan:** 05-02
 **Total Plans in Phase:** 3
 **Total Phases:** 5
-**Status:** Ready to plan
+**Status:** Executing
 **Last Activity:** 2026-03-17
 
-**Progress:** [██████████] 100%
+**Progress:** [█████████░] 87%
 
 ## Performance Metrics
 
@@ -66,6 +66,7 @@ Plan: 1 of 3 in current phase
 - Trend: Positive
 | Phase 04-governance-hardening P02 | 2m | 2 tasks | 6 files |
 | Phase 04 P03 | 6 min | 2 tasks | 6 files |
+| Phase 05 P01 | 1m | 2 tasks | 5 files |
 
 ## Accumulated Context
 
@@ -95,6 +96,8 @@ Recent decisions affecting current work:
 - [Phase 04-governance-hardening]: ROUT-01 verification is pinned through X-Request-ID lookups against usage-ledger rows for denied and provider-error paths.
 - [Phase 04]: The console treats /v1/admin/policy/options as the only source of truth for runtime-enforced policy fields.
 - [Phase 04]: Prompt and response capture settings remain persisted but are shown only as deferred non-editable copy in Phase 4.
+- [Phase 05]: Phase 5 benchmark storytelling is modeled as comparison-group metadata in the dataset layer so the report renderer can stay black-box and dataset-driven.
+- [Phase 05]: The live demo path reuses the existing benchmark runner with a dedicated dataset instead of adding a second CLI or alternate artifact flow.
 
 ### Pending Todos
 
@@ -103,10 +106,10 @@ None yet.
 ### Blockers/Concerns
 
 - [Phase 1 follow-up] Live self-hosted verification with a real premium-provider key and Docker-capable host is still pending outside this workspace.
-- Phase 4 should focus on aligning policy surface area with enforced runtime behavior instead of broadening the console scope again.
+- Phase 5 documentation and demo packaging should stay anchored to the benchmark proof package rather than introducing a separate storytelling surface.
 
 ## Session Continuity
 
 **Last session:** 2026-03-17T03:09:30.801Z
-**Stopped At:** Completed 04-03-PLAN.md
+**Stopped At:** Completed 05-01-PLAN.md
 **Resume File:** None
