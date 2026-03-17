@@ -30,7 +30,11 @@ describe("playground-recorded-outcome", () => {
       />,
     );
 
-    expect(screen.getByText("Recorded usage from the Nebula ledger.")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Persisted ledger record for the same request after Nebula finishes writing usage data.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("Terminal status")).toBeInTheDocument();
     expect(screen.getByText("Prompt tokens")).toBeInTheDocument();
     expect(screen.getByText("Completion tokens")).toBeInTheDocument();
