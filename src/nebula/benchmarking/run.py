@@ -16,9 +16,12 @@ from statistics import median
 import httpx
 
 from nebula.benchmarking.dataset import (
+    PHASE5_COMPARISON_GROUP_METADATA,
+    PHASE5_COMPARISON_GROUPS,
     SCENARIO_MODE_ORDER,
     BenchmarkScenario,
     ScenarioMode,
+    comparison_group_for_mode,
     group_scenarios,
     load_scenarios,
 )
@@ -313,6 +316,27 @@ class BenchmarkRunner:
         http_error_counts: dict[str, int] = {}
         missing_cost_scenarios: list[str] = []
         latencies_by_mode: dict[str, list[float]] = {}
+        comparison_groups: dict[str, dict[str, object]] = {
+            group_id: {
+                "group": group_id,
+                "label": PHASE5_COMPARISON_GROUP_METADATA[group_id]["label"],
+                "story_role": PHASE5_COMPARISON_GROUP_METADATA[group_id]["story_role"],
+                "scenario_count": 0,
+                "passed": 0,
+                "failed": 0,
+                "route_target_distribution": {},
+                "median_latency_ms": 0.0,
+                "cache_hit_rate": 0.0,
+                "fallback_rate": 0.0,
+                "estimated_premium_cost": 0.0,
+                "estimated_premium_cost_avoided": 0.0,
+                "failure_notes": [],
+            }
+            for group_id in PHASE5_COMPARISON_GROUPS
+        }
+        comparison_group_latencies: dict[str, list[float]] = {
+            group_id: [] for group_id in PHASE5_COMPARISON_GROUPS
+        }
 
         for result in executed:
             if result.route_target:
@@ -324,11 +348,67 @@ class BenchmarkRunner:
                 latencies_by_mode.setdefault(result.mode, []).append(result.latency_ms)
             if result.route_target == "premium" and result.estimated_premium_cost is None:
                 missing_cost_scenarios.append(result.scenario_id)
+            comparison_group_id = comparison_group_for_mode(result.mode)
+            comparison_group = comparison_groups[comparison_group_id]
+            comparison_group["scenario_count"] = int(comparison_group["scenario_count"]) + 1
+            comparison_group[result.status] = int(comparison_group[result.status]) + 1
+            if result.route_target:
+                route_counts = comparison_group["route_target_distribution"]
+                route_counts[result.route_target] = route_counts.get(result.route_target, 0) + 1
+            if result.latency_ms is not None:
+                comparison_group_latencies[comparison_group_id].append(result.latency_ms)
+            if result.cache_hit:
+                comparison_group["cache_hit_rate"] = float(comparison_group["cache_hit_rate"]) + 1
+            if result.fallback_used:
+                comparison_group["fallback_rate"] = float(comparison_group["fallback_rate"]) + 1
+            comparison_group["estimated_premium_cost"] = round(
+                float(comparison_group["estimated_premium_cost"]) + (result.estimated_premium_cost or 0.0),
+                8,
+            )
+            comparison_group["estimated_premium_cost_avoided"] = round(
+                float(comparison_group["estimated_premium_cost_avoided"]) + (result.avoided_premium_cost or 0.0),
+                8,
+            )
+            if result.failure_reasons:
+                comparison_group["failure_notes"].extend(result.failure_reasons)
 
         total_requests = len(executed)
         cache_hits = sum(1 for result in executed if result.cache_hit)
         fallbacks = sum(1 for result in executed if result.fallback_used)
         report_results = [asdict(result) for result in results]
+        expectation_mismatches = {
+            result.scenario_id: result.failure_reasons
+            for result in executed
+            if result.failure_reasons
+        }
+        estimated_premium_cost = round(
+            sum(result.estimated_premium_cost or 0.0 for result in executed),
+            8,
+        )
+        estimated_premium_cost_avoided = round(
+            sum(result.avoided_premium_cost or 0.0 for result in executed),
+            8,
+        )
+
+        for group_id, group in comparison_groups.items():
+            scenario_count = int(group["scenario_count"])
+            if scenario_count:
+                group["cache_hit_rate"] = round(float(group["cache_hit_rate"]) / scenario_count, 4)
+                group["fallback_rate"] = round(float(group["fallback_rate"]) / scenario_count, 4)
+                latencies = comparison_group_latencies[group_id]
+                group["median_latency_ms"] = round(median(latencies), 2) if latencies else 0.0
+
+        cache_hit_rate = round(cache_hits / total_requests, 4) if total_requests else 0.0
+        fallback_rate = round(fallbacks / total_requests, 4) if total_requests else 0.0
+        key_takeaways = self._build_key_takeaways(
+            total_requests=total_requests,
+            estimated_premium_cost=estimated_premium_cost,
+            estimated_premium_cost_avoided=estimated_premium_cost_avoided,
+            route_distribution=route_distribution,
+            cache_hit_rate=cache_hit_rate,
+            fallback_rate=fallback_rate,
+            expectation_mismatches=expectation_mismatches,
+        )
 
         return {
             "generated_at": datetime.now(UTC).isoformat(),
@@ -341,8 +421,10 @@ class BenchmarkRunner:
                 "failed": sum(1 for result in executed if result.status == "failed"),
                 "skipped": sum(1 for result in results if result.status == "skipped"),
                 "route_distribution": route_distribution,
-                "cache_hit_rate": round(cache_hits / total_requests, 4) if total_requests else 0.0,
-                "fallback_rate": round(fallbacks / total_requests, 4) if total_requests else 0.0,
+                "cache_hit_rate": cache_hit_rate,
+                "fallback_rate": fallback_rate,
+                "key_takeaways": key_takeaways,
+                "comparison_groups": comparison_groups,
                 "latency_by_mode_ms": {
                     mode: {
                         "p50": _percentile(latencies, 50),
@@ -351,19 +433,10 @@ class BenchmarkRunner:
                     }
                     for mode, latencies in latencies_by_mode.items()
                 },
-                "estimated_premium_cost": round(
-                    sum(result.estimated_premium_cost or 0.0 for result in executed),
-                    8,
-                ),
-                "estimated_premium_cost_avoided": round(
-                    sum(result.avoided_premium_cost or 0.0 for result in executed),
-                    8,
-                ),
-                "scenario_failures": {
-                    result.scenario_id: result.failure_reasons
-                    for result in executed
-                    if result.failure_reasons
-                },
+                "estimated_premium_cost": estimated_premium_cost,
+                "estimated_premium_cost_avoided": estimated_premium_cost_avoided,
+                "scenario_failures": expectation_mismatches,
+                "expectation_mismatches": expectation_mismatches,
                 "http_error_counts": http_error_counts,
                 "scenarios_missing_cost_pricing": missing_cost_scenarios,
             },
@@ -392,11 +465,50 @@ class BenchmarkRunner:
             f"- Estimated Premium Cost: `{summary['estimated_premium_cost']}`",
             f"- Estimated Premium Cost Avoided: `{summary['estimated_premium_cost_avoided']}`",
             "",
-            "## Scenario Results",
+            "## Key Takeaways",
             "",
-            "| Scenario | Mode | Status | Latency (ms) | Route | Provider | Cache | Fallback | Premium Cost | Avoided Cost |",
-            "| --- | --- | --- | ---: | --- | --- | --- | --- | ---: | ---: |",
         ]
+        for takeaway in summary["key_takeaways"]:
+            lines.append(f"- {takeaway}")
+
+        lines.extend(
+            [
+                "",
+                "## Comparison Groups",
+                "",
+                "| Group | Story Role | Scenarios | Passed | Median Latency (ms) | Route Mix |",
+                "| --- | --- | ---: | ---: | ---: | --- |",
+            ]
+        )
+        for group in summary["comparison_groups"].values():
+            lines.append(
+                "| {label} | {story_role} | {scenario_count} | {passed} | {median_latency_ms} | {route_mix} |".format(
+                    label=group["label"],
+                    story_role=group["story_role"],
+                    scenario_count=group["scenario_count"],
+                    passed=group["passed"],
+                    median_latency_ms=group["median_latency_ms"],
+                    route_mix=self._format_route_distribution(group["route_target_distribution"]),
+                )
+            )
+
+        lines.extend(
+            [
+                "",
+                "## Route and Cost Highlights",
+                "",
+                f"- Route Distribution: `{self._format_route_distribution(summary['route_distribution'])}`",
+                f"- Cache Hit Rate: `{summary['cache_hit_rate']}`",
+                f"- Fallback Rate: `{summary['fallback_rate']}`",
+                f"- Estimated Premium Cost: `{summary['estimated_premium_cost']}`",
+                f"- Estimated Premium Cost Avoided: `{summary['estimated_premium_cost_avoided']}`",
+                "",
+                "## Scenario Results",
+                "",
+                "| Scenario | Mode | Status | Latency (ms) | Route | Provider | Cache | Fallback | Premium Cost | Avoided Cost |",
+                "| --- | --- | --- | ---: | --- | --- | --- | --- | ---: | ---: |",
+            ]
+        )
         for result in results:
             lines.append(
                 "| {scenario_id} | {mode} | {status} | {latency_ms} | {route_target} | {provider} | {cache_hit} | {fallback_used} | {estimated_premium_cost} | {avoided_premium_cost} |".format(
@@ -417,12 +529,54 @@ class BenchmarkRunner:
                 )
             )
 
-        if summary["scenario_failures"]:
-            lines.extend(["", "## Failures", ""])
-            for scenario_id, reasons in summary["scenario_failures"].items():
+        if summary["expectation_mismatches"]:
+            lines.extend(["", "## Expectation Mismatches", ""])
+            for scenario_id, reasons in summary["expectation_mismatches"].items():
                 lines.append(f"- `{scenario_id}`: {', '.join(reasons)}")
 
         return "\n".join(lines) + "\n"
+
+    def _build_key_takeaways(
+        self,
+        *,
+        total_requests: int,
+        estimated_premium_cost: float,
+        estimated_premium_cost_avoided: float,
+        route_distribution: dict[str, int],
+        cache_hit_rate: float,
+        fallback_rate: float,
+        expectation_mismatches: dict[str, list[str]],
+    ) -> list[str]:
+        takeaways = [
+            (
+                "Nebula avoided an estimated premium spend of "
+                f"{estimated_premium_cost_avoided} across {total_requests} executed requests while "
+                f"keeping measured premium spend at {estimated_premium_cost}."
+            ),
+            (
+                "Route mix favored "
+                f"{self._format_route_distribution(route_distribution)}, showing how local, cache, and premium paths split in one repeatable run."
+            ),
+            (
+                "Warm-cache and fallback behavior stayed explicit with "
+                f"cache_hit_rate={cache_hit_rate} and fallback_rate={fallback_rate}."
+            ),
+        ]
+        if expectation_mismatches:
+            takeaways.append(
+                "Expectation mismatches were detected in "
+                f"{', '.join(sorted(expectation_mismatches))}."
+            )
+        else:
+            takeaways.append("All executed scenarios matched their expected route, cache, and fallback outcomes.")
+        return takeaways
+
+    def _format_route_distribution(self, route_distribution: dict[str, int]) -> str:
+        if not route_distribution:
+            return "-"
+        return ", ".join(
+            f"{route}:{count}" for route, count in sorted(route_distribution.items(), key=lambda item: item[0])
+        )
 
     def _effective_messages(self, scenario: BenchmarkScenario) -> list[dict[str, object]]:
         messages: list[dict[str, object]] = []
