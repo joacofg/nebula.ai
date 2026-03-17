@@ -23,6 +23,51 @@ SCENARIO_MODE_ORDER: tuple[ScenarioMode, ...] = (
     "auto_fallback",
 )
 
+PHASE5_COMPARISON_GROUPS: tuple[str, ...] = (
+    "premium_control",
+    "local_control",
+    "auto_routing_cold",
+    "auto_routing_warm_cache",
+    "fallback_resilience",
+    "premium_supporting_evidence",
+)
+
+PHASE5_COMPARISON_GROUP_METADATA: dict[str, dict[str, str]] = {
+    "premium_control": {
+        "label": "Premium control",
+        "story_role": "Premium baseline for cost and latency comparison.",
+    },
+    "local_control": {
+        "label": "Local control",
+        "story_role": "Direct local execution proving avoided premium spend.",
+    },
+    "auto_routing_cold": {
+        "label": "Auto-routing cold",
+        "story_role": "Cold auto-routing behavior before cache reuse.",
+    },
+    "auto_routing_warm_cache": {
+        "label": "Auto-routing warm cache",
+        "story_role": "Warm-cache behavior showing low-latency repeat traffic.",
+    },
+    "fallback_resilience": {
+        "label": "Fallback resilience",
+        "story_role": "Forced local failure path proving the premium fallback story.",
+    },
+    "premium_supporting_evidence": {
+        "label": "Supporting premium-routed evidence",
+        "story_role": "Supporting evidence for premium-routed complex prompts without replacing the top-line five-group story.",
+    },
+}
+
+SCENARIO_MODE_TO_COMPARISON_GROUP: dict[ScenarioMode, str] = {
+    "premium_direct": "premium_control",
+    "local_direct": "local_control",
+    "auto_simple_cold": "auto_routing_cold",
+    "auto_simple_warm": "auto_routing_warm_cache",
+    "auto_complex": "premium_supporting_evidence",
+    "auto_fallback": "fallback_resilience",
+}
+
 
 @dataclass(slots=True)
 class ScenarioExpectation:
@@ -39,6 +84,10 @@ class BenchmarkScenario:
     messages: list[dict[str, object]]
     tags: list[str]
     expect: ScenarioExpectation
+
+
+def comparison_group_for_mode(mode: ScenarioMode) -> str:
+    return SCENARIO_MODE_TO_COMPARISON_GROUP[mode]
 
 
 def load_scenarios(path: Path) -> list[BenchmarkScenario]:
