@@ -2,17 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-current_plan: Not started
-status: planning
-stopped_at: Phase 3 complete, ready to plan Phase 4
-last_updated: "2026-03-16T22:43:02Z"
-last_activity: 2026-03-16 — Phase 3 completed and Phase 4 is now active
+current_phase: 4
+current_phase_name: Governance Hardening
+current_plan: 2
+status: executing
+stopped_at: Completed 04-01-PLAN.md
+last_updated: "2026-03-17T02:53:19.349Z"
+last_activity: 2026-03-17
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 15
+  total_plans: 12
   completed_plans: 10
-  percent: 67
+  percent: 83
 ---
 
 # Project State
@@ -27,13 +29,16 @@ See: .planning/PROJECT.md (updated 2026-03-16)
 ## Current Position
 
 Phase: 4 of 5 (Governance Hardening)
-Plan: 0 of 3 started in current phase
-**Current Plan:** Not started
+**Current Phase:** 4
+**Current Phase Name:** Governance Hardening
+Plan: 1 of 3 in current phase
+**Current Plan:** 2
 **Total Plans in Phase:** 3
-**Status:** Ready to plan
-**Last Activity:** 2026-03-16 — Phase 3 completed and Phase 4 is now active
+**Total Phases:** 5
+**Status:** Ready to execute
+**Last Activity:** 2026-03-17
 
-**Progress:** [█████████████░░░░░░░] 67%
+**Progress:** [████████░░] 83%
 
 ## Performance Metrics
 
@@ -49,6 +54,12 @@ Plan: 0 of 3 started in current phase
 | 1 | 3 | 5 min | 1.7 min |
 | 2 | 3 | Session | Session |
 | 3 | 3 | Session | Session |
+
+**Recent Executions:**
+
+| Plan | Duration | Tasks | Files |
+|------|----------|-------|-------|
+| Phase 04 P01 | 3m | 1 tasks | 5 files |
 
 **Recent Trend:**
 - Last 5 plans: session-executed
@@ -76,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Playground execution stays admin-authenticated and resolves tenant context server-side instead of requiring a recoverable tenant API key. — Preserves the current trust model while exercising the real ChatService path.
 - [Phase 03]: Immediate response metadata and persisted ledger usage should remain visibly separate in the Playground UI. — Keeps header-derived routing facts distinct from later recorded outcome data.
 - [Phase 03]: Premium-provider degradation is observable but optional, so gateway readiness should remain green when required dependencies are healthy. — Avoids overstating upstream issues as full service outage.
+- [Phase 04]: The /v1/admin/policy/options response is the authoritative machine-readable boundary between runtime-enforced, soft-signal, and advisory policy fields.
+- [Phase 04]: Runtime enforcement remains centralized in PolicyService.resolve(); the admin route only publishes contract metadata.
 
 ### Pending Todos
 
@@ -88,6 +101,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-16T22:43:02Z
-Stopped at: Phase 3 complete, ready to plan Phase 4
-Resume file: None
+**Last session:** 2026-03-17T02:53:19.347Z
+**Stopped At:** Completed 04-01-PLAN.md
+**Resume File:** None
