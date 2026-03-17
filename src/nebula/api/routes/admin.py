@@ -113,6 +113,15 @@ async def get_policy_options(
         routing_modes=["auto", "local_only", "premium_only"],
         known_premium_models=container.governance_store.list_known_premium_models(),
         default_premium_model=container.settings.premium_model,
+        runtime_enforced_fields=[
+            "routing_mode_default",
+            "allowed_premium_models",
+            "semantic_cache_enabled",
+            "fallback_enabled",
+            "max_premium_cost_per_request",
+        ],
+        soft_signal_fields=["soft_budget_usd"],
+        advisory_fields=["prompt_capture_enabled", "response_capture_enabled"],
     )
 
 
