@@ -41,6 +41,15 @@ test("operator can update tenant policy from the console", async ({ page }) => {
         routing_modes: ["auto", "local_only", "premium_only"],
         known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
         default_premium_model: "openai/gpt-4o-mini",
+        runtime_enforced_fields: [
+          "routing_mode_default",
+          "allowed_premium_models",
+          "semantic_cache_enabled",
+          "fallback_enabled",
+          "max_premium_cost_per_request",
+        ],
+        soft_signal_fields: ["soft_budget_usd"],
+        advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
       }),
     });
   });
@@ -60,12 +69,15 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Policy" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("link", { name: "Policy" }).click();
   await expect(page).toHaveURL(/\/policy$/, { timeout: 30_000 });
-  await expect(page.getByRole("heading", { name: "Runtime-enforced controls" })).toBeVisible();
+  const runtimeHeading = page.getByRole("heading", { name: "Runtime-enforced controls" });
+  const runtimeSection = runtimeHeading.locator("xpath=ancestor::section[1]");
+  await expect(runtimeHeading).toBeVisible();
   await expect(
     page.getByText(
       "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
     ),
   ).toBeVisible();
+  await expect(runtimeSection.getByText("Soft budget USD")).not.toBeVisible();
   await expect(
     page.getByText(
       "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
