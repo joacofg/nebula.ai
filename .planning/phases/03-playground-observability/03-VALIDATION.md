@@ -1,7 +1,7 @@
 ---
 phase: 3
 slug: playground-observability
-status: approved
+status: ready
 nyquist_compliant: true
 wave_0_complete: true
 created: 2026-03-16
@@ -79,7 +79,7 @@ created: 2026-03-16
 - [x] Wave 0 covers all MISSING references
 - [x] No watch-mode flags
 - [x] Feedback latency < 60s
-- [x] `nyquist_compliant: true` set in frontmatter
+- [x] No unresolved Nyquist gaps remain
 
 **Approval:** approved 2026-03-17
 
@@ -93,3 +93,13 @@ created: 2026-03-16
 
 - Resolved: PLAY-02 component coverage was stale because two assertions still expected superseded recorded-outcome copy; both test files were updated and the focused Vitest command now passes.
 - Resolved: `npm --prefix console run e2e -- playground.spec.ts` now passes on the current tree, and `cd console && npm run build` completes successfully as part of the re-audit.
+
+## Nyquist Gap Fill Audit 2026-03-17
+
+| Task ID | Requirement | Type | Command | Status |
+|---------|-------------|------|---------|--------|
+| 03-02-02 | PLAY-02 failed-response metadata preservation for recorded-outcome lookup | component/client | `npm --prefix console run test -- --run src/lib/admin-api.test.ts src/components/playground/playground-page.test.tsx` | ✅ resolved |
+| 03-03-04 | OBS-02 runtime-health auth boundary | browser/e2e | `npm --prefix console run e2e -- observability.spec.ts` | ✅ resolved |
+
+- Resolved: `console/src/lib/admin-api.ts` now returns metadata-bearing failed Playground results instead of throwing away `X-Request-ID` and `X-Nebula-*` headers, and `console/src/app/(console)/playground/page.tsx` continues the recorded-outcome lookup for those requests.
+- Resolved: `console/src/app/api/runtime/health/route.ts` now requires a valid admin key by checking `/v1/admin/session` before proxying dependency health, and the observability flow still passes browser coverage.

@@ -2,70 +2,79 @@
 
 ## What This Is
 
-Nebula.ai is a self-hosted B2B AI gateway for product and engineering teams shipping LLM-powered features. It routes requests across local and premium providers, applies tenant policy controls, records usage, and exposes operator tooling so companies can reduce LLM cost without giving up reliability or control.
-
-The first product shape is not a broad public SaaS. It is a deployable gateway plus operator console that a startup or scale-up team can run for itself, evaluate with real traffic patterns, and eventually trust as an internal platform component.
+Nebula.ai is a shipped self-hosted B2B AI gateway for product and engineering teams running LLM-powered features with operator controls, route visibility, and cost-aware evaluation built in. The v1.0 product includes the gateway, governance layer, operator console, playground, observability surfaces, and benchmark/documentation package needed for demos, pilot onboarding, and academic review.
 
 ## Core Value
 
 Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
 
+## Current State
+
+- **Shipped version:** v1.0
+- **Product shape:** Self-hosted gateway plus operator console
+- **Primary workflows shipped:** deployment, admin auth, tenant/API-key/policy management, Playground, Observability, benchmark proof, docs/demo package
+- **Codebase snapshot:** Python/FastAPI gateway, Next.js console, PostgreSQL-ready governance persistence, Qdrant semantic cache, Ollama local provider path, premium-provider routing, benchmark/report tooling
+- **Closeout status:** Milestone audit passed requirements and integration, with accepted human-review tech debt in Phase 1 and Phase 4
+
 ## Requirements
 
 ### Validated
 
-- ✓ OpenAI-compatible chat completions are exposed through `POST /v1/chat/completions` — existing
-- ✓ Requests can route between local and premium providers with local-to-premium fallback — existing
-- ✓ Semantic cache lookup/storage is wired to Qdrant and can short-circuit repeated prompts — existing
-- ✓ Multi-tenant governance primitives exist for tenants, API keys, policy, and usage ledger — existing
-- ✓ Benchmark tooling exists for route, cache, and fallback scenario runs — existing
-- ✓ Nebula can be deployed through a documented self-hosted path suitable for demos and early customer pilots — Phase 1
-- ✓ Operators can manage tenants, API keys, and routing policy through a small web console — Phase 2
+- ✓ Self-hosted deployment path without manual code edits — v1.0
+- ✓ Explicit runtime configuration, secrets, and readiness behavior — v1.0
+- ✓ Migration-backed governance persistence — v1.0
+- ✓ Operator console auth, tenant management, API keys, and policy editing — v1.0
+- ✓ Playground request execution with route/cache/fallback/policy metadata — v1.0
+- ✓ Observability ledger filters and dependency health views — v1.0
+- ✓ Runtime governance enforcement and denied-path explainability plumbing — v1.0
+- ✓ Benchmark-backed product proof, architecture docs, and demo materials — v1.0
 
 ### Active
 
-- [ ] Operators can run prompts through a playground and immediately see route, provider, cache, fallback, latency, and cost metadata
-- [ ] Policy and observability behavior is hardened enough to support real internal B2B usage
-- [ ] Benchmarking and documentation clearly prove the product's cost-optimization value
+- [ ] Hosted control-plane direction and onboarding model for the next product stage
+- [ ] Stronger organization/user model beyond a single admin key
+- [ ] Enterprise-facing identity and operational controls once the self-hosted product is validated
+- [ ] Expanded provider catalog, pricing policy controls, and commercialization surface
 
 ### Out of Scope
 
-- Public customer self-serve signup and billing — adds major auth, billing, and support scope before the core gateway is proven
-- Hosted multi-tenant SaaS control plane — defer until the self-hosted product and operations model are validated
-- Consumer-facing end-user chat product — Nebula is infrastructure, not the end-user application
-- Broad enterprise features like SSO, SCIM, procurement workflows, and compliance packaging — premature for the current stage
-- Mobile apps — not relevant to the operator-first product surface
+- Public customer self-serve signup and billing for now
+- Consumer-facing chat application
+- Mobile apps
+- Broad enterprise procurement/compliance packaging before the next milestone defines concrete demand
+
+## Next Milestone Goals
+
+- Decide whether Nebula should stay strictly self-hosted in the next milestone or begin a hosted control-plane track.
+- Replace the single-admin-key trust model with a more deliberate org/user/auth story.
+- Decide which enterprise/commercial requirements actually matter based on the shipped v1.0 product shape.
+- Preserve the benchmark-led proof narrative while expanding the product only where it strengthens operator value.
 
 ## Context
 
-Nebula is currently a brownfield Python/FastAPI project with a working gateway core, SQLite-backed governance store, Qdrant semantic cache integration, Ollama local provider support, and an OpenAI-compatible premium provider path. The codebase already demonstrates routing, fallback, tenant policy, usage ledger recording, and benchmark execution.
+Nebula now reads like a complete brownfield product instead of a gateway prototype. It has a documented deployment path, credible runtime operations, operator-facing management surfaces, routed request explainability, and a benchmark/documentation layer that supports both product demos and academic evaluation.
 
-The project is also a university final project, so it must read as a complete software engineering effort: product framing, architecture, code quality, documentation, measurable evaluation, and a strong live demo. That makes a polished operator-facing UI valuable, but only if it strengthens the gateway story instead of distracting from it.
-
-The best initial market fit is startup and scale-up product teams building AI features without a dedicated ML platform team. They are cost-sensitive, move quickly, and can adopt a self-hosted gateway without the enterprise feature burden required by large organizations. AI agencies and consultancies are a secondary adjacent segment, but the roadmap should optimize for internal product teams first.
+The best near-term fit is still startup and scale-up teams that need infrastructure-level cost control without building a full internal ML platform. The next milestone should validate whether that product shape stays self-hosted-first or needs a hosted control-plane layer.
 
 ## Constraints
 
-- **Tech stack**: Keep the existing Python/FastAPI gateway core — replatforming would waste working leverage
-- **Product scope**: Self-hosted first — a fully hosted SaaS can come later after the deployment and operations story is proven
-- **UI scope**: Build a focused operator console and playground, not a broad customer product UI
-- **Project type**: Must support both a strong demo and written documentation for academic evaluation
-- **Timeline**: There is time to build deliberately through December 2026, so prefer coherent architecture over rushed shortcuts
+- **Tech stack**: Keep the existing Python/FastAPI gateway core and Next.js console
+- **Product scope**: Expand only where it strengthens operator trust, control, or adoption
+- **Project type**: Continue to support both live demo quality and written academic documentation
+- **Roadmap discipline**: Define the next milestone from fresh requirements rather than carrying this archive forward informally
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Target startup and scale-up AI product teams first | Best fit for a self-hosted cost-optimization gateway without enterprise overhead | — Pending |
-| Keep v1 onboarding admin-managed, not self-serve | Avoid auth/billing/account lifecycle scope before the core operator workflow is solid | — Pending |
-| Add a small operator web console plus playground | Improves demoability and product completeness for a B2B infrastructure product | Operator console shipped in Phase 2; playground remains Phase 3 |
-| Keep the backend as FastAPI and add a separate frontend for the console | Preserves the gateway core while allowing a more credible operator UX | Confirmed by Phase 1 foundation work |
-| Prioritize self-hosted production readiness before public launch concerns | The current product gap is operational trust, not more speculative surface area | Validated by Phase 1 completion |
-| Docker Compose is the single supported self-hosted entrypoint for Phase 1 | Keeps the operator deployment story narrow and documented in one place | Shipped in Phase 1 |
-| The canonical runtime topology is Nebula plus PostgreSQL and Qdrant, with local Ollama kept optional | Matches the premium-first self-hosted runtime profile while preserving local optimization as a non-blocking enhancement | Shipped in Phase 1 |
-| Nebula must reject local_dev runtime profile, default secrets, and the mock premium provider outside local mode | Prevents unsafe production-ish startup defaults from leaking into the self-hosted path | Shipped in Phase 1 |
-| Readiness remains HTTP 200 for degraded optional dependencies and only fails when required services are not ready | Operators need visibility into degraded cache and local optimization without treating those states as hard outages | Shipped in Phase 1 |
-| `NEBULA_DATABASE_URL` is the primary persistence setting for self-hosted runtime, with SQLite retained only as the local fallback | Lets the canonical deployment target PostgreSQL while preserving the local developer path through the same migration workflow | Shipped in Phase 1 |
+| Target startup and scale-up AI product teams first | Best fit for a self-hosted cost-optimization gateway without enterprise overhead | ✓ Good |
+| Keep v1 onboarding admin-managed, not self-serve | Avoid auth/billing/account lifecycle scope before the core operator workflow is solid | ✓ Good |
+| Add a small operator web console plus playground | Improves demoability and product completeness for a B2B infrastructure product | ✓ Good |
+| Keep the backend as FastAPI and add a separate frontend for the console | Preserves the gateway core while allowing a more credible operator UX | ✓ Good |
+| Prioritize self-hosted production readiness before public launch concerns | The current product gap is operational trust, not speculative surface area | ✓ Good |
+| Docker Compose is the single supported self-hosted entrypoint for v1.0 | Keeps the operator deployment story narrow and documented in one place | ✓ Good |
+| Playground metadata and persisted ledger outcome should remain visibly separate | Preserves operator clarity between immediate response evidence and recorded usage | ✓ Good |
+| Product proof should stay benchmark-led rather than becoming a generic demo tour | Keeps the product story measurable and grounded in real routing/cost behavior | ✓ Good |
 
 ---
-*Last updated: 2026-03-16 after Phase 2 completion and Phase 3 planning*
+*Last updated: 2026-03-17 after v1.0 milestone closeout*

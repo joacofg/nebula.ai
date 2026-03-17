@@ -43,7 +43,12 @@ export default function ObservabilityPage() {
   const runtimeHealthQuery = useQuery({
     queryKey: queryKeys.runtimeHealth,
     queryFn: async () => {
-      const response = await fetch("/api/runtime/health", { cache: "no-store" });
+      const response = await fetch("/api/runtime/health", {
+        cache: "no-store",
+        headers: {
+          "X-Nebula-Admin-Key": adminKey ?? "",
+        },
+      });
       if (!response.ok) {
         throw new Error("Unable to load runtime health.");
       }
@@ -51,6 +56,7 @@ export default function ObservabilityPage() {
         dependencies: Record<string, { status: string; required: boolean; detail: string }>;
       };
     },
+    enabled: Boolean(adminKey),
   });
 
   useEffect(() => {

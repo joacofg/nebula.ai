@@ -156,7 +156,12 @@ function PlaygroundResponseCard({
 
   return (
     <div className="space-y-4">
-      <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} />
+      {result.errorDetail ? (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+          {result.errorDetail}
+        </div>
+      ) : null}
+      {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
       <PlaygroundMetadata
         requestId={result.requestId}
         routeTarget={result.routeTarget}

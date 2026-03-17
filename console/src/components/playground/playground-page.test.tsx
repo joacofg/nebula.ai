@@ -23,6 +23,7 @@ vi.mock("@/lib/admin-api", async () => {
 
 describe("playground-page", () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     adminApi.listTenants.mockResolvedValue([
       {
         id: "default",
@@ -54,6 +55,8 @@ describe("playground-page", () => {
         },
         system_fingerprint: null,
       },
+      errorDetail: null,
+      status: 200,
       requestId: "req-123",
       tenantId: "default",
       routeTarget: "premium",
@@ -147,5 +150,58 @@ describe("playground-page", () => {
         "Persisted ledger record for the same request after Nebula finishes writing usage data.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("keeps metadata and recorded-outcome lookup for failed playground responses", async () => {
+    const user = userEvent.setup();
+    adminApi.createPlaygroundCompletion.mockResolvedValue({
+      body: null,
+      errorDetail: "Local provider failed.",
+      status: 502,
+      requestId: "req-failed-123",
+      tenantId: "default",
+      routeTarget: "premium",
+      routeReason: "local_provider_error_fallback",
+      provider: "openai-compatible",
+      cacheHit: false,
+      fallbackUsed: true,
+      policyMode: "auto",
+      policyOutcome: "allowed",
+    });
+    adminApi.getUsageLedgerEntry.mockResolvedValue({
+      request_id: "req-failed-123",
+      tenant_id: "default",
+      requested_model: "nebula-auto",
+      final_route_target: "premium",
+      final_provider: "openai-compatible",
+      fallback_used: true,
+      cache_hit: false,
+      response_model: null,
+      prompt_tokens: 11,
+      completion_tokens: 0,
+      total_tokens: 11,
+      estimated_cost: 0.01,
+      latency_ms: 180,
+      timestamp: "2026-03-16T22:00:00Z",
+      terminal_status: "provider_error",
+      route_reason: "local_provider_error_fallback",
+      policy_outcome: "allowed",
+    });
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
+    });
+    await user.type(screen.getByLabelText("Prompt"), "Recover failed response metadata");
+    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+
+    expect(await screen.findByText("Local provider failed.")).toBeInTheDocument();
+    expect(await screen.findByText("Request ID")).toBeInTheDocument();
+    expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
+    });
+    expect(await screen.findByText("provider_error")).toBeInTheDocument();
   });
 });
