@@ -29,8 +29,8 @@
 ### Governance & Routing
 
 - [x] **GOV-01**: Tenant policy changes affect runtime behavior for routing mode, fallback enablement, semantic-cache enablement, and premium-model allowlists
-- [ ] **GOV-02**: Admin and tenant operations return clear error states for invalid credentials, inactive tenants, and disallowed routing choices
-- [ ] **ROUT-01**: Nebula records enough metadata per request to explain why a route was chosen and whether a fallback occurred
+- [x] **GOV-02**: Admin and tenant operations return clear error states for invalid credentials, inactive tenants, and disallowed routing choices
+- [x] **ROUT-01**: Nebula records enough metadata per request to explain why a route was chosen and whether a fallback occurred
 
 ### Evaluation & Product Proof
 
@@ -82,8 +82,8 @@
 | OBS-01 | Phase 3 | Complete |
 | OBS-02 | Phase 3 | Complete |
 | GOV-01 | Phase 4 | Complete |
-| GOV-02 | Phase 4 | Pending |
-| ROUT-01 | Phase 4 | Pending |
+| GOV-02 | Phase 4 | Complete |
+| ROUT-01 | Phase 4 | Complete |
 | EVAL-01 | Phase 5 | Pending |
 | EVAL-02 | Phase 5 | Pending |
 | DOCS-01 | Phase 5 | Pending |

@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
 | 3. Playground & Observability | 3/3 | Complete    | 2026-03-16 |
-| 4. Governance Hardening | 1/3 | In Progress | - |
+| 4. Governance Hardening | 2/3 | In Progress|  |
 | 5. Product Proof & Delivery | 0/3 | Not started | - |
