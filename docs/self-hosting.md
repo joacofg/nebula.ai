@@ -1,67 +1,118 @@
 # Self-Hosting Nebula
 
-Nebula supports one serious deployment path: a premium-first Docker Compose stack with the operator
-console, the Nebula API, PostgreSQL, and Qdrant. PostgreSQL is the canonical governance store for
-self-hosted deployments.
+This document is the canonical deployment runbook for Nebula pilot onboarding. There is one supported self-hosted path: `docker-compose.selfhosted.yml` plus `deploy/selfhosted.env.example`.
 
-## Supported Topology
+Local development is useful for coding, but it is not a second supported production-ish topology.
 
-- `nebula` serves the FastAPI gateway on port `8000`
-- `console` serves the operator console on port `3000`
-- `postgres` is the canonical governance datastore for self-hosted runtime
-- `qdrant` stores semantic cache vectors
+## Supported topology
 
-## Deploy
+`docker-compose.selfhosted.yml` starts:
 
-1. Copy the environment template and set real secrets.
+- `console` on port `3000`
+- `nebula` on port `8000`
+- `postgres` as the canonical governance store
+- `qdrant` for semantic-cache vectors
 
-   ```bash
-   cp deploy/selfhosted.env.example deploy/selfhosted.env
-   ```
+The `nebula` service runs:
 
-2. Edit `deploy/selfhosted.env` and replace these placeholders before startup:
-   - `NEBULA_DATABASE_URL`
-   - `NEBULA_RUNTIME_PROFILE=premium_first`
-   - `NEBULA_PREMIUM_API_KEY`
-   - `NEBULA_ADMIN_API_KEY`
-   - `NEBULA_BOOTSTRAP_API_KEY`
+```bash
+alembic upgrade head && uvicorn nebula.main:app --host 0.0.0.0 --port 8000
+```
 
-3. Start the supported stack.
+## Prerequisites
 
-   ```bash
-   docker compose -f docker-compose.selfhosted.yml up -d
-   ```
+- Docker with Compose support
+- a real premium-provider API key
+- long random values for:
+  - `NEBULA_ADMIN_API_KEY`
+  - `NEBULA_BOOTSTRAP_API_KEY`
 
-   The `nebula` container runs `alembic upgrade head` before starting `uvicorn`, so the governance schema is migrated on every boot.
+## Configure the environment
 
-4. Open the operator console.
+Copy the supported environment template:
 
-   ```bash
-   open http://localhost:3000
-   ```
+```bash
+cp deploy/selfhosted.env.example deploy/selfhosted.env
+```
 
-   Paste the configured `NEBULA_ADMIN_API_KEY` into the login screen. The console keeps that key in
-   browser memory only and forwards admin requests to the API internally.
+Review `deploy/selfhosted.env` and set these values before startup:
 
-5. Verify the API is alive.
+- `NEBULA_DATABASE_URL`
+- `NEBULA_PREMIUM_API_KEY`
+- `NEBULA_ADMIN_API_KEY`
+- `NEBULA_BOOTSTRAP_API_KEY`
+- `NEBULA_BOOTSTRAP_TENANT_ID`
 
-   ```bash
-   curl http://localhost:8000/health
-   ```
+The supported self-hosted profile is already encoded in the template:
 
-6. Verify readiness and dependency detail before sending traffic.
+- `NEBULA_RUNTIME_PROFILE=premium_first`
+- `NEBULA_PREMIUM_PROVIDER=openai_compatible`
+- `NEBULA_DEFAULT_MODEL=nebula-auto`
+- `NEBULA_QDRANT_URL=http://qdrant:6333`
 
-   ```bash
-   curl http://localhost:8000/health/ready
-   curl http://localhost:8000/health/dependencies
-   ```
+`NEBULA_ADMIN_API_KEY` is required for the operator console login flow.
 
-## Notes
+## Start the supported stack
 
-- This is the only supported self-hosted path for Phase 1.
-- The supported operator entrypoint is the console at `http://localhost:3000`.
-- `NEBULA_PREMIUM_PROVIDER=openai_compatible` is the intended production-facing configuration.
-- `NEBULA_RUNTIME_PROFILE=premium_first` is required outside local development.
-- `NEBULA_DATABASE_URL` should target PostgreSQL for the supported self-hosted runtime.
-- Local Ollama remains optional and is configured as an advanced optimization path, not a deployment prerequisite.
-- A `degraded` readiness state means Nebula can still serve traffic while optional dependencies such as Qdrant or local Ollama are unavailable.
+```bash
+docker compose -f docker-compose.selfhosted.yml up -d
+```
+
+Stop it with:
+
+```bash
+docker compose -f docker-compose.selfhosted.yml down
+```
+
+Inspect logs with:
+
+```bash
+docker compose -f docker-compose.selfhosted.yml logs -f nebula
+```
+
+## Verify the deployment
+
+Check liveness:
+
+```bash
+curl http://localhost:8000/health
+```
+
+Check readiness and dependency detail:
+
+```bash
+curl http://localhost:8000/health/ready
+curl http://localhost:8000/health/dependencies
+```
+
+Open the console:
+
+```bash
+open http://localhost:3000
+```
+
+Paste `NEBULA_ADMIN_API_KEY` into the login screen. The console keeps the key in memory and proxies browser traffic to `/v1/admin/*`.
+
+## What the deployment is optimized for
+
+This topology is designed for product proof and pilot evaluation:
+
+- premium-first routing with explicit fallbacks
+- operator-visible governance and policy controls
+- semantic caching through Qdrant
+- benchmark and demo flows that use the same runtime shape as the deployed gateway
+
+## Important deployment notes
+
+- `docs/self-hosting.md` is the only supported deployment guide in this repo.
+- PostgreSQL is the canonical governance store for self-hosted runtime.
+- Local Ollama is optional. It is an optimization path, not a deployment prerequisite.
+- A `degraded` dependency state can still be acceptable when optional services such as Qdrant or local Ollama are unavailable.
+- Estimated premium cost in benchmark artifacts is based on `benchmarks/pricing.json`, not provider invoice reconciliation.
+
+## Related docs
+
+- [README](../README.md)
+- [Architecture](architecture.md)
+- [Evaluation](evaluation.md)
+- [Demo script](demo-script.md)
