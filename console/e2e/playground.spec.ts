@@ -102,6 +102,10 @@ test("operator can submit a playground prompt and see metadata plus recorded out
   await page.getByRole("button", { name: "Run prompt" }).click();
 
   await expect(page.getByText("Playground response content")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Immediate response evidence" })).toBeVisible();
+  await expect(
+    page.getByText("These fields describe the live response before the ledger finishes recording the same request."),
+  ).toBeVisible();
   await expect(page.getByText("Request ID", { exact: true })).toBeVisible();
   await expect(page.getByText("req-play-001")).toBeVisible();
   await expect(page.getByText("Route target")).toBeVisible();
@@ -109,6 +113,9 @@ test("operator can submit a playground prompt and see metadata plus recorded out
   await expect(page.getByText("Fallback", { exact: true })).toBeVisible();
   await expect(page.getByText("Yes")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recorded outcome" })).toBeVisible();
+  await expect(
+    page.getByText("Persisted ledger record for the same request after Nebula finishes writing usage data."),
+  ).toBeVisible();
   await expect(page.getByText("fallback_completed")).toBeVisible();
   await expect(page.getByText("Estimated cost")).toBeVisible();
   await expect(page.getByText("$0.0160")).toBeVisible();
