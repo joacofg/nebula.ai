@@ -57,6 +57,9 @@ export type PolicyOptionsResponse = {
   routing_modes: RoutingMode[];
   known_premium_models: string[];
   default_premium_model: string;
+  runtime_enforced_fields: string[];
+  soft_signal_fields: string[];
+  advisory_fields: string[];
 };
 
 export type PlaygroundInput = {

@@ -22,8 +22,6 @@ type PolicyFormState = {
   allowedPremiumModels: string[];
   maxPremiumCostPerRequest: string;
   softBudgetUsd: string;
-  promptCaptureEnabled: boolean;
-  responseCaptureEnabled: boolean;
 };
 
 function toFormState(policy: TenantPolicy): PolicyFormState {
@@ -34,13 +32,12 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     allowedPremiumModels: policy.allowed_premium_models,
     maxPremiumCostPerRequest: policy.max_premium_cost_per_request?.toString() ?? "",
     softBudgetUsd: policy.soft_budget_usd?.toString() ?? "",
-    promptCaptureEnabled: policy.prompt_capture_enabled,
-    responseCaptureEnabled: policy.response_capture_enabled,
   };
 }
 
-function toPolicyPayload(state: PolicyFormState): TenantPolicy {
+function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): TenantPolicy {
   return {
+    ...initialPolicy,
     routing_mode_default: state.routingModeDefault,
     fallback_enabled: state.fallbackEnabled,
     semantic_cache_enabled: state.semanticCacheEnabled,
@@ -48,8 +45,6 @@ function toPolicyPayload(state: PolicyFormState): TenantPolicy {
     max_premium_cost_per_request:
       state.maxPremiumCostPerRequest.trim() === "" ? null : Number(state.maxPremiumCostPerRequest),
     soft_budget_usd: state.softBudgetUsd.trim() === "" ? null : Number(state.softBudgetUsd),
-    prompt_capture_enabled: state.promptCaptureEnabled,
-    response_capture_enabled: state.responseCaptureEnabled,
   };
 }
 
@@ -64,12 +59,17 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
 
   const baseline = useMemo(() => JSON.stringify(toFormState(initialPolicy)), [initialPolicy]);
   const dirty = JSON.stringify(formState) !== baseline;
+  const runtimeEnforcedFields = useMemo(
+    () => new Set(options.runtime_enforced_fields),
+    [options.runtime_enforced_fields],
+  );
+  const softSignalFields = useMemo(() => new Set(options.soft_signal_fields), [options.soft_signal_fields]);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
-    const nextPolicy = toPolicyPayload(formState);
+    const nextPolicy = toPolicyPayload(formState, initialPolicy);
     if (nextPolicy.allowed_premium_models.length === 0) {
       setError("Select at least one premium model.");
       return;
@@ -124,97 +124,133 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
       ) : null}
 
       <section className="panel px-6 py-5">
-        <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Routing mode</h3>
-        <p className="mt-2 text-sm text-slate-500">Choose the default path for tenant traffic.</p>
-        <div className="mt-4">
-          <label className="field-label" htmlFor="routing-mode-default">
-            Routing mode
-          </label>
-          <select
-            id="routing-mode-default"
-            className="field-input"
-            value={formState.routingModeDefault}
-            onChange={(event) =>
-              setFormState((current) => ({
-                ...current,
-                routingModeDefault: event.target.value as TenantPolicy["routing_mode_default"],
-              }))
-            }
-          >
-            {options.routing_modes.map((routingMode) => (
-              <option key={routingMode} value={routingMode}>
-                {routingMode}
-              </option>
-            ))}
-          </select>
-        </div>
-      </section>
-
-      <section className="panel px-6 py-5">
         <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
-          Execution controls
-        </h3>
-        <div className="mt-4 space-y-3">
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={formState.fallbackEnabled}
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, fallbackEnabled: event.target.checked }))
-              }
-            />
-            Fallback enabled
-          </label>
-
-          <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
-            <input
-              type="checkbox"
-              checked={formState.semanticCacheEnabled}
-              onChange={(event) =>
-                setFormState((current) => ({ ...current, semanticCacheEnabled: event.target.checked }))
-              }
-            />
-            Semantic cache enabled
-          </label>
-        </div>
-      </section>
-
-      <section className="panel px-6 py-5">
-        <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
-          Premium model allowlist
+          Runtime-enforced controls
         </h3>
         <p className="mt-2 text-sm text-slate-500">
-          Seeded from policy metadata and open to manual additions when needed.
+          These controls map directly to the backend runtime enforcement contract for Phase 4.
         </p>
-        <div className="mt-4">
-          <ModelAllowlistInput
-            knownModels={options.known_premium_models}
-            value={formState.allowedPremiumModels}
-            onChange={(nextValue) =>
-              setFormState((current) => ({ ...current, allowedPremiumModels: nextValue }))
-            }
-          />
+        <div className="mt-4 space-y-5">
+          {runtimeEnforcedFields.has("routing_mode_default") ? (
+            <div>
+              <label className="field-label" htmlFor="routing-mode-default">
+                Routing mode
+              </label>
+              <select
+                id="routing-mode-default"
+                className="field-input"
+                value={formState.routingModeDefault}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    routingModeDefault: event.target.value as TenantPolicy["routing_mode_default"],
+                  }))
+                }
+              >
+                {options.routing_modes.map((routingMode) => (
+                  <option key={routingMode} value={routingMode}>
+                    {routingMode}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("fallback_enabled") ? (
+            <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={formState.fallbackEnabled}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, fallbackEnabled: event.target.checked }))
+                }
+              />
+              Fallback enabled
+            </label>
+          ) : null}
+
+          {runtimeEnforcedFields.has("semantic_cache_enabled") ? (
+            <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
+              <input
+                type="checkbox"
+                checked={formState.semanticCacheEnabled}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, semanticCacheEnabled: event.target.checked }))
+                }
+              />
+              Semantic cache enabled
+            </label>
+          ) : null}
+
+          {runtimeEnforcedFields.has("allowed_premium_models") ? (
+            <div>
+              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                Premium model allowlist
+              </h4>
+              <p className="mt-2 text-sm text-slate-500">
+                Seeded from policy metadata and open to manual additions when needed.
+              </p>
+              <div className="mt-4">
+                <ModelAllowlistInput
+                  knownModels={options.known_premium_models}
+                  value={formState.allowedPremiumModels}
+                  onChange={(nextValue) =>
+                    setFormState((current) => ({ ...current, allowedPremiumModels: nextValue }))
+                  }
+                />
+              </div>
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("max_premium_cost_per_request") ? (
+            <div>
+              <label className="field-label" htmlFor="max-premium-cost">
+                Max premium cost per request
+              </label>
+              <input
+                id="max-premium-cost"
+                className="field-input"
+                inputMode="decimal"
+                value={formState.maxPremiumCostPerRequest}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    maxPremiumCostPerRequest: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          ) : null}
         </div>
       </section>
 
-      <PolicyAdvancedSection
-        maxPremiumCostPerRequest={formState.maxPremiumCostPerRequest}
-        softBudgetUsd={formState.softBudgetUsd}
-        promptCaptureEnabled={formState.promptCaptureEnabled}
-        responseCaptureEnabled={formState.responseCaptureEnabled}
-        onFieldChange={(field, value) =>
-          setFormState((current) => ({
-            ...current,
-            [field]: value,
-          }))
-        }
-        onToggleChange={(field, value) =>
-          setFormState((current) => ({
-            ...current,
-            [field]: value,
-          }))
-        }
-      />
+      {softSignalFields.has("soft_budget_usd") ? (
+        <section className="panel px-6 py-5">
+          <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Soft budget signal</h3>
+          <p className="mt-2 text-sm text-slate-500">
+            Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.
+          </p>
+          <div className="mt-4">
+            <label className="field-label" htmlFor="soft-budget-usd">
+              Soft budget USD
+            </label>
+            <input
+              id="soft-budget-usd"
+              className="field-input"
+              inputMode="decimal"
+              value={formState.softBudgetUsd}
+              onChange={(event) =>
+                setFormState((current) => ({
+                  ...current,
+                  softBudgetUsd: event.target.value,
+                }))
+              }
+            />
+          </div>
+        </section>
+      ) : null}
+
+      <PolicyAdvancedSection />
     </form>
   );
 }
