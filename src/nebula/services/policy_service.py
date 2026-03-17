@@ -51,7 +51,12 @@ class PolicyService:
             request,
             routing_mode=policy.routing_mode_default,
         )
-        self._enforce_explicit_model_constraints(request, route_decision, policy.routing_mode_default)
+        self._enforce_explicit_model_constraints(
+            request,
+            route_decision,
+            policy.routing_mode_default,
+            tenant_context.tenant.id,
+        )
 
         soft_budget_exceeded = False
         if policy.soft_budget_usd is not None:
@@ -61,8 +66,11 @@ class PolicyService:
         if route_decision.target == "premium":
             premium_model = self._resolve_premium_model(request)
             if policy.allowed_premium_models and premium_model not in policy.allowed_premium_models:
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                self._policy_denied(
+                    tenant_id=tenant_context.tenant.id,
+                    route_target=route_decision.target,
+                    route_reason=route_decision.reason,
+                    policy_mode=policy.routing_mode_default,
                     detail=f"Premium model '{premium_model}' is not allowed for this tenant.",
                 )
             projected_premium_cost = self._estimate_request_cost(request, premium_model)
@@ -71,8 +79,11 @@ class PolicyService:
                 and projected_premium_cost is not None
                 and projected_premium_cost > policy.max_premium_cost_per_request
             ):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
+                self._policy_denied(
+                    tenant_id=tenant_context.tenant.id,
+                    route_target=route_decision.target,
+                    route_reason=route_decision.reason,
+                    policy_mode=policy.routing_mode_default,
                     detail="Request exceeds the tenant premium spend guardrail.",
                 )
 
@@ -132,22 +143,56 @@ class PolicyService:
         request: ChatCompletionRequest,
         route_decision: RouteDecision,
         routing_mode: RoutingMode,
+        tenant_id: str | None = None,
     ) -> None:
         if request.model == self.settings.local_model and routing_mode == "premium_only":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            self._policy_denied(
+                tenant_id=tenant_id,
+                route_target="local",
+                route_reason="explicit_local_model",
+                policy_mode=routing_mode,
                 detail="Tenant policy requires premium-only routing.",
             )
         if request.model not in {self.settings.default_model, self.settings.local_model} and routing_mode == "local_only":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            self._policy_denied(
+                tenant_id=tenant_id,
+                route_target="premium",
+                route_reason="explicit_premium_model",
+                policy_mode=routing_mode,
                 detail="Tenant policy does not allow explicit premium routing.",
             )
         if routing_mode == "local_only" and route_decision.target == "premium":
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
+            self._policy_denied(
+                tenant_id=tenant_id,
+                route_target=route_decision.target,
+                route_reason=route_decision.reason,
+                policy_mode=routing_mode,
                 detail="Tenant policy restricts this request to local routing only.",
             )
+
+    def _policy_denied(
+        self,
+        *,
+        tenant_id: str | None,
+        route_target: str,
+        route_reason: str,
+        policy_mode: RoutingMode,
+        detail: str,
+    ) -> None:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=detail,
+            headers={
+                "X-Nebula-Tenant-ID": tenant_id or "",
+                "X-Nebula-Route-Target": route_target,
+                "X-Nebula-Route-Reason": route_reason,
+                "X-Nebula-Provider": "policy",
+                "X-Nebula-Cache-Hit": "false",
+                "X-Nebula-Fallback-Used": "false",
+                "X-Nebula-Policy-Mode": policy_mode,
+                "X-Nebula-Policy-Outcome": detail,
+            },
+        )
 
     def _serialize_request_messages(self, request: ChatCompletionRequest) -> str:
         parts: list[str] = []

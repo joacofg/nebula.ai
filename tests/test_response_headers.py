@@ -100,3 +100,83 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert fallback_response.headers["X-Nebula-Provider"] == "mock-premium"
     assert fallback_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert fallback_response.headers["X-Nebula-Fallback-Used"] == "true"
+
+
+def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.governance_store.upsert_policy(
+                "default",
+                container.governance_store.get_policy("default").model_copy(
+                    update={
+                        "routing_mode_default": "premium_only",
+                        "fallback_enabled": False,
+                        "allowed_premium_models": [container.settings.premium_model],
+                    }
+                ),
+            )
+
+            premium_denied_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4.1-mini",
+                    "messages": [{"role": "user", "content": "denied premium"}],
+                },
+            )
+
+            explicit_local_denied_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": container.settings.local_model,
+                    "messages": [{"role": "user", "content": "denied local"}],
+                },
+            )
+
+            container.governance_store.upsert_policy(
+                "default",
+                container.governance_store.get_policy("default").model_copy(
+                    update={
+                        "routing_mode_default": "auto",
+                        "fallback_enabled": False,
+                        "allowed_premium_models": [container.settings.premium_model],
+                    }
+                ),
+            )
+            local_provider = StubProvider("ollama", completion_error=provider_error("local down"))
+            container.local_provider = local_provider
+            container.provider_registry.local_provider = local_provider
+            fallback_blocked_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "blocked fallback"}],
+                },
+            )
+
+    assert premium_denied_response.status_code == 403
+    assert premium_denied_response.json() == {
+        "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
+    }
+    assert premium_denied_response.headers["X-Nebula-Route-Target"] == "premium"
+    assert premium_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert premium_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
+
+    assert explicit_local_denied_response.status_code == 403
+    assert explicit_local_denied_response.headers["X-Nebula-Route-Target"] == "local"
+    assert explicit_local_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_local_model"
+    assert explicit_local_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
+
+    assert fallback_blocked_response.status_code == 502
+    assert fallback_blocked_response.json() == {
+        "detail": "Local provider failed and tenant policy disabled premium fallback."
+    }
+    assert fallback_blocked_response.headers["X-Nebula-Route-Target"] == "local"
+    assert (
+        fallback_blocked_response.headers["X-Nebula-Route-Reason"]
+        == "local_provider_error_fallback_blocked"
+    )
+    assert fallback_blocked_response.headers["X-Nebula-Policy-Outcome"] != ""
