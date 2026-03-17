@@ -4,17 +4,17 @@ milestone: v1.0
 milestone_name: milestone
 current_phase: 4
 current_phase_name: Governance Hardening
-current_plan: 2
+current_plan: 3
 status: executing
-stopped_at: Completed 04-01-PLAN.md
-last_updated: "2026-03-17T02:53:19.349Z"
+stopped_at: Completed 04-02-PLAN.md
+last_updated: "2026-03-17T03:01:47.589Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 12
-  completed_plans: 10
-  percent: 83
+  completed_plans: 11
+  percent: 92
 ---
 
 # Project State
@@ -32,13 +32,13 @@ Phase: 4 of 5 (Governance Hardening)
 **Current Phase:** 4
 **Current Phase Name:** Governance Hardening
 Plan: 1 of 3 in current phase
-**Current Plan:** 2
+**Current Plan:** 3
 **Total Plans in Phase:** 3
 **Total Phases:** 5
 **Status:** Ready to execute
 **Last Activity:** 2026-03-17
 
-**Progress:** [████████░░] 83%
+**Progress:** [█████████░] 92%
 
 ## Performance Metrics
 
@@ -64,6 +64,7 @@ Plan: 1 of 3 in current phase
 **Recent Trend:**
 - Last 5 plans: session-executed
 - Trend: Positive
+| Phase 04-governance-hardening P02 | 2m | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 03]: Premium-provider degradation is observable but optional, so gateway readiness should remain green when required dependencies are healthy. — Avoids overstating upstream issues as full service outage.
 - [Phase 04]: The /v1/admin/policy/options response is the authoritative machine-readable boundary between runtime-enforced, soft-signal, and advisory policy fields.
 - [Phase 04]: Runtime enforcement remains centralized in PolicyService.resolve(); the admin route only publishes contract metadata.
+- [Phase 04-governance-hardening]: Denied and fallback-blocked backend responses use HTTPException headers with the existing X-Nebula contract instead of a separate error envelope.
+- [Phase 04-governance-hardening]: ROUT-01 verification is pinned through X-Request-ID lookups against usage-ledger rows for denied and provider-error paths.
 
 ### Pending Todos
 
@@ -101,6 +104,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-17T02:53:19.347Z
-**Stopped At:** Completed 04-01-PLAN.md
+**Last session:** 2026-03-17T03:01:47.588Z
+**Stopped At:** Completed 04-02-PLAN.md
 **Resume File:** None
