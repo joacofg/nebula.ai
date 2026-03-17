@@ -1,35 +1,64 @@
 # Nebula
 
-Semantic AI Gateway for optimizing cost, latency, and resilience across LLM workflows.
+Nebula is a self-hosted semantic AI gateway for teams that want to reduce premium LLM spend without losing control over routing, fallback behavior, or operator visibility.
 
-## Core Stack
+## Why Nebula exists
 
-- Python 3.12+
-- FastAPI
-- Pydantic v2
-- Qdrant
-- Ollama
-- Prometheus
+Application teams often need premium models for some requests, but not all of them. Nebula sits in front of those requests and makes the tradeoff explicit:
 
-## Structure
+- route simple or repeat traffic toward lower-cost local or cached paths
+- preserve premium capacity for requests that actually need it
+- surface route, cache, fallback, and cost signals to operators instead of hiding them
 
-```text
-.
-├── docker-compose.yml
-├── pyproject.toml
-├── src/
-│   └── nebula/
-│       ├── api/
-│       │   └── routes/
-│       ├── core/
-│       ├── models/
-│       ├── observability/
-│       ├── providers/
-│       └── services/
-└── tests/
+Nebula is currently packaged for self-hosted pilot evaluation. The focus is a credible operator workflow, measurable product proof, and a repo-native deployment path.
+
+## Product proof
+
+Nebula's core claim is simple: it can reduce estimated premium spend on repeatable traffic patterns while staying explainable when requests route to premium, hit cache, or fall back after local-provider trouble.
+
+Use these repo-native proof paths:
+
+- `make benchmark` runs the canonical benchmark suite and writes `report.json` plus `report.md` under `artifacts/benchmarks/<timestamp>/`
+- `make benchmark-demo` runs the smaller live-demo subset through the same benchmark runner
+- the operator console shows request routing, fallback metadata, and recorded ledger outcomes
+- the Observability page shows dependency health and degraded optional services without pretending the whole gateway is down
+
+## Who it is for
+
+- startup and scale-up engineering teams evaluating a self-hosted gateway
+- operators who need a focused control plane and visible runtime behavior
+- academic or technical reviewers who need the architecture, deployment, and evaluation story to be inspectable from the repository
+
+## Documentation map
+
+- [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
+- [Architecture](docs/architecture.md): request flow, runtime components, governance, cache, providers, console, and benchmark harness
+- [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
+- [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
+
+## Quick start
+
+### Supported self-hosted path
+
+Nebula's supported deployment path is the Compose stack documented in [docs/self-hosting.md](docs/self-hosting.md).
+
+```bash
+cp deploy/selfhosted.env.example deploy/selfhosted.env
+docker compose -f docker-compose.selfhosted.yml up -d
 ```
 
-## Local Development
+That path runs:
+
+- the FastAPI gateway on `http://localhost:8000`
+- the operator console on `http://localhost:3000`
+- PostgreSQL as the canonical governance store
+- Qdrant as the semantic-cache backing service
+
+Use the self-hosting runbook instead of treating local development as a second deployment story.
+
+### Local development
+
+Local development remains useful for implementation work, but it is not the supported pilot deployment path.
 
 ```bash
 python3.12 -m venv .venv
@@ -40,133 +69,59 @@ docker compose up -d qdrant
 uvicorn nebula.main:app --reload
 ```
 
-Install Ollama and pull the recommended models:
+Optional local-model setup:
 
 ```bash
 ollama pull llama3.2:3b
 ollama pull nomic-embed-text
 ```
 
-To enable a real premium provider, update `.env` with:
+## Benchmark commands
 
-```bash
-NEBULA_PREMIUM_PROVIDER=openai_compatible
-NEBULA_PREMIUM_BASE_URL=https://openrouter.ai/api/v1
-NEBULA_PREMIUM_API_KEY=your_openrouter_api_key
-NEBULA_PREMIUM_MODEL=openai/gpt-4o-mini
-```
-
-The application now fails fast at startup if `openai_compatible` is selected without the required premium credentials.
-Premium and fallback requests are billed against the OpenRouter credits attached to the configured API key.
-
-Nebula now boots with a lightweight SQLite governance store and a bootstrap tenant/API key for local development:
-
-```bash
-X-Nebula-API-Key: <NEBULA_BOOTSTRAP_API_KEY>
-X-Nebula-Tenant-ID: <NEBULA_BOOTSTRAP_TENANT_ID>
-X-Nebula-Admin-Key: <NEBULA_ADMIN_API_KEY>
-```
-
-By default those resolve to local-only dev values from `.env.example`. Override them in `.env` before using Nebula outside local development.
-
-## Operator Console
-
-Nebula Phase 2 introduces a focused operator console at `http://localhost:3000` for tenant, API key,
-and policy management. The console expects `NEBULA_API_BASE_URL` to point at the FastAPI service and
-proxies browser requests to `/v1/admin/*`, so operators only paste the deployment admin key into the
-console UI instead of calling raw admin endpoints directly.
-
-## Smoke Tests
-
-After configuring `.env`, run:
-
-```bash
-make smoke-openrouter
-```
-
-This starts Nebula locally, verifies `/health`, forces a premium non-streaming request, and verifies premium streaming.
-
-To verify local-to-premium fallback with one command, run:
-
-```bash
-make smoke-fallback
-```
-
-This starts Nebula with an intentionally invalid local Ollama URL so `nebula-auto` falls back to the premium provider.
-
-## Benchmarking
-
-Run the full benchmark suite with:
+Run the full repeatable proof package:
 
 ```bash
 make benchmark
 ```
 
-This starts managed local Nebula instances for the normal and fallback scenario groups, runs the versioned dataset in `benchmarks/v1/scenarios.jsonl`, and writes `report.json` plus `report.md` under `artifacts/benchmarks/<timestamp>/`.
-Benchmark cost fields are estimated from `benchmarks/pricing.json`; they are not invoice reconciliation.
+Run the smaller live-demo subset:
 
-If you want to target an already-running Nebula instance, pass `BASE_URL`:
+```bash
+make benchmark-demo
+```
+
+Run against an already-running Nebula instance:
 
 ```bash
 BASE_URL=http://127.0.0.1:8000 .venv/bin/python -m nebula.benchmarking.run
 ```
 
-When `BASE_URL` is provided, fallback-only scenarios are skipped because the runner cannot safely mutate the external server configuration.
+When `BASE_URL` is set, fallback-only scenarios are skipped because the runner cannot safely reconfigure an external server.
 
-## Self-Hosted Deployment
+## Operator surfaces
 
-Nebula's supported Phase 1 deployment path is the premium-first Docker Compose stack in
-[`docs/self-hosting.md`](docs/self-hosting.md). That path uses PostgreSQL as the canonical
-governance store and runs `alembic upgrade head` before the API starts. Follow that runbook instead
-of treating the local development steps above as a second deployment flow. The supported stack now
-also includes the operator console on `http://localhost:3000`, while the API remains on
-`http://localhost:8000`.
+- `Playground` proves immediate route target, provider, cache-hit, fallback, and latency metadata for a live request
+- `Recorded outcome` ties that request back to persisted usage-ledger data
+- `Observability` shows runtime dependency health, degraded optional services, and filtered ledger history
 
-## Endpoints
+## Admin and bootstrap access
 
-`POST /v1/chat/completions`
+The gateway and console use explicit bootstrap/admin credentials. In self-hosted mode, set real values for:
 
-Implements the base OpenAI-compatible contract for both streaming and non-streaming requests.
-Requires `X-Nebula-API-Key`; `X-Nebula-Tenant-ID` resolves the tenant explicitly when needed.
-Responses now include tenant/policy headers alongside route, provider, cache, and fallback metadata.
+- `NEBULA_ADMIN_API_KEY`
+- `NEBULA_BOOTSTRAP_API_KEY`
+- `NEBULA_BOOTSTRAP_TENANT_ID`
+- `NEBULA_DATABASE_URL`
 
-`GET /v1/admin/tenants`
+The supported self-hosted environment template lives at `deploy/selfhosted.env.example`.
 
-`POST /v1/admin/tenants`
+## Selected endpoints
 
-`GET /v1/admin/session`
-
-`GET|PUT /v1/admin/tenants/{tenant_id}/policy`
-
-`GET|POST /v1/admin/api-keys`
-
-`POST /v1/admin/api-keys/{api_key_id}/revoke`
-
-`GET /v1/admin/usage/ledger`
-
-Operator APIs are protected with `X-Nebula-Admin-Key` and expose tenant, API key, policy, and usage-ledger management without returning downstream provider secrets.
-
-`GET /health`
-
-Returns the application liveness status.
-
-`GET /health/ready`
-
-Returns readiness for the gateway and governance store, while allowing optional dependencies such as Qdrant or local Ollama to show as `degraded`.
-
-`GET /health/dependencies`
-
-Returns component-level dependency detail for gateway, governance store, semantic cache, and local Ollama.
-
-`GET /metrics`
-
-Exposes Prometheus metrics when metrics are enabled.
-
-Key metrics include HTTP request counts and latency, semantic cache outcomes, routing decisions, provider execution latency, completion totals, and fallback totals.
-
-## Recommended MVP Configuration
-
-- `llama3.2:3b` as the primary local completion model
-- `nomic-embed-text` for embeddings
-- `mock` as the default premium provider to avoid external spend during local development
-- `openai_compatible` when connecting a real premium provider such as OpenAI or OpenRouter
+- `POST /v1/chat/completions`
+- `GET /v1/admin/session`
+- `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
+- `GET /v1/admin/usage/ledger`
+- `GET /health`
+- `GET /health/ready`
+- `GET /health/dependencies`
+- `GET /metrics`
