@@ -51,8 +51,11 @@ def test_authentication_returns_401_and_403_for_missing_invalid_and_unauthorized
             )
 
     assert missing.status_code == 401
+    assert missing.json() == {"detail": "Missing client API key."}
     assert invalid.status_code == 401
+    assert invalid.json() == {"detail": "Invalid client API key."}
     assert forbidden.status_code == 403
+    assert forbidden.json() == {"detail": "API key is not authorized for the requested tenant."}
 
 
 def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
@@ -108,9 +111,16 @@ def test_admin_session_endpoint() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
             unauthorized = client.get("/v1/admin/session")
+            invalid = client.get(
+                "/v1/admin/session",
+                headers=admin_headers(admin_api_key="invalid-admin-key"),
+            )
             authorized = client.get("/v1/admin/session", headers=admin_headers())
 
     assert unauthorized.status_code == 401
+    assert unauthorized.json() == {"detail": "Missing or invalid admin API key."}
+    assert invalid.status_code == 401
+    assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
     assert authorized.json() == {"status": "ok"}
 
@@ -119,9 +129,16 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     with configured_app() as app:
         with TestClient(app) as client:
             unauthorized = client.get("/v1/admin/policy/options")
+            invalid = client.get(
+                "/v1/admin/policy/options",
+                headers=admin_headers(admin_api_key="invalid-admin-key"),
+            )
             authorized = client.get("/v1/admin/policy/options", headers=admin_headers())
 
     assert unauthorized.status_code == 401
+    assert unauthorized.json() == {"detail": "Missing or invalid admin API key."}
+    assert invalid.status_code == 401
+    assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
     assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
     assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
@@ -263,11 +280,38 @@ def test_policy_can_block_premium_models_and_fallback() -> None:
                 "/v1/admin/usage/ledger?tenant_id=default&terminal_status=policy_denied",
                 headers=admin_headers(),
             )
+            denied_request_id = premium_denied.headers["X-Request-ID"]
+            denied_by_request = client.get(
+                f"/v1/admin/usage/ledger?request_id={denied_request_id}",
+                headers=admin_headers(),
+            )
+            fallback_request_id = fallback_blocked.headers["X-Request-ID"]
+            fallback_by_request = client.get(
+                f"/v1/admin/usage/ledger?request_id={fallback_request_id}",
+                headers=admin_headers(),
+            )
 
     assert premium_denied.status_code == 403
+    assert premium_denied.json() == {
+        "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
+    }
     assert fallback_blocked.status_code == 502
+    assert fallback_blocked.json() == {
+        "detail": "Local provider failed and tenant policy disabled premium fallback."
+    }
     assert denied_entries.status_code == 200
     assert denied_entries.json()[0]["final_route_target"] == "denied"
+    assert denied_by_request.status_code == 200
+    assert denied_by_request.json()[0]["request_id"] == denied_request_id
+    assert denied_by_request.json()[0]["route_reason"] == "explicit_premium_model"
+    assert denied_by_request.json()[0]["policy_outcome"] == premium_denied.json()["detail"]
+    assert fallback_by_request.status_code == 200
+    assert fallback_by_request.json()[0]["request_id"] == fallback_request_id
+    assert fallback_by_request.json()[0]["route_reason"] == "local_provider_error_fallback_blocked"
+    assert (
+        fallback_by_request.json()[0]["policy_outcome"]
+        == fallback_blocked.headers["X-Nebula-Policy-Outcome"]
+    )
 
 
 def test_policy_can_disable_cache() -> None:
@@ -308,3 +352,67 @@ def test_policy_can_disable_cache() -> None:
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Policy-Outcome"] == "cache=disabled"
     assert cache_service.lookup_calls == []
+
+
+def test_inactive_tenant_chat_request_returns_exact_403_detail() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            app.state.container.governance_store.update_tenant("default", active=False)
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "inactive tenant"}],
+                },
+            )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Resolved tenant is inactive or does not exist."}
+
+
+def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    routing_mode_default="premium_only",
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    max_premium_cost_per_request=0.0001,
+                ).model_dump(mode="json"),
+            )
+            denied = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "max_tokens": 2048,
+                    "messages": [{"role": "user", "content": "guardrail denied"}],
+                },
+            )
+            request_id = denied.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert denied.status_code == 403
+    assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert ledger.status_code == 200
+    assert ledger.json()[0]["request_id"] == request_id
+    assert ledger.json()[0]["policy_outcome"] == "Request exceeds the tenant premium spend guardrail."

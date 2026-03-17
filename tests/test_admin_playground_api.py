@@ -121,3 +121,30 @@ def test_admin_playground_completion_rejects_unknown_tenant() -> None:
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Tenant not found."}
+
+
+def test_admin_playground_completion_rejects_inactive_tenant_without_usage_record() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(app)
+            app.state.container.governance_store.update_tenant("default", active=False)
+            response = client.post(
+                "/v1/admin/playground/completions",
+                headers=admin_headers(),
+                json={
+                    "tenant_id": "default",
+                    "model": "openai/gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "inactive"}],
+                    "stream": False,
+                },
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 403
+    assert response.json() == {"detail": "Tenant is inactive."}
+    assert ledger.status_code == 200
+    assert ledger.json() == []
