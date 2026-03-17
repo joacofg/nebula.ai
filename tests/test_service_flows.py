@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from fastapi import HTTPException
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
@@ -290,15 +291,19 @@ async def test_policy_can_disable_cache_and_block_fallback() -> None:
         messages=[{"role": "user", "content": "policy controlled request"}],
     )
 
-    with pytest.raises(Exception):
+    with pytest.raises(HTTPException) as exc_info:
         await service.create_completion(
             request,
             tenant_context=tenant_context(),
             request_id="req-policy",
         )
 
+    assert exc_info.value.status_code == 502
+    assert exc_info.value.detail == "Local provider failed and tenant policy disabled premium fallback."
     assert cache_service.lookup_calls == []
     assert store.records[-1].terminal_status == "provider_error"
+    assert store.records[-1].route_reason == "local_provider_error_fallback_blocked"
+    assert store.records[-1].policy_outcome == "routing_mode=local_only;cache=disabled;fallback=disabled"
 
 
 class RuntimePolicyStore:

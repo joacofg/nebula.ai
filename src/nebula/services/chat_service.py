@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 @dataclass(slots=True)
 class CompletionMetadata:
     tenant_id: str
-    route_target: Literal["local", "premium", "cache"]
+    route_target: Literal["local", "premium", "cache", "denied"]
     route_reason: str
     provider: str
     cache_hit: bool
@@ -172,6 +172,20 @@ class ChatService:
                 exc,
             )
             if route_decision.target != "local" or not policy_resolution.fallback_enabled:
+                error_detail = str(exc)
+                error_headers: dict[str, str] | None = None
+                error_route_reason = route_decision.reason
+                if route_decision.target == "local" and not policy_resolution.fallback_enabled:
+                    error_detail = "Local provider failed and tenant policy disabled premium fallback."
+                    error_route_reason = "local_provider_error_fallback_blocked"
+                    error_headers = self._error_headers(
+                        tenant_id=tenant_context.tenant.id,
+                        route_target="local",
+                        route_reason=error_route_reason,
+                        provider=provider.name,
+                        fallback_used=False,
+                        policy_resolution=policy_resolution,
+                    )
                 COMPLETION_COUNT.labels(provider.name, "error", "false").inc()
                 await self._record_usage(
                     request_id=request_id,
@@ -180,7 +194,7 @@ class ChatService:
                     metadata=self._metadata(
                         tenant_id=tenant_context.tenant.id,
                         route_target=route_decision.target,
-                        route_reason=route_decision.reason,
+                        route_reason=error_route_reason,
                         provider=provider.name,
                         cache_hit=False,
                         fallback_used=False,
@@ -193,7 +207,8 @@ class ChatService:
                 )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=str(exc),
+                    detail=error_detail,
+                    headers=error_headers,
                 ) from exc
 
             fallback_provider = self.provider_registry.get("premium")
@@ -579,9 +594,22 @@ class ChatService:
             )
         except ProviderError as exc:
             if route_decision.target != "local" or not policy_resolution.fallback_enabled:
+                error_detail = str(exc)
+                error_headers: dict[str, str] | None = None
+                if route_decision.target == "local" and not policy_resolution.fallback_enabled:
+                    error_detail = "Local provider failed and tenant policy disabled premium fallback."
+                    error_headers = self._error_headers(
+                        tenant_id=tenant_id,
+                        route_target="local",
+                        route_reason="local_provider_error_fallback_blocked",
+                        provider=provider.name,
+                        fallback_used=False,
+                        policy_resolution=policy_resolution,
+                    )
                 raise HTTPException(
                     status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=str(exc),
+                    detail=error_detail,
+                    headers=error_headers,
                 ) from exc
 
             logger.warning("stream_fallback request_id=%s tenant_id=%s error=%s", request_id, tenant_id, exc)
@@ -772,6 +800,7 @@ class ChatService:
             )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
+                headers = exc.headers or {}
                 self.governance_store.record_usage(
                     UsageLedgerRecord(
                         request_id=request_id or f"req-{uuid4().hex}",
@@ -786,8 +815,8 @@ class ChatService:
                         latency_ms=None,
                         timestamp=datetime.now(UTC),
                         terminal_status="policy_denied",
-                        route_reason=None,
-                        policy_outcome=exc.detail,
+                        route_reason=headers.get("X-Nebula-Route-Reason"),
+                        policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
                     )
                 )
             raise
@@ -847,7 +876,7 @@ class ChatService:
         self,
         *,
         tenant_id: str,
-        route_target: Literal["local", "premium", "cache"],
+        route_target: Literal["local", "premium", "cache", "denied"],
         route_reason: str,
         provider: str,
         cache_hit: bool,
@@ -864,6 +893,27 @@ class ChatService:
             policy_mode=policy_resolution.policy_mode,
             policy_outcome=policy_resolution.policy_outcome,
         )
+
+    def _error_headers(
+        self,
+        *,
+        tenant_id: str,
+        route_target: str,
+        route_reason: str,
+        provider: str,
+        fallback_used: bool,
+        policy_resolution: PolicyResolution,
+    ) -> dict[str, str]:
+        return {
+            "X-Nebula-Tenant-ID": tenant_id,
+            "X-Nebula-Route-Target": route_target,
+            "X-Nebula-Route-Reason": route_reason,
+            "X-Nebula-Provider": provider,
+            "X-Nebula-Cache-Hit": "false",
+            "X-Nebula-Fallback-Used": str(fallback_used).lower(),
+            "X-Nebula-Policy-Mode": policy_resolution.policy_mode,
+            "X-Nebula-Policy-Outcome": policy_resolution.policy_outcome,
+        }
 
     def _extract_model_from_sse(self, payload: bytes) -> str | None:
         decoded = self._decode_sse(payload)
