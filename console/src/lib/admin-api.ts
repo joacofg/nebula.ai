@@ -93,7 +93,9 @@ export type PlaygroundResponse = {
 };
 
 export type PlaygroundCompletionResult = {
-  body: PlaygroundResponse;
+  body: PlaygroundResponse | null;
+  errorDetail: string | null;
+  status: number;
   requestId: string;
   tenantId: string;
   routeTarget: string;
@@ -238,15 +240,15 @@ export async function createPlaygroundCompletion(
     cache: "no-store",
   });
 
-  if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "Nebula playground request failed.");
-  }
-
-  const body = (await response.json()) as PlaygroundResponse;
+  const responseBody = (await response.json().catch(() => ({}))) as PlaygroundResponse & {
+    detail?: string;
+  };
+  const isSuccess = response.ok;
   return {
-    body,
-    requestId: response.headers.get("X-Request-ID") ?? body.request_id ?? "",
+    body: isSuccess ? responseBody : null,
+    errorDetail: isSuccess ? null : responseBody.detail ?? "Nebula playground request failed.",
+    status: response.status,
+    requestId: response.headers.get("X-Request-ID") ?? responseBody.request_id ?? "",
     tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,
     routeTarget: response.headers.get("X-Nebula-Route-Target") ?? "",
     routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
