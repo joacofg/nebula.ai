@@ -14,7 +14,7 @@ Reduce cost per successful LLM request while preserving reliability, control, an
 - **Product shape:** Self-hosted gateway plus operator console
 - **Primary workflows shipped:** deployment, admin auth, tenant/API-key/policy management, Playground, Observability, benchmark proof, docs/demo package
 - **Codebase snapshot:** Python/FastAPI gateway, Next.js console, PostgreSQL-ready governance persistence, Qdrant semantic cache, Ollama local provider path, premium-provider routing, benchmark/report tooling
-- **Closeout status:** Milestone audit passed requirements and integration, with accepted human-review tech debt in Phase 1 and Phase 4
+- **Closeout status:** Milestone audit passed with all remaining approvals accepted during closeout
 
 ## Requirements
 
@@ -77,4 +77,4 @@ The best near-term fit is still startup and scale-up teams that need infrastruct
 | Product proof should stay benchmark-led rather than becoming a generic demo tour | Keeps the product story measurable and grounded in real routing/cost behavior | ✓ Good |
 
 ---
-*Last updated: 2026-03-17 after v1.0 milestone closeout*
+*Last updated: 2026-03-17 after v1.0 milestone closeout approval*

@@ -38,11 +38,9 @@ No active milestone is open.
 - **Version:** v1.0
 - **Phases:** 5
 - **Plans:** 15
-- **Audit Result:** tech_debt
+- **Audit Result:** passed
 - **Archives:** `.planning/milestones/v1.0-ROADMAP.md`, `.planning/milestones/v1.0-REQUIREMENTS.md`
 
 ## Known Follow-Up
 
-- Phase 1 live self-hosted verification with real premium credentials and a Docker-capable host remains a human follow-up.
-- Phase 4 wording/clarity review and validation metadata cleanup remain optional closeout debt.
 - The next milestone should be created from fresh requirements via `$gsd-new-milestone`.

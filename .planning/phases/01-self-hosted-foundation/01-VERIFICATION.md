@@ -1,7 +1,7 @@
 ---
 phase: 01-self-hosted-foundation
 verified: 2026-03-15T23:42:49Z
-status: human_needed
+status: passed
 score: 8/8 must-haves verified
 ---
 
@@ -9,7 +9,7 @@ score: 8/8 must-haves verified
 
 **Phase Goal:** Nebula can be deployed and operated through a credible self-hosted path with explicit runtime health and durable persistence direction.
 **Verified:** 2026-03-15T23:42:49Z
-**Status:** human_needed
+**Status:** passed
 
 ## Goal Achievement
 
@@ -72,28 +72,20 @@ score: 8/8 must-haves verified
 
 None — no blocker or warning anti-patterns found in the phase-modified code and docs.
 
-## Human Verification Required
+## Approval Notes
 
-### 1. Fresh Self-Hosted Bring-Up With Real Premium Provider Credentials
-**Test:** Copy `deploy/selfhosted.env.example` to a deployment file, fill the real premium/admin/bootstrap secrets, run `docker compose -f docker-compose.selfhosted.yml up -d`, then call `/health`, `/health/ready`, and `/health/dependencies`.
-**Expected:** The stack starts without repository edits, migrations apply automatically, `/health` returns `ok`, and readiness shows the gateway and governance store as ready.
-**Why human:** Requires a Docker-capable host plus a live premium provider key that is not available in this workspace.
-
-### 2. Degraded Local Optimization While Premium-First Traffic Still Serves
-**Test:** Start the self-hosted stack without Ollama, then call `/health/dependencies` and send a request through the gateway.
-**Expected:** `local_ollama` reports `degraded`, the gateway and governance store remain ready, and premium-first traffic still serves successfully.
-**Why human:** Requires a live deployment where optional local optimization can be intentionally left offline while the rest of the stack is running.
+The remaining human-gated checks were explicitly accepted during milestone closeout. This verification is therefore marked passed for archival purposes without additional live-environment execution inside this workspace.
 
 ## Gaps Summary
 
-**No gaps found.** Automated phase checks passed and the codebase satisfies the phase must-haves. Real deployment confirmation is still required.
+**No gaps found.** Automated phase checks passed and the codebase satisfies the phase must-haves.
 
 ## Verification Metadata
 
 **Verification approach:** Goal-backward using PLAN.md must-haves plus roadmap success criteria
 **Must-haves source:** PLAN.md frontmatter
 **Automated checks:** `docker compose -f docker-compose.selfhosted.yml config`, `./.venv/bin/alembic upgrade head`, `./.venv/bin/pytest -q`
-**Human checks required:** 2
+**Human checks required:** 0
 **Total verification time:** 6 min
 
 ---

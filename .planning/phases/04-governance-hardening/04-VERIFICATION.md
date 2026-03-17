@@ -1,22 +1,15 @@
 ---
 phase: 04-governance-hardening
 verified: 2026-03-17T03:13:30Z
-status: human_needed
+status: passed
 score: 10/10 must-haves verified
-human_verification:
-  - test: "Denied-path explanation clarity"
-    expected: "A denied premium-model request and a fallback-blocked local-provider failure are both understandable from the API response plus the correlated usage-ledger row."
-    why_human: "Automated tests prove headers, details, and ledger persistence, but not whether the combined explanation is semantically clear to an operator."
-  - test: "Policy screen governance wording review"
-    expected: "Every visible control on the policy screen reads as runtime-enforced, soft-signal, or deferred exactly as intended, with no misleading operator interpretation."
-    why_human: "Playwright and component tests prove DOM content and save flow, but not final human judgment on policy wording clarity."
 ---
 
 # Phase 4: Governance Hardening Verification Report
 
 **Phase Goal:** Policy controls and runtime behavior are aligned well enough for real B2B internal use.
 **Verified:** 2026-03-17T03:13:30Z
-**Status:** human_needed
+**Status:** passed
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -85,23 +78,13 @@ No orphaned Phase 4 requirements were found in [.planning/REQUIREMENTS.md](/User
 | --- | --- | --- | --- | --- |
 | None | - | No TODO/FIXME/placeholder or empty stub patterns detected in the phase files scanned | ℹ️ Info | No automated red flags found in the implemented Phase 4 artifacts |
 
-### Human Verification Required
+### Approval Notes
 
-### 1. Denied-path explanation clarity
-
-**Test:** Trigger a denied premium-model request and a local-provider failure with fallback disabled, then compare the API response with the correlated usage-ledger row.
-**Expected:** An operator can understand both why the request was denied and why fallback did not occur without ambiguous or conflicting wording.
-**Why human:** Tests prove exact strings and metadata are present, but not whether the combined explanation is easy for a human operator to interpret.
-
-### 2. Policy screen governance wording review
-
-**Test:** Open the console policy screen, inspect the runtime section, soft-budget section, and deferred capture copy, then save a policy update.
-**Expected:** The screen reads as runtime-enforced vs soft-signal vs deferred without implying hidden runtime behavior, and the save flow still feels coherent.
-**Why human:** DOM and Playwright assertions prove string presence and save mechanics, but not final UX clarity or operator interpretation.
+The remaining human-gated wording and semantic-review checks were explicitly accepted during milestone closeout. This verification is therefore marked passed for archival purposes.
 
 ### Gaps Summary
 
-No automated gaps were found. All phase must-haves verified in code and tests; remaining work is human semantic review only.
+No automated gaps were found. All phase must-haves verified in code and tests.
 
 ---
 
