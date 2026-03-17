@@ -23,6 +23,15 @@ function renderPolicyForm(onSave = vi.fn().mockResolvedValue(undefined)) {
         routing_modes: ["auto", "local_only", "premium_only"],
         known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
         default_premium_model: "openai/gpt-4o-mini",
+        runtime_enforced_fields: [
+          "routing_mode_default",
+          "allowed_premium_models",
+          "semantic_cache_enabled",
+          "fallback_enabled",
+          "max_premium_cost_per_request",
+        ],
+        soft_signal_fields: ["soft_budget_usd"],
+        advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
       }}
       isSaving={false}
       onSave={onSave}
@@ -58,5 +67,24 @@ describe("policy-form", () => {
         }),
       );
     });
+  });
+
+  it("derives runtime-enforced controls from policy options and keeps soft budget outside that section", () => {
+    renderPolicyForm();
+
+    const runtimeSection = screen.getByRole("heading", { name: "Runtime-enforced controls" }).closest("section");
+    expect(runtimeSection).not.toBeNull();
+    expect(runtimeSection).toHaveTextContent("Routing mode");
+    expect(runtimeSection).toHaveTextContent("Fallback enabled");
+    expect(runtimeSection).toHaveTextContent("Semantic cache enabled");
+    expect(runtimeSection).toHaveTextContent("Premium model allowlist");
+    expect(runtimeSection).toHaveTextContent("Max premium cost per request");
+    expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
+
+    expect(
+      screen.getByText(
+        "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
+      ),
+    ).toBeInTheDocument();
   });
 });
