@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Self-Hosted Foundation** - Make Nebula deployable and operationally safe beyond local development (completed 2026-03-16)
 - [x] **Phase 2: Operator Console** - Add the admin UI for tenants, API keys, and policy management (completed 2026-03-16)
 - [x] **Phase 3: Playground & Observability** - Expose the product’s routing and cost behavior in an operator-facing workflow (completed 2026-03-16)
-- [ ] **Phase 4: Governance Hardening** - Close policy/runtime gaps and strengthen the control plane
+- [x] **Phase 4: Governance Hardening** - Close policy/runtime gaps and strengthen the control plane (completed 2026-03-17)
 - [ ] **Phase 5: Product Proof & Delivery** - Finish benchmark proof, documentation, and pilot/demo packaging
 
 ## Phase Details
@@ -76,12 +76,12 @@ Plans:
   1. Policy controls exposed in the API/UI always correspond to enforced runtime behavior.
   2. Invalid or forbidden admin and tenant operations return clear, predictable error states.
   3. Operators can explain request routing decisions from recorded metadata and runtime outputs.
-**Plans**: 3 plans
+**Plans**: 3/3 plans executed
 
 Plans:
 - [x] 04-01: Align policy surface with enforced backend behavior
-- [ ] 04-02: Harden backend denied-path metadata, errors, and governance tests
-- [ ] 04-03: Align console policy contract, copy, and browser coverage
+- [x] 04-02: Harden backend denied-path metadata, errors, and governance tests
+- [x] 04-03: Align console policy contract, copy, and browser coverage
 
 ### Phase 5: Product Proof & Delivery
 **Goal**: Nebula has a measurable product story and polished documentation suitable for demos, academic evaluation, and pilot onboarding.
@@ -108,5 +108,5 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 1. Self-Hosted Foundation | 3/3 | Complete    | 2026-03-16 |
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
 | 3. Playground & Observability | 3/3 | Complete    | 2026-03-16 |
-| 4. Governance Hardening | 2/3 | In Progress|  |
+| 4. Governance Hardening | 3/3 | Complete    | 2026-03-17 |
 | 5. Product Proof & Delivery | 0/3 | Not started | - |
