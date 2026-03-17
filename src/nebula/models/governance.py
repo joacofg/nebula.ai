@@ -113,3 +113,6 @@ class PolicyOptionsResponse(BaseModel):
     routing_modes: list[RoutingMode]
     known_premium_models: list[str] = Field(default_factory=list)
     default_premium_model: str
+    runtime_enforced_fields: list[str] = Field(default_factory=list)
+    soft_signal_fields: list[str] = Field(default_factory=list)
+    advisory_fields: list[str] = Field(default_factory=list)
