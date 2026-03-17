@@ -142,6 +142,10 @@ describe("playground-page", () => {
       policy_outcome: "allowed",
     });
 
-    expect(await screen.findByText("Recorded usage from the Nebula ledger.")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "Persisted ledger record for the same request after Nebula finishes writing usage data.",
+      ),
+    ).toBeInTheDocument();
   });
 });
