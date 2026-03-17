@@ -91,11 +91,11 @@ Plans:
   1. Operator can run repeatable benchmarks and generate artifacts that compare route outcomes and estimated spend.
   2. Demo materials clearly show how Nebula saves cost and handles degraded scenarios.
   3. Documentation explains setup, architecture, and evaluation in a way that another engineer can follow.
-**Plans**: 1/3 plans executed
+**Plans**: 2/3 plans executed
 
 Plans:
 - [x] 05-01: Strengthen benchmark workflows and reports
-- [ ] 05-02: Produce deployment, architecture, and demo documentation
+- [x] 05-02: Produce deployment, architecture, and demo documentation
 - [ ] 05-03: Polish the end-to-end pilot/demo package
 
 ## Progress
@@ -109,4 +109,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Operator Console | 3/3 | Complete    | 2026-03-16 |
 | 3. Playground & Observability | 3/3 | Complete    | 2026-03-16 |
 | 4. Governance Hardening | 3/3 | Complete    | 2026-03-17 |
-| 5. Product Proof & Delivery | 1/3 | In Progress | - |
+| 5. Product Proof & Delivery | 2/3 | In Progress | - |
