@@ -5,16 +5,16 @@ milestone_name: milestone
 current_phase: 4
 current_phase_name: Governance Hardening
 current_plan: 3
-status: executing
-stopped_at: Completed 04-02-PLAN.md
-last_updated: "2026-03-17T03:01:47.589Z"
+status: verifying
+stopped_at: Completed 04-03-PLAN.md
+last_updated: "2026-03-17T03:09:30.803Z"
 last_activity: 2026-03-17
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
-  percent: 92
+  completed_plans: 12
+  percent: 100
 ---
 
 # Project State
@@ -35,10 +35,10 @@ Plan: 1 of 3 in current phase
 **Current Plan:** 3
 **Total Plans in Phase:** 3
 **Total Phases:** 5
-**Status:** Ready to execute
+**Status:** Phase complete — ready for verification
 **Last Activity:** 2026-03-17
 
-**Progress:** [█████████░] 92%
+**Progress:** [██████████] 100%
 
 ## Performance Metrics
 
@@ -65,6 +65,7 @@ Plan: 1 of 3 in current phase
 - Last 5 plans: session-executed
 - Trend: Positive
 | Phase 04-governance-hardening P02 | 2m | 2 tasks | 6 files |
+| Phase 04 P03 | 6 min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,8 @@ Recent decisions affecting current work:
 - [Phase 04]: Runtime enforcement remains centralized in PolicyService.resolve(); the admin route only publishes contract metadata.
 - [Phase 04-governance-hardening]: Denied and fallback-blocked backend responses use HTTPException headers with the existing X-Nebula contract instead of a separate error envelope.
 - [Phase 04-governance-hardening]: ROUT-01 verification is pinned through X-Request-ID lookups against usage-ledger rows for denied and provider-error paths.
+- [Phase 04]: The console treats /v1/admin/policy/options as the only source of truth for runtime-enforced policy fields.
+- [Phase 04]: Prompt and response capture settings remain persisted but are shown only as deferred non-editable copy in Phase 4.
 
 ### Pending Todos
 
@@ -104,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-**Last session:** 2026-03-17T03:01:47.588Z
-**Stopped At:** Completed 04-02-PLAN.md
+**Last session:** 2026-03-17T03:09:30.801Z
+**Stopped At:** Completed 04-03-PLAN.md
 **Resume File:** None
