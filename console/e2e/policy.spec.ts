@@ -60,13 +60,24 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Policy" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("link", { name: "Policy" }).click();
   await expect(page).toHaveURL(/\/policy$/, { timeout: 30_000 });
+  await expect(page.getByRole("heading", { name: "Runtime-enforced controls" })).toBeVisible();
+  await expect(
+    page.getByText(
+      "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByLabel("Prompt capture enabled")).not.toBeVisible();
+  await expect(page.getByLabel("Response capture enabled")).not.toBeVisible();
 
   await page.selectOption("#routing-mode-default", "premium_only");
   await page.getByRole("checkbox", { name: "Fallback enabled" }).uncheck();
   await page.getByPlaceholder("Add model").fill("openai/gpt-4.5-mini");
   await page.getByRole("button", { name: "Add model" }).click();
-
-  await expect(page.getByText("Stored for future governance hardening; not yet enforced at runtime.")).toBeVisible();
   await page.getByRole("button", { name: "Save policy" }).click();
 
   await page.getByRole("link", { name: "Tenants" }).click();
