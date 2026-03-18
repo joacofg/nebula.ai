@@ -58,24 +58,24 @@
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| ENRL-01 | — | Pending |
-| ENRL-02 | — | Pending |
-| ENRL-03 | — | Pending |
-| INVT-01 | — | Pending |
-| INVT-02 | — | Pending |
-| INVT-03 | — | Pending |
-| INVT-04 | — | Pending |
-| RMGT-01 | — | Pending |
-| RMGT-02 | — | Pending |
-| RMGT-03 | — | Pending |
-| TRST-01 | — | Pending |
-| TRST-02 | — | Pending |
-| TRST-03 | — | Pending |
+| ENRL-01 | Phase 7 | Pending |
+| ENRL-02 | Phase 7 | Pending |
+| ENRL-03 | Phase 7 | Pending |
+| INVT-01 | Phase 8 | Pending |
+| INVT-02 | Phase 8 | Pending |
+| INVT-03 | Phase 10 | Pending |
+| INVT-04 | Phase 8 | Pending |
+| RMGT-01 | Phase 9 | Pending |
+| RMGT-02 | Phase 9 | Pending |
+| RMGT-03 | Phase 9 | Pending |
+| TRST-01 | Phase 6 | Pending |
+| TRST-02 | Phase 6 | Pending |
+| TRST-03 | Phase 10 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 13 total
-- Mapped to phases: 0
-- Unmapped: 13 ⚠️
+- Mapped to phases: 13
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-18*
