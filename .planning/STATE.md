@@ -1,14 +1,14 @@
 ---
 gsd_state_version: 1.0
-milestone: null
-milestone_name: null
+milestone: v2.0
+milestone_name: Hosted Control Plane Validation
 current_phase: null
 current_phase_name: null
 current_plan: null
-status: archived
-stopped_at: Archived v1.0 milestone
-last_updated: "2026-03-17T22:15:38Z"
-last_activity: 2026-03-17
+status: defining_requirements
+stopped_at: null
+last_updated: "2026-03-18T03:00:00Z"
+last_activity: 2026-03-18
 progress:
   total_phases: 0
   completed_phases: 0
@@ -21,17 +21,17 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-03-17)
+See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.  
-**Current focus:** Define the next milestone
+**Current focus:** Define v2.0 hosted control plane requirements
 
 ## Current Position
 
-No active milestone is open.
-
-**Status:** Archived after v1.0 closeout  
-**Last Activity:** 2026-03-17
+Phase: Not started (defining requirements)  
+Plan: —  
+Status: Defining requirements  
+Last activity: 2026-03-18 — Milestone v2.0 started
 
 ## Last Shipped Milestone
 
@@ -43,4 +43,4 @@ No active milestone is open.
 
 ## Known Follow-Up
 
-- The next milestone should be created from fresh requirements via `$gsd-new-milestone`.
+- Resolve the hosted-control-plane trust model, deployment registration flow, and pilot story into concrete requirements.
