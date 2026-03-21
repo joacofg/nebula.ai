@@ -161,6 +161,69 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
   return (await response.json()) as T;
 }
 
+export type DeploymentEnvironment = "production" | "staging" | "development";
+export type EnrollmentState = "pending" | "active" | "revoked" | "unlinked";
+
+export type DeploymentRecord = {
+  id: string;
+  display_name: string;
+  environment: DeploymentEnvironment;
+  enrollment_state: EnrollmentState;
+  nebula_version: string | null;
+  capability_flags: string[];
+  enrolled_at: string | null;
+  revoked_at: string | null;
+  unlinked_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DeploymentCreateInput = {
+  display_name: string;
+  environment: DeploymentEnvironment;
+};
+
+export type EnrollmentTokenResponse = {
+  token: string;
+  expires_at: string;
+  deployment_id: string;
+};
+
+export const ADMIN_DEPLOYMENTS_ENDPOINT = "/api/admin/deployments";
+
+export function listDeployments(adminKey: string) {
+  return adminRequest<DeploymentRecord[]>(ADMIN_DEPLOYMENTS_ENDPOINT, { adminKey });
+}
+
+export function createDeployment(adminKey: string, payload: DeploymentCreateInput) {
+  return adminRequest<DeploymentRecord>(ADMIN_DEPLOYMENTS_ENDPOINT, {
+    adminKey,
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function generateEnrollmentToken(adminKey: string, deploymentId: string) {
+  return adminRequest<EnrollmentTokenResponse>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/enrollment-token`,
+    { adminKey, method: "POST" },
+  );
+}
+
+export function revokeDeployment(adminKey: string, deploymentId: string) {
+  return adminRequest<DeploymentRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/revoke`,
+    { adminKey, method: "POST" },
+  );
+}
+
+export function unlinkDeployment(adminKey: string, deploymentId: string) {
+  return adminRequest<DeploymentRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/unlink`,
+    { adminKey, method: "POST" },
+  );
+}
+
 export const ADMIN_TENANTS_ENDPOINT = "/api/admin/tenants";
 export const ADMIN_API_KEYS_ENDPOINT = "/api/admin/api-keys";
 export const ADMIN_USAGE_LEDGER_ENDPOINT = "/api/admin/usage/ledger";
