@@ -45,7 +45,7 @@ Declared values (must be multiples of 4):
 
 Exceptions:
 - Copy-to-clipboard token block: `px-4 py-4` (16px) to match `RevealApiKeyDialog` dark slab pattern.
-- Status badge pills: `px-2 py-0.5` (8px / 2px) — intentionally compact.
+- Status badge pills: `px-2 py-1` (8px horizontal / 4px vertical) — intentionally compact, minimum vertical padding on 4px scale.
 - Icon touch targets in table rows: minimum 44px tall row height via `py-3` on `<td>`.
 
 ---
@@ -105,7 +105,7 @@ All components reuse existing global utility classes. No new Tailwind variants o
 | `CreateDeploymentSlotDrawer` | `TenantEditorDrawer` in `tenant-editor-drawer.tsx` | Fields: display name (text), environment (select: production/staging/development) |
 | `EnrollmentTokenRevealDialog` | `RevealApiKeyDialog` in `reveal-api-key-dialog.tsx` | Dark slab with Fira Code, copy-to-clipboard button, one-time disclosure warning |
 | `DeploymentDetailDrawer` | `TenantEditorDrawer` pattern | Read-only fields: UUID, version, capability flags; action buttons: "Generate new token" (relink), "Unlink", "Revoke" |
-| `RevokeConfirmationDialog` | `CreateApiKeyDialog` pattern (modal overlay) | Confirmation copy, danger-styled confirm button, secondary Cancel button |
+| `RevokeConfirmationDialog` | `CreateApiKeyDialog` pattern (modal overlay) | Confirmation copy, danger-styled confirm button, dismiss button labeled "Keep deployment" |
 | `DeploymentStatusBadge` | Inline `<span>` with semantic color class | Four states: pending / active / revoked / unlinked |
 | Enrollment instructions block | Inline `<pre>` or code slab | Fira Code, dark slab (`bg-slate-950`), shows `NEBULA_ENROLLMENT_TOKEN=nbet_...` env var copy |
 
@@ -126,6 +126,8 @@ The deployment management page follows the established split-panel pattern from 
 ```
 
 Modal overlays (EnrollmentTokenRevealDialog, RevokeConfirmationDialog) render at `z-40` with `bg-slate-950/45 backdrop-blur-sm`.
+
+**Primary focal point:** On first visit (no deployments exist), the "Create deployment slot" button in the page header is the primary visual anchor — it is the only interactive element above the empty state panel and draws the operator's eye to the entry action. Once deployments exist, the focal point shifts to the first row of `DeploymentTable`; clicking a row opens the `DeploymentDetailDrawer` on the right panel, making the row-drawer pair the interaction focus for all subsequent actions.
 
 ---
 
@@ -161,7 +163,7 @@ Revoke opens a modal overlay with:
 1. Danger heading (no icon required)
 2. Consequence description: immediate credential invalidation
 3. "Revoke deployment" button (`bg-pink-700 hover:bg-pink-800 text-white`)
-4. "Cancel" button (`secondary-button`)
+4. "Keep deployment" button (`secondary-button`) — dismisses the dialog without action
 5. No text-entry confirmation required (follows existing project pattern — no "type to confirm" gate)
 
 ### Unlink Confirmation
@@ -170,7 +172,7 @@ Unlink opens the same modal overlay pattern but uses the secondary button as the
 1. Neutral heading
 2. Consequence description: gateway continues serving, loses hosted features
 3. "Unlink deployment" button (`secondary-button`)
-4. "Cancel" button (`secondary-button`)
+4. "Keep linked" button (`secondary-button`) — dismisses the dialog without action
 
 ---
 
@@ -218,8 +220,8 @@ Unlink opens the same modal overlay pattern but uses the secondary button as the
 
 | Action | Confirmation Copy |
 |--------|------------------|
-| Revoke | Heading: "Revoke this deployment?" Body: "The deployment's credential will be invalidated immediately. The gateway will lose hosted-plane access on its next heartbeat. Use Relink to restore access." |
-| Unlink | Heading: "Unlink this deployment?" Body: "The gateway will stop sending heartbeats and lose hosted features. Local serving continues unaffected. You can relink at any time." |
+| Revoke | Heading: "Revoke this deployment?" Body: "The deployment's credential will be invalidated immediately. The gateway will lose hosted-plane access on its next heartbeat. Use Relink to restore access." Confirm: "Revoke deployment". Dismiss: "Keep deployment". |
+| Unlink | Heading: "Unlink this deployment?" Body: "The gateway will stop sending heartbeats and lose hosted features. Local serving continues unaffected. You can relink at any time." Confirm: "Unlink deployment". Dismiss: "Keep linked". |
 
 ### Status Labels (read-only badges)
 
