@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 07-01-PLAN.md
-last_updated: "2026-03-21T23:03:58.097Z"
+stopped_at: Completed 07-02-PLAN.md
+last_updated: "2026-03-21T23:11:36.277Z"
 progress:
   total_phases: 5
   completed_phases: 1
   total_plans: 6
-  completed_plans: 4
+  completed_plans: 5
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 07 (deployment-enrollment-and-identity) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -50,6 +50,7 @@ Plan: 2 of 3
 | Phase 06 P03 | 2min | 2 tasks | 5 files |
 | Phase 06 P02 | 3min | 2 tasks | 8 files |
 | Phase 07 P01 | 8 | 2 tasks | 9 files |
+| Phase 07 P02 | 6 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -68,6 +69,8 @@ Recent decisions affecting current work:
 - [Phase 07]: EnrollmentService gets its own session_factory instance, mirroring GovernanceStore pattern
 - [Phase 07]: Token prefix stores first 12 chars of raw token for human-readable identification
 - [Phase 07]: generate_enrollment_token raises KeyError for missing deployments and ValueError for active state
+- [Phase 07]: GatewayEnrollmentService accepts injectable http_transport for ASGI-based testing without a real server
+- [Phase 07]: Exchange endpoint at /v1/enrollment/exchange has no auth — enrollment token IS the authentication mechanism
 
 ### Pending Todos
 
@@ -80,6 +83,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T23:03:58.095Z
-Stopped at: Completed 07-01-PLAN.md
+Last session: 2026-03-21T23:11:36.276Z
+Stopped at: Completed 07-02-PLAN.md
 Resume file: None

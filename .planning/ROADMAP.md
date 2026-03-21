@@ -52,7 +52,7 @@ Plans:
 
 Plans:
 - [x] 07-01-PLAN.md — Hosted registration: DB schema, enrollment service, admin API for slot creation and token generation
-- [ ] 07-02-PLAN.md — Outbound linking: enrollment exchange endpoint, gateway startup hook, local identity storage
+- [x] 07-02-PLAN.md — Outbound linking: enrollment exchange endpoint, gateway startup hook, local identity storage
 - [ ] 07-03-PLAN.md — Lifecycle management: revoke, unlink, relink endpoints and console deployment UI
 
 ### Phase 8: Fleet Inventory and Freshness Visibility
@@ -109,7 +109,7 @@ Plans:
 | 4. Governance Hardening | v1.0 | 3/3 | Complete | 2026-03-17 |
 | 5. Product Proof & Delivery | v1.0 | 3/3 | Complete | 2026-03-17 |
 | 6. Trust Boundary and Hosted Contract | v2.0 | 0/3 | Not started | - |
-| 7. Deployment Enrollment and Identity | v2.0 | 1/3 | In Progress|  |
+| 7. Deployment Enrollment and Identity | v2.0 | 2/3 | In Progress|  |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 0/3 | Not started | - |
 | 9. Audited Remote Management | v2.0 | 0/3 | Not started | - |
 | 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |
