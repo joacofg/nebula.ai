@@ -93,6 +93,23 @@ Nebula's operator-facing proof depends on two views working together:
 
 That split matters: the immediate response proves what just happened, while the usage ledger proves what the system persisted and can explain later.
 
+## Hybrid trust boundary
+
+Nebula is self-hosted with an optional hosted control plane. This section defines the trust boundary between the self-hosted gateway and the hosted plane.
+
+**Core invariants:**
+
+- Nebula's hosted control plane is not in the request-serving path.
+- Local runtime enforcement remains authoritative.
+- Default hosted export is metadata-only.
+- Hosted freshness states are connected, degraded, stale, and offline.
+
+**Excluded by default:** raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, authoritative runtime policy state. These categories never leave the self-hosted environment under the default export contract.
+
+Richer diagnostics are operator-initiated exceptions to the default contract. Any future expansion of the default export must update the canonical schema artifact first.
+
+This section is derived from [`docs/hosted-default-export.schema.json`](hosted-default-export.schema.json). Future edits to trust-boundary language must update the contract artifact first and then propagate here.
+
 ## Self-hosted deployment shape
 
 The supported deployment path is `docker compose -f docker-compose.selfhosted.yml up -d`.
