@@ -1,4 +1,4 @@
-"""Integration tests for deployment enrollment admin API (ENRL-01) and exchange endpoint (ENRL-02)."""
+"""Integration tests for deployment enrollment admin API (ENRL-01, ENRL-02) and lifecycle management (ENRL-03)."""
 
 from __future__ import annotations
 
@@ -259,3 +259,188 @@ def test_enrollment_exchange_consumed_token() -> None:
                 },
             )
     assert second_exchange.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# ENRL-03: Lifecycle management tests (revoke, unlink, relink)
+# ---------------------------------------------------------------------------
+
+
+def _make_active_deployment(client, display_name: str = "lifecycle-gw") -> tuple[str, str]:
+    """Helper: create a deployment slot and exchange token to make it active.
+    Returns (deployment_id, raw_token).
+    """
+    create_resp = client.post(
+        "/v1/admin/deployments",
+        json={"display_name": display_name, "environment": "staging"},
+        headers=admin_headers(),
+    )
+    assert create_resp.status_code == 201
+    deployment_id = create_resp.json()["id"]
+
+    token_resp = client.post(
+        f"/v1/admin/deployments/{deployment_id}/enrollment-token",
+        headers=admin_headers(),
+    )
+    assert token_resp.status_code == 200
+    raw_token = token_resp.json()["token"]
+
+    exchange_resp = client.post(
+        "/v1/enrollment/exchange",
+        json={"enrollment_token": raw_token, "nebula_version": "2.0.0", "capability_flags": []},
+    )
+    assert exchange_resp.status_code == 200
+
+    return deployment_id, raw_token
+
+
+def test_revoke_deployment() -> None:
+    """07-03-01: Revoking an active deployment sets enrollment_state='revoked', revoked_at is set,
+    credential is cleared."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id, _ = _make_active_deployment(client)
+
+            revoke_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/revoke",
+                headers=admin_headers(),
+            )
+    assert revoke_resp.status_code == 200
+    data = revoke_resp.json()
+    assert data["enrollment_state"] == "revoked"
+    assert data["revoked_at"] is not None
+
+
+def test_unlink_deployment() -> None:
+    """07-03-02: Unlinking an active deployment sets enrollment_state='unlinked', unlinked_at is set."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id, _ = _make_active_deployment(client, display_name="unlink-gw")
+
+            unlink_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/unlink",
+                headers=admin_headers(),
+            )
+    assert unlink_resp.status_code == 200
+    data = unlink_resp.json()
+    assert data["enrollment_state"] == "unlinked"
+    assert data["unlinked_at"] is not None
+
+
+def test_revoke_on_non_active_returns_409() -> None:
+    """Revoking a pending deployment (not active) should return 409."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            create_resp = client.post(
+                "/v1/admin/deployments",
+                json={"display_name": "pending-revoke-gw", "environment": "development"},
+                headers=admin_headers(),
+            )
+            assert create_resp.status_code == 201
+            deployment_id = create_resp.json()["id"]
+
+            revoke_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/revoke",
+                headers=admin_headers(),
+            )
+    assert revoke_resp.status_code == 409
+
+
+def test_unlink_on_non_active_returns_409() -> None:
+    """Unlinking a pending deployment (not active) should return 409."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            create_resp = client.post(
+                "/v1/admin/deployments",
+                json={"display_name": "pending-unlink-gw", "environment": "development"},
+                headers=admin_headers(),
+            )
+            assert create_resp.status_code == 201
+            deployment_id = create_resp.json()["id"]
+
+            unlink_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/unlink",
+                headers=admin_headers(),
+            )
+    assert unlink_resp.status_code == 409
+
+
+def test_relink_preserves_single_record() -> None:
+    """07-03-03: After revoke + new token generation + exchange, same deployment_id, state=active,
+    only one record in list with that display name."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id, _ = _make_active_deployment(client, display_name="relink-gw")
+
+            # Revoke
+            revoke_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/revoke",
+                headers=admin_headers(),
+            )
+            assert revoke_resp.status_code == 200
+
+            # Generate new token for same slot (relink)
+            new_token_resp = client.post(
+                f"/v1/admin/deployments/{deployment_id}/enrollment-token",
+                headers=admin_headers(),
+            )
+            assert new_token_resp.status_code == 200
+            new_raw_token = new_token_resp.json()["token"]
+            assert new_token_resp.json()["deployment_id"] == deployment_id
+
+            # Exchange new token
+            exchange_resp = client.post(
+                "/v1/enrollment/exchange",
+                json={
+                    "enrollment_token": new_raw_token,
+                    "nebula_version": "2.0.1",
+                    "capability_flags": ["semantic_cache"],
+                },
+            )
+            assert exchange_resp.status_code == 200
+            assert exchange_resp.json()["deployment_id"] == deployment_id
+
+            # Verify single active record
+            list_resp = client.get("/v1/admin/deployments", headers=admin_headers())
+            assert list_resp.status_code == 200
+            all_deployments = list_resp.json()
+            matching = [d for d in all_deployments if d["display_name"] == "relink-gw"]
+    assert len(matching) == 1
+    assert matching[0]["enrollment_state"] == "active"
+    assert matching[0]["id"] == deployment_id
+
+
+def test_list_includes_revoked_and_unlinked() -> None:
+    """07-03-04: GET /v1/admin/deployments returns all states including revoked and unlinked."""
+    with configured_app() as app:
+        with TestClient(app) as client:
+            # Create 3 deployments: one that stays pending, one revoked, one unlinked
+            pending_id, _ = _make_active_deployment(client, display_name="state-test-pending")
+            # Revoke the first one after making it active a second time
+            revoke_id, _ = _make_active_deployment(client, display_name="state-test-revoke")
+            unlink_id, _ = _make_active_deployment(client, display_name="state-test-unlink")
+
+            # Revoke one
+            client.post(
+                f"/v1/admin/deployments/{revoke_id}/revoke",
+                headers=admin_headers(),
+            )
+
+            # Unlink one
+            client.post(
+                f"/v1/admin/deployments/{unlink_id}/unlink",
+                headers=admin_headers(),
+            )
+
+            list_resp = client.get("/v1/admin/deployments", headers=admin_headers())
+    assert list_resp.status_code == 200
+    all_deployments = list_resp.json()
+
+    by_id = {d["id"]: d for d in all_deployments}
+    assert pending_id in by_id
+    assert revoke_id in by_id
+    assert unlink_id in by_id
+
+    assert by_id[pending_id]["enrollment_state"] == "active"
+    assert by_id[revoke_id]["enrollment_state"] == "revoked"
+    assert by_id[unlink_id]["enrollment_state"] == "unlinked"
