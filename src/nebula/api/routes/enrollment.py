@@ -67,6 +67,34 @@ async def get_deployment(
     return record
 
 
+@router.post("/{deployment_id}/revoke", response_model=DeploymentRecord)
+async def revoke_deployment(
+    deployment_id: str,
+    container: ServiceContainer = Depends(require_admin),
+) -> DeploymentRecord:
+    try:
+        result = container.enrollment_service.revoke_deployment(deployment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deployment not found.")
+    return result
+
+
+@router.post("/{deployment_id}/unlink", response_model=DeploymentRecord)
+async def unlink_deployment(
+    deployment_id: str,
+    container: ServiceContainer = Depends(require_admin),
+) -> DeploymentRecord:
+    try:
+        result = container.enrollment_service.unlink_deployment(deployment_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Deployment not found.")
+    return result
+
+
 @router.post("/{deployment_id}/enrollment-token", response_model=EnrollmentTokenResponse)
 async def generate_token(
     deployment_id: str,

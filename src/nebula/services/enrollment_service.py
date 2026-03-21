@@ -138,6 +138,40 @@ class EnrollmentService:
                 environment=deployment.environment,
             )
 
+    def revoke_deployment(self, deployment_id: str) -> DeploymentRecord | None:
+        with self._session() as session:
+            deployment = session.get(DeploymentModel, deployment_id)
+            if deployment is None:
+                return None
+            if deployment.enrollment_state != "active":
+                raise ValueError("Can only revoke active deployments")
+            now = self._now()
+            deployment.enrollment_state = "revoked"
+            deployment.revoked_at = now
+            deployment.credential_hash = None
+            deployment.credential_prefix = None
+            deployment.updated_at = now
+            session.commit()
+            session.refresh(deployment)
+            return self._to_record(deployment)
+
+    def unlink_deployment(self, deployment_id: str) -> DeploymentRecord | None:
+        with self._session() as session:
+            deployment = session.get(DeploymentModel, deployment_id)
+            if deployment is None:
+                return None
+            if deployment.enrollment_state != "active":
+                raise ValueError("Can only unlink active deployments")
+            now = self._now()
+            deployment.enrollment_state = "unlinked"
+            deployment.unlinked_at = now
+            deployment.credential_hash = None
+            deployment.credential_prefix = None
+            deployment.updated_at = now
+            session.commit()
+            session.refresh(deployment)
+            return self._to_record(deployment)
+
     def list_deployments(self) -> list[DeploymentRecord]:
         with self._session() as session:
             rows = session.scalars(
