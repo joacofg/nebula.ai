@@ -51,9 +51,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 07-01: Build hosted registration and deployment claim workflows
-- [ ] 07-02: Embed outbound-only linking, credential exchange, and local identity storage
-- [ ] 07-03: Harden revoke, unlink, and relink lifecycle behavior
+- [ ] 07-01-PLAN.md — Hosted registration: DB schema, enrollment service, admin API for slot creation and token generation
+- [ ] 07-02-PLAN.md — Outbound linking: enrollment exchange endpoint, gateway startup hook, local identity storage
+- [ ] 07-03-PLAN.md — Lifecycle management: revoke, unlink, relink endpoints and console deployment UI
 
 ### Phase 8: Fleet Inventory and Freshness Visibility
 **Goal**: Operators can use the hosted plane for honest fleet visibility without confusing hosted freshness with local runtime authority.
