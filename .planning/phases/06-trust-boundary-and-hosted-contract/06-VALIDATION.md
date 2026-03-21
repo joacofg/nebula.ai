@@ -39,8 +39,11 @@ created: 2026-03-21
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------|-------------------|-------------|--------|
 | 06-01-01 | 01 | 1 | TRST-02 | unit | `pytest tests/test_hosted_contract.py -x` | ❌ W0 | ⬜ pending |
-| 06-02-01 | 02 | 1 | TRST-01 | unit | `npm --prefix console run test -- --run trust-boundary-card` | ❌ W0 | ⬜ pending |
-| 06-03-01 | 03 | 2 | TRST-01 | e2e | `npm --prefix console run e2e -- trust-boundary.spec.ts` | ❌ W0 | ⬜ pending |
+| 06-01-02 | 01 | 1 | TRST-02 | unit | `pytest tests/test_hosted_contract.py -x` | ❌ W0 | ⬜ pending |
+| 06-02-01 | 02 | 2 | TRST-01 | unit | `npm --prefix console run test -- --run trust-boundary-card` | ❌ W0 | ⬜ pending |
+| 06-02-02 | 02 | 2 | TRST-01 | unit + e2e | `npm --prefix console run test -- --run trust-boundary-page && npm --prefix console run e2e -- trust-boundary.spec.ts` | ❌ W0 | ⬜ pending |
+| 06-03-01 | 03 | 2 | TRST-01, TRST-02 | grep | `rg -n "optional hosted control plane|not in the request-serving path|Local runtime enforcement remains authoritative|raw usage-ledger rows|Outbound-only hosted linking" README.md docs/architecture.md docs/self-hosting.md` | ✅ Existing docs | ⬜ pending |
+| 06-03-02 | 03 | 2 | TRST-01, TRST-02 | grep | `rg -n "recommended for pilots|metadata-only|authoritative runtime policy state|Do not improvise a hosted onboarding story" docs/demo-script.md docs/pilot-checklist.md` | ✅ Existing docs | ⬜ pending |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
