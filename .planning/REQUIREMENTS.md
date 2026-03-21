@@ -27,7 +27,7 @@
 ### Trust Boundary and Pilot Proof
 
 - [ ] **TRST-01**: Hosted control plane clearly distinguishes hosted metadata from self-hosted runtime-enforced state in the product UI and architecture narrative.
-- [ ] **TRST-02**: Security model states exactly what data leaves the self-hosted environment by default and excludes raw prompts, responses, provider credentials, and authoritative runtime policy state.
+- [x] **TRST-02**: Security model states exactly what data leaves the self-hosted environment by default and excludes raw prompts, responses, provider credentials, and authoritative runtime policy state.
 - [ ] **TRST-03**: Docs and demo materials explain hybrid deployment onboarding, trust boundaries, remote-management safety limits, and hosted-control-plane outage behavior for pilot conversations.
 
 ## Future Requirements
@@ -69,7 +69,7 @@
 | RMGT-02 | Phase 9 | Pending |
 | RMGT-03 | Phase 9 | Pending |
 | TRST-01 | Phase 6 | Pending |
-| TRST-02 | Phase 6 | Pending |
+| TRST-02 | Phase 6 | Complete |
 | TRST-03 | Phase 10 | Pending |
 
 **Coverage:**
