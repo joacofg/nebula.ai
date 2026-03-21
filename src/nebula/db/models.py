@@ -60,6 +60,38 @@ class ApiKeyModel(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class DeploymentModel(Base):
+    __tablename__ = "deployments"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    environment: Mapped[str] = mapped_column(String(64), nullable=False)
+    enrollment_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    nebula_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    capability_flags_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    credential_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    credential_prefix: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    enrolled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EnrollmentTokenModel(Base):
+    __tablename__ = "enrollment_tokens"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    deployment_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    token_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class UsageLedgerModel(Base):
     __tablename__ = "usage_ledger"
 
