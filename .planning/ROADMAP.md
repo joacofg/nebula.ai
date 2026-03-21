@@ -18,7 +18,7 @@ Nebula v2.0 validates an optional hosted control plane layered onto the shipped 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [ ] **Phase 6: Trust Boundary and Hosted Contract** - Freeze the hybrid boundary, exported metadata rules, and hosted-visible control-plane semantics.
-- [ ] **Phase 7: Deployment Enrollment and Identity** - Give each self-hosted deployment a durable hosted identity with outbound-only linking and clean lifecycle controls.
+- [x] **Phase 7: Deployment Enrollment and Identity** - Give each self-hosted deployment a durable hosted identity with outbound-only linking and clean lifecycle controls. (completed 2026-03-21)
 - [ ] **Phase 8: Fleet Inventory and Freshness Visibility** - Show honest deployment inventory, freshness, and compatibility state in the hosted plane.
 - [ ] **Phase 9: Audited Remote Management** - Prove one narrow remote-management workflow with pull-based execution, local authorization, and audit history.
 - [ ] **Phase 10: Pilot Proof and Failure-Safe Operations** - Validate outage-safe behavior and ship the pilot-ready docs and demo story.
@@ -53,7 +53,7 @@ Plans:
 Plans:
 - [x] 07-01-PLAN.md — Hosted registration: DB schema, enrollment service, admin API for slot creation and token generation
 - [x] 07-02-PLAN.md — Outbound linking: enrollment exchange endpoint, gateway startup hook, local identity storage
-- [ ] 07-03-PLAN.md — Lifecycle management: revoke, unlink, relink endpoints and console deployment UI
+- [x] 07-03-PLAN.md — Lifecycle management: revoke, unlink, relink endpoints and console deployment UI
 
 ### Phase 8: Fleet Inventory and Freshness Visibility
 **Goal**: Operators can use the hosted plane for honest fleet visibility without confusing hosted freshness with local runtime authority.
@@ -109,7 +109,7 @@ Plans:
 | 4. Governance Hardening | v1.0 | 3/3 | Complete | 2026-03-17 |
 | 5. Product Proof & Delivery | v1.0 | 3/3 | Complete | 2026-03-17 |
 | 6. Trust Boundary and Hosted Contract | v2.0 | 0/3 | Not started | - |
-| 7. Deployment Enrollment and Identity | v2.0 | 2/3 | In Progress|  |
+| 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 0/3 | Not started | - |
 | 9. Audited Remote Management | v2.0 | 0/3 | Not started | - |
 | 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |

@@ -9,7 +9,7 @@
 
 - [x] **ENRL-01**: Operator can register a self-hosted Nebula deployment with the hosted control plane without manual database edits.
 - [x] **ENRL-02**: A self-hosted gateway can complete an explicit outbound-only linking flow using short-lived enrollment credentials and durable deployment-scoped credentials for steady-state communication.
-- [ ] **ENRL-03**: Operator can revoke, unlink, or relink a deployment without leaving duplicate or ghost active records in the hosted inventory.
+- [x] **ENRL-03**: Operator can revoke, unlink, or relink a deployment without leaving duplicate or ghost active records in the hosted inventory.
 
 ### Fleet Inventory and Status
 
@@ -60,7 +60,7 @@
 |-------------|-------|--------|
 | ENRL-01 | Phase 7 | Complete |
 | ENRL-02 | Phase 7 | Complete |
-| ENRL-03 | Phase 7 | Pending |
+| ENRL-03 | Phase 7 | Complete |
 | INVT-01 | Phase 8 | Pending |
 | INVT-02 | Phase 8 | Pending |
 | INVT-03 | Phase 10 | Pending |
