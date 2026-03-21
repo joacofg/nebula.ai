@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Phase 7 UI-SPEC approved
-last_updated: "2026-03-21T16:33:22.536Z"
+stopped_at: Completed 07-01-PLAN.md
+last_updated: "2026-03-21T23:03:58.097Z"
 progress:
   total_phases: 5
   completed_phases: 1
-  total_plans: 3
-  completed_plans: 3
+  total_plans: 6
+  completed_plans: 4
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
-**Current focus:** Phase 06 — trust-boundary-and-hosted-contract
+**Current focus:** Phase 07 — deployment-enrollment-and-identity
 
 ## Current Position
 
-Phase: 7
-Plan: Not started
+Phase: 07 (deployment-enrollment-and-identity) — EXECUTING
+Plan: 2 of 3
 
 ## Performance Metrics
 
@@ -49,6 +49,7 @@ Plan: Not started
 | Phase 06 P01 | 2min | 2 tasks | 4 files |
 | Phase 06 P03 | 2min | 2 tasks | 5 files |
 | Phase 06 P02 | 3min | 2 tasks | 8 files |
+| Phase 07 P01 | 8 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,9 @@ Recent decisions affecting current work:
 - [Phase 06]: JSON schema artifact committed to docs/ for downstream consumers without Python dependency
 - [Phase 06]: All trust boundary prose points back to hosted-default-export.schema.json as single source of truth
 - [Phase 06]: Schema-backed UI content module reads hosted-default-export.schema.json directly with fail-fast parity checks
+- [Phase 07]: EnrollmentService gets its own session_factory instance, mirroring GovernanceStore pattern
+- [Phase 07]: Token prefix stores first 12 chars of raw token for human-readable identification
+- [Phase 07]: generate_enrollment_token raises KeyError for missing deployments and ValueError for active state
 
 ### Pending Todos
 
@@ -76,6 +80,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-21T16:33:22.534Z
-Stopped at: Phase 7 UI-SPEC approved
-Resume file: .planning/phases/07-deployment-enrollment-and-identity/07-UI-SPEC.md
+Last session: 2026-03-21T23:03:58.095Z
+Stopped at: Completed 07-01-PLAN.md
+Resume file: None
