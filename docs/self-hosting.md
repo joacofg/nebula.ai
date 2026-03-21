@@ -110,6 +110,14 @@ This topology is designed for product proof and pilot evaluation:
 - A `degraded` dependency state can still be acceptable when optional services such as Qdrant or local Ollama are unavailable.
 - Estimated premium cost in benchmark artifacts is based on `benchmarks/pricing.json`, not provider invoice reconciliation.
 
+## Outbound-only hosted linking
+
+Nebula can optionally link a self-hosted deployment to a hosted control plane. Any such linking is outbound-only: the self-hosted gateway initiates connections to the hosted plane, not the other way around. Hosted linking is optional for self-hosted deployments and does not affect the gateway's ability to serve traffic.
+
+The data sent during hosted linking is limited by the same metadata-only default export contract defined in [`docs/hosted-default-export.schema.json`](hosted-default-export.schema.json). That contract explicitly excludes raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state.
+
+Richer diagnostics beyond the default export are operator-initiated exceptions, not automatic behavior. See [architecture.md](architecture.md) for the full trust-boundary narrative.
+
 ## Related docs
 
 - [README](../README.md)
