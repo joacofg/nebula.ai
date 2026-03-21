@@ -1,16 +1,40 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from nebula.api.dependencies import require_admin
 from nebula.core.container import ServiceContainer
 from nebula.models.deployment import (
     DeploymentCreateRequest,
     DeploymentRecord,
+    EnrollmentExchangeRequest,
+    EnrollmentExchangeResponse,
     EnrollmentTokenResponse,
 )
 
 router = APIRouter(prefix="/admin/deployments", tags=["deployments"])
+
+# Separate router for gateway-facing enrollment exchange (no auth required)
+exchange_router = APIRouter(prefix="/enrollment", tags=["enrollment"])
+
+
+@exchange_router.post("/exchange", response_model=EnrollmentExchangeResponse)
+async def enrollment_exchange(
+    request: Request,
+    body: EnrollmentExchangeRequest,
+) -> EnrollmentExchangeResponse:
+    container = request.app.state.container
+    result = container.enrollment_service.consume_enrollment_token(
+        raw_token=body.enrollment_token,
+        nebula_version=body.nebula_version,
+        capability_flags=body.capability_flags,
+    )
+    if result is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid, expired, or already-consumed enrollment token",
+        )
+    return result
 
 
 @router.post("/", response_model=DeploymentRecord, status_code=status.HTTP_201_CREATED)

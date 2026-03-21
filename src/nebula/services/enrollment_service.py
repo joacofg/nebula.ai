@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from nebula.core.config import Settings
 from nebula.db.models import DeploymentModel, EnrollmentTokenModel
-from nebula.models.deployment import DeploymentRecord, EnrollmentTokenResponse
+from nebula.models.deployment import (
+    DeploymentRecord,
+    EnrollmentExchangeResponse,
+    EnrollmentTokenResponse,
+)
 
 
 class EnrollmentService:
@@ -79,6 +83,60 @@ class EnrollmentService:
             expires_at=expires_at.isoformat(),
             deployment_id=deployment_id,
         )
+
+    def consume_enrollment_token(
+        self,
+        raw_token: str,
+        nebula_version: str,
+        capability_flags: list[str],
+    ) -> EnrollmentExchangeResponse | None:
+        token_hash = self._hash_token(raw_token)
+        now = self._now()
+        with self._session() as session:
+            # Pessimistic lock to prevent concurrent double-consumption
+            token_row = session.scalars(
+                select(EnrollmentTokenModel)
+                .where(
+                    EnrollmentTokenModel.token_hash == token_hash,
+                    EnrollmentTokenModel.consumed_at.is_(None),
+                    EnrollmentTokenModel.expires_at > now,
+                )
+                .with_for_update()
+            ).first()
+
+            if token_row is None:
+                return None
+
+            # Generate steady-state deployment credential
+            raw_credential = f"nbdc_{secrets.token_urlsafe(32)}"
+            cred_hash = hashlib.sha256(raw_credential.encode("utf-8")).hexdigest()
+            cred_prefix = raw_credential[:12]
+
+            # Update deployment to active
+            deployment = session.get(DeploymentModel, token_row.deployment_id)
+            if deployment is None:
+                return None
+
+            deployment.enrollment_state = "active"
+            deployment.credential_hash = cred_hash
+            deployment.credential_prefix = cred_prefix
+            deployment.enrolled_at = now
+            deployment.nebula_version = nebula_version
+            deployment.capability_flags_json = capability_flags
+            deployment.updated_at = now
+
+            # Mark token as consumed
+            token_row.consumed_at = now
+
+            session.commit()
+            session.refresh(deployment)
+
+            return EnrollmentExchangeResponse(
+                deployment_id=deployment.id,
+                deployment_credential=raw_credential,
+                display_name=deployment.display_name,
+                environment=deployment.environment,
+            )
 
     def list_deployments(self) -> list[DeploymentRecord]:
         with self._session() as session:
