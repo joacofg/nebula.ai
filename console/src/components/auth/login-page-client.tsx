@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect } from "react";
-import { ArrowRight, LockKeyhole, ServerCrash } from "lucide-react";
+import { ArrowRight, LockKeyhole, ServerCrash, ShieldCheck } from "lucide-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import { AdminLoginForm } from "@/components/auth/admin-login-form";
@@ -58,7 +59,17 @@ export function LoginPageClient() {
           </div>
         </section>
 
-        <AdminLoginForm reason={searchParams.get("reason")} />
+        <div className="flex flex-col gap-6">
+          <AdminLoginForm reason={searchParams.get("reason")} />
+
+          <Link
+            href="/trust-boundary"
+            className="inline-flex items-center gap-2 self-center text-sm font-medium text-slate-500 transition hover:text-sky-700"
+          >
+            <ShieldCheck className="h-4 w-4" />
+            Review hosted trust boundary
+          </Link>
+        </div>
       </div>
     </main>
   );
