@@ -20,6 +20,18 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     container = ServiceContainer(settings=settings)
     await container.initialize()
+    if settings.enrollment_token:
+        try:
+            await container.gateway_enrollment_service.attempt_enrollment(
+                settings.enrollment_token
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error(
+                "Enrollment startup hook failed unexpectedly: %s. "
+                "Gateway will start without hosted features.",
+                exc,
+            )
     app.state.container = container
     try:
         yield {"settings": settings}

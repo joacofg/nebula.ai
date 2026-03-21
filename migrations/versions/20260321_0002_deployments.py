@@ -67,7 +67,20 @@ def upgrade() -> None:
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         )
 
+    if "local_hosted_identity" not in tables:
+        op.create_table(
+            "local_hosted_identity",
+            sa.Column("deployment_id", sa.String(255), primary_key=True),
+            sa.Column("display_name", sa.String(255), nullable=False),
+            sa.Column("environment", sa.String(64), nullable=False),
+            sa.Column("credential_hash", sa.String(64), nullable=False),
+            sa.Column("credential_prefix", sa.String(16), nullable=False),
+            sa.Column("enrolled_at", sa.DateTime(timezone=True), nullable=False),
+            sa.Column("unlinked_at", sa.DateTime(timezone=True), nullable=True),
+        )
+
 
 def downgrade() -> None:
+    op.drop_table("local_hosted_identity")
     op.drop_table("enrollment_tokens")
     op.drop_table("deployments")

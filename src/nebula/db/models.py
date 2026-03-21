@@ -92,6 +92,18 @@ class EnrollmentTokenModel(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class LocalHostedIdentityModel(Base):
+    __tablename__ = "local_hosted_identity"
+
+    deployment_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    environment: Mapped[str] = mapped_column(String(64), nullable=False)
+    credential_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    credential_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class UsageLedgerModel(Base):
     __tablename__ = "usage_ledger"
 
