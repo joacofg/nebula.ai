@@ -9,6 +9,7 @@ from nebula.providers.openai_compatible import OpenAICompatibleProvider
 from nebula.services.auth_service import AuthService
 from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import OllamaEmbeddingsService
+from nebula.services.enrollment_service import EnrollmentService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
@@ -24,6 +25,10 @@ class ServiceContainer:
         pricing_path = Path(__file__).resolve().parents[3] / "benchmarks" / "pricing.json"
         self.pricing_catalog = PricingCatalog.from_path(pricing_path)
         self.governance_store = GovernanceStore(
+            settings=settings,
+            session_factory=create_session_factory(settings),
+        )
+        self.enrollment_service = EnrollmentService(
             settings=settings,
             session_factory=create_session_factory(settings),
         )
