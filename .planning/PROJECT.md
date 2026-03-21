@@ -15,6 +15,7 @@ Reduce cost per successful LLM request while preserving reliability, control, an
 - **Primary workflows shipped:** deployment, admin auth, tenant/API-key/policy management, Playground, Observability, benchmark proof, docs/demo package
 - **Codebase snapshot:** Python/FastAPI gateway, Next.js console, PostgreSQL-ready governance persistence, Qdrant semantic cache, Ollama local provider path, premium-provider routing, benchmark/report tooling
 - **Closeout status:** Milestone audit passed with all remaining approvals accepted during closeout
+- **Phase 06 complete:** Trust boundary contract frozen — backend model, public console route, docs narrative aligned
 
 ## Requirements
 
@@ -32,10 +33,10 @@ Reduce cost per successful LLM request while preserving reliability, control, an
 ### Active
 
 - [ ] Hosted control plane can register and identify self-hosted Nebula deployments without manual database edits
-- [ ] Hybrid trust boundary is explicit between hosted metadata/control surfaces and locally enforced runtime behavior
+- [x] Hybrid trust boundary is explicit between hosted metadata/control surfaces and locally enforced runtime behavior — Phase 06
 - [ ] Operators can see deployment health, status, and version in a hosted plane without weakening self-hosted serving reliability
 - [ ] Nebula offers at least one safe remote-management flow that is credible for pilot conversations
-- [ ] Docs and demo narrative explain why the hybrid model exists, what remains self-hosted, and how trust boundaries work
+- [x] Docs and demo narrative explain why the hybrid model exists, what remains self-hosted, and how trust boundaries work — Phase 06
 
 ### Out of Scope
 
@@ -84,4 +85,4 @@ The best near-term fit is still startup and scale-up teams that need infrastruct
 | v2.0 will validate a hybrid hosted-control-plane direction rather than jump to full SaaS | Tests whether hosted management improves onboarding and pilot credibility without weakening self-hosted trust | — Pending |
 
 ---
-*Last updated: 2026-03-18 after starting the v2.0 milestone*
+*Last updated: 2026-03-21 after completing Phase 06 Trust Boundary and Hosted Contract*
