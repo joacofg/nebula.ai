@@ -30,6 +30,13 @@ Use this checklist before a pilot review, academic walkthrough, or live demo. It
 - [ ] Be ready to point from Playground to the recorded ledger evidence for the same request
 - [ ] Be ready to show Observability and explain that degraded optional dependencies do not block gateway readiness
 
+## Trust boundary prep
+
+- [ ] Be ready to say: Nebula is self-hosted with an optional hosted control plane
+- [ ] Be ready to say: the hosted plane is not in the request-serving path and default export is metadata-only
+- [ ] Know the excluded-by-default list exactly: raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state
+- [ ] Do not improvise hosted enrollment, inventory, or remote management steps that are not yet shipped
+
 ## Walkthrough order
 
 - [ ] Establish the operator surface briefly
