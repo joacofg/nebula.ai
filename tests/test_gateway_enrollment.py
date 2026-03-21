@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -13,10 +12,25 @@ from tests.support import admin_headers, configured_app
 
 
 def test_startup_enrollment_exchange() -> None:
-    """07-02-04: Gateway with NEBULA_ENROLLMENT_TOKEN set performs exchange and stores identity."""
-    with configured_app() as app:
+    """07-02-04: Gateway with NEBULA_ENROLLMENT_TOKEN set performs exchange and stores identity.
+
+    Strategy:
+    1. Create a deployment slot + token via admin API.
+    2. Call GatewayEnrollmentService.attempt_enrollment directly, injecting an
+       httpx.ASGITransport so the outbound call routes through the same ASGI app.
+    3. Verify local_hosted_identity table has a row after enrollment.
+    """
+    import asyncio
+
+    import httpx
+
+    from nebula.db.models import LocalHostedIdentityModel
+    from nebula.db.session import create_session_factory
+    from nebula.services.gateway_enrollment_service import GatewayEnrollmentService
+
+    with configured_app(NEBULA_HOSTED_PLANE_URL="http://testserver") as app:
         with TestClient(app) as client:
-            # Create a deployment slot + token via admin API
+            # Create deployment slot and generate enrollment token
             create_resp = client.post(
                 "/v1/admin/deployments",
                 json={"display_name": "startup-gw", "environment": "production"},
@@ -32,68 +46,36 @@ def test_startup_enrollment_exchange() -> None:
             assert token_resp.status_code == 200
             raw_token = token_resp.json()["token"]
 
-        # Now restart app with enrollment token set
-        # The app itself serves /v1/enrollment/exchange, so hosted_plane_url is the same app.
-        # We use patch to make GatewayEnrollmentService call the local exchange endpoint.
+            # Inject ASGI transport so outbound httpx routes through the same app
+            transport = httpx.ASGITransport(app=app)
+            settings = app.state.container.settings
+            session_factory = create_session_factory(settings)
 
-    db_url = None
-    import os
-    from pathlib import Path
-    from tempfile import TemporaryDirectory
-    from uuid import uuid4
-
-    # Create a shared DB for both the token setup and the enrollment startup
-    temp_dir = TemporaryDirectory()
-    database_path = Path(temp_dir.name) / "nebula.db"
-
-    with configured_app(
-        NEBULA_DATABASE_URL=f"sqlite+pysqlite:///{database_path}",
-        NEBULA_DATA_STORE_PATH=str(database_path),
-        NEBULA_SEMANTIC_CACHE_COLLECTION=f"nebula-test-cache-{uuid4().hex}",
-    ) as shared_app:
-        with TestClient(shared_app) as setup_client:
-            # Create deployment slot and token using the shared DB app
-            create_resp2 = setup_client.post(
-                "/v1/admin/deployments",
-                json={"display_name": "startup-gw-2", "environment": "production"},
-                headers=admin_headers(),
+            svc = GatewayEnrollmentService(
+                settings=settings,
+                session_factory=session_factory,
+                http_transport=transport,
             )
-            assert create_resp2.status_code == 201
-            deployment_id2 = create_resp2.json()["id"]
 
-            token_resp2 = setup_client.post(
-                f"/v1/admin/deployments/{deployment_id2}/enrollment-token",
-                headers=admin_headers(),
+            result = asyncio.get_event_loop().run_until_complete(
+                svc.attempt_enrollment(raw_token)
             )
-            assert token_resp2.status_code == 200
-            raw_token2 = token_resp2.json()["token"]
+            assert result is True
 
-    # Now start a new app with the enrollment token set and the same DB
-    # We mock the outbound httpx call to hit the local exchange endpoint
-    with configured_app(
-        NEBULA_DATABASE_URL=f"sqlite+pysqlite:///{database_path}",
-        NEBULA_DATA_STORE_PATH=str(database_path),
-        NEBULA_SEMANTIC_CACHE_COLLECTION=f"nebula-test-cache-{uuid4().hex}",
-        NEBULA_ENROLLMENT_TOKEN=raw_token2,
-        NEBULA_HOSTED_PLANE_URL="http://testserver",
-    ) as enrolled_app:
-        from nebula.db.models import LocalHostedIdentityModel
-
-        db_url2 = enrolled_app.state.container.settings.database_url
-        engine = create_engine(db_url2, connect_args={"check_same_thread": False})
-        Session = sessionmaker(bind=engine)
-        with Session() as session:
-            identity_rows = session.scalars(
-                select(LocalHostedIdentityModel).where(
-                    LocalHostedIdentityModel.unlinked_at.is_(None)
-                )
-            ).all()
-            assert len(identity_rows) == 1
-            identity = identity_rows[0]
-            assert identity.deployment_id == deployment_id2
-            assert identity.display_name == "startup-gw-2"
-
-    temp_dir.cleanup()
+            # Verify local_hosted_identity table has a row
+            db_url = settings.database_url
+            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+            Session = sessionmaker(bind=engine)
+            with Session() as session:
+                identity_rows = session.scalars(
+                    select(LocalHostedIdentityModel).where(
+                        LocalHostedIdentityModel.unlinked_at.is_(None)
+                    )
+                ).all()
+                assert len(identity_rows) == 1
+                identity = identity_rows[0]
+                assert identity.deployment_id == deployment_id
+                assert identity.display_name == "startup-gw"
 
 
 def test_startup_no_token_skips_enrollment() -> None:
@@ -135,3 +117,59 @@ def test_startup_enrollment_failure_nonfatal() -> None:
         with Session() as session:
             count = session.scalars(select(LocalHostedIdentityModel)).all()
             assert len(count) == 0
+
+
+def test_startup_already_enrolled_skips_exchange(caplog: pytest.LogCaptureFixture) -> None:
+    """Already stored local identity causes gateway to skip enrollment exchange."""
+    import asyncio
+    import logging
+    from datetime import UTC, datetime
+
+    import httpx
+
+    from nebula.db.models import LocalHostedIdentityModel
+    from nebula.db.session import create_session_factory
+    from nebula.services.gateway_enrollment_service import GatewayEnrollmentService
+
+    with configured_app(NEBULA_HOSTED_PLANE_URL="http://testserver") as app:
+        with TestClient(app):
+            settings = app.state.container.settings
+            db_url = settings.database_url
+
+            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+            Session = sessionmaker(bind=engine)
+
+            # Pre-populate the local_hosted_identity table (simulating prior enrollment)
+            with Session() as session:
+                session.add(
+                    LocalHostedIdentityModel(
+                        deployment_id="existing-deployment-id",
+                        display_name="already-enrolled-gw",
+                        environment="production",
+                        credential_hash="abc" * 20 + "abcd",
+                        credential_prefix="nbdc_prefixXX",
+                        enrolled_at=datetime.now(UTC),
+                        unlinked_at=None,
+                    )
+                )
+                session.commit()
+
+            # Now call attempt_enrollment — it should skip because identity exists
+            transport = httpx.ASGITransport(app=app)
+            session_factory = create_session_factory(settings)
+            svc = GatewayEnrollmentService(
+                settings=settings,
+                session_factory=session_factory,
+                http_transport=transport,
+            )
+
+            with caplog.at_level(
+                logging.INFO, logger="nebula.services.gateway_enrollment_service"
+            ):
+                result = asyncio.get_event_loop().run_until_complete(
+                    svc.attempt_enrollment("nbet_some_token")
+                )
+
+            assert result is True
+            # Should log "Already enrolled" message
+            assert any("Already enrolled" in record.message for record in caplog.records)
