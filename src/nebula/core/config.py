@@ -53,6 +53,8 @@ class Settings(BaseSettings):
         default="nebula-dev-key",
         alias="NEBULA_BOOTSTRAP_API_KEY",
     )
+    enrollment_token: str | None = Field(default=None, alias="NEBULA_ENROLLMENT_TOKEN")
+    hosted_plane_url: str | None = Field(default=None, alias="NEBULA_HOSTED_PLANE_URL")
 
     @model_validator(mode="after")
     def validate_premium_provider_settings(self) -> "Settings":
