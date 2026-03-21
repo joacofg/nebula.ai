@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 Plans:
 - [x] 06-01-PLAN.md — Freeze the hosted/local contract and exported metadata schema
-- [ ] 06-02-PLAN.md — Define trust-boundary language, failure semantics, and disclosure surfaces
+- [x] 06-02-PLAN.md — Define trust-boundary language, failure semantics, and disclosure surfaces
 - [x] 06-03-PLAN.md — Publish the hosted UI and architecture narrative for the boundary
 
 ### Phase 7: Deployment Enrollment and Identity
