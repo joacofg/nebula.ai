@@ -66,9 +66,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01: Ingest heartbeat, freshness, and capability metadata from linked deployments
-- [ ] 08-02: Build hosted inventory and deployment detail views
-- [ ] 08-03: Surface reasoned freshness and compatibility failure-closed behavior
+- [ ] 08-01-PLAN.md — Hosted heartbeat ingest: models, DB migration, ingest service, freshness calculation, endpoint, and TypeScript types
+- [ ] 08-02-PLAN.md — Gateway heartbeat sender: credential storage fix, background task, lifespan wiring, backend tests
+- [ ] 08-03-PLAN.md — Frontend fleet inventory UI: FreshnessBadge, DependencyHealthPills, extended table and drawer
 
 ### Phase 9: Audited Remote Management
 **Goal**: The hosted plane proves limited management value through one safe remote action that is pulled outbound and enforced locally.
