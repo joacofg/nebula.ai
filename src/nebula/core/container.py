@@ -11,6 +11,7 @@ from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.enrollment_service import EnrollmentService
 from nebula.services.gateway_enrollment_service import GatewayEnrollmentService
+from nebula.services.heartbeat_ingest_service import HeartbeatIngestService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
@@ -35,6 +36,9 @@ class ServiceContainer:
         )
         self.gateway_enrollment_service = GatewayEnrollmentService(
             settings=settings,
+            session_factory=create_session_factory(settings),
+        )
+        self.heartbeat_ingest_service = HeartbeatIngestService(
             session_factory=create_session_factory(settings),
         )
         self.auth_service = AuthService(settings, self.governance_store)
