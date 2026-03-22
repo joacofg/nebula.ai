@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-02-PLAN.md
-last_updated: "2026-03-22T23:21:47.069Z"
+stopped_at: Completed 08-03-PLAN.md
+last_updated: "2026-03-22T23:31:50.158Z"
 progress:
   total_phases: 5
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 9
-  completed_plans: 8
+  completed_plans: 9
 ---
 
 # Project State
@@ -54,6 +54,7 @@ Plan: 3 of 3
 | Phase 07 P03 | 6 | 2 tasks | 13 files |
 | Phase 08 P01 | 134 | 2 tasks | 10 files |
 | Phase 08 P02 | 12 | 2 tasks | 9 files |
+| Phase 08 P03 | 12 | 3 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -82,6 +83,9 @@ Recent decisions affecting current work:
 - [Phase 08]: HeartbeatService.start() called unconditionally in lifespan; _send_once silently skips when not enrolled
 - [Phase 08]: credential_raw stored with server_default='' so existing rows survive migration without re-enrollment
 - [Phase 08]: compute_freshness normalises naive datetimes from SQLite to UTC-aware before comparison
+- [Phase 08]: FreshnessBadge and DeploymentStatusBadge share identical base class for visual consistency
+- [Phase 08]: Enrollment state moves from table column to detail drawer identity section per D-11
+- [Phase 08]: Row opacity dimming uses opacity-75 for stale and opacity-60 for offline (not hidden)
 
 ### Pending Todos
 
@@ -94,6 +98,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T23:21:47.067Z
-Stopped at: Completed 08-02-PLAN.md
+Last session: 2026-03-22T23:31:50.156Z
+Stopped at: Completed 08-03-PLAN.md
 Resume file: None
