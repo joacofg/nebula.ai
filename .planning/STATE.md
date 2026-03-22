@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-stopped_at: Completed 08-01-PLAN.md
-last_updated: "2026-03-22T23:15:08.535Z"
+stopped_at: Completed 08-02-PLAN.md
+last_updated: "2026-03-22T23:21:47.069Z"
 progress:
   total_phases: 5
   completed_phases: 2
   total_plans: 9
-  completed_plans: 7
+  completed_plans: 8
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 08 (fleet-inventory-and-freshness-visibility) — EXECUTING
-Plan: 2 of 3
+Plan: 3 of 3
 
 ## Performance Metrics
 
@@ -53,6 +53,7 @@ Plan: 2 of 3
 | Phase 07 P02 | 6 | 2 tasks | 9 files |
 | Phase 07 P03 | 6 | 2 tasks | 13 files |
 | Phase 08 P01 | 134 | 2 tasks | 10 files |
+| Phase 08 P02 | 12 | 2 tasks | 9 files |
 
 ## Accumulated Context
 
@@ -78,6 +79,9 @@ Recent decisions affecting current work:
 - [Phase 08]: Freshness is str | None in DeploymentRecord; None for pending deployments per D-14
 - [Phase 08]: HeartbeatRequest omits freshness_status: hosted plane computes freshness from last_seen_at not gateway self-report (D-07)
 - [Phase 08]: record_heartbeat returns bool not raises — 401 is expected operational case not an error
+- [Phase 08]: HeartbeatService.start() called unconditionally in lifespan; _send_once silently skips when not enrolled
+- [Phase 08]: credential_raw stored with server_default='' so existing rows survive migration without re-enrollment
+- [Phase 08]: compute_freshness normalises naive datetimes from SQLite to UTC-aware before comparison
 
 ### Pending Todos
 
@@ -90,6 +94,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-22T23:15:08.533Z
-Stopped at: Completed 08-01-PLAN.md
+Last session: 2026-03-22T23:21:47.067Z
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
