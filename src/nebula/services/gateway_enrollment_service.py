@@ -91,10 +91,7 @@ class GatewayEnrollmentService:
                     "Remove it — the token has been consumed and is no longer needed."
                 )
 
-            # First heartbeat stub (actual implementation in Phase 8)
-            logger.info(
-                "Sending first heartbeat (stub — Phase 8 delivers actual heartbeat implementation)"
-            )
+            # Heartbeat sender started in lifespan, not here
 
             return True
 
@@ -118,6 +115,13 @@ class GatewayEnrollmentService:
                 exc,
             )
             return False
+
+    def get_deployment_credential(self) -> str | None:
+        """Return the raw deployment credential for heartbeat auth, or None if not enrolled."""
+        identity = self.get_local_identity()
+        if identity is None:
+            return None
+        return identity.credential_raw if identity.credential_raw else None
 
     def get_local_identity(self) -> LocalHostedIdentityModel | None:
         """Return the current active local hosted identity, or None if not enrolled."""
@@ -155,6 +159,7 @@ class GatewayEnrollmentService:
                 environment=exchange.environment,
                 credential_hash=cred_hash,
                 credential_prefix=cred_prefix,
+                credential_raw=exchange.deployment_credential,  # needed for heartbeat auth
                 enrolled_at=now,
                 unlinked_at=None,
             )

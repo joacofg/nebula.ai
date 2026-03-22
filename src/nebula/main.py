@@ -34,6 +34,8 @@ async def lifespan(app: FastAPI):
                 exc,
             )
     app.state.container = container
+    # Start heartbeat sender AFTER enrollment check (D-04)
+    container.heartbeat_service.start()
     try:
         yield {"settings": settings}
     finally:
