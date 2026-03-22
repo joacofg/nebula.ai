@@ -1,18 +1,12 @@
 import type { DeploymentRecord } from "@/lib/admin-api";
-import { DeploymentStatusBadge } from "@/components/deployments/deployment-status-badge";
+import { FreshnessBadge } from "@/components/deployments/freshness-badge";
+import { formatRelativeTime } from "@/lib/freshness";
 
 type DeploymentTableProps = {
   deployments: DeploymentRecord[];
   selectedDeploymentId: string | null;
   onSelectDeployment: (deployment: DeploymentRecord) => void;
 };
-
-const dateFormatter = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
 
 const ENV_LABELS: Record<string, string> = {
   production: "Production",
@@ -46,19 +40,27 @@ export function DeploymentTable({
             <tr>
               <th className="border-b border-border px-4 py-3">Name</th>
               <th className="border-b border-border px-4 py-3">Environment</th>
-              <th className="border-b border-border px-4 py-3">Status</th>
-              <th className="border-b border-border px-4 py-3">Enrolled</th>
+              <th className="border-b border-border px-4 py-3">Freshness</th>
+              <th className="border-b border-border px-4 py-3">Version</th>
+              <th className="border-b border-border px-4 py-3">Last Seen</th>
             </tr>
           </thead>
           <tbody>
             {deployments.map((deployment) => {
               const selected = deployment.id === selectedDeploymentId;
+              const dimmed =
+                deployment.freshness_status === "stale"
+                  ? "opacity-75"
+                  : deployment.freshness_status === "offline"
+                    ? "opacity-60"
+                    : "";
               return (
                 <tr
                   key={deployment.id}
                   className={[
-                    "cursor-pointer transition hover:bg-slate-50",
+                    "cursor-pointer transition-colors duration-150 hover:bg-slate-50",
                     selected ? "bg-sky-50" : "",
+                    dimmed,
                   ].join(" ")}
                   onClick={() => onSelectDeployment(deployment)}
                 >
@@ -72,12 +74,15 @@ export function DeploymentTable({
                     {ENV_LABELS[deployment.environment] ?? deployment.environment}
                   </td>
                   <td className="border-b border-border/70 px-4 py-4">
-                    <DeploymentStatusBadge state={deployment.enrollment_state} />
+                    <FreshnessBadge status={deployment.freshness_status} />
+                  </td>
+                  <td className="border-b border-border/70 px-4 py-4">
+                    <span className="font-[var(--font-fira-code)] text-xs text-slate-600">
+                      {deployment.nebula_version ?? "\u2014"}
+                    </span>
                   </td>
                   <td className="border-b border-border/70 px-4 py-4 text-slate-500">
-                    {deployment.enrolled_at
-                      ? dateFormatter.format(new Date(deployment.enrolled_at))
-                      : "—"}
+                    {formatRelativeTime(deployment.last_seen_at)}
                   </td>
                 </tr>
               );
