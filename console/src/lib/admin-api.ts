@@ -164,6 +164,14 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
 export type DeploymentEnvironment = "production" | "staging" | "development";
 export type EnrollmentState = "pending" | "active" | "revoked" | "unlinked";
 
+export type FreshnessStatus = "connected" | "degraded" | "stale" | "offline";
+
+export type DependencySummary = {
+  healthy: string[];
+  degraded: string[];
+  unavailable: string[];
+};
+
 export type DeploymentRecord = {
   id: string;
   display_name: string;
@@ -176,6 +184,10 @@ export type DeploymentRecord = {
   unlinked_at: string | null;
   created_at: string;
   updated_at: string;
+  last_seen_at: string | null;
+  freshness_status: FreshnessStatus | null;
+  freshness_reason: string | null;
+  dependency_summary: DependencySummary | null;
 };
 
 export type DeploymentCreateInput = {
