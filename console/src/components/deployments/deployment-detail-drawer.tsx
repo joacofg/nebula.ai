@@ -4,6 +4,10 @@ import { LoaderCircle, PanelRightOpen } from "lucide-react";
 
 import type { DeploymentRecord } from "@/lib/admin-api";
 import { DeploymentStatusBadge } from "@/components/deployments/deployment-status-badge";
+import { FreshnessBadge } from "@/components/deployments/freshness-badge";
+import { DependencyHealthPills } from "@/components/deployments/dependency-health-pills";
+import { TrustBoundaryCard } from "@/components/hosted/trust-boundary-card";
+import { formatRelativeTime } from "@/lib/freshness";
 
 type DeploymentDetailDrawerProps = {
   deployment: DeploymentRecord;
@@ -47,6 +51,7 @@ export function DeploymentDetailDrawer({
 
   return (
     <aside className="panel h-full min-h-[32rem] px-5 py-5">
+      {/* Header */}
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
@@ -55,9 +60,6 @@ export function DeploymentDetailDrawer({
           <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
             {deployment.display_name}
           </h3>
-          <div className="mt-2">
-            <DeploymentStatusBadge state={deployment.enrollment_state} />
-          </div>
         </div>
         <button type="button" className="secondary-button gap-2 px-3 py-2" onClick={onClose}>
           <PanelRightOpen className="h-4 w-4" />
@@ -65,7 +67,24 @@ export function DeploymentDetailDrawer({
         </button>
       </div>
 
-      <div className="mt-6 space-y-4">
+      {/* Freshness section */}
+      <div className="mt-6 space-y-2">
+        <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Freshness
+        </div>
+        <FreshnessBadge status={deployment.freshness_status} />
+        {deployment.freshness_reason ? (
+          <div className="text-sm text-slate-600">{deployment.freshness_reason}</div>
+        ) : null}
+        {deployment.last_seen_at ? (
+          <div className="font-[var(--font-fira-code)] text-xs text-slate-400">
+            {dateFormatter.format(new Date(deployment.last_seen_at))}
+          </div>
+        ) : null}
+      </div>
+
+      {/* Identity section */}
+      <div className="mt-6 border-t border-border/50 pt-4 space-y-4">
         <Field label="Deployment ID">
           <span className="font-[var(--font-fira-code)] text-xs text-slate-700">
             {deployment.id}
@@ -97,6 +116,11 @@ export function DeploymentDetailDrawer({
           </Field>
         ) : null}
 
+        {/* Enrollment state moved from table to drawer per D-11 */}
+        <Field label="Enrollment state">
+          <DeploymentStatusBadge state={deployment.enrollment_state} />
+        </Field>
+
         {deployment.enrolled_at ? (
           <Field label="Enrolled at">
             {dateFormatter.format(new Date(deployment.enrolled_at))}
@@ -108,7 +132,21 @@ export function DeploymentDetailDrawer({
         </Field>
       </div>
 
-      <div className="mt-6 space-y-2">
+      {/* Dependencies section */}
+      <div className="mt-6 border-t border-border/50 pt-4">
+        <div className="mb-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+          Dependencies
+        </div>
+        <DependencyHealthPills summary={deployment.dependency_summary} />
+      </div>
+
+      {/* Trust-boundary disclosure card */}
+      <div className="mt-6 border-t border-border/50 pt-4">
+        <TrustBoundaryCard />
+      </div>
+
+      {/* Lifecycle actions */}
+      <div className="mt-6 border-t border-border/50 pt-4 space-y-2">
         {isActive ? (
           <div className="flex flex-wrap gap-2">
             <button
