@@ -66,7 +66,7 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Hosted heartbeat ingest: models, DB migration, ingest service, freshness calculation, endpoint, and TypeScript types
+- [x] 08-01-PLAN.md — Hosted heartbeat ingest: models, DB migration, ingest service, freshness calculation, endpoint, and TypeScript types
 - [ ] 08-02-PLAN.md — Gateway heartbeat sender: credential storage fix, background task, lifespan wiring, backend tests
 - [ ] 08-03-PLAN.md — Frontend fleet inventory UI: FreshnessBadge, DependencyHealthPills, extended table and drawer
 
@@ -110,6 +110,6 @@ Plans:
 | 5. Product Proof & Delivery | v1.0 | 3/3 | Complete | 2026-03-17 |
 | 6. Trust Boundary and Hosted Contract | v2.0 | 0/3 | Not started | - |
 | 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
-| 8. Fleet Inventory and Freshness Visibility | v2.0 | 0/3 | Not started | - |
+| 8. Fleet Inventory and Freshness Visibility | v2.0 | 1/3 | In Progress|  |
 | 9. Audited Remote Management | v2.0 | 0/3 | Not started | - |
 | 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |
