@@ -102,6 +102,7 @@ class LocalHostedIdentityModel(Base):
     environment: Mapped[str] = mapped_column(String(64), nullable=False)
     credential_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     credential_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    credential_raw: Mapped[str] = mapped_column(String(255), nullable=False, default="")
     enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
