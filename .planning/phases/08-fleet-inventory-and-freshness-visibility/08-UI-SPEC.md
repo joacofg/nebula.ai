@@ -37,12 +37,12 @@ Declared values (must be multiples of 4):
 | xs | 4px | Icon gaps, inline pill gaps, dot-to-label gap in dependency pills |
 | sm | 8px | Compact element spacing, badge internal padding (`px-2 py-1`) |
 | md | 16px | Default element spacing, section `space-y-4`, table cell padding (`px-4 py-4`) |
-| lg | 24px | Drawer section spacing (`mt-6`), panel internal padding (`px-5 py-5`) |
+| lg | 24px | Drawer section spacing (`mt-6 pt-4`) |
 | xl | 32px | Major section separation within detail drawer |
 | 2xl | 48px | Page-level vertical rhythm between fleet table and controls |
 | 3xl | 64px | Page-level spacing (not used in this phase) |
 
-Exceptions: Touch targets for action buttons — minimum 40px height enforced via `py-2.5` (10px top + 10px bottom + 14px line height = ~34px minimum, acceptable for desktop operator tool). Drawer close button uses `px-3 py-2` (compact secondary action pattern from existing codebase).
+Exceptions: Touch targets for action buttons — minimum height enforced via `py-3` (12px top + 12px bottom + 14px line height = ~38px, nearest grid-aligned value to the 40px goal). Drawer close button uses `px-3 py-2` (compact secondary action pattern from existing codebase). Drawer panel padding uses `px-5 py-5` (20px) — inherited from existing `deployment-detail-drawer.tsx` Phase 7 pattern, preserved to avoid visual regression.
 
 **Source:** Existing `deployment-table.tsx` and `deployment-detail-drawer.tsx` establish the `px-4 py-4` table cell rhythm and `px-5 py-5` drawer padding pattern. This phase extends rather than overrides.
 
@@ -56,6 +56,8 @@ Exceptions: Touch targets for action buttons — minimum 40px height enforced vi
 | Label / field label | 12px (text-xs) | 600 (semibold) | 1.0 (single line) |
 | Section heading | 12px uppercase tracked (text-xs uppercase tracking-[0.22em]) | 600 (semibold) | 1.0 |
 | Deployment name | 20px (text-xl) | 600 (semibold) | 1.2 |
+
+**12px constraint:** 12px at weight 600 (semibold) for all label and heading uses. 12px at weight 400 (regular) is permitted only for monospace data values (version strings, timestamps, dependency names) where font-family distinction (`font-fira-code` vs `font-fira-sans`) provides visual separation from 14px body copy.
 
 **Source:** Detected directly from `deployment-detail-drawer.tsx` and `deployment-table.tsx`. The `text-xs font-semibold uppercase tracking-[0.22em]` pattern is the established "section label" style across the console. Fira Sans body at 14px is the console standard.
 
@@ -112,7 +114,7 @@ Accent reserved for: primary CTA buttons ("Generate token" / "Register deploymen
 - Props: `summary: HostedDependencySummary | null`
 - Renders a single inline row of pills: `[• PostgreSQL] [• Qdrant] [• Ollama]`
 - Each pill: colored dot (4px circle, `rounded-full w-2 h-2 flex-shrink-0`) + dependency name at 12px
-- Pill container: `inline-flex items-center gap-1.5 rounded-md bg-slate-100 px-2 py-0.5`
+- Pill container: `inline-flex items-center gap-2 rounded-md bg-slate-100 px-2 py-1`
 - All three pills in a `flex flex-wrap gap-2` wrapper
 - When `summary` is null: render nothing (pending deployments have no dependency data)
 - Accessibility: dependency name text provides the meaning; dot color supplements only
@@ -153,7 +155,7 @@ New layout (per D-12):
    - Deployment ID (unchanged)
    - Environment (unchanged)
    - Nebula version — already present, keep as-is
-   - **Capability flags** (already present as chips) — keep existing chip style: `rounded-md bg-slate-100 px-2 py-0.5 font-[var(--font-fira-code)] text-xs text-slate-600`
+   - **Capability flags** (already present as chips) — keep existing chip style: `rounded-md bg-slate-100 px-2 py-1 font-[var(--font-fira-code)] text-xs text-slate-600`
    - Enrolled at (unchanged)
    - Created at (unchanged)
    - **Enrollment state** (NEW field added here — moved from table per D-11): renders `<DeploymentStatusBadge />`
@@ -248,12 +250,16 @@ Note: Phase 9 is where remote action buttons first appear. Phase 8 establishes t
 ### Fleet Table Layout
 
 ```
-[Page header: "Deployments" + "Register deployment" button]
+[Page header]
+  [Left: "Deployments" page heading — dominant visual anchor (text-2xl font-semibold)]
+  [Right: "Register deployment" CTA button — secondary element, accent color]
 [Fleet table panel]
   thead: Name | Environment | Freshness | Version | Last Seen
   tbody: one <tr> per deployment, clickable
 [Detail drawer: right panel, appears when row selected]
 ```
+
+The page heading ("Deployments") is the dominant visual anchor — largest text on the page at 20px semibold. The "Register deployment" CTA is a secondary element positioned in the header row at the same vertical level but visually subordinate: smaller, right-aligned, accent-colored button. Operators scan the heading first to confirm page context, then locate the CTA when they need to act.
 
 Table is a full-width `<table>` inside a `.panel` container with `overflow-x-auto` wrapper (unchanged from existing pattern).
 
