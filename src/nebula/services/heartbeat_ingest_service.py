@@ -21,6 +21,9 @@ def compute_freshness(last_seen_at: datetime | None) -> tuple[str | None, str | 
     if last_seen_at is None:
         return None, None
     now = datetime.now(UTC)
+    # Normalise to aware UTC — SQLite may return naive datetimes stored as UTC
+    if last_seen_at.tzinfo is None:
+        last_seen_at = last_seen_at.replace(tzinfo=UTC)
     delta = max(now - last_seen_at, timedelta(0))  # Clamp for clock skew
     if delta <= CONNECTED_WINDOW:
         return "connected", f"Last heartbeat {_human_delta(delta)} ago"
