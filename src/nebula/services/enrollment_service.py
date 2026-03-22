@@ -15,6 +15,7 @@ from nebula.models.deployment import (
     EnrollmentExchangeResponse,
     EnrollmentTokenResponse,
 )
+from nebula.services.heartbeat_ingest_service import compute_freshness
 
 
 class EnrollmentService:
@@ -188,6 +189,8 @@ class EnrollmentService:
         def _iso(dt: datetime | None) -> str | None:
             return dt.isoformat() if dt is not None else None
 
+        freshness_status, freshness_reason = compute_freshness(model.last_seen_at)
+
         return DeploymentRecord(
             id=model.id,
             display_name=model.display_name,
@@ -200,6 +203,10 @@ class EnrollmentService:
             unlinked_at=_iso(model.unlinked_at),
             created_at=model.created_at.isoformat(),
             updated_at=model.updated_at.isoformat(),
+            last_seen_at=_iso(model.last_seen_at),
+            freshness_status=freshness_status,
+            freshness_reason=freshness_reason,
+            dependency_summary=model.dependency_summary_json,
         )
 
     def _hash_token(self, raw_token: str) -> str:

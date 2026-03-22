@@ -25,6 +25,10 @@ class DeploymentRecord(BaseModel):
     unlinked_at: str | None
     created_at: str
     updated_at: str
+    last_seen_at: str | None = None
+    freshness_status: str | None = None  # FreshnessStatus or None for pending (per D-14)
+    freshness_reason: str | None = None
+    dependency_summary: dict[str, list[str]] | None = None
 
 
 class EnrollmentTokenResponse(BaseModel):
