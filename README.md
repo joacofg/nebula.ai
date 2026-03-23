@@ -39,6 +39,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 - [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
 - [Production model](docs/production-model.md): canonical operating-model reference for tenant, policy, API key, operator, and app/workload guidance
+- [Adoption API contract](docs/adoption-api-contract.md): the only canonical public compatibility boundary for `POST /v1/chat/completions`
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
 - [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing

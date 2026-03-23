@@ -168,3 +168,4 @@ Use this mental model when adopting Nebula:
 - [`docs/quickstart.md`](quickstart.md) — supported happy path from env setup to first public request
 - [`docs/adoption-api-contract.md`](adoption-api-contract.md) — canonical public request/response contract
 - [`docs/self-hosting.md`](self-hosting.md) — canonical deployment runbook
+- [`docs/architecture.md`](architecture.md) — request flow, runtime components, trust boundary, and benchmark context

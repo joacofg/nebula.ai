@@ -229,3 +229,4 @@ Once the first request works:
 - [`docs/production-model.md`](production-model.md) — operating-model reference for tenant, API key, operator, app, and workload boundaries
 - [`docs/adoption-api-contract.md`](adoption-api-contract.md) — canonical public API contract
 - [`docs/self-hosting.md`](self-hosting.md) — supported Compose deployment runbook
+- [`docs/architecture.md`](architecture.md) — request flow, runtime components, trust boundary, and operator surfaces

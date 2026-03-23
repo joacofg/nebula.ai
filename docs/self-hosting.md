@@ -134,6 +134,9 @@ Richer diagnostics beyond the default export are operator-initiated exceptions, 
 ## Related docs
 
 - [README](../README.md)
+- [Quickstart](quickstart.md)
+- [Production model](production-model.md)
+- [Adoption API contract](adoption-api-contract.md)
 - [Architecture](architecture.md)
 - [Evaluation](evaluation.md)
 - [Demo script](demo-script.md)
