@@ -22,6 +22,11 @@ from nebula.models.governance import (
     UsageLedgerRecord,
 )
 from nebula.models.openai import ChatCompletionRequest
+from nebula.models.deployment import RemoteActionQueueRequest, RemoteActionRecord
+from nebula.services.enrollment_service import (
+    DeploymentRemoteActionStateError,
+    RemoteActionValidationError,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -206,3 +211,51 @@ async def create_playground_completion(
         **completion_envelope.response.model_dump(),
         request_id=request_id,
     )
+
+
+@router.post(
+    "/deployments/{deployment_id}/remote-actions/rotate-credential",
+    response_model=RemoteActionRecord,
+    status_code=status.HTTP_201_CREATED,
+)
+async def queue_rotate_credential(
+    deployment_id: str,
+    payload: RemoteActionQueueRequest,
+    container: ServiceContainer = Depends(require_admin),
+) -> RemoteActionRecord:
+    try:
+        return container.enrollment_service.queue_rotate_deployment_credential(
+            deployment_id=deployment_id,
+            note=payload.note,
+        )
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Deployment not found."
+        )
+    except DeploymentRemoteActionStateError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+    except RemoteActionValidationError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(exc),
+        )
+
+
+@router.get(
+    "/deployments/{deployment_id}/remote-actions",
+    response_model=list[RemoteActionRecord],
+)
+async def list_remote_actions(
+    deployment_id: str,
+    limit: int = Query(default=10, ge=1, le=100),
+    container: ServiceContainer = Depends(require_admin),
+) -> list[RemoteActionRecord]:
+    try:
+        return container.enrollment_service.list_remote_actions(
+            deployment_id=deployment_id,
+            limit=limit,
+        )
+    except KeyError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Deployment not found."
+        )

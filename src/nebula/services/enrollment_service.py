@@ -9,13 +9,22 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from nebula.core.config import Settings
-from nebula.db.models import DeploymentModel, EnrollmentTokenModel
+from nebula.db.models import DeploymentModel, DeploymentRemoteActionModel, EnrollmentTokenModel
 from nebula.models.deployment import (
     DeploymentRecord,
     EnrollmentExchangeResponse,
     EnrollmentTokenResponse,
+    RemoteActionRecord,
 )
 from nebula.services.heartbeat_ingest_service import compute_freshness
+
+
+class DeploymentRemoteActionStateError(ValueError):
+    pass
+
+
+class RemoteActionValidationError(ValueError):
+    pass
 
 
 class EnrollmentService:
@@ -185,6 +194,71 @@ class EnrollmentService:
             row = session.get(DeploymentModel, deployment_id)
             return self._to_record(row) if row else None
 
+    def queue_rotate_deployment_credential(self, deployment_id: str, note: str) -> RemoteActionRecord:
+        normalized_note = note.strip()
+        if not 1 <= len(normalized_note) <= 280:
+            raise RemoteActionValidationError(
+                "Remote action note must be between 1 and 280 characters."
+            )
+
+        with self._session() as session:
+            deployment = session.get(DeploymentModel, deployment_id)
+            if deployment is None:
+                raise KeyError(f"Deployment not found: {deployment_id}")
+            if deployment.enrollment_state != "active":
+                raise DeploymentRemoteActionStateError(
+                    "Deployment is not in an active linked state."
+                )
+
+            existing = session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(
+                    DeploymentRemoteActionModel.deployment_id == deployment_id,
+                    DeploymentRemoteActionModel.action_type == "rotate_deployment_credential",
+                    DeploymentRemoteActionModel.status.in_(("queued", "in_progress")),
+                )
+                .order_by(DeploymentRemoteActionModel.requested_at.desc())
+                .with_for_update()
+            ).first()
+            if existing is not None:
+                return self._to_remote_action_record(existing)
+
+            now = self._now()
+            action = DeploymentRemoteActionModel(
+                id=str(uuid4()),
+                deployment_id=deployment_id,
+                action_type="rotate_deployment_credential",
+                status="queued",
+                note=normalized_note,
+                requested_at=now,
+                expires_at=now + timedelta(minutes=15),
+                started_at=None,
+                finished_at=None,
+                failure_reason=None,
+                failure_detail=None,
+                result_credential_prefix=None,
+                created_at=now,
+                updated_at=now,
+            )
+            session.add(action)
+            session.commit()
+            session.refresh(action)
+            return self._to_remote_action_record(action)
+
+    def list_remote_actions(self, deployment_id: str, limit: int = 10) -> list[RemoteActionRecord]:
+        with self._session() as session:
+            deployment = session.get(DeploymentModel, deployment_id)
+            if deployment is None:
+                raise KeyError(f"Deployment not found: {deployment_id}")
+
+            rows = session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(DeploymentRemoteActionModel.deployment_id == deployment_id)
+                .order_by(DeploymentRemoteActionModel.requested_at.desc())
+                .limit(limit)
+            ).all()
+            return [self._to_remote_action_record(row) for row in rows]
+
     def _to_record(self, model: DeploymentModel) -> DeploymentRecord:
         def _iso(dt: datetime | None) -> str | None:
             return dt.isoformat() if dt is not None else None
@@ -207,6 +281,27 @@ class EnrollmentService:
             freshness_status=freshness_status,
             freshness_reason=freshness_reason,
             dependency_summary=model.dependency_summary_json,
+        )
+
+    def _to_remote_action_record(
+        self, model: DeploymentRemoteActionModel
+    ) -> RemoteActionRecord:
+        def _iso(dt: datetime | None) -> str | None:
+            return dt.isoformat() if dt is not None else None
+
+        return RemoteActionRecord(
+            id=model.id,
+            deployment_id=model.deployment_id,
+            action_type=model.action_type,  # type: ignore[arg-type]
+            status=model.status,  # type: ignore[arg-type]
+            note=model.note,
+            requested_at=model.requested_at.isoformat(),
+            expires_at=model.expires_at.isoformat(),
+            started_at=_iso(model.started_at),
+            finished_at=_iso(model.finished_at),
+            failure_reason=model.failure_reason,  # type: ignore[arg-type]
+            failure_detail=model.failure_detail,
+            result_credential_prefix=model.result_credential_prefix,
         )
 
     def _hash_token(self, raw_token: str) -> str:
