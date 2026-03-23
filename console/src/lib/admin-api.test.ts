@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPlaygroundCompletion } from "@/lib/admin-api";
+import {
+  createPlaygroundCompletion,
+  listRemoteActions,
+  queueRotateDeploymentCredential,
+} from "@/lib/admin-api";
 
 describe("admin-api playground completion", () => {
   afterEach(() => {
@@ -46,5 +50,97 @@ describe("admin-api playground completion", () => {
       policyMode: "auto",
       policyOutcome: "allowed",
     });
+  });
+});
+
+describe("admin-api remote actions", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("posts the operator note when queueing a hosted credential rotation", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          id: "action-1",
+          deployment_id: "dep-1",
+          action_type: "rotate_deployment_credential",
+          status: "queued",
+          note: "Rotate after review",
+          requested_at: "2026-03-22T12:00:00Z",
+          expires_at: "2026-03-22T12:15:00Z",
+          started_at: null,
+          finished_at: null,
+          failure_reason: null,
+          failure_detail: null,
+          result_credential_prefix: null,
+        }),
+        { status: 201, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(
+      queueRotateDeploymentCredential("nebula-admin-key", "dep-1", "Rotate after review"),
+    ).resolves.toMatchObject({
+      id: "action-1",
+      note: "Rotate after review",
+      status: "queued",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/deployments/dep-1/remote-actions/rotate-credential",
+      expect.objectContaining({
+        method: "POST",
+        headers: expect.objectContaining({
+          "Content-Type": "application/json",
+          "X-Nebula-Admin-Key": "nebula-admin-key",
+        }),
+        body: JSON.stringify({ note: "Rotate after review" }),
+      }),
+    );
+  });
+
+  it("loads recent remote action history for a deployment", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(
+        JSON.stringify([
+          {
+            id: "action-2",
+            deployment_id: "dep-1",
+            action_type: "rotate_deployment_credential",
+            status: "applied",
+            note: "Rotated cleanly",
+            requested_at: "2026-03-22T12:00:00Z",
+            expires_at: "2026-03-22T12:15:00Z",
+            started_at: "2026-03-22T12:01:00Z",
+            finished_at: "2026-03-22T12:02:00Z",
+            failure_reason: null,
+            failure_detail: null,
+            result_credential_prefix: "nbdc_abcd1234",
+          },
+        ]),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(listRemoteActions("nebula-admin-key", "dep-1")).resolves.toMatchObject([
+      {
+        id: "action-2",
+        status: "applied",
+        result_credential_prefix: "nbdc_abcd1234",
+      },
+    ]);
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/deployments/dep-1/remote-actions",
+      expect.objectContaining({
+        method: "GET",
+        headers: expect.objectContaining({
+          "X-Nebula-Admin-Key": "nebula-admin-key",
+        }),
+      }),
+    );
   });
 });

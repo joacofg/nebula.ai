@@ -77,6 +77,26 @@ Open Observability and show:
 
 Use this moment to explain fallback or degraded behavior deliberately rather than treating it as an exception.
 
+### 5. Explain the hosted control plane story
+
+After showing the operator product, briefly explain the hosted control plane positioning:
+
+- Nebula is self-hosted with an optional hosted control plane.
+- The hosted control plane is recommended for pilots because it improves onboarding and fleet visibility.
+- The hosted plane is not in the request-serving path.
+- Default export is metadata-only. Raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state are excluded by default.
+
+Keep this section short and factual. The goal is to establish the trust boundary narrative, not to preview future features.
+
+### 6. Hosted pilot proof
+
+- Show the public trust-boundary page first.
+- Explain the outbound-only enrollment flow with short-lived token plus deployment-scoped credential.
+- Show hosted deployment freshness as visibility only, not runtime authority.
+- Mention the one audited `rotate_deployment_credential` action and say it never changes tenant policy or provider credentials.
+- State exactly `If the hosted plane disappears, the gateway keeps serving and the hosted view simply ages toward stale or offline.`
+- State exactly `The hosted plane is metadata-and-intent only; local runtime policy and request serving remain authoritative inside the self-hosted gateway.`
+
 ## What to emphasize
 
 - Nebula is not hiding premium use; it is making the tradeoff measurable
@@ -87,7 +107,7 @@ Use this moment to explain fallback or degraded behavior deliberately rather tha
 ## What not to claim
 
 - do not describe estimated premium cost as invoice-accurate billing
-- do not imply a hosted control plane or enterprise packaging that the repo does not ship
+- do not imply hosted powers beyond outbound-only enrollment, fleet visibility, and the audited `rotate_deployment_credential` action
 - do not present local development commands as a second supported deployment path
 
 ## Related docs
