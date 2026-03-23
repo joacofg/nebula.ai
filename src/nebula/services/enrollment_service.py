@@ -17,7 +17,9 @@ from nebula.models.deployment import (
     RemoteActionCompletionRequest,
     RemoteActionCompletionResponse,
     RemoteActionRecord,
+    RemoteActionSummary,
 )
+from nebula.models.hosted_contract import HostedRemoteActionSummary
 from nebula.services.heartbeat_ingest_service import compute_freshness
 
 
@@ -186,15 +188,17 @@ class EnrollmentService:
 
     def list_deployments(self) -> list[DeploymentRecord]:
         with self._session() as session:
+            self._expire_remote_actions(self._now(), session=session)
             rows = session.scalars(
                 select(DeploymentModel).order_by(DeploymentModel.created_at.desc())
             ).all()
-            return [self._to_record(row) for row in rows]
+            return [self._to_record(row, session=session) for row in rows]
 
     def get_deployment(self, deployment_id: str) -> DeploymentRecord | None:
         with self._session() as session:
+            self._expire_remote_actions(self._now(), session=session)
             row = session.get(DeploymentModel, deployment_id)
-            return self._to_record(row) if row else None
+            return self._to_record(row, session=session) if row else None
 
     def queue_rotate_deployment_credential(self, deployment_id: str, note: str) -> RemoteActionRecord:
         normalized_note = note.strip()
@@ -204,6 +208,8 @@ class EnrollmentService:
             )
 
         with self._session() as session:
+            now = self._now()
+            self._expire_remote_actions(now, session=session)
             deployment = session.get(DeploymentModel, deployment_id)
             if deployment is None:
                 raise KeyError(f"Deployment not found: {deployment_id}")
@@ -225,7 +231,6 @@ class EnrollmentService:
             if existing is not None:
                 return self._to_remote_action_record(existing)
 
-            now = self._now()
             action = DeploymentRemoteActionModel(
                 id=str(uuid4()),
                 deployment_id=deployment_id,
@@ -249,6 +254,7 @@ class EnrollmentService:
 
     def list_remote_actions(self, deployment_id: str, limit: int = 10) -> list[RemoteActionRecord]:
         with self._session() as session:
+            self._expire_remote_actions(self._now(), session=session)
             deployment = session.get(DeploymentModel, deployment_id)
             if deployment is None:
                 raise KeyError(f"Deployment not found: {deployment_id}")
@@ -264,6 +270,7 @@ class EnrollmentService:
     def claim_next_remote_action(self, raw_credential: str) -> RemoteActionRecord | None:
         now = self._now()
         with self._session() as session:
+            self._expire_remote_actions(now, session=session)
             deployment = self._get_active_deployment_for_credential(session, raw_credential)
             if deployment is None:
                 return None
@@ -279,17 +286,6 @@ class EnrollmentService:
             ).all()
 
             for action in queued_actions:
-                expires_at = action.expires_at
-                if expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=UTC)
-                if expires_at <= now:
-                    action.status = "failed"
-                    action.finished_at = now
-                    action.failure_reason = "expired"
-                    action.failure_detail = "Remote action expired before the deployment claimed it."
-                    action.updated_at = now
-                    continue
-
                 action.status = "in_progress"
                 action.started_at = now
                 action.updated_at = now
@@ -366,11 +362,12 @@ class EnrollmentService:
         with self._session() as session:
             return self._get_active_deployment_for_credential(session, raw_credential) is not None
 
-    def _to_record(self, model: DeploymentModel) -> DeploymentRecord:
+    def _to_record(self, model: DeploymentModel, session: Session | None = None) -> DeploymentRecord:
         def _iso(dt: datetime | None) -> str | None:
             return dt.isoformat() if dt is not None else None
 
         freshness_status, freshness_reason = compute_freshness(model.last_seen_at)
+        remote_action_summary = self._build_remote_action_summary(model.id, session=session)
 
         return DeploymentRecord(
             id=model.id,
@@ -388,6 +385,12 @@ class EnrollmentService:
             freshness_status=freshness_status,
             freshness_reason=freshness_reason,
             dependency_summary=model.dependency_summary_json,
+            remote_action_summary=RemoteActionSummary(
+                queued=remote_action_summary.queued,
+                applied=remote_action_summary.applied,
+                failed=remote_action_summary.failed,
+                last_action_at=_iso(remote_action_summary.last_action_at),
+            ),
         )
 
     def _to_remote_action_record(
@@ -413,6 +416,60 @@ class EnrollmentService:
 
     def _hash_token(self, raw_token: str) -> str:
         return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+    def _expire_remote_actions(self, now: datetime, session: Session | None = None) -> None:
+        owns_session = session is None
+        current_session = session or self._session()
+        try:
+            rows = current_session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(
+                    DeploymentRemoteActionModel.status.in_(("queued", "in_progress")),
+                    DeploymentRemoteActionModel.expires_at <= now,
+                )
+                .with_for_update()
+            ).all()
+            for row in rows:
+                row.status = "failed"
+                row.failure_reason = "expired"
+                row.failure_detail = "Remote action expired before completion."
+                row.finished_at = now
+                row.updated_at = now
+            if rows:
+                current_session.commit()
+        finally:
+            if owns_session:
+                current_session.close()
+
+    def _build_remote_action_summary(
+        self,
+        deployment_id: str,
+        session: Session | None = None,
+    ) -> HostedRemoteActionSummary:
+        owns_session = session is None
+        current_session = session or self._session()
+        try:
+            rows = current_session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(DeploymentRemoteActionModel.deployment_id == deployment_id)
+                .order_by(DeploymentRemoteActionModel.requested_at.desc())
+            ).all()
+
+            last_action_at: datetime | None = None
+            for row in rows:
+                candidate = row.finished_at or row.requested_at
+                if candidate is not None and (last_action_at is None or candidate > last_action_at):
+                    last_action_at = candidate
+
+            return HostedRemoteActionSummary(
+                queued=sum(1 for row in rows if row.status == "queued"),
+                applied=sum(1 for row in rows if row.status == "applied"),
+                failed=sum(1 for row in rows if row.status == "failed"),
+                last_action_at=last_action_at,
+            )
+        finally:
+            if owns_session:
+                current_session.close()
 
     def _get_active_deployment_for_credential(
         self,
