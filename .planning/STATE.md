@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-stopped_at: Completed 08-03-PLAN.md
-last_updated: "2026-03-22T23:35:48.041Z"
+status: in_progress
+stopped_at: Completed 09-audited-remote-management-01-PLAN.md
+last_updated: "2026-03-23T00:06:49.916Z"
 progress:
   total_phases: 5
   completed_phases: 3
-  total_plans: 9
-  completed_plans: 9
+  total_plans: 12
+  completed_plans: 10
 ---
 
 # Project State
@@ -19,12 +19,12 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
-**Current focus:** Phase 08 — fleet-inventory-and-freshness-visibility
+**Current focus:** Phase 09 — audited-remote-management
 
 ## Current Position
 
 Phase: 9
-Plan: Not started
+Plan: 02 next
 
 ## Performance Metrics
 
@@ -55,6 +55,7 @@ Plan: Not started
 | Phase 08 P01 | 134 | 2 tasks | 10 files |
 | Phase 08 P02 | 12 | 2 tasks | 9 files |
 | Phase 08 P03 | 12 | 3 tasks | 7 files |
+| Phase 09-audited-remote-management P01 | 4min | 2 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -86,6 +87,8 @@ Recent decisions affecting current work:
 - [Phase 08]: FreshnessBadge and DeploymentStatusBadge share identical base class for visual consistency
 - [Phase 08]: Enrollment state moves from table column to detail drawer identity section per D-11
 - [Phase 08]: Row opacity dimming uses opacity-75 for stale and opacity-60 for offline (not hidden)
+- [Phase 09]: Remote-action queue/history endpoints live on the admin router under /v1/admin/deployments so existing enrollment routes can stay in place.
+- [Phase 09]: The live-action uniqueness guard is a partial unique index limited to queued and in_progress rows, with sqlite and postgres predicates kept aligned.
 
 ### Pending Todos
 
@@ -93,11 +96,10 @@ None yet.
 
 ### Blockers/Concerns
 
-- The first remote-management action still needs a concrete product choice during Phase 9 planning.
 - Hosted authentication for the new fleet console still needs an implementation decision before execution.
 
 ## Session Continuity
 
-Last session: 2026-03-22T23:31:50.156Z
-Stopped at: Completed 08-03-PLAN.md
+Last session: 2026-03-23T00:06:49.914Z
+Stopped at: Completed 09-audited-remote-management-01-PLAN.md
 Resume file: None
