@@ -84,6 +84,12 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
                 },
             )
 
+    assert local_response.headers["X-Request-ID"]
+    assert premium_alias_denied_response.headers["X-Request-ID"]
+    assert cache_response.headers["X-Request-ID"]
+    assert cache_hit_response.headers["X-Request-ID"]
+    assert fallback_response.headers["X-Request-ID"]
+
     assert local_response.headers["X-Nebula-Route-Target"] == "local"
     assert local_response.headers["X-Nebula-Route-Reason"] == "explicit_local_model"
     assert local_response.headers["X-Nebula-Provider"] == "ollama"

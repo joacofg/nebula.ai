@@ -432,6 +432,12 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
 
     assert denied.status_code == 403
     assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.headers["X-Nebula-Route-Target"] == "premium"
+    assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert denied.headers["X-Nebula-Provider"] == "policy"
     assert ledger.status_code == 200
     assert ledger.json()[0]["request_id"] == request_id
-    assert ledger.json()[0]["policy_outcome"] == "Request exceeds the tenant premium spend guardrail."
+    assert ledger.json()[0]["final_route_target"] == denied.headers["X-Nebula-Route-Target"]
+    assert ledger.json()[0]["final_provider"] == denied.headers["X-Nebula-Provider"]
+    assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
+    assert ledger.json()[0]["policy_outcome"] == denied.json()["detail"]

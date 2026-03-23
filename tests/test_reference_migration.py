@@ -71,9 +71,31 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
                 f"/v1/admin/usage/ledger?request_id={request_id}",
                 headers=admin_headers(),
             )
+            playground = client.post(
+                "/v1/admin/playground/completions",
+                headers=admin_headers(),
+                json={
+                    "tenant_id": response.headers["X-Nebula-Tenant-ID"],
+                    "model": container.settings.premium_model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "Corroborate the routed result without changing the public proof boundary.",
+                        }
+                    ],
+                    "stream": False,
+                },
+            )
+            playground_request_id = playground.headers["X-Request-ID"]
+            playground_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={playground_request_id}",
+                headers=admin_headers(),
+            )
 
     body = response.json()
     ledger_body = ledger.json()
+    playground_body = playground.json()
+    playground_ledger_body = playground_ledger.json()
 
     assert response.status_code == 200
     assert body["object"] == "chat.completion"
@@ -88,23 +110,37 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
         "total_tokens": 18,
     }
 
-    assert request_id
-    assert response.headers["X-Nebula-Tenant-ID"] == "default"
-    assert response.headers["X-Nebula-Route-Target"] == "local"
-    assert response.headers["X-Nebula-Route-Reason"] == "simple_prompt"
-    assert response.headers["X-Nebula-Provider"] == "ollama"
-    assert response.headers["X-Nebula-Cache-Hit"] == "false"
-    assert response.headers["X-Nebula-Fallback-Used"] == "false"
-    assert response.headers["X-Nebula-Policy-Mode"] == "auto"
-    assert response.headers["X-Nebula-Policy-Outcome"] == "default"
+    public_evidence = {
+        "request_id": request_id,
+        "tenant_id": response.headers["X-Nebula-Tenant-ID"],
+        "route_target": response.headers["X-Nebula-Route-Target"],
+        "route_reason": response.headers["X-Nebula-Route-Reason"],
+        "provider": response.headers["X-Nebula-Provider"],
+        "cache_hit": response.headers["X-Nebula-Cache-Hit"],
+        "fallback_used": response.headers["X-Nebula-Fallback-Used"],
+        "policy_mode": response.headers["X-Nebula-Policy-Mode"],
+        "policy_outcome": response.headers["X-Nebula-Policy-Outcome"],
+    }
+
+    assert public_evidence == {
+        "request_id": request_id,
+        "tenant_id": "default",
+        "route_target": "local",
+        "route_reason": "simple_prompt",
+        "provider": "ollama",
+        "cache_hit": "false",
+        "fallback_used": "false",
+        "policy_mode": "auto",
+        "policy_outcome": "default",
+    }
 
     assert ledger.status_code == 200
     assert len(ledger_body) == 1
-    assert ledger_body[0]["request_id"] == request_id
-    assert ledger_body[0]["tenant_id"] == response.headers["X-Nebula-Tenant-ID"]
+    assert ledger_body[0]["request_id"] == public_evidence["request_id"]
+    assert ledger_body[0]["tenant_id"] == public_evidence["tenant_id"]
     assert ledger_body[0]["requested_model"] == MIGRATED_CHAT_COMPLETIONS_REQUEST["model"]
-    assert ledger_body[0]["final_route_target"] == response.headers["X-Nebula-Route-Target"]
-    assert ledger_body[0]["final_provider"] == response.headers["X-Nebula-Provider"]
+    assert ledger_body[0]["final_route_target"] == public_evidence["route_target"]
+    assert ledger_body[0]["final_provider"] == public_evidence["provider"]
     assert ledger_body[0]["fallback_used"] is False
     assert ledger_body[0]["cache_hit"] is False
     assert ledger_body[0]["response_model"] == body["model"]
@@ -112,8 +148,27 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
     assert ledger_body[0]["completion_tokens"] == body["usage"]["completion_tokens"]
     assert ledger_body[0]["total_tokens"] == body["usage"]["total_tokens"]
     assert ledger_body[0]["terminal_status"] == "completed"
-    assert ledger_body[0]["route_reason"] == response.headers["X-Nebula-Route-Reason"]
-    assert ledger_body[0]["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
+    assert ledger_body[0]["route_reason"] == public_evidence["route_reason"]
+    assert ledger_body[0]["policy_outcome"] == public_evidence["policy_outcome"]
+
+    assert playground.status_code == 200
+    assert playground_request_id
+    assert playground_request_id != request_id
+    assert playground_body["request_id"] == playground_request_id
+    assert playground.headers["X-Nebula-Tenant-ID"] == public_evidence["tenant_id"]
+    assert playground.headers["X-Nebula-Route-Target"] == "premium"
+    assert playground.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert playground.headers["X-Nebula-Provider"] == "mock-premium"
+    assert playground.headers["X-Nebula-Policy-Outcome"] == "default"
+
+    assert playground_ledger.status_code == 200
+    assert len(playground_ledger_body) == 1
+    assert playground_ledger_body[0]["request_id"] == playground_request_id
+    assert playground_ledger_body[0]["tenant_id"] == public_evidence["tenant_id"]
+    assert playground_ledger_body[0]["final_route_target"] == playground.headers["X-Nebula-Route-Target"]
+    assert playground_ledger_body[0]["final_provider"] == playground.headers["X-Nebula-Provider"]
+    assert playground_ledger_body[0]["route_reason"] == playground.headers["X-Nebula-Route-Reason"]
+    assert playground_ledger_body[0]["policy_outcome"] == playground.headers["X-Nebula-Policy-Outcome"]
 
 
 

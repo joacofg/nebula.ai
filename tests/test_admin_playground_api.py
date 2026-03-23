@@ -78,6 +78,7 @@ def test_admin_playground_completion() -> None:
     assert ledger_body[0]["route_reason"] == response.headers["X-Nebula-Route-Reason"]
     assert ledger_body[0]["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
     assert ledger_body[0]["terminal_status"] == "completed"
+    assert response.headers["X-Nebula-Route-Target"] != "local"
 
 
 def test_usage_ledger_request_id_filter() -> None:
@@ -180,6 +181,8 @@ def test_admin_playground_is_admin_only_and_not_public_auth_compatible() -> None
 
     assert response.status_code == 401
     assert response.json() == {"detail": "Missing or invalid admin API key."}
+    assert "X-Nebula-Tenant-ID" not in response.headers
+    assert "X-Nebula-Route-Target" not in response.headers
 
 
 def test_admin_playground_rejects_streaming_even_for_admin_requests() -> None:

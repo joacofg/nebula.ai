@@ -39,6 +39,7 @@ def test_chat_completions_returns_openai_like_payload() -> None:
     assert body["object"] == "chat.completion"
     assert body["choices"][0]["message"]["role"] == "assistant"
     assert body["model"] == "llama3.2:3b"
+    assert response.headers["X-Request-ID"]
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "local"
     assert response.headers["X-Nebula-Provider"] == "ollama"
