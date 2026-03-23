@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class ChatMessage(BaseModel):
@@ -24,6 +24,12 @@ class ChatCompletionRequest(BaseModel):
     frequency_penalty: float | None = Field(default=0.0, ge=-2.0, le=2.0)
     user: str | None = None
     metadata: dict[str, Any] | None = None
+
+    @model_validator(mode="after")
+    def validate_at_least_one_user_message(self) -> ChatCompletionRequest:
+        if not any(message.role == "user" for message in self.messages):
+            raise ValueError("At least one user message is required.")
+        return self
 
 
 class ChatCompletionResponseMessage(BaseModel):

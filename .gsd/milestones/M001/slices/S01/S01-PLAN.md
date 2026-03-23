@@ -18,6 +18,7 @@
 ## Verification
 
 - `pytest tests/test_chat_completions.py tests/test_response_headers.py tests/test_admin_playground_api.py -q`
+- `pytest tests/test_chat_completions.py -k "stream or user or auth" -q`
 - `test -f docs/adoption-api-contract.md && grep -c "^## " docs/adoption-api-contract.md | awk '{exit !($1 >= 6)}' && ! rg -n "TBD|TODO" docs/adoption-api-contract.md`
 - `rg -n "adoption-api-contract|POST /v1/chat/completions|X-Nebula-API-Key|unsupported|deferred" README.md docs/architecture.md docs/adoption-api-contract.md`
 
@@ -36,7 +37,7 @@
 
 ## Tasks
 
-- [ ] **T01: Harden contract tests around the public adoption boundary** `est:1h`
+- [x] **T01: Harden contract tests around the public adoption boundary** `est:1h`
   - Why: Downstream slices need the live contract pinned down in executable tests before docs can safely promise anything.
   - Files: `tests/test_chat_completions.py`, `tests/test_response_headers.py`, `tests/test_admin_playground_api.py`, `src/nebula/models/openai.py`, `src/nebula/api/routes/chat.py`, `src/nebula/services/auth_service.py`
   - Do: Add or tighten focused tests for the public `POST /v1/chat/completions` contract, especially auth-header expectations, required user-message boundary, streaming/header semantics, and the fact that admin Playground is a different non-streaming contract; make only minimal implementation changes needed to keep tests and runtime behavior aligned with the intended narrow boundary.

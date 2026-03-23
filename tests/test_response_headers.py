@@ -48,7 +48,7 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
                     "messages": [{"role": "user", "content": "header-local"}],
                 },
             )
-            premium_response = client.post(
+            premium_alias_denied_response = client.post(
                 "/v1/chat/completions",
                 headers=auth_headers(),
                 json={
@@ -56,13 +56,21 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
                     "messages": [{"role": "user", "content": "header-premium"}],
                 },
             )
-            container.cache_service.cached_response = "cached response"
             cache_response = client.post(
                 "/v1/chat/completions",
                 headers=auth_headers(),
                 json={
                     "model": "nebula-auto",
                     "messages": [{"role": "user", "content": "header-cache"}],
+                },
+            )
+            container.cache_service.cached_response = "cached response"
+            cache_hit_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "header-cache-hit"}],
                 },
             )
             container.cache_service.cached_response = None
@@ -84,15 +92,23 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert local_response.headers["X-Nebula-Fallback-Used"] == "false"
     assert local_response.headers["X-Nebula-Policy-Mode"] == "auto"
 
-    assert premium_response.headers["X-Nebula-Route-Target"] == "premium"
-    assert premium_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
-    assert premium_response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert premium_alias_denied_response.status_code == 403
+    assert premium_alias_denied_response.headers["X-Nebula-Route-Target"] == "premium"
+    assert premium_alias_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert premium_alias_denied_response.headers["X-Nebula-Provider"] == "policy"
+    assert premium_alias_denied_response.headers["X-Nebula-Policy-Outcome"] == "default"
 
-    assert cache_response.headers["X-Nebula-Route-Target"] == "cache"
-    assert cache_response.headers["X-Nebula-Route-Reason"] == "cache_hit"
-    assert cache_response.headers["X-Nebula-Provider"] == "cache"
-    assert cache_response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert cache_response.headers["X-Nebula-Route-Target"] == "local"
+    assert cache_response.headers["X-Nebula-Route-Reason"] == "simple_prompt"
+    assert cache_response.headers["X-Nebula-Provider"] == "ollama"
+    assert cache_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert cache_response.headers["X-Nebula-Fallback-Used"] == "false"
+
+    assert cache_hit_response.headers["X-Nebula-Route-Target"] == "cache"
+    assert cache_hit_response.headers["X-Nebula-Route-Reason"] == "cache_hit"
+    assert cache_hit_response.headers["X-Nebula-Provider"] == "cache"
+    assert cache_hit_response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert cache_hit_response.headers["X-Nebula-Fallback-Used"] == "false"
 
     assert fallback_response.status_code == 200
     assert fallback_response.headers["X-Nebula-Route-Target"] == "premium"
@@ -180,3 +196,26 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
         == "local_provider_error_fallback_blocked"
     )
     assert fallback_blocked_response.headers["X-Nebula-Policy-Outcome"] != ""
+
+
+def test_validation_failures_do_not_emit_nebula_route_headers() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [
+                        {"role": "system", "content": "Only system context."},
+                        {"role": "assistant", "content": "No user turn present."},
+                    ],
+                },
+            )
+
+    assert response.status_code == 422
+    detail = response.json()["detail"]
+    assert len(detail) == 1
+    assert detail[0]["msg"] == "Value error, At least one user message is required."
+    assert "X-Nebula-Route-Target" not in response.headers
+    assert "X-Nebula-Policy-Outcome" not in response.headers
