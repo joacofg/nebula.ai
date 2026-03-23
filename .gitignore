@@ -24,3 +24,12 @@ console/test-results/
 console/playwright-report/
 !console/.env.example
 !deploy/selfhosted.env.example
+.gsd/activity/
+.gsd/runtime/
+.gsd/worktrees/
+.gsd/auto.lock
+.gsd/metrics.json
+.gsd/completed-units.json
+.gsd/STATE.md
+.gsd/gsd.db
+.gsd/DISCUSSION-MANIFEST.json
