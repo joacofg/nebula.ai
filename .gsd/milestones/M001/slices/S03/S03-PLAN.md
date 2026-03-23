@@ -20,6 +20,7 @@
 ## Verification
 
 - `pytest tests/test_reference_migration.py tests/test_chat_completions.py tests/test_response_headers.py tests/test_governance_api.py -q`
+- `pytest tests/test_reference_migration.py -k "tenant_header or request_id or ledger" -q`
 - `python3 -m py_compile tests/test_reference_migration.py`
 - `test -f docs/reference-migration.md && rg -n "reference migration|X-Nebula-API-Key|X-Nebula-Tenant-ID|usage ledger|adoption-api-contract|quickstart|production-model" docs/reference-migration.md README.md`
 
@@ -38,7 +39,7 @@
 
 ## Tasks
 
-- [ ] **T01: Add a focused reference-migration proof harness** `est:1.5h`
+- [x] **T01: Add a focused reference-migration proof harness** `est:1.5h`
   - Why: S03's core risk is weak proof. The slice needs executable evidence that a realistic OpenAI-style caller can switch to Nebula with minimal change and still produce public plus operator evidence.
   - Files: `tests/test_reference_migration.py`, `tests/support.py`, `tests/test_chat_completions.py`, `tests/test_governance_api.py`
   - Do: Add a new focused pytest module that models a direct-provider-style chat-completions caller, then points the same request shape at Nebula's real public endpoint using `X-Nebula-API-Key` and optional `X-Nebula-Tenant-ID`; prove the response stays OpenAI-like while surfacing `X-Nebula-*` headers and a correlatable ledger record. Reuse the existing `configured_app()`, `auth_headers()`, `admin_headers()`, `StubProvider`, and `FakeCacheService` harness patterns instead of inventing a parallel test fixture stack.
