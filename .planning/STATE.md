@@ -2,14 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: in_progress
-stopped_at: Completed 10-01-PLAN.md
-last_updated: "2026-03-23T16:41:25.597Z"
+current_plan: 02
+status: unknown
+stopped_at: Completed 10-02-PLAN.md
+last_updated: "2026-03-23T16:47:54.898Z"
 progress:
   total_phases: 5
-  completed_phases: 4
+  completed_phases: 5
   total_plans: 14
-  completed_plans: 13
+  completed_plans: 14
 ---
 
 # Project State
@@ -101,6 +102,7 @@ Recent decisions affecting current work:
 - [Phase 09-audited-remote-management]: The hosted remote action UI remains limited to an explicitly confirmed hosted-link credential rotation and fails closed on stale, offline, revoked, unlinked, or unsupported deployments.
 - [Phase 10]: Phase 10 outage proof stays test-only because the existing runtime already satisfied the hosted-outage contract.
 - [Phase 10]: Hosted outage regressions are named with hosted/outage/stale terms so the validation selector remains discoverable.
+- [Phase 10]: Kept hosted onboarding, outage, and remote-limit language in console/src/lib/hosted-contract.ts as the single schema-backed UI content source.
 
 ### Pending Todos
 
@@ -112,6 +114,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T16:41:25.595Z
-Stopped at: Completed 10-01-PLAN.md
+Last session: 2026-03-23T16:47:54.896Z
+Stopped at: Completed 10-02-PLAN.md
 Resume file: None
