@@ -58,6 +58,17 @@ export const freshnessStates = [
 export const trustBoundaryCopy = {
   heading: "What this deployment shares",
   metadataOnly: "Metadata-only by default",
+  pilotIntro:
+    "Hosted onboarding creates deployment identity and fleet visibility without moving request serving or runtime policy into the hosted plane.",
+  onboardingHeading: "Pilot onboarding flow",
+  onboardingBody:
+    "Create a deployment slot in the hosted plane, exchange a short-lived enrollment token from the self-hosted gateway, then continue with a deployment-scoped hosted-link credential.",
+  outageHeading: "Hosted outage behavior",
+  outageBody:
+    "If the hosted control plane is unreachable, Nebula keeps serving with local policy and local provider access. Hosted freshness simply ages toward stale or offline until heartbeats resume.",
+  remoteLimitsHeading: "Remote-management safety limits",
+  remoteLimitsBody:
+    "v2.0 allows one audited rotate_deployment_credential action only. It never changes tenant policy, provider credentials, prompts, or responses, and it fails closed when the deployment is stale, offline, unlinked, revoked, unsupported, or disallowed by local policy.",
   freshnessWarning: "Hosted freshness is not local runtime authority.",
   notInPath: "Nebula's hosted control plane is not in the request-serving path.",
   excludedHeading: "Excluded by default",
