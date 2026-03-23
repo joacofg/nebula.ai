@@ -61,7 +61,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Reference migration integration** `risk:high` `depends:[S01,S02]`
   > After this: A realistic app or service uses Nebula instead of a direct provider call path with minimal code changes and working end-to-end proof.
 
-- [ ] **S04: Day-1 value proof surface** `risk:medium` `depends:[S01,S03]`
+- [x] **S04: Day-1 value proof surface** `risk:medium` `depends:[S01,S03]`
   > After this: The adoption materials and product surfaces make routing, policy, observability, and provider abstraction visibly valuable on the first integration.
 
 - [ ] **S05: Final integrated adoption proof** `risk:medium` `depends:[S02,S03,S04]`

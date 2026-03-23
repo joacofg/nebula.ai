@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T03",
+  "unitId": "M001/S04/T03",
+  "timestamp": 1774306440850,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "npm --prefix console run test -- --run playground",
+      "exitCode": 127,
+      "durationMs": 122,
+      "verdict": "fail"
+    },
+    {
+      "command": "npm --prefix console run test -- --run observability",
+      "exitCode": 127,
+      "durationMs": 86,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}
