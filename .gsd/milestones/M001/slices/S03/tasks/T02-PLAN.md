@@ -52,3 +52,9 @@ PY`
 - `docs/reference-migration.md` — canonical migration guide grounded in the tested proof path
 - `README.md` — updated documentation map/link wiring for the new migration guide
 - `docs/quickstart.md` — updated cross-linking if needed so the happy path leads naturally into the migration guide
+
+## Observability Impact
+
+- Human-facing signals added/clarified: the canonical migration guide now points adopters to the exact public evidence surfaces (`X-Nebula-*` headers and `X-Request-ID`) plus operator-side confirmation via `GET /v1/admin/usage/ledger`.
+- Inspection surfaces for future agents: `docs/reference-migration.md`, the README documentation map, the quickstart handoff into the migration guide, and `tests/test_reference_migration.py` as the executable proof source.
+- Failure visibility improved: doc-verification commands now make it obvious whether the migration guide is missing, undiscoverable from main entry points, or out of alignment with the tested public-header and ledger-correlation proof path.

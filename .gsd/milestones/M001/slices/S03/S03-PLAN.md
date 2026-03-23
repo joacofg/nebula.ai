@@ -45,7 +45,7 @@
   - Do: Add a new focused pytest module that models a direct-provider-style chat-completions caller, then points the same request shape at Nebula's real public endpoint using `X-Nebula-API-Key` and optional `X-Nebula-Tenant-ID`; prove the response stays OpenAI-like while surfacing `X-Nebula-*` headers and a correlatable ledger record. Reuse the existing `configured_app()`, `auth_headers()`, `admin_headers()`, `StubProvider`, and `FakeCacheService` harness patterns instead of inventing a parallel test fixture stack.
   - Verify: `pytest tests/test_reference_migration.py tests/test_chat_completions.py tests/test_governance_api.py -q`
   - Done when: the new test file proves both minimal caller-change semantics and public-to-operator evidence correlation using the real existing routes.
-- [ ] **T02: Publish and wire the canonical migration guide** `est:1h`
+- [x] **T02: Publish and wire the canonical migration guide** `est:1h`
   - Why: The runnable proof needs a single human-facing artifact that adopters and downstream slices can point to without duplicating the quickstart, contract, or production-model docs.
   - Files: `docs/reference-migration.md`, `README.md`, `docs/quickstart.md`, `docs/production-model.md`
   - Do: Write one canonical migration guide that starts from the S02 setup assumptions, shows the smallest honest before/after diff for a realistic chat-completions caller, points readers back to `docs/adoption-api-contract.md` for the contract, and explains how to verify success through `X-Nebula-*` headers and `GET /v1/admin/usage/ledger`. Update repo entry/docs links so the new guide is discoverable without cloning contract or operating-model content into multiple places.

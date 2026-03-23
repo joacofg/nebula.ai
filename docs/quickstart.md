@@ -2,7 +2,7 @@
 
 This document is Nebula's canonical happy-path quickstart for the supported self-hosted deployment.
 
-It shows how to configure real credentials, start the Compose stack, sign into the console as an operator, send a first public `POST /v1/chat/completions` request, and confirm success through the product's existing evidence surfaces. For the exact public API boundary, see [`docs/adoption-api-contract.md`](adoption-api-contract.md). For the runtime entity model behind the steps below, see [`docs/production-model.md`](production-model.md).
+It shows how to configure real credentials, start the Compose stack, sign into the console as an operator, send a first public `POST /v1/chat/completions` request, and confirm success through the product's existing evidence surfaces. If you are migrating an existing caller after the first request works, continue with [`docs/reference-migration.md`](reference-migration.md). For the exact public API boundary, see [`docs/adoption-api-contract.md`](adoption-api-contract.md). For the runtime entity model behind the steps below, see [`docs/production-model.md`](production-model.md).
 
 ## Before you start
 
@@ -219,14 +219,16 @@ For this quickstart, Observability is the place to verify that the request shows
 
 Once the first request works:
 
-1. Create tenant-specific API keys instead of sharing the bootstrap key broadly.
-2. Review tenant policy defaults and allowed premium models in the console.
-3. Use [`docs/production-model.md`](production-model.md) to align your team on operator versus application boundaries.
-4. Keep [`docs/adoption-api-contract.md`](adoption-api-contract.md) as the source of truth for public request/response behavior.
+1. If you are replacing an existing OpenAI-style integration, use [`docs/reference-migration.md`](reference-migration.md) for the canonical before/after migration proof.
+2. Create tenant-specific API keys instead of sharing the bootstrap key broadly.
+3. Review tenant policy defaults and allowed premium models in the console.
+4. Use [`docs/production-model.md`](production-model.md) to align your team on operator versus application boundaries.
+5. Keep [`docs/adoption-api-contract.md`](adoption-api-contract.md) as the source of truth for public request/response behavior.
 
 ## Related docs
 
 - [`docs/production-model.md`](production-model.md) — operating-model reference for tenant, API key, operator, app, and workload boundaries
 - [`docs/adoption-api-contract.md`](adoption-api-contract.md) — canonical public API contract
+- [`docs/reference-migration.md`](reference-migration.md) — canonical before/after migration proof grounded in `tests/test_reference_migration.py`
 - [`docs/self-hosting.md`](self-hosting.md) — supported Compose deployment runbook
 - [`docs/architecture.md`](architecture.md) — request flow, runtime components, trust boundary, and operator surfaces

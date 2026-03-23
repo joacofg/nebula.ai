@@ -38,6 +38,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 ## Documentation map
 
 - [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
+- [Reference migration](docs/reference-migration.md): canonical before/after migration proof for moving an existing chat-completions caller onto Nebula with public-header and usage-ledger confirmation
 - [Production model](docs/production-model.md): canonical operating-model reference for tenant, policy, API key, operator, and app/workload guidance
 - [Adoption API contract](docs/adoption-api-contract.md): the only canonical public compatibility boundary for `POST /v1/chat/completions`
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
@@ -51,7 +52,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 Nebula's supported deployment path is the Compose stack documented in [docs/self-hosting.md](docs/self-hosting.md).
 
-For the end-to-end adoption flow after startup, use [docs/quickstart.md](docs/quickstart.md). For the operator-versus-application boundary, tenant model, and app/workload guidance, use [docs/production-model.md](docs/production-model.md).
+For the end-to-end adoption flow after startup, use [docs/quickstart.md](docs/quickstart.md). If you are replacing an existing OpenAI-style caller, continue with [docs/reference-migration.md](docs/reference-migration.md) for the canonical before/after proof. For the operator-versus-application boundary, tenant model, and app/workload guidance, use [docs/production-model.md](docs/production-model.md).
 
 ```bash
 cp deploy/selfhosted.env.example deploy/selfhosted.env
@@ -126,11 +127,11 @@ The gateway and console use explicit bootstrap/admin credentials. In self-hosted
 
 The supported self-hosted environment template lives at `deploy/selfhosted.env.example`.
 
-Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flow and [docs/production-model.md](docs/production-model.md) for the current tenant, API-key, operator, app, and workload boundaries.
+Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flow, [docs/reference-migration.md](docs/reference-migration.md) for the canonical migration proof, and [docs/production-model.md](docs/production-model.md) for the current tenant, API-key, operator, app, and workload boundaries.
 
 ## Selected endpoints
 
-- `POST /v1/chat/completions` — public adoption path; see [docs/adoption-api-contract.md](docs/adoption-api-contract.md) for the supported boundary, `X-Nebula-API-Key` auth contract, streaming behavior, and unsupported/deferred items
+- `POST /v1/chat/completions` — public adoption path; see [docs/adoption-api-contract.md](docs/adoption-api-contract.md) for the supported boundary, [docs/reference-migration.md](docs/reference-migration.md) for the canonical migration proof, `X-Nebula-API-Key` auth contract, streaming behavior, and unsupported/deferred items
 - `GET /v1/admin/session`
 - `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
 - `GET /v1/admin/usage/ledger`
@@ -139,4 +140,12 @@ Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flo
 - `GET /health/dependencies`
 - `GET /metrics`
  /health/dependencies`
+- `GET /metrics`
+alth/dependencies`
+- `GET /metrics`
+ependencies`
+- `GET /metrics`
+ /health/dependencies`
+- `GET /metrics`
+alth/dependencies`
 - `GET /metrics`
