@@ -1,8 +1,9 @@
 ---
 phase: 09-audited-remote-management
 verified: 2026-03-23T00:30:09Z
-status: human_needed
+status: passed
 score: 11/11 must-haves verified
+re_verification: true
 human_verification:
   - test: "Hosted drawer queue flow in a running console"
     expected: "An active, connected deployment with `remote_credential_rotation` support shows the rotate card, requires a note, confirms intent, queues one action, and renders the new history row."
@@ -15,9 +16,9 @@ human_verification:
 # Phase 9: Audited Remote Management Verification Report
 
 **Phase Goal:** The hosted plane proves limited management value through one safe remote action that is pulled outbound and enforced locally.
-**Verified:** 2026-03-23T00:30:09Z
-**Status:** human_needed
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-23T19:01:57Z
+**Status:** passed
+**Re-verification:** Yes — live browser and hosted-to-gateway UAT recorded in `09-HUMAN-UAT.md`
 
 ## Goal Achievement
 
@@ -86,23 +87,15 @@ human_verification:
 | --- | --- | --- | --- | --- |
 | None | - | No blocking TODO/placeholder/stub patterns found in phase-touched files. | - | No blocker identified from static anti-pattern scan. |
 
-### Human Verification Required
+### Human Verification
 
-### 1. Hosted Drawer Queue Flow
-
-**Test:** Open a linked deployment in the running hosted console and use the rotate-credential card.
-**Expected:** The card appears only for supported deployments, requires a 1-280 character note, asks for confirmation, queues one rotation, and shows the action in recent history.
-**Why human:** Browser rendering, copy clarity, and operator trust-boundary comprehension are not fully verifiable from component tests alone.
-
-### 2. Live Hosted-to-Gateway Rotation
-
-**Test:** Against a real linked gateway, queue one rotation from the hosted plane and observe the gateway poll/apply path.
-**Expected:** The gateway pulls the action outbound, rotates only the hosted-link deployment credential, the old credential stops authenticating, and the new credential works for subsequent polls/heartbeats.
-**Why human:** In-process tests validate logic, but not a live multi-process deployment boundary or operational timing.
+Human verification is complete. `09-HUMAN-UAT.md` records:
+- the hosted console drawer flow with required note entry, confirmation, and rendered history row
+- the live hosted-to-gateway credential rotation handshake, including hosted action completion and matching rotated credential prefixes in hosted and gateway persistence
 
 ### Gaps Summary
 
-No implementation gaps were found in the codebase for the declared Phase 9 must-haves. All automated backend and console checks passed, and all requirement IDs declared in Phase 9 plans are accounted for in `REQUIREMENTS.md`. Remaining work is human-only verification of live UI behavior and end-to-end operator flow.
+No implementation gaps were found in the codebase for the declared Phase 9 must-haves. All automated backend and console checks passed, and the live UI plus end-to-end operator flow are now closed in `09-HUMAN-UAT.md`.
 
 ---
 
