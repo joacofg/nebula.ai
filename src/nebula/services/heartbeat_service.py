@@ -23,12 +23,17 @@ def _nebula_version() -> str:
         return "unknown"
 
 
-def _derive_capability_flags(settings: Settings) -> list[str]:
+def derive_capability_flags(settings: Settings) -> list[str]:
     """Derive capability flags from settings (D-15, RESEARCH.md recommendation)."""
     flags = ["local_provider"]  # always present
     flags.append("semantic_cache")  # always available in architecture
     if settings.premium_provider != "mock":
         flags.append("premium_routing")
+    if (
+        settings.remote_management_enabled
+        and "rotate_deployment_credential" in settings.remote_management_allowed_actions
+    ):
+        flags.append("remote_credential_rotation")
     return flags
 
 
@@ -74,7 +79,7 @@ class HeartbeatService:
             dep_summary = self._summarize_deps(dep_health)
             payload = HeartbeatRequest(
                 nebula_version=_nebula_version(),
-                capability_flags=_derive_capability_flags(self.settings),
+                capability_flags=derive_capability_flags(self.settings),
                 dependency_summary=dep_summary,
             )
             client_kwargs: dict = {"timeout": 10.0}

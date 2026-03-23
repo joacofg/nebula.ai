@@ -62,7 +62,11 @@ class RemoteManagementService:
 
     async def poll_and_apply_once(self) -> None:
         credential = self._enrollment.get_deployment_credential()
-        if credential is None or not self.settings.hosted_plane_url:
+        if (
+            credential is None
+            or not self.settings.hosted_plane_url
+            or not getattr(self.settings, "remote_management_enabled", False)
+        ):
             return
 
         try:
@@ -88,6 +92,8 @@ class RemoteManagementService:
                 action_id=action.id,
                 payload=RemoteActionCompletionRequest(status="applied"),
             )
+            if not completion.acknowledged:
+                raise ValueError("Hosted plane did not acknowledge the remote action completion.")
             if not completion.new_deployment_credential:
                 raise ValueError("Hosted plane did not return a rotated deployment credential.")
             self._enrollment.replace_deployment_credential(completion.new_deployment_credential)
