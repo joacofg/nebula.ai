@@ -37,28 +37,6 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: mapped
 - Notes: This is where the hybrid product stance needs to become legible.
 
-### R006 — Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
-- Class: operability
-- Status: active
-- Description: Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
-- Why it matters: Adoption breaks down if teams cannot map Nebula concepts to real environments and traffic.
-- Source: user
-- Primary owning slice: M001/S02
-- Supporting slices: M002/S01
-- Validation: mapped
-- Notes: M001 may keep this partly conceptual rather than heavily enforced in product surfaces.
-
-### R007 — Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
-- Class: admin/support
-- Status: active
-- Description: Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
-- Why it matters: Different buyers and implementers need different framing to understand how Nebula fits.
-- Source: user
-- Primary owning slice: M001/S02
-- Supporting slices: M001/S04
-- Validation: mapped
-- Notes: The docs should adapt framing without inventing different products.
-
 ### R008 — The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
 - Class: quality-attribute
 - Status: active
@@ -104,6 +82,28 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M001/S02
 - Validation: S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details.
 - Notes: Validated by the canonical docs/adoption-api-contract.md and aligned README.md/docs/architecture.md references back to the single source of truth.
+
+### R006 — Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
+- Class: operability
+- Status: validated
+- Description: Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
+- Why it matters: Adoption breaks down if teams cannot map Nebula concepts to real environments and traffic.
+- Source: user
+- Primary owning slice: M001/S02
+- Supporting slices: M002/S01
+- Validation: S02 added the canonical docs/production-model.md operating-model reference plus linked entry docs that explain tenant, policy, API key, operator, and app/workload boundaries against the current runtime truth, including when X-Nebula-Tenant-ID is required and why app/workload remain conceptual in M001.
+- Notes: Validated by documentation integrity checks across README.md, docs/self-hosting.md, docs/architecture.md, docs/production-model.md, and docs/quickstart.md. Backend/console executable checks were blocked in this worktree because pytest and console vitest were not provisioned locally, so product-behavior regression coverage still needs rerun in a prepared environment.
+
+### R007 — Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
+- Class: admin/support
+- Status: validated
+- Description: Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
+- Why it matters: Different buyers and implementers need different framing to understand how Nebula fits.
+- Source: user
+- Primary owning slice: M001/S02
+- Supporting slices: M001/S04
+- Validation: S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md.
+- Notes: Validated at the documentation layer by the new canonical quickstart and production-model docs plus entry-doc routing. Executable runtime/UI verification remains partially blocked in this worktree until pytest and console vitest are installed locally.
 
 ### R010 — Unsupported or deferred adoption-surface features are named explicitly so teams do not assume compatibility that Nebula does not intend to provide yet.
 - Class: constraint
@@ -228,8 +228,8 @@ This file is the explicit capability and coverage contract for the project.
 | R003 | launchability | active | M001/S02 | M001/S01, M001/S03 | mapped |
 | R004 | core-capability | active | M001/S03 | M001/S05 | mapped |
 | R005 | differentiator | active | M001/S04 | M001/S03, M001/S05 | mapped |
-| R006 | operability | active | M001/S02 | M002/S01 | mapped |
-| R007 | admin/support | active | M001/S02 | M001/S04 | mapped |
+| R006 | operability | validated | M001/S02 | M002/S01 | S02 added the canonical docs/production-model.md operating-model reference plus linked entry docs that explain tenant, policy, API key, operator, and app/workload boundaries against the current runtime truth, including when X-Nebula-Tenant-ID is required and why app/workload remain conceptual in M001. |
+| R007 | admin/support | validated | M001/S02 | M001/S04 | S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md. |
 | R008 | quality-attribute | active | M001/S03 | none | mapped |
 | R009 | failure-visibility | active | M001/S04 | M001/S05 | mapped |
 | R010 | constraint | validated | M001/S01 | none | S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features. |
@@ -245,7 +245,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 7
-- Mapped to slices: 7
-- Validated: 3 (R001, R002, R010)
+- Active requirements: 5
+- Mapped to slices: 5
+- Validated: 5 (R001, R002, R006, R007, R010)
 - Unmapped active requirements: 0
