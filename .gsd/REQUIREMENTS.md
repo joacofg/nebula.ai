@@ -2,41 +2,9 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-Use it to track what is actively in scope, what has been validated by completed work, what is intentionally deferred, and what is explicitly out of scope.
-
-Guidelines:
-- Keep requirements capability-oriented, not a giant feature wishlist.
-- Requirements should be atomic, testable, and stated in plain language.
-- Every **Active** requirement should be mapped to a slice, deferred, blocked with reason, or moved out of scope.
-- Each requirement should have one accountable primary owner and may have supporting slices.
-- Research may suggest requirements, but research does not silently make them binding.
-- Validation means the requirement was actually proven by completed work and verification, not just discussed.
-
 ## Active
 
-### R001 — Fast adoption inference path
-- Class: primary-user-loop
-- Status: active
-- Description: A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
-- Why it matters: Nebula adoption stays blocked if teams cannot start from a familiar integration move.
-- Source: user
-- Primary owning slice: M001/S01
-- Supporting slices: M001/S02, M001/S03
-- Validation: mapped
-- Notes: The emphasis is a tight and reliable compatibility promise, not broad API coverage.
-
-### R002 — Stable compatibility boundary
-- Class: constraint
-- Status: active
-- Description: The product clearly documents what the OpenAI-compatible surface covers, what it does not cover, and where Nebula-specific value begins.
-- Why it matters: Fuzzy compatibility creates migration risk, support burden, and product distrust.
-- Source: user
-- Primary owning slice: M001/S01
-- Supporting slices: M001/S02
-- Validation: mapped
-- Notes: Compatibility should be honest and narrow enough to stay reliable.
-
-### R003 — Under-30-minute happy path
+### R003 — A developer can complete the documented happy-path integration in under 30 minutes.
 - Class: launchability
 - Status: active
 - Description: A developer can complete the documented happy-path integration in under 30 minutes.
@@ -47,7 +15,7 @@ Guidelines:
 - Validation: mapped
 - Notes: Proof should come from a real walkthrough, not just a claim in docs.
 
-### R004 — Real migration proof
+### R004 — At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
 - Class: core-capability
 - Status: active
 - Description: At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
@@ -58,7 +26,7 @@ Guidelines:
 - Validation: mapped
 - Notes: The reference should feel credible to startup and platform-minded teams.
 
-### R005 — Day-1 operational value visibility
+### R005 — The adoption experience makes routing, policy, observability, and provider abstraction visibly valuable immediately after integration.
 - Class: differentiator
 - Status: active
 - Description: The adoption experience makes routing, policy, observability, and provider abstraction visibly valuable immediately after integration.
@@ -69,7 +37,7 @@ Guidelines:
 - Validation: mapped
 - Notes: This is where the hybrid product stance needs to become legible.
 
-### R006 — Clear production structuring model
+### R006 — Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
 - Class: operability
 - Status: active
 - Description: Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
@@ -80,7 +48,7 @@ Guidelines:
 - Validation: mapped
 - Notes: M001 may keep this partly conceptual rather than heavily enforced in product surfaces.
 
-### R007 — ICP-specific adoption guidance
+### R007 — Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
 - Class: admin/support
 - Status: active
 - Description: Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
@@ -91,7 +59,7 @@ Guidelines:
 - Validation: mapped
 - Notes: The docs should adapt framing without inventing different products.
 
-### R008 — Reference implementation credibility
+### R008 — The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
 - Class: quality-attribute
 - Status: active
 - Description: The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
@@ -102,7 +70,7 @@ Guidelines:
 - Validation: mapped
 - Notes: Favor boring and believable over flashy.
 
-### R009 — Failure and routing transparency during adoption
+### R009 — A developer adopting Nebula can see what route was taken, whether fallback happened, and what policy outcome applied during integration and validation.
 - Class: failure-visibility
 - Status: active
 - Description: A developer adopting Nebula can see what route was taken, whether fallback happened, and what policy outcome applied during integration and validation.
@@ -113,22 +81,44 @@ Guidelines:
 - Validation: mapped
 - Notes: Existing `X-Nebula-*` headers and usage-ledger data are strong prior art here.
 
-### R010 — Compatibility documentation for unsupported features
+## Validated
+
+### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
+- Class: primary-user-loop
+- Status: validated
+- Description: A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
+- Why it matters: Nebula adoption stays blocked if teams cannot start from a familiar integration move.
+- Source: user
+- Primary owning slice: M001/S01
+- Supporting slices: M001/S02, M001/S03
+- Validation: S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests.
+- Notes: Validated by contract tests in tests/test_chat_completions.py, tests/test_response_headers.py, tests/test_admin_playground_api.py plus docs/adoption-api-contract.md alignment.
+
+### R002 — The product clearly documents what the OpenAI-compatible surface covers, what it does not cover, and where Nebula-specific value begins.
 - Class: constraint
-- Status: active
+- Status: validated
+- Description: The product clearly documents what the OpenAI-compatible surface covers, what it does not cover, and where Nebula-specific value begins.
+- Why it matters: Fuzzy compatibility creates migration risk, support burden, and product distrust.
+- Source: user
+- Primary owning slice: M001/S01
+- Supporting slices: M001/S02
+- Validation: S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details.
+- Notes: Validated by the canonical docs/adoption-api-contract.md and aligned README.md/docs/architecture.md references back to the single source of truth.
+
+### R010 — Unsupported or deferred adoption-surface features are named explicitly so teams do not assume compatibility that Nebula does not intend to provide yet.
+- Class: constraint
+- Status: validated
 - Description: Unsupported or deferred adoption-surface features are named explicitly so teams do not assume compatibility that Nebula does not intend to provide yet.
 - Why it matters: Honest omissions reduce production surprises and wasted evaluation effort.
 - Source: research
 - Primary owning slice: M001/S01
 - Supporting slices: none
-- Validation: mapped
-- Notes: This likely includes tool calling, multimodal inputs, assistants/responses, batch APIs, and broad SDK claims unless later slices add them deliberately.
-
-## Validated
+- Validation: S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features.
+- Notes: Validated by the unsupported/deferred section in docs/adoption-api-contract.md and the focused tests that define the current boundary.
 
 ## Deferred
 
-### R011 — Embeddings adoption surface
+### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
 - Class: integration
 - Status: deferred
 - Description: Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -139,7 +129,7 @@ Guidelines:
 - Validation: unmapped
 - Notes: There is embeddings-related code in the repo, but not yet a committed public adoption surface.
 
-### R012 — Strong app/workload enforcement in product surfaces
+### R012 — App and workload concepts become more explicit in runtime or admin product surfaces beyond documentation and conceptual guidance.
 - Class: operability
 - Status: deferred
 - Description: App and workload concepts become more explicit in runtime or admin product surfaces beyond documentation and conceptual guidance.
@@ -150,7 +140,7 @@ Guidelines:
 - Validation: unmapped
 - Notes: Defer unless M001 reveals this is a real blocker.
 
-### R013 — Broader SDK/helper ecosystem
+### R013 — Nebula provides dedicated helper libraries, wrappers, or SDK conveniences beyond the compatibility-first path.
 - Class: admin/support
 - Status: deferred
 - Description: Nebula provides dedicated helper libraries, wrappers, or SDK conveniences beyond the compatibility-first path.
@@ -161,7 +151,7 @@ Guidelines:
 - Validation: unmapped
 - Notes: Explicitly avoid ecosystem explosion in M001.
 
-### R014 — Hosted adoption enhancements beyond current onboarding support
+### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
 - Class: integration
 - Status: deferred
 - Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
@@ -174,7 +164,7 @@ Guidelines:
 
 ## Out of Scope
 
-### R015 — Billing and commercial packaging
+### R015 — Billing systems, pricing packages, and commercial packaging are not part of this planning track.
 - Class: anti-feature
 - Status: out-of-scope
 - Description: Billing systems, pricing packages, and commercial packaging are not part of this planning track.
@@ -185,7 +175,7 @@ Guidelines:
 - Validation: n/a
 - Notes: Explicit non-goal for v3.0.
 
-### R016 — Broad enterprise RBAC redesign
+### R016 — A large redesign of roles, permissions, and enterprise access control is excluded.
 - Class: anti-feature
 - Status: out-of-scope
 - Description: A large redesign of roles, permissions, and enterprise access control is excluded.
@@ -196,7 +186,7 @@ Guidelines:
 - Validation: n/a
 - Notes: Small targeted access changes are only acceptable if they directly unblock adoption proof.
 
-### R017 — Major hosted control-plane expansion unrelated to adoption
+### R017 — Hosted-plane expansion that does not directly support adoption or operator understanding is excluded.
 - Class: anti-feature
 - Status: out-of-scope
 - Description: Hosted-plane expansion that does not directly support adoption or operator understanding is excluded.
@@ -207,7 +197,7 @@ Guidelines:
 - Validation: n/a
 - Notes: Metadata-only default export remains authoritative for planning assumptions.
 
-### R018 — Deep new provider/orchestration work not tied to integration DX
+### R018 — New provider integrations or deeper orchestration work are excluded unless they directly improve integration DX.
 - Class: anti-feature
 - Status: out-of-scope
 - Description: New provider integrations or deeper orchestration work are excluded unless they directly improve integration DX.
@@ -218,7 +208,7 @@ Guidelines:
 - Validation: n/a
 - Notes: Existing routing/fallback capabilities are prior art, not the main deliverable.
 
-### R019 — Broad multi-language SDK explosion in one milestone
+### R019 — A large multi-language SDK push is excluded from this milestone.
 - Class: anti-feature
 - Status: out-of-scope
 - Description: A large multi-language SDK push is excluded from this milestone.
@@ -233,8 +223,8 @@ Guidelines:
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
 |---|---|---|---|---|---|
-| R001 | primary-user-loop | active | M001/S01 | M001/S02, M001/S03 | mapped |
-| R002 | constraint | active | M001/S01 | M001/S02 | mapped |
+| R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests. |
+| R002 | constraint | validated | M001/S01 | M001/S02 | S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details. |
 | R003 | launchability | active | M001/S02 | M001/S01, M001/S03 | mapped |
 | R004 | core-capability | active | M001/S03 | M001/S05 | mapped |
 | R005 | differentiator | active | M001/S04 | M001/S03, M001/S05 | mapped |
@@ -242,7 +232,7 @@ Guidelines:
 | R007 | admin/support | active | M001/S02 | M001/S04 | mapped |
 | R008 | quality-attribute | active | M001/S03 | none | mapped |
 | R009 | failure-visibility | active | M001/S04 | M001/S05 | mapped |
-| R010 | constraint | active | M001/S01 | none | mapped |
+| R010 | constraint | validated | M001/S01 | none | S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features. |
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
 | R012 | operability | deferred | M002/S02 | none | unmapped |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
@@ -255,7 +245,7 @@ Guidelines:
 
 ## Coverage Summary
 
-- Active requirements: 10
-- Mapped to slices: 10
-- Validated: 0
+- Active requirements: 7
+- Mapped to slices: 7
+- Validated: 3 (R001, R002, R010)
 - Unmapped active requirements: 0

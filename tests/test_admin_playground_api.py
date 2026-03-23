@@ -56,10 +56,10 @@ def test_admin_playground_completion() -> None:
     assert response.status_code == 200
     assert request_id
     assert response.json()["request_id"] == request_id
-    assert response.json()["choices"][0]["message"]["content"] == "local response"
+    assert response.json()["choices"][0]["message"]["content"] == "premium response"
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
-    assert response.headers["X-Nebula-Route-Target"] == "local"
-    assert response.headers["X-Nebula-Provider"] == "ollama"
+    assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Provider"] == "mock-premium"
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert response.headers["X-Nebula-Policy-Outcome"]

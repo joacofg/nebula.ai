@@ -52,7 +52,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Adoption API contract and compatibility boundary** `risk:high` `depends:[]`
+- [x] **S01: Adoption API contract and compatibility boundary** `risk:high` `depends:[]`
   > After this: Nebula exposes a clearly bounded chat-completions adoption surface, with supported and unsupported behaviors documented against the live product contract.
 
 - [ ] **S02: Happy-path quickstart and production model** `risk:medium` `depends:[S01]`

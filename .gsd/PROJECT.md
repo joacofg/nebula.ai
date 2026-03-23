@@ -10,7 +10,7 @@ A team can adopt Nebula through a familiar inference path quickly, with minimal 
 
 ## Current State
 
-Nebula already ships a FastAPI gateway, a Next.js operator console, PostgreSQL-backed governance, Qdrant-backed semantic cache, OpenAI-like chat completions, streaming support, tenant and API-key management, policy management, usage ledger recording, runtime health, and an optional hosted control plane with a metadata-only default export contract. What is still weak is the adoption path: how teams should integrate, what API surface they can rely on, where compatibility ends, how production usage should be structured, and what proof shows the switch is worth it.
+Nebula already ships a FastAPI gateway, a Next.js operator console, PostgreSQL-backed governance, Qdrant-backed semantic cache, OpenAI-like chat completions, streaming support, tenant and API-key management, policy management, usage ledger recording, runtime health, and an optional hosted control plane with a metadata-only default export contract. S01 of M001 is now complete: the public `POST /v1/chat/completions` adoption boundary is explicit, test-backed, and documented in `docs/adoption-api-contract.md`, including `X-Nebula-API-Key` auth, required user-message validation, streaming semantics, response-header evidence, and an explicit unsupported/deferred list. What remains weak is the broader adoption path around quickstart speed, production structuring guidance, realistic migration proof, and joined-up day-1 value proof across docs, runtime, and operator surfaces.
 
 ## Architecture / Key Patterns
 
