@@ -48,3 +48,9 @@ Make the API Keys operator surface teach the real runtime model already enforced
 - `console/src/components/api-keys/api-key-table.tsx` — clearer tenant-scope display derived from existing fields
 - `console/src/components/api-keys/create-api-key-dialog.test.tsx` — assertions for key-scope guidance and submit semantics
 - `console/src/components/api-keys/api-key-table.test.tsx` — assertions for visible single-tenant versus multi-tenant scope semantics
+
+## Observability Impact
+
+- Signals affected: no backend telemetry changes; the operator-visible diagnostic signal is the copy and scope summary that now mirrors the runtime tenant-resolution rule from `AuthService.resolve_tenant_context`.
+- How to inspect later: read the API Keys page header, create-key dialog guidance, and table scope column together with the focused vitest assertions in `create-api-key-dialog.test.tsx` and `api-key-table.test.tsx`.
+- Failure made visible: wording drift that hides when `tenant_id` or a single allowed tenant resolves automatically, or when multi-tenant authorization requires `X-Nebula-Tenant-ID`, now fails targeted tests instead of remaining a silent operator misunderstanding.

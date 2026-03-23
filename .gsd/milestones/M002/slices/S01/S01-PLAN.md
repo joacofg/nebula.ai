@@ -38,7 +38,7 @@
 
 ## Tasks
 
-- [ ] **T01: Clarify API key scope and tenant-header consequences in console key surfaces** `est:1.5h`
+- [x] **T01: Clarify API key scope and tenant-header consequences in console key surfaces** `est:1.5h`
   - Why: The highest-risk operator contradiction is at API-key issuance and inventory, where current copy and table display underspecify when tenant inference works versus when callers must send `X-Nebula-Tenant-ID`.
   - Files: `console/src/app/(console)/api-keys/page.tsx`, `console/src/components/api-keys/create-api-key-dialog.tsx`, `console/src/components/api-keys/api-key-table.tsx`, `console/src/components/api-keys/create-api-key-dialog.test.tsx`, `console/src/components/api-keys/api-key-table.test.tsx`
   - Do: Update API Keys page framing, key-creation guidance, and table scope display so they expose the real `tenant_id` plus `allowed_tenant_ids` behavior without adding new backend fields or fake entities; add focused tests for single-tenant inference versus intentional multi-tenant authorization and the caller header consequence.

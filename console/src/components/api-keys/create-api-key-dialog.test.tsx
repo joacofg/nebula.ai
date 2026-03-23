@@ -27,6 +27,24 @@ const TENANTS = [
 ];
 
 describe("create-api-key-dialog", () => {
+  it("explains tenant resolution for multi-tenant keys", () => {
+    renderWithProviders(
+      <CreateApiKeyDialog
+        open
+        tenants={TENANTS}
+        selectedTenantId="tenant-a"
+        isSaving={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText(/Use allowed_tenant_ids to define every tenant the key may access/i)).toBeInTheDocument();
+    expect(screen.getByText(/honoring an explicit X-Nebula-Tenant-ID/i)).toBeInTheDocument();
+    expect(screen.getByText(/public callers must send the tenant header/i)).toBeInTheDocument();
+    expect(screen.getByText(/A single allowed tenant is inferred automatically/i)).toBeInTheDocument();
+  });
+
   it("validates allowed_tenant_ids", async () => {
     renderWithProviders(
       <CreateApiKeyDialog
