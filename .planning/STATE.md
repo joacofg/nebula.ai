@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 09-audited-remote-management-01-PLAN.md
-last_updated: "2026-03-23T00:06:49.916Z"
+stopped_at: Completed 09-audited-remote-management-02-PLAN.md
+last_updated: "2026-03-23T00:17:24.790Z"
 progress:
   total_phases: 5
   completed_phases: 3
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
 ---
 
 # Project State
@@ -24,7 +24,7 @@ See: .planning/PROJECT.md (updated 2026-03-18)
 ## Current Position
 
 Phase: 9
-Plan: 02 next
+Plan: 03 next
 
 ## Performance Metrics
 
@@ -56,6 +56,7 @@ Plan: 02 next
 | Phase 08 P02 | 12 | 2 tasks | 9 files |
 | Phase 08 P03 | 12 | 3 tasks | 7 files |
 | Phase 09-audited-remote-management P01 | 4min | 2 tasks | 6 files |
+| Phase 09-audited-remote-management P02 | 8min | 2 tasks | 10 files |
 
 ## Accumulated Context
 
@@ -89,6 +90,8 @@ Recent decisions affecting current work:
 - [Phase 08]: Row opacity dimming uses opacity-75 for stale and opacity-60 for offline (not hidden)
 - [Phase 09]: Remote-action queue/history endpoints live on the admin router under /v1/admin/deployments so existing enrollment routes can stay in place.
 - [Phase 09]: The live-action uniqueness guard is a partial unique index limited to queued and in_progress rows, with sqlite and postgres predicates kept aligned.
+- [Phase 09-audited-remote-management]: Capability advertisement for remote rotation is derived once and reused for enrollment exchange plus heartbeat updates.
+- [Phase 09-audited-remote-management]: Remote management starts unconditionally in app lifespan and fails closed inside the poller when enrollment, hosted URL, or local policy is missing.
 
 ### Pending Todos
 
@@ -100,6 +103,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T00:06:49.914Z
-Stopped at: Completed 09-audited-remote-management-01-PLAN.md
+Last session: 2026-03-23T00:17:24.788Z
+Stopped at: Completed 09-audited-remote-management-02-PLAN.md
 Resume file: None

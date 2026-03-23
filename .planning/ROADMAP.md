@@ -82,7 +82,7 @@ Plans:
 
 Plans:
 - [x] 09-01-PLAN.md — Define rotate_deployment_credential queue models, persistence, and hosted admin queue/history APIs
-- [ ] 09-02-PLAN.md — Implement outbound polling, local authorization, and credential-rotation completion flow
+- [x] 09-02-PLAN.md — Implement outbound polling, local authorization, and credential-rotation completion flow
 - [ ] 09-03-PLAN.md — Add expiry-aware audit rollups and the hosted deployment-detail action/history UI
 
 ### Phase 10: Pilot Proof and Failure-Safe Operations
@@ -111,5 +111,5 @@ Plans:
 | 6. Trust Boundary and Hosted Contract | v2.0 | 0/3 | Not started | - |
 | 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 3/3 | Complete   | 2026-03-22 |
-| 9. Audited Remote Management | v2.0 | 1/3 | In Progress | - |
+| 9. Audited Remote Management | v2.0 | 2/3 | In Progress | - |
 | 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |
