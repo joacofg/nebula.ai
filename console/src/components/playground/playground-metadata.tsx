@@ -1,10 +1,13 @@
 type PlaygroundMetadataProps = {
   requestId: string;
+  tenantId: string;
   routeTarget: string;
+  routeReason: string;
   provider: string;
   cacheHit: boolean;
   fallbackUsed: boolean;
   latencyMs: number;
+  policyMode: string;
   policyOutcome: string;
 };
 
@@ -12,13 +15,20 @@ function yesNo(value: boolean) {
   return value ? "Yes" : "No";
 }
 
+function displayValue(value: string) {
+  return value.trim().length > 0 ? value : "N/A";
+}
+
 export function PlaygroundMetadata({
   requestId,
+  tenantId,
   routeTarget,
+  routeReason,
   provider,
   cacheHit,
   fallbackUsed,
   latencyMs,
+  policyMode,
   policyOutcome,
 }: PlaygroundMetadataProps) {
   return (
@@ -29,18 +39,22 @@ export function PlaygroundMetadata({
           Immediate response evidence
         </h3>
         <p className="mt-2 text-sm text-slate-600">
-          These fields describe the live response before the ledger finishes recording the same request.
+          These fields describe the live route, policy, and tenant evidence before the ledger finishes
+          recording the same request.
         </p>
       </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <MetadataRow label="Request ID" value={requestId} mono />
-        <MetadataRow label="Route target" value={routeTarget} />
-        <MetadataRow label="Provider" value={provider} />
+      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <MetadataRow label="Request ID" value={displayValue(requestId)} mono />
+        <MetadataRow label="Tenant" value={displayValue(tenantId)} mono />
+        <MetadataRow label="Route target" value={displayValue(routeTarget)} />
+        <MetadataRow label="Route reason" value={displayValue(routeReason)} />
+        <MetadataRow label="Provider" value={displayValue(provider)} />
+        <MetadataRow label="Policy mode" value={displayValue(policyMode)} />
+        <MetadataRow label="Policy outcome" value={displayValue(policyOutcome)} />
         <MetadataRow label="Cache hit" value={yesNo(cacheHit)} />
-        <MetadataRow label="Fallback" value={yesNo(fallbackUsed)} />
+        <MetadataRow label="Fallback used" value={yesNo(fallbackUsed)} />
         <MetadataRow label="Latency" value={`${latencyMs} ms`} />
-        <MetadataRow label="Policy outcome" value={policyOutcome} />
       </dl>
     </section>
   );

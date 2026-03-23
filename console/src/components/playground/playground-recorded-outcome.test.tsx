@@ -5,7 +5,7 @@ import { PlaygroundRecordedOutcome } from "@/components/playground/playground-re
 import { renderWithProviders } from "@/test/render";
 
 describe("playground-recorded-outcome", () => {
-  it("renders the persisted ledger values", () => {
+  it("renders the persisted ledger route, provider, fallback, policy, and cost evidence", () => {
     renderWithProviders(
       <PlaygroundRecordedOutcome
         entry={{
@@ -32,14 +32,27 @@ describe("playground-recorded-outcome", () => {
 
     expect(
       screen.getByText(
-        "Persisted ledger record for the same request after Nebula finishes writing usage data.",
+        "Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Terminal status")).toBeInTheDocument();
+    expect(screen.getByText("Route target")).toBeInTheDocument();
+    expect(screen.getByText("Provider")).toBeInTheDocument();
+    expect(screen.getByText("Route reason")).toBeInTheDocument();
+    expect(screen.getByText("Policy outcome")).toBeInTheDocument();
+    expect(screen.getByText("Fallback used")).toBeInTheDocument();
+    expect(screen.getByText("Cache hit")).toBeInTheDocument();
     expect(screen.getByText("Prompt tokens")).toBeInTheDocument();
     expect(screen.getByText("Completion tokens")).toBeInTheDocument();
     expect(screen.getByText("Total tokens")).toBeInTheDocument();
     expect(screen.getByText("Estimated cost")).toBeInTheDocument();
     expect(screen.getByText("fallback_completed")).toBeInTheDocument();
+    expect(screen.getByText("premium")).toBeInTheDocument();
+    expect(screen.getByText("openai-compatible")).toBeInTheDocument();
+    expect(screen.getByText("fallback")).toBeInTheDocument();
+    expect(screen.getByText("allowed")).toBeInTheDocument();
+    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByText("No")).toBeInTheDocument();
+    expect(screen.getByText("$0.0180")).toBeInTheDocument();
   });
 });

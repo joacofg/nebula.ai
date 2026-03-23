@@ -11,6 +11,14 @@ function formatEstimatedCost(value: number | null) {
   return `$${value.toFixed(4)}`;
 }
 
+function yesNo(value: boolean) {
+  return value ? "Yes" : "No";
+}
+
+function displayValue(value: string | null) {
+  return value && value.trim().length > 0 ? value : "N/A";
+}
+
 export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomeProps) {
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -22,12 +30,19 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
           Recorded outcome
         </h3>
         <p className="mt-2 text-sm text-slate-600">
-          Persisted ledger record for the same request after Nebula finishes writing usage data.
+          Persisted ledger evidence for the same request after Nebula records the final route, provider,
+          fallback, and policy outcome.
         </p>
       </div>
 
-      <dl className="grid gap-4 sm:grid-cols-2">
+      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         <OutcomeRow label="Terminal status" value={entry.terminal_status} />
+        <OutcomeRow label="Route target" value={entry.final_route_target} />
+        <OutcomeRow label="Provider" value={displayValue(entry.final_provider)} />
+        <OutcomeRow label="Route reason" value={displayValue(entry.route_reason)} />
+        <OutcomeRow label="Policy outcome" value={displayValue(entry.policy_outcome)} />
+        <OutcomeRow label="Fallback used" value={yesNo(entry.fallback_used)} />
+        <OutcomeRow label="Cache hit" value={yesNo(entry.cache_hit)} />
         <OutcomeRow label="Prompt tokens" value={String(entry.prompt_tokens)} />
         <OutcomeRow label="Completion tokens" value={String(entry.completion_tokens)} />
         <OutcomeRow label="Total tokens" value={String(entry.total_tokens)} />
