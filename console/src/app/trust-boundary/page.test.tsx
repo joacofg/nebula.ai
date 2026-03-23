@@ -16,6 +16,11 @@ describe("TrustBoundaryPage", () => {
     expect(
       screen.getByText(/recommended for pilots/)
     ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hosted-control-plane outages degrade visibility only; they do not break the self-hosted serving path."
+      )
+    ).toBeInTheDocument();
   });
 
   it("renders Metadata-only by default", () => {
@@ -49,6 +54,27 @@ describe("TrustBoundaryPage", () => {
       screen.getByText(
         "Nebula's hosted control plane is not in the request-serving path."
       )
+    ).toBeInTheDocument();
+  });
+
+  it("renders the pilot onboarding, outage, and remote-management sections", () => {
+    render(<TrustBoundaryPage />);
+    expect(
+      screen.getByRole("heading", { name: "Pilot onboarding flow" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Create a deployment slot in the hosted plane, exchange a short-lived enrollment token from the self-hosted gateway, then continue with a deployment-scoped hosted-link credential."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Hosted outage behavior" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Remote-management safety limits" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/v2.0 allows one audited rotate_deployment_credential action only\./)
     ).toBeInTheDocument();
   });
 
