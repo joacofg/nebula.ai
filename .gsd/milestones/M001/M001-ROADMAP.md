@@ -64,7 +64,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Day-1 value proof surface** `risk:medium` `depends:[S01,S03]`
   > After this: The adoption materials and product surfaces make routing, policy, observability, and provider abstraction visibly valuable on the first integration.
 
-- [ ] **S05: Final integrated adoption proof** `risk:medium` `depends:[S02,S03,S04]`
+- [x] **S05: Final integrated adoption proof** `risk:medium` `depends:[S02,S03,S04]`
   > After this: The complete v3.0 adoption story is exercised as one joined system: docs, migration path, live reference flow, and operator-visible value all align.
 
 ## Boundary Map
