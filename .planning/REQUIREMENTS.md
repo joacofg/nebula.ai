@@ -15,7 +15,7 @@
 
 - [x] **INVT-01**: Hosted control plane can display deployment identity, environment label, Nebula version, registration time, and last-seen time for each linked deployment.
 - [x] **INVT-02**: Hosted control plane shows deployment freshness using explicit connected, degraded, stale, or offline semantics with reason codes that do not overstate runtime health.
-- [ ] **INVT-03**: Loss of hosted control-plane connectivity does not break the self-hosted gateway's core serving path and is surfaced as degraded or stale hosted visibility instead of runtime failure.
+- [x] **INVT-03**: Loss of hosted control-plane connectivity does not break the self-hosted gateway's core serving path and is surfaced as degraded or stale hosted visibility instead of runtime failure.
 - [x] **INVT-04**: Deployment reports capability and version metadata so the hosted plane can show compatibility state and fail unsupported actions closed.
 
 ### Remote Management
@@ -63,7 +63,7 @@
 | ENRL-03 | Phase 7 | Complete |
 | INVT-01 | Phase 8 | Complete |
 | INVT-02 | Phase 8 | Complete |
-| INVT-03 | Phase 10 | Pending |
+| INVT-03 | Phase 10 | Complete |
 | INVT-04 | Phase 8 | Complete |
 | RMGT-01 | Phase 9 | Complete |
 | RMGT-02 | Phase 9 | Complete |
