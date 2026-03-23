@@ -96,7 +96,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01-PLAN.md — Prove hosted outages degrade visibility only while serving and readiness stay available
+- [x] 10-01-PLAN.md — Prove hosted outages degrade visibility only while serving and readiness stay available
 - [ ] 10-02-PLAN.md — Publish the pilot-ready trust-boundary, onboarding, and outage-safe narrative
 
 ## Progress
@@ -112,4 +112,4 @@ Plans:
 | 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 3/3 | Complete   | 2026-03-22 |
 | 9. Audited Remote Management | v2.0 | 3/3 | Complete | 2026-03-23 |
-| 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |
+| 10. Pilot Proof and Failure-Safe Operations | v2.0 | 1/2 | In Progress | - |
