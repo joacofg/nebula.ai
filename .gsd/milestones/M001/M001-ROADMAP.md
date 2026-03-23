@@ -58,7 +58,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Happy-path quickstart and production model** `risk:medium` `depends:[S01]`
   > After this: A team can follow a concrete quickstart, understand tenant / app / workload / operator structure, and reach a working integration path without guessing.
 
-- [ ] **S03: Reference migration integration** `risk:high` `depends:[S01,S02]`
+- [x] **S03: Reference migration integration** `risk:high` `depends:[S01,S02]`
   > After this: A realistic app or service uses Nebula instead of a direct provider call path with minimal code changes and working end-to-end proof.
 
 - [ ] **S04: Day-1 value proof surface** `risk:medium` `depends:[S01,S03]`

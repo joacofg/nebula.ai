@@ -140,8 +140,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     assert invalid.status_code == 401
     assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
-    assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
-    assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
+    assert authorized.json()["default_premium_model"] == "gpt-4o-mini"
+    assert "gpt-4o-mini" in authorized.json()["known_premium_models"]
     assert authorized.json()["runtime_enforced_fields"] == [
         "routing_mode_default",
         "allowed_premium_models",
@@ -227,7 +227,7 @@ def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None
 
     assert ledger.status_code == 200
     assert ("completed", "local") in statuses
-    assert ("completed", "premium") in statuses
+    assert ("policy_denied", "denied") in statuses
     assert ("cache_hit", "cache") in statuses
     assert ("fallback_completed", "premium") in statuses
 

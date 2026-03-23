@@ -15,17 +15,6 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: mapped
 - Notes: Proof should come from a real walkthrough, not just a claim in docs.
 
-### R004 — At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
-- Class: core-capability
-- Status: active
-- Description: At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
-- Why it matters: A real migration story is stronger than a toy demo or abstract guidance.
-- Source: user
-- Primary owning slice: M001/S03
-- Supporting slices: M001/S05
-- Validation: mapped
-- Notes: The reference should feel credible to startup and platform-minded teams.
-
 ### R005 — The adoption experience makes routing, policy, observability, and provider abstraction visibly valuable immediately after integration.
 - Class: differentiator
 - Status: active
@@ -36,17 +25,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M001/S03, M001/S05
 - Validation: mapped
 - Notes: This is where the hybrid product stance needs to become legible.
-
-### R008 — The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
-- Class: quality-attribute
-- Status: active
-- Description: The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
-- Why it matters: Weak sample quality can undermine the whole adoption story.
-- Source: inferred
-- Primary owning slice: M001/S03
-- Supporting slices: none
-- Validation: mapped
-- Notes: Favor boring and believable over flashy.
 
 ### R009 — A developer adopting Nebula can see what route was taken, whether fallback happened, and what policy outcome applied during integration and validation.
 - Class: failure-visibility
@@ -83,6 +61,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details.
 - Notes: Validated by the canonical docs/adoption-api-contract.md and aligned README.md/docs/architecture.md references back to the single source of truth.
 
+### R004 — At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
+- Class: core-capability
+- Status: validated
+- Description: At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
+- Why it matters: A real migration story is stronger than a toy demo or abstract guidance.
+- Source: user
+- Primary owning slice: M001/S03
+- Supporting slices: M001/S05
+- Validation: S03 added the executable reference migration proof in tests/test_reference_migration.py plus the canonical docs/reference-migration.md guide, demonstrating that an OpenAI-style chat-completions caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key, with X-Nebula-Tenant-ID only for ambiguous multi-tenant keys) while preserving an OpenAI-like response and correlating X-Request-ID/X-Nebula-* headers to GET /v1/admin/usage/ledger evidence.
+- Notes: Validated by pytest tests/test_reference_migration.py tests/test_chat_completions.py tests/test_response_headers.py tests/test_governance_api.py -q, the targeted tenant_header/request_id/ledger subset, python3 -m py_compile tests/test_reference_migration.py, and doc-link integrity checks for docs/reference-migration.md and README.md.
+
 ### R006 — Nebula explains tenant, app, workload, and operator boundaries clearly enough that teams know how to structure production usage.
 - Class: operability
 - Status: validated
@@ -104,6 +93,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M001/S04
 - Validation: S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md.
 - Notes: Validated at the documentation layer by the new canonical quickstart and production-model docs plus entry-doc routing. Executable runtime/UI verification remains partially blocked in this worktree until pytest and console vitest are installed locally.
+
+### R008 — The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
+- Class: quality-attribute
+- Status: validated
+- Description: The reference integration is realistic enough that engineers trust it as a migration example rather than dismissing it as a toy.
+- Why it matters: Weak sample quality can undermine the whole adoption story.
+- Source: inferred
+- Primary owning slice: M001/S03
+- Supporting slices: none
+- Validation: S03 keeps the migration example realistic and trustworthy by grounding the guide in tests/test_reference_migration.py, limiting caller changes to the real public contract, explicitly showing when X-Nebula-Tenant-ID is and is not required, and requiring public-header plus usage-ledger correlation instead of relying on a toy curl-only demo.
+- Notes: Validated by the narrow before/after migration guide in docs/reference-migration.md, its discoverability from README.md and docs/quickstart.md, and focused proof tests that cover both the bootstrap-key happy path and the intentionally ambiguous multi-tenant-key edge case without inventing demo-only façades.
 
 ### R010 — Unsupported or deferred adoption-surface features are named explicitly so teams do not assume compatibility that Nebula does not intend to provide yet.
 - Class: constraint
@@ -226,11 +226,11 @@ This file is the explicit capability and coverage contract for the project.
 | R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests. |
 | R002 | constraint | validated | M001/S01 | M001/S02 | S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details. |
 | R003 | launchability | active | M001/S02 | M001/S01, M001/S03 | mapped |
-| R004 | core-capability | active | M001/S03 | M001/S05 | mapped |
+| R004 | core-capability | validated | M001/S03 | M001/S05 | S03 added the executable reference migration proof in tests/test_reference_migration.py plus the canonical docs/reference-migration.md guide, demonstrating that an OpenAI-style chat-completions caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key, with X-Nebula-Tenant-ID only for ambiguous multi-tenant keys) while preserving an OpenAI-like response and correlating X-Request-ID/X-Nebula-* headers to GET /v1/admin/usage/ledger evidence. |
 | R005 | differentiator | active | M001/S04 | M001/S03, M001/S05 | mapped |
 | R006 | operability | validated | M001/S02 | M002/S01 | S02 added the canonical docs/production-model.md operating-model reference plus linked entry docs that explain tenant, policy, API key, operator, and app/workload boundaries against the current runtime truth, including when X-Nebula-Tenant-ID is required and why app/workload remain conceptual in M001. |
 | R007 | admin/support | validated | M001/S02 | M001/S04 | S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md. |
-| R008 | quality-attribute | active | M001/S03 | none | mapped |
+| R008 | quality-attribute | validated | M001/S03 | none | S03 keeps the migration example realistic and trustworthy by grounding the guide in tests/test_reference_migration.py, limiting caller changes to the real public contract, explicitly showing when X-Nebula-Tenant-ID is and is not required, and requiring public-header plus usage-ledger correlation instead of relying on a toy curl-only demo. |
 | R009 | failure-visibility | active | M001/S04 | M001/S05 | mapped |
 | R010 | constraint | validated | M001/S01 | none | S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features. |
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
@@ -245,7 +245,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 5
-- Mapped to slices: 5
-- Validated: 5 (R001, R002, R006, R007, R010)
+- Active requirements: 3
+- Mapped to slices: 3
+- Validated: 7 (R001, R002, R004, R006, R007, R008, R010)
 - Unmapped active requirements: 0
