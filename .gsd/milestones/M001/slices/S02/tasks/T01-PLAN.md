@@ -44,3 +44,9 @@ Create the two canonical docs this slice needs: a production-model reference tha
 
 - `docs/production-model.md` — canonical operating-model reference for tenant, API key, operator, app, and workload boundaries
 - `docs/quickstart.md` — canonical self-hosted happy-path adoption flow from env setup to first public request and operator-visible confirmation
+
+## Observability Impact
+
+- Signals referenced by this task are documentation-only, but they must point to real runtime evidence: public `X-Nebula-*` response headers, Playground `X-Request-ID`, and persisted rows visible through `GET /v1/admin/usage/ledger` and the console Observability surfaces.
+- Future agents should inspect `docs/production-model.md` and `docs/quickstart.md` first, then verify the claims against `src/nebula/services/auth_service.py`, `src/nebula/api/routes/admin.py`, and the existing pytest / console suites named in the slice verification.
+- Failure becomes visible as doc drift: missing or incorrect links, wrong credential guidance, incorrect tenant-header rules, placeholder text, or backend / console verification suites failing against the documented behavior.

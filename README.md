@@ -37,6 +37,8 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 ## Documentation map
 
+- [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
+- [Production model](docs/production-model.md): canonical operating-model reference for tenant, policy, API key, operator, and app/workload guidance
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
 - [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
@@ -47,6 +49,8 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 ### Supported self-hosted path
 
 Nebula's supported deployment path is the Compose stack documented in [docs/self-hosting.md](docs/self-hosting.md).
+
+For the end-to-end adoption flow after startup, use [docs/quickstart.md](docs/quickstart.md). For the operator-versus-application boundary, tenant model, and app/workload guidance, use [docs/production-model.md](docs/production-model.md).
 
 ```bash
 cp deploy/selfhosted.env.example deploy/selfhosted.env
@@ -120,6 +124,8 @@ The gateway and console use explicit bootstrap/admin credentials. In self-hosted
 - `NEBULA_DATABASE_URL`
 
 The supported self-hosted environment template lives at `deploy/selfhosted.env.example`.
+
+Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flow and [docs/production-model.md](docs/production-model.md) for the current tenant, API-key, operator, app, and workload boundaries.
 
 ## Selected endpoints
 

@@ -39,7 +39,7 @@
 
 ## Tasks
 
-- [ ] **T01: Author the production model and happy-path quickstart docs** `est:1h`
+- [x] **T01: Author the production model and happy-path quickstart docs** `est:1h`
   - Why: S02's main risk is ambiguity, not missing runtime code; the slice needs canonical docs that explain how Nebula should be structured in production and how to reach a working first request on the supported path.
   - Files: `docs/production-model.md`, `docs/quickstart.md`, `docs/adoption-api-contract.md`, `docs/self-hosting.md`, `src/nebula/services/auth_service.py`, `src/nebula/api/routes/admin.py`, `src/nebula/core/config.py`
   - Do: Write `docs/production-model.md` to define tenant, API key, operator, app, and workload boundaries from the current runtime truth; make explicit that `app` and `workload` are guidance only in M001 and that multi-tenant API keys require `X-Nebula-Tenant-ID`. Then write `docs/quickstart.md` as the single supported adoption flow: configure `deploy/selfhosted.env`, start the Compose stack, log into the console with the admin key, explain bootstrap client key usage versus issuing tenant-scoped keys, send one public `POST /v1/chat/completions` request with `X-Nebula-API-Key`, and point to `X-Nebula-*` headers, Playground, usage ledger, and Observability as verification surfaces. Link to `docs/adoption-api-contract.md` for request/response semantics instead of duplicating the contract.
