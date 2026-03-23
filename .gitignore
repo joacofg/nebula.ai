@@ -33,3 +33,22 @@ console/playwright-report/
 .gsd/STATE.md
 .gsd/gsd.db
 .gsd/DISCUSSION-MANIFEST.json
+
+# ── GSD baseline (auto-generated) ──
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+*.code-workspace
+.env.*
+!.env.example
+*.pyc
+venv/
+target/
+vendor/
+*.log
+coverage/
+.cache/
+tmp/
