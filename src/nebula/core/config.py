@@ -53,6 +53,20 @@ class Settings(BaseSettings):
         default="nebula-dev-key",
         alias="NEBULA_BOOTSTRAP_API_KEY",
     )
+    enrollment_token: str | None = Field(default=None, alias="NEBULA_ENROLLMENT_TOKEN")
+    hosted_plane_url: str | None = Field(default=None, alias="NEBULA_HOSTED_PLANE_URL")
+    remote_management_enabled: bool = Field(
+        default=False,
+        alias="NEBULA_REMOTE_MANAGEMENT_ENABLED",
+    )
+    remote_management_allowed_actions: list[str] = Field(
+        default_factory=list,
+        alias="NEBULA_REMOTE_MANAGEMENT_ALLOWED_ACTIONS",
+    )
+    remote_management_poll_interval_seconds: int = Field(
+        default=60,
+        alias="NEBULA_REMOTE_MANAGEMENT_POLL_INTERVAL_SECONDS",
+    )
 
     @model_validator(mode="after")
     def validate_premium_provider_settings(self) -> "Settings":

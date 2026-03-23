@@ -9,10 +9,15 @@ from nebula.providers.openai_compatible import OpenAICompatibleProvider
 from nebula.services.auth_service import AuthService
 from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import OllamaEmbeddingsService
+from nebula.services.enrollment_service import EnrollmentService
+from nebula.services.gateway_enrollment_service import GatewayEnrollmentService
+from nebula.services.heartbeat_ingest_service import HeartbeatIngestService
+from nebula.services.heartbeat_service import HeartbeatService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from nebula.services.provider_registry import ProviderRegistry
+from nebula.services.remote_management_service import RemoteManagementService
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
@@ -25,6 +30,17 @@ class ServiceContainer:
         self.pricing_catalog = PricingCatalog.from_path(pricing_path)
         self.governance_store = GovernanceStore(
             settings=settings,
+            session_factory=create_session_factory(settings),
+        )
+        self.enrollment_service = EnrollmentService(
+            settings=settings,
+            session_factory=create_session_factory(settings),
+        )
+        self.gateway_enrollment_service = GatewayEnrollmentService(
+            settings=settings,
+            session_factory=create_session_factory(settings),
+        )
+        self.heartbeat_ingest_service = HeartbeatIngestService(
             session_factory=create_session_factory(settings),
         )
         self.auth_service = AuthService(settings, self.governance_store)
@@ -53,6 +69,15 @@ class ServiceContainer:
             embeddings_service=self.embeddings_service,
             premium_provider_health=self.premium_provider_health_service,
         )
+        self.heartbeat_service = HeartbeatService(
+            settings=settings,
+            gateway_enrollment_service=self.gateway_enrollment_service,
+            runtime_health_service=self.runtime_health_service,
+        )
+        self.remote_management_service = RemoteManagementService(
+            settings=settings,
+            gateway_enrollment_service=self.gateway_enrollment_service,
+        )
         self.chat_service = ChatService(
             settings=settings,
             cache_service=self.cache_service,
@@ -67,6 +92,8 @@ class ServiceContainer:
         await self.cache_service.initialize()
 
     async def shutdown(self) -> None:
+        await self.remote_management_service.stop()
+        await self.heartbeat_service.stop()
         await self.provider_registry.close()
         await self.premium_provider_health_service.close()
         await self.embeddings_service.close()
