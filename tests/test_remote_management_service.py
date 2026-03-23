@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from datetime import datetime
 
 import httpx
 import pytest
@@ -9,8 +10,16 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from nebula.db.models import DeploymentModel, DeploymentRemoteActionModel, LocalHostedIdentityModel
-from nebula.models.deployment import EnrollmentExchangeResponse
-from tests.support import admin_headers, configured_app
+from nebula.models.deployment import EnrollmentExchangeResponse, RemoteActionRecord
+from nebula.providers.base import CompletionResult
+from tests.support import (
+    FakeCacheService,
+    StubProvider,
+    admin_headers,
+    auth_headers,
+    configured_app,
+    usage,
+)
 
 
 def _deployment_headers(credential: str) -> dict[str, str]:
@@ -90,6 +99,22 @@ def _session_factory(app: FastAPI) -> sessionmaker:
     db_url = app.state.container.settings.database_url
     engine = create_engine(db_url, connect_args={"check_same_thread": False})
     return sessionmaker(bind=engine)
+
+
+def _install_serving_stubs(app: FastAPI) -> None:
+    container = app.state.container
+    container.local_provider = StubProvider(
+        "ollama",
+        completion_result=CompletionResult(
+            content="remote-management outage-safe response",
+            model=container.settings.local_model,
+            provider="ollama",
+            usage=usage(),
+        ),
+    )
+    container.provider_registry.local_provider = container.local_provider
+    container.cache_service = FakeCacheService()
+    container.chat_service.cache_service = container.cache_service
 
 
 @pytest.mark.asyncio
@@ -249,3 +274,82 @@ async def test_disabled_remote_management_starts_poller_but_skips_polling() -> N
             action = session.get(DeploymentRemoteActionModel, action_id)
             assert action is not None
             assert action.status == "queued"
+
+
+@pytest.mark.asyncio
+async def test_hosted_outage_leaves_remote_action_queued_and_serving_unaffected() -> None:
+    async with configured_async_client(
+        NEBULA_HOSTED_PLANE_URL="http://hosted.invalid/v1",
+        NEBULA_REMOTE_MANAGEMENT_ENABLED="true",
+        NEBULA_REMOTE_MANAGEMENT_ALLOWED_ACTIONS='["rotate_deployment_credential"]',
+        NEBULA_PREMIUM_PROVIDER="mock",
+    ) as (app, client):
+        deployment_id, _credential = await _create_active_deployment(app, client)
+        action_id = await _queue_rotation_action(client, deployment_id)
+        _install_serving_stubs(app)
+
+        def outage_handler(request: httpx.Request) -> httpx.Response:
+            raise httpx.ConnectError("hosted outage", request=request)
+
+        app.state.container.remote_management_service._http_transport = httpx.MockTransport(
+            outage_handler
+        )
+
+        await app.state.container.remote_management_service.poll_and_apply_once()
+
+        Session = _session_factory(app)
+        with Session() as session:
+            action = session.get(DeploymentRemoteActionModel, action_id)
+            assert action is not None
+            assert action.status == "queued"
+            assert action.started_at is None
+            assert action.finished_at is None
+
+        chat_response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {"role": "user", "content": "hosted outage should not break local serving"}
+                ],
+            },
+        )
+
+    assert chat_response.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_missing_local_identity_reports_invalid_state_failure_reason() -> None:
+    async with configured_async_client(
+        NEBULA_HOSTED_PLANE_URL="http://hosted.invalid/v1",
+        NEBULA_REMOTE_MANAGEMENT_ENABLED="true",
+        NEBULA_REMOTE_MANAGEMENT_ALLOWED_ACTIONS='["rotate_deployment_credential"]',
+    ) as (app, client):
+        deployment_id, _credential = await _create_active_deployment(app, client)
+        app.state.container.gateway_enrollment_service.clear_local_identity()
+
+        action = RemoteActionRecord(
+            id="test-action",
+            deployment_id=deployment_id,
+            action_type="rotate_deployment_credential",
+            status="queued",
+            note="rotate now",
+            requested_at=datetime.now().isoformat(),
+            expires_at=datetime.now().isoformat(),
+            started_at=None,
+            finished_at=None,
+            failure_reason=None,
+            failure_detail=None,
+            result_credential_prefix=None,
+        )
+
+        allowed, failure_reason, failure_detail = (
+            app.state.container.remote_management_service._authorize(action)
+        )
+
+    assert (allowed, failure_reason, failure_detail) == (
+        False,
+        "invalid_state",
+        "No active local hosted identity exists.",
+    )
