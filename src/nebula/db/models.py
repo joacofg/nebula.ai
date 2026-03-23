@@ -123,6 +123,7 @@ class DeploymentRemoteActionModel(Base):
             "action_type",
             unique=True,
             postgresql_where=(status.in_(("queued", "in_progress"))),
+            sqlite_where=(status.in_(("queued", "in_progress"))),
         ),
     )
 

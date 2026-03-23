@@ -53,6 +53,7 @@ def upgrade() -> None:
             ["deployment_id", "action_type"],
             unique=True,
             postgresql_where=sa.text("status IN ('queued', 'in_progress')"),
+            sqlite_where=sa.text("status IN ('queued', 'in_progress')"),
         )
 
 

@@ -6,6 +6,8 @@ from datetime import UTC, datetime
 
 import sqlalchemy as sa
 from fastapi.testclient import TestClient
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import sessionmaker
 
 from nebula.db.models import DeploymentRemoteActionModel
 from nebula.models.deployment import DeploymentRecord, RemoteActionRecord, RemoteActionSummary
@@ -116,3 +118,146 @@ def test_schema_remote_actions_has_unique_live_action_guard() -> None:
     assert "queued" in compiled
     assert "in_progress" in compiled
 
+
+def test_queue_rotate_credential_returns_201_for_active_deployment() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id = _make_active_deployment(client)
+
+            response = client.post(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate after access review"},
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 201
+    data = response.json()
+    assert data["deployment_id"] == deployment_id
+    assert data["action_type"] == "rotate_deployment_credential"
+    assert data["status"] == "queued"
+    assert data["note"] == "Rotate after access review"
+    assert data["requested_at"] is not None
+    assert data["expires_at"] is not None
+
+
+def test_queue_rotate_credential_rejects_non_active_deployments() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            pending_response = client.post(
+                "/v1/admin/deployments/missing/remote-actions/rotate-credential",
+                json={"note": "Rotate"},
+                headers=admin_headers(),
+            )
+            assert pending_response.status_code == 404
+
+            pending_create = client.post(
+                "/v1/admin/deployments",
+                json={"display_name": "pending-gw", "environment": "production"},
+                headers=admin_headers(),
+            )
+            assert pending_create.status_code == 201
+            pending_id = pending_create.json()["id"]
+
+            pending_queue = client.post(
+                f"/v1/admin/deployments/{pending_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate"},
+                headers=admin_headers(),
+            )
+            assert pending_queue.status_code == 409
+            assert pending_queue.json()["detail"] == "Deployment is not in an active linked state."
+
+            revoked_id = _make_active_deployment(client)
+            revoke_resp = client.post(
+                f"/v1/admin/deployments/{revoked_id}/revoke",
+                headers=admin_headers(),
+            )
+            assert revoke_resp.status_code == 200
+            revoked_queue = client.post(
+                f"/v1/admin/deployments/{revoked_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate"},
+                headers=admin_headers(),
+            )
+            assert revoked_queue.status_code == 409
+
+            unlinked_id = _make_active_deployment(client)
+            unlink_resp = client.post(
+                f"/v1/admin/deployments/{unlinked_id}/unlink",
+                headers=admin_headers(),
+            )
+            assert unlink_resp.status_code == 200
+            unlinked_queue = client.post(
+                f"/v1/admin/deployments/{unlinked_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate"},
+                headers=admin_headers(),
+            )
+            assert unlinked_queue.status_code == 409
+
+            db_url = app.state.container.settings.database_url
+            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+            Session = sessionmaker(bind=engine)
+            with Session() as session:
+                rows = session.scalars(select(DeploymentRemoteActionModel)).all()
+
+    assert rows == []
+
+
+def test_queue_rotate_credential_returns_existing_live_action() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id = _make_active_deployment(client)
+
+            first = client.post(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate now"},
+                headers=admin_headers(),
+            )
+            assert first.status_code == 201
+
+            second = client.post(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions/rotate-credential",
+                json={"note": "Rotate now"},
+                headers=admin_headers(),
+            )
+
+    assert second.status_code == 201
+    assert second.json()["id"] == first.json()["id"]
+
+
+def test_list_remote_actions_returns_deployment_history_newest_first() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            deployment_id = _make_active_deployment(client)
+
+            first = client.post(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions/rotate-credential",
+                json={"note": "First rotation"},
+                headers=admin_headers(),
+            )
+            assert first.status_code == 201
+
+            db_url = app.state.container.settings.database_url
+            engine = create_engine(db_url, connect_args={"check_same_thread": False})
+            Session = sessionmaker(bind=engine)
+            with Session() as session:
+                first_row = session.get(DeploymentRemoteActionModel, first.json()["id"])
+                assert first_row is not None
+                first_row.status = "applied"
+                first_row.finished_at = datetime(2026, 3, 22, 13, 5, tzinfo=UTC)
+                first_row.updated_at = datetime(2026, 3, 22, 13, 5, tzinfo=UTC)
+                session.commit()
+
+            second = client.post(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions/rotate-credential",
+                json={"note": "Second rotation"},
+                headers=admin_headers(),
+            )
+            assert second.status_code == 201
+
+            response = client.get(
+                f"/v1/admin/deployments/{deployment_id}/remote-actions",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert [item["id"] for item in data] == [second.json()["id"], first.json()["id"]]
