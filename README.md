@@ -10,7 +10,7 @@ Application teams often need premium models for some requests, but not all of th
 - preserve premium capacity for requests that actually need it
 - surface route, cache, fallback, and cost signals to operators instead of hiding them
 
-Nebula is currently packaged for self-hosted pilot evaluation. The focus is a credible operator workflow, measurable product proof, and a repo-native deployment path.
+Nebula is self-hosted with an optional hosted control plane. The hosted control plane is recommended for pilots because it improves onboarding and fleet visibility, but it is not required for serving traffic. The default hosted export is metadata-only; see [`docs/hosted-default-export.schema.json`](docs/hosted-default-export.schema.json) for the canonical machine-readable contract.
 
 ## Product proof
 
@@ -29,10 +29,16 @@ Use these repo-native proof paths:
 - operators who need a focused control plane and visible runtime behavior
 - academic or technical reviewers who need the architecture, deployment, and evaluation story to be inspectable from the repository
 
+## Hosted control plane
+
+Nebula can optionally connect to a hosted control plane for fleet visibility, deployment health, and streamlined pilot onboarding. The hosted plane is not in the request-serving path and is not authoritative for local runtime enforcement. Local policy decisions, routing, and governance remain under operator control at all times.
+
+The default metadata exported to the hosted plane is defined in [`docs/hosted-default-export.schema.json`](docs/hosted-default-export.schema.json). That contract explicitly excludes raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state. Richer diagnostics beyond the default export are operator-initiated exceptions, not automatic behavior.
+
 ## Documentation map
 
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
-- [Architecture](docs/architecture.md): request flow, runtime components, governance, cache, providers, console, and benchmark harness
+- [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 

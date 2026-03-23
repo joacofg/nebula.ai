@@ -7,6 +7,9 @@ from prometheus_client import make_asgi_app
 from nebula.api.dependencies import get_container
 from nebula.api.routes.admin import router as admin_router
 from nebula.api.routes.chat import router as chat_router
+from nebula.api.routes.enrollment import exchange_router, router as enrollment_router
+from nebula.api.routes.heartbeat import heartbeat_router
+from nebula.api.routes.remote_management import remote_management_router
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
 from nebula.observability.logging import configure_logging
@@ -19,7 +22,22 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     container = ServiceContainer(settings=settings)
     await container.initialize()
+    if settings.enrollment_token:
+        try:
+            await container.gateway_enrollment_service.attempt_enrollment(
+                settings.enrollment_token
+            )
+        except Exception as exc:
+            import logging
+            logging.getLogger(__name__).error(
+                "Enrollment startup hook failed unexpectedly: %s. "
+                "Gateway will start without hosted features.",
+                exc,
+            )
     app.state.container = container
+    # Start heartbeat sender AFTER enrollment check (D-04)
+    container.heartbeat_service.start()
+    container.remote_management_service.start()
     try:
         yield {"settings": settings}
     finally:
@@ -36,6 +54,10 @@ def create_app() -> FastAPI:
     app.add_middleware(RequestContextMiddleware)
     app.include_router(chat_router, prefix=settings.api_v1_prefix)
     app.include_router(admin_router, prefix=settings.api_v1_prefix)
+    app.include_router(enrollment_router, prefix=settings.api_v1_prefix)
+    app.include_router(exchange_router, prefix=settings.api_v1_prefix)
+    app.include_router(heartbeat_router, prefix=settings.api_v1_prefix)
+    app.include_router(remote_management_router, prefix=settings.api_v1_prefix)
     if settings.enable_metrics:
         app.mount("/metrics", make_asgi_app())
 

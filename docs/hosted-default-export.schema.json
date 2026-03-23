@@ -1,0 +1,158 @@
+{
+  "$defs": {
+    "HostedDependencySummary": {
+      "description": "Coarse dependency health as last reported by the deployment.",
+      "properties": {
+        "healthy": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Healthy",
+          "type": "array"
+        },
+        "degraded": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Degraded",
+          "type": "array"
+        },
+        "unavailable": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Unavailable",
+          "type": "array"
+        }
+      },
+      "title": "HostedDependencySummary",
+      "type": "object"
+    },
+    "HostedRemoteActionSummary": {
+      "description": "Aggregate counts for remote actions processed by this deployment.",
+      "properties": {
+        "queued": {
+          "default": 0,
+          "title": "Queued",
+          "type": "integer"
+        },
+        "applied": {
+          "default": 0,
+          "title": "Applied",
+          "type": "integer"
+        },
+        "failed": {
+          "default": 0,
+          "title": "Failed",
+          "type": "integer"
+        },
+        "last_action_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Action At"
+        }
+      },
+      "title": "HostedRemoteActionSummary",
+      "type": "object"
+    }
+  },
+  "description": "Default metadata a self-hosted Nebula deployment exports to the\nhosted control plane.\n\nThis is the canonical allowlist.  Any field not present here is\nexcluded by default.  Richer diagnostic exports (if added later)\nmust be operator-initiated and clearly separate from this contract.",
+  "properties": {
+    "deployment_id": {
+      "title": "Deployment Id",
+      "type": "string"
+    },
+    "display_name": {
+      "title": "Display Name",
+      "type": "string"
+    },
+    "environment": {
+      "title": "Environment",
+      "type": "string"
+    },
+    "labels": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Labels",
+      "type": "object"
+    },
+    "nebula_version": {
+      "title": "Nebula Version",
+      "type": "string"
+    },
+    "capability_flags": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Capability Flags",
+      "type": "array"
+    },
+    "registered_at": {
+      "format": "date-time",
+      "title": "Registered At",
+      "type": "string"
+    },
+    "last_seen_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last Seen At"
+    },
+    "freshness_status": {
+      "enum": [
+        "connected",
+        "degraded",
+        "stale",
+        "offline"
+      ],
+      "title": "Freshness Status",
+      "type": "string"
+    },
+    "freshness_reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Freshness Reason"
+    },
+    "dependency_summary": {
+      "$ref": "#/$defs/HostedDependencySummary"
+    },
+    "remote_action_summary": {
+      "$ref": "#/$defs/HostedRemoteActionSummary"
+    }
+  },
+  "required": [
+    "deployment_id",
+    "display_name",
+    "environment",
+    "nebula_version",
+    "registered_at",
+    "freshness_status",
+    "dependency_summary",
+    "remote_action_summary"
+  ],
+  "title": "HostedDeploymentMetadata",
+  "type": "object"
+}

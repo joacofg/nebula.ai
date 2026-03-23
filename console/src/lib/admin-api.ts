@@ -161,6 +161,131 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
   return (await response.json()) as T;
 }
 
+export type DeploymentEnvironment = "production" | "staging" | "development";
+export type EnrollmentState = "pending" | "active" | "revoked" | "unlinked";
+
+export type FreshnessStatus = "connected" | "degraded" | "stale" | "offline";
+
+export type DependencySummary = {
+  healthy: string[];
+  degraded: string[];
+  unavailable: string[];
+};
+
+export type RemoteActionStatus = "queued" | "in_progress" | "applied" | "failed";
+
+export type RemoteActionFailureReason =
+  | "unauthorized_local_policy"
+  | "expired"
+  | "unsupported_capability"
+  | "invalid_state"
+  | "apply_error";
+
+export type RemoteActionRecord = {
+  id: string;
+  deployment_id: string;
+  action_type: "rotate_deployment_credential";
+  status: RemoteActionStatus;
+  note: string;
+  requested_at: string;
+  expires_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  failure_reason: RemoteActionFailureReason | null;
+  failure_detail: string | null;
+  result_credential_prefix: string | null;
+};
+
+export type RemoteActionSummary = {
+  queued: number;
+  applied: number;
+  failed: number;
+  last_action_at: string | null;
+};
+
+export type DeploymentRecord = {
+  id: string;
+  display_name: string;
+  environment: DeploymentEnvironment;
+  enrollment_state: EnrollmentState;
+  nebula_version: string | null;
+  capability_flags: string[];
+  enrolled_at: string | null;
+  revoked_at: string | null;
+  unlinked_at: string | null;
+  created_at: string;
+  updated_at: string;
+  last_seen_at: string | null;
+  freshness_status: FreshnessStatus | null;
+  freshness_reason: string | null;
+  dependency_summary: DependencySummary | null;
+  remote_action_summary: RemoteActionSummary | null;
+};
+
+export type DeploymentCreateInput = {
+  display_name: string;
+  environment: DeploymentEnvironment;
+};
+
+export type EnrollmentTokenResponse = {
+  token: string;
+  expires_at: string;
+  deployment_id: string;
+};
+
+export const ADMIN_DEPLOYMENTS_ENDPOINT = "/api/admin/deployments";
+
+export function listDeployments(adminKey: string) {
+  return adminRequest<DeploymentRecord[]>(ADMIN_DEPLOYMENTS_ENDPOINT, { adminKey });
+}
+
+export function createDeployment(adminKey: string, payload: DeploymentCreateInput) {
+  return adminRequest<DeploymentRecord>(ADMIN_DEPLOYMENTS_ENDPOINT, {
+    adminKey,
+    method: "POST",
+    body: payload,
+  });
+}
+
+export function generateEnrollmentToken(adminKey: string, deploymentId: string) {
+  return adminRequest<EnrollmentTokenResponse>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/enrollment-token`,
+    { adminKey, method: "POST" },
+  );
+}
+
+export function revokeDeployment(adminKey: string, deploymentId: string) {
+  return adminRequest<DeploymentRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/revoke`,
+    { adminKey, method: "POST" },
+  );
+}
+
+export function unlinkDeployment(adminKey: string, deploymentId: string) {
+  return adminRequest<DeploymentRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/unlink`,
+    { adminKey, method: "POST" },
+  );
+}
+
+export function queueRotateDeploymentCredential(adminKey: string, deploymentId: string, note: string) {
+  return adminRequest<RemoteActionRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/remote-actions/rotate-credential`,
+    {
+      adminKey,
+      method: "POST",
+      body: { note },
+    },
+  );
+}
+
+export function listRemoteActions(adminKey: string, deploymentId: string) {
+  return adminRequest<RemoteActionRecord[]>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/remote-actions`,
+    { adminKey },
+  );
+}
+
 export const ADMIN_TENANTS_ENDPOINT = "/api/admin/tenants";
 export const ADMIN_API_KEYS_ENDPOINT = "/api/admin/api-keys";
 export const ADMIN_USAGE_LEDGER_ENDPOINT = "/api/admin/usage/ledger";

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -58,6 +58,87 @@ class ApiKeyModel(Base):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class DeploymentModel(Base):
+    __tablename__ = "deployments"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    environment: Mapped[str] = mapped_column(String(64), nullable=False)
+    enrollment_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    nebula_version: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    capability_flags_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    credential_hash: Mapped[str | None] = mapped_column(String(64), nullable=True, unique=True)
+    credential_prefix: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    enrolled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    dependency_summary_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EnrollmentTokenModel(Base):
+    __tablename__ = "enrollment_tokens"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    deployment_id: Mapped[str] = mapped_column(
+        String(255), ForeignKey("deployments.id", ondelete="CASCADE"), nullable=False
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    token_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class DeploymentRemoteActionModel(Base):
+    __tablename__ = "deployment_remote_actions"
+
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    deployment_id: Mapped[str] = mapped_column(
+        String(255),
+        ForeignKey("deployments.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False)
+    note: Mapped[str] = mapped_column(String(280), nullable=False)
+    requested_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    failure_reason: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    failure_detail: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    result_credential_prefix: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+    __table_args__ = (
+        Index(
+            "uq_remote_actions_live",
+            "deployment_id",
+            "action_type",
+            unique=True,
+            postgresql_where=(status.in_(("queued", "in_progress"))),
+            sqlite_where=(status.in_(("queued", "in_progress"))),
+        ),
+    )
+
+
+class LocalHostedIdentityModel(Base):
+    __tablename__ = "local_hosted_identity"
+
+    deployment_id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    display_name: Mapped[str] = mapped_column(String(255), nullable=False)
+    environment: Mapped[str] = mapped_column(String(64), nullable=False)
+    credential_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    credential_prefix: Mapped[str] = mapped_column(String(16), nullable=False)
+    credential_raw: Mapped[str] = mapped_column(String(255), nullable=False, default="")
+    enrolled_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    unlinked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
 
 class UsageLedgerModel(Base):
