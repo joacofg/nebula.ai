@@ -123,11 +123,13 @@ The supported self-hosted environment template lives at `deploy/selfhosted.env.e
 
 ## Selected endpoints
 
-- `POST /v1/chat/completions`
+- `POST /v1/chat/completions` — public adoption path; see [docs/adoption-api-contract.md](docs/adoption-api-contract.md) for the supported boundary, `X-Nebula-API-Key` auth contract, streaming behavior, and unsupported/deferred items
 - `GET /v1/admin/session`
 - `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
 - `GET /v1/admin/usage/ledger`
 - `GET /health`
 - `GET /health/ready`
 - `GET /health/dependencies`
+- `GET /metrics`
+ /health/dependencies`
 - `GET /metrics`

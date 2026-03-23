@@ -19,6 +19,7 @@
 
 - `pytest tests/test_chat_completions.py tests/test_response_headers.py tests/test_admin_playground_api.py -q`
 - `pytest tests/test_chat_completions.py -k "stream or user or auth" -q`
+- `pytest tests/test_response_headers.py -k "denied or fallback_blocked or validation_failures" -q`
 - `test -f docs/adoption-api-contract.md && grep -c "^## " docs/adoption-api-contract.md | awk '{exit !($1 >= 6)}' && ! rg -n "TBD|TODO" docs/adoption-api-contract.md`
 - `rg -n "adoption-api-contract|POST /v1/chat/completions|X-Nebula-API-Key|unsupported|deferred" README.md docs/architecture.md docs/adoption-api-contract.md`
 
@@ -43,7 +44,7 @@
   - Do: Add or tighten focused tests for the public `POST /v1/chat/completions` contract, especially auth-header expectations, required user-message boundary, streaming/header semantics, and the fact that admin Playground is a different non-streaming contract; make only minimal implementation changes needed to keep tests and runtime behavior aligned with the intended narrow boundary.
   - Verify: `pytest tests/test_chat_completions.py tests/test_response_headers.py tests/test_admin_playground_api.py -q`
   - Done when: the contract-focused tests pass and clearly prove what public adoption supports, what failure/header evidence remains visible, and that Playground is not the same contract.
-- [ ] **T02: Publish the canonical adoption contract and align entry docs** `est:1h`
+- [x] **T02: Publish the canonical adoption contract and align entry docs** `est:1h`
   - Why: R001, R002, and R010 are only satisfied if the supported surface and explicit omissions are easy to find without reverse-engineering code.
   - Files: `docs/adoption-api-contract.md`, `README.md`, `docs/architecture.md`
   - Do: Write one canonical contract doc for the public chat-completions adoption path, covering supported request/response shape, auth headers, model naming/routing guidance, streaming, Nebula response headers, and an explicit unsupported/deferred list; then link and align `README.md` and `docs/architecture.md` to that canonical source without duplicating drifting detail.

@@ -47,3 +47,9 @@ Turn the proven contract into one canonical, easy-to-find adoption artifact. Thi
 - `docs/adoption-api-contract.md` — canonical adoption API contract and compatibility-boundary document
 - `README.md` — top-level doc updated to point adopters at the canonical contract
 - `docs/architecture.md` — architecture doc aligned to the canonical contract and public/admin boundary
+
+## Observability Impact
+
+- Signals clarified: the canonical contract doc now names the inspectable public response headers (`X-Nebula-*`), the required public auth header (`X-Nebula-API-Key`), and the admin Playground boundary including `X-Request-ID` and usage-ledger correlation.
+- Inspection path for future agents: verify the written contract against `tests/test_chat_completions.py`, `tests/test_response_headers.py`, `tests/test_admin_playground_api.py`, `docs/adoption-api-contract.md`, and `GET /v1/admin/usage/ledger` for Playground evidence language.
+- Failure visibility improved: if public/docs behavior drifts, the mismatch should become visible via targeted ripgrep checks for contract terms, pytest contract suites, or missing/incorrect header language in the canonical document rather than only by reading scattered repo prose.
