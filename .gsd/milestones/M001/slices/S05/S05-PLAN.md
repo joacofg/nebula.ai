@@ -50,7 +50,7 @@
   - Do: Add or refine focused integration assertions that preserve the S03/S04 proof order, keep Playground clearly admin-only corroboration, and prove the response-header plus `X-Request-ID` correlation pattern remains the backbone of the integrated story; reuse existing fixtures/runtime harnesses instead of introducing parallel test infrastructure.
   - Verify: `python3 -m pytest tests/test_reference_migration.py tests/test_admin_playground_api.py tests/test_governance_api.py tests/test_chat_completions.py tests/test_response_headers.py -q`
   - Done when: The integrated backend proof is executable from the real public route boundary through ledger correlation, and any verification failure points clearly to contract drift rather than missing assembly.
-- [ ] **T03: Align console proof surfaces and close requirement evidence** `est:1h`
+- [x] **T03: Align console proof surfaces and close requirement evidence** `est:1h`
   - Why: Final milestone closure requires the operator-facing UI proof and milestone bookkeeping to tell the same joined story as the docs and backend verification, and R003 needs explicit validation language.
   - Files: `console/e2e/playground.spec.ts`, `console/e2e/observability.spec.ts`, `console/src/app/(console)/observability/page.tsx`, `console/src/components/ledger/ledger-request-detail.tsx`, `.gsd/REQUIREMENTS.md`, `.gsd/KNOWLEDGE.md`
   - Do: Tighten console e2e and any minimal supporting UI copy/assertion seams so Playground reads as immediate corroboration and Observability as persisted explanation plus dependency health inside the integrated proof; then update requirement and knowledge records with the final integrated validation pattern and explicit environment-gap handling if local runners are unavailable.

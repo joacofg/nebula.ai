@@ -133,12 +133,21 @@ test("operator can filter the ledger and inspect dependency health", async ({ pa
   await expect(page).toHaveURL(/\/observability$/, { timeout: 30_000 });
 
   await expect(page.getByRole("heading", { name: "Persisted request explanation" })).toBeVisible();
-  await expect(page.getByText("Inspect ledger-backed request outcomes by tenant, route target, terminal status, and time window to confirm the final route, fallback, provider, and policy evidence behind each request.")).toBeVisible();
+  await expect(
+    page.getByText(
+      "Inspect ledger-backed request outcomes by tenant, route target, terminal status, and time window to confirm the final route, fallback, provider, and policy evidence behind each request after you correlate the same request through public X-Request-ID and X-Nebula-* headers.",
+    ),
+  ).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dependency health" })).toBeVisible();
 
   await page.getByRole("combobox", { name: "Tenant" }).selectOption("team-b");
   await expect(page.getByRole("cell", { name: "team-b" })).toBeVisible();
   await expect(page.getByText("req-team-b")).toBeVisible();
+  await expect(
+    page.getByText(
+      "This persisted ledger record explains the final route, provider, fallback, cache, and policy outcome for the same request ID that operators first corroborate through the public response headers.",
+    ),
+  ).toBeVisible();
   await expect(page.getByText("premium_provider")).toBeVisible();
   await expect(page.getByText("degraded")).toBeVisible();
   await expect(page.getByText("Required dependency failures block confidence immediately, while degraded optional dependencies stay visible here so operators can explain reduced capability without losing the persisted request trail.")).toBeVisible();

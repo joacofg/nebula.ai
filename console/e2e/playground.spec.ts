@@ -106,8 +106,17 @@ test("operator can submit a playground prompt and see metadata plus recorded out
   await expect(
     page.getByText("These fields describe the live route, policy, and tenant evidence before the ledger finishes recording the same request."),
   ).toBeVisible();
+  await expect(
+    page.getByText("Immediate response evidence"),
+  ).toBeVisible();
+  await expect(
+    page.getByText("Recorded outcome"),
+  ).toBeVisible();
   await expect(page.getByText("Request ID", { exact: true })).toBeVisible();
   await expect(page.getByText("req-play-001")).toBeVisible();
+  await expect(
+    page.getByText("Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome."),
+  ).toBeVisible();
   await expect(page.getByText("Tenant")).toBeVisible();
   await expect(page.getByText("default")).toBeVisible();
   await expect(page.getByText("Route target")).toBeVisible();

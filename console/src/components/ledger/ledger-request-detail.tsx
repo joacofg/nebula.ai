@@ -24,7 +24,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
         <p className="mt-2 text-sm text-slate-600">
           This persisted ledger record explains the final route, provider, fallback, cache, and policy
-          outcome that operators can correlate back to the public request headers.
+          outcome for the same request ID that operators first corroborate through the public response headers.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">

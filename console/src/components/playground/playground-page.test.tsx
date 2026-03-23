@@ -103,7 +103,7 @@ describe("playground-page", () => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-123");
     });
     expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
-    expect(await screen.findByText("Route reason")).toBeInTheDocument();
+    expect(screen.getAllByText("Route reason")).toHaveLength(2);
     expect(await screen.findByText("Policy mode")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Recorded outcome" })).toBeInTheDocument();
     expect(await screen.findByText("Terminal status")).toBeInTheDocument();
@@ -205,8 +205,8 @@ describe("playground-page", () => {
     expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
-    expect(await screen.findByText("local_provider_error_fallback")).toBeInTheDocument();
-    expect(await screen.findByText("allowed")).toBeInTheDocument();
+    expect(screen.getAllByText("local_provider_error_fallback")).toHaveLength(2);
+    expect(screen.getAllByText("allowed").length).toBeGreaterThanOrEqual(2);
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
     });

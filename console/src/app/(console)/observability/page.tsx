@@ -77,7 +77,8 @@ export default function ObservabilityPage() {
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Inspect ledger-backed request outcomes by tenant, route target, terminal status, and time window to
-          confirm the final route, fallback, provider, and policy evidence behind each request.
+          confirm the final route, fallback, provider, and policy evidence behind each request after you correlate
+          the same request through public X-Request-ID and X-Nebula-* headers.
         </p>
       </header>
 
