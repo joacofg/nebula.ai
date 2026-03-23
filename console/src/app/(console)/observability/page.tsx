@@ -120,6 +120,10 @@ export default function ObservabilityPage() {
           <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
             Dependency health
           </h2>
+          <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            These dependency states do not replace the ledger record; they provide supporting runtime context for the
+            same operator investigation.
+          </p>
         </header>
 
         {runtimeHealthQuery.isError ? (
