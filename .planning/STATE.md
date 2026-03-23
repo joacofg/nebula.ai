@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-stopped_at: Completed 09-audited-remote-management-02-PLAN.md
-last_updated: "2026-03-23T00:17:24.790Z"
+stopped_at: Completed 09-audited-remote-management-03-PLAN.md
+last_updated: "2026-03-23T00:27:02.560Z"
 progress:
   total_phases: 5
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 12
-  completed_plans: 11
+  completed_plans: 12
 ---
 
 # Project State
@@ -19,18 +19,18 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-18)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
-**Current focus:** Phase 09 — audited-remote-management
+**Current focus:** Phase 10 — pilot-proof-and-failure-safe-operations
 
 ## Current Position
 
-Phase: 9
-Plan: 03 next
+Phase: 10
+Plan: 01 next
 
 ## Performance Metrics
 
 **Velocity:**
 
-- Total plans completed: 15
+- Total plans completed: 16
 - Average duration: n/a until v2.0 execution begins
 - Total execution time: n/a
 
@@ -57,6 +57,7 @@ Plan: 03 next
 | Phase 08 P03 | 12 | 3 tasks | 7 files |
 | Phase 09-audited-remote-management P01 | 4min | 2 tasks | 6 files |
 | Phase 09-audited-remote-management P02 | 8min | 2 tasks | 10 files |
+| Phase 09-audited-remote-management P03 | 6 | 2 tasks | 7 files |
 
 ## Accumulated Context
 
@@ -92,6 +93,9 @@ Recent decisions affecting current work:
 - [Phase 09]: The live-action uniqueness guard is a partial unique index limited to queued and in_progress rows, with sqlite and postgres predicates kept aligned.
 - [Phase 09-audited-remote-management]: Capability advertisement for remote rotation is derived once and reused for enrollment exchange plus heartbeat updates.
 - [Phase 09-audited-remote-management]: Remote management starts unconditionally in app lifespan and fails closed inside the poller when enrollment, hosted URL, or local policy is missing.
+- [Phase 09-audited-remote-management]: Expired live remote actions are failed before queue, poll, and projection reads so idempotency and audit visibility stay aligned.
+- [Phase 09-audited-remote-management]: Hosted deployment responses carry remote_action_summary so the drawer can render metadata-only remote management history without local recomputation.
+- [Phase 09-audited-remote-management]: The hosted remote action UI remains limited to an explicitly confirmed hosted-link credential rotation and fails closed on stale, offline, revoked, unlinked, or unsupported deployments.
 
 ### Pending Todos
 
@@ -103,6 +107,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-03-23T00:17:24.788Z
-Stopped at: Completed 09-audited-remote-management-02-PLAN.md
+Last session: 2026-03-23T00:27:02.553Z
+Stopped at: Completed 09-audited-remote-management-03-PLAN.md
 Resume file: None
