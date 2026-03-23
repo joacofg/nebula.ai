@@ -229,7 +229,7 @@ Do not treat these as substitutes for the public-path migration proof:
 
 Playground remains useful for operator inspection, but it is not the migration target. The migration target is the public `POST /v1/chat/completions` contract.
 
-After this public migration proof succeeds, use [`docs/day-1-value.md`](day-1-value.md) for the canonical operator-visible walkthrough that connects `X-Nebula-*` headers, `X-Request-ID`, Playground corroboration, persisted usage-ledger evidence, and Observability dependency-health context.
+After this public migration proof succeeds, use [`docs/integrated-adoption-proof.md`](integrated-adoption-proof.md) for the final joined adoption walkthrough across the public request, `X-Nebula-*` / `X-Request-ID`, usage-ledger correlation, Playground corroboration, and Observability corroboration. For the canonical operator-visible walkthrough focused specifically on value proof after adoption, use [`docs/day-1-value.md`](day-1-value.md).
 
 ## Related docs
 

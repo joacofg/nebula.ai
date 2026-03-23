@@ -38,7 +38,7 @@
 
 ## Tasks
 
-- [ ] **T01: Compose the canonical integrated adoption walkthrough** `est:45m`
+- [x] **T01: Compose the canonical integrated adoption walkthrough** `est:45m`
   - Why: S05 needs one discoverable final proof path that assembles the existing canonicals into a single adoption story without reopening the public contract or rewriting the setup docs.
   - Files: `docs/integrated-adoption-proof.md`, `README.md`, `docs/quickstart.md`, `docs/reference-migration.md`, `docs/day-1-value.md`
   - Do: Add a final integrated adoption proof document that explicitly preserves the stable order public request → `X-Nebula-*` / `X-Request-ID` → usage ledger → Playground / Observability corroboration; link back to `docs/adoption-api-contract.md` and `docs/production-model.md` instead of restating them; add only the minimal README and doc cross-links needed to make this integrated path discoverable from the existing documentation map.

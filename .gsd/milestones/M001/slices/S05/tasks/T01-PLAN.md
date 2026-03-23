@@ -49,3 +49,9 @@ Create the canonical S05 integrated-proof entry point that assembles the existin
 - `docs/quickstart.md` — minimal integrated-proof cross-link
 - `docs/reference-migration.md` — minimal integrated-proof cross-link
 - `docs/day-1-value.md` — minimal integrated-proof cross-link
+
+## Observability Impact
+
+- Signals clarified: the canonical proof order becomes explicitly inspectable in one doc — public `POST /v1/chat/completions` request, public `X-Nebula-*` / `X-Request-ID` evidence, usage-ledger correlation, Playground corroboration, and Observability corroboration.
+- Inspection path for future agents: read `docs/integrated-adoption-proof.md` first, then follow its canonical links to `docs/adoption-api-contract.md`, `docs/production-model.md`, `docs/reference-migration.md`, and `docs/day-1-value.md` to confirm the public/admin boundary and proof ordering stayed aligned.
+- Failure visibility improved: copy drift is now easier to spot when Playground is framed as an adoption target, when `X-Request-ID` drops out of the joined story, or when touched docs stop exposing the integrated-proof vocabulary verified by ripgrep.

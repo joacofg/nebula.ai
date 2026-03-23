@@ -215,7 +215,7 @@ Use the console Observability views to inspect the request after the public call
 
 For this quickstart, Observability is the place to verify that the request shows up in the same operator-facing surfaces your team will use later for troubleshooting and governance review.
 
-If you want the single canonical walkthrough that ties these headers, `X-Request-ID`, Playground, the usage ledger, and Observability into one day-1 proof path, continue with [`docs/day-1-value.md`](day-1-value.md).
+If you want the single canonical walkthrough that ties the supported quickstart, the public route, `X-Nebula-*` / `X-Request-ID`, usage-ledger correlation, Playground corroboration, and Observability corroboration into one final path, continue with [`docs/integrated-adoption-proof.md`](integrated-adoption-proof.md). If you want the same proof focused specifically on operator-visible day-1 value after adoption succeeds, continue with [`docs/day-1-value.md`](day-1-value.md).
 
 ## What to do next
 

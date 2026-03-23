@@ -2,7 +2,7 @@
 
 This document is Nebula's canonical walkthrough for proving day-1 value after a successful adoption request.
 
-It starts from the same public-path truth established in [`docs/quickstart.md`](quickstart.md) and [`docs/reference-migration.md`](reference-migration.md): a real `POST /v1/chat/completions` request, inspectable `X-Nebula-*` headers, and a correlation handle through `X-Request-ID`. It then shows how operators corroborate that outcome through Playground, the persisted usage ledger, and Observability without changing the public adoption boundary.
+It starts from the same public-path truth established in [`docs/quickstart.md`](quickstart.md), [`docs/reference-migration.md`](reference-migration.md), and the final joined path in [`docs/integrated-adoption-proof.md`](integrated-adoption-proof.md): a real `POST /v1/chat/completions` request, inspectable `X-Nebula-*` headers, and a correlation handle through `X-Request-ID`. It then shows how operators corroborate that outcome through Playground, the persisted usage ledger, and Observability without changing the public adoption boundary.
 
 Use this guide only after the public request is already working. Keep these documents in their canonical roles:
 

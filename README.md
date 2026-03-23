@@ -37,6 +37,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 ## Documentation map
 
+- [Integrated adoption proof](docs/integrated-adoption-proof.md): canonical joined walkthrough from the first public request through `X-Nebula-*` / `X-Request-ID`, usage-ledger correlation, Playground corroboration, and Observability corroboration
 - [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
 - [Reference migration](docs/reference-migration.md): canonical before/after migration proof for moving an existing chat-completions caller onto Nebula with public-header and usage-ledger confirmation
 - [Day-1 value proof](docs/day-1-value.md): canonical walkthrough from public `X-Nebula-*` headers and `X-Request-ID` to Playground, persisted ledger evidence, and Observability health context
@@ -139,14 +140,4 @@ Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flo
 - `GET /health`
 - `GET /health/ready`
 - `GET /health/dependencies`
-- `GET /metrics`
- /health/dependencies`
-- `GET /metrics`
-alth/dependencies`
-- `GET /metrics`
-ependencies`
-- `GET /metrics`
- /health/dependencies`
-- `GET /metrics`
-alth/dependencies`
 - `GET /metrics`
