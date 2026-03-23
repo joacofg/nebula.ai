@@ -21,7 +21,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 7: Deployment Enrollment and Identity** - Give each self-hosted deployment a durable hosted identity with outbound-only linking and clean lifecycle controls. (completed 2026-03-21)
 - [x] **Phase 8: Fleet Inventory and Freshness Visibility** - Show honest deployment inventory, freshness, and compatibility state in the hosted plane. (completed 2026-03-22)
 - [x] **Phase 9: Audited Remote Management** - Prove one narrow remote-management workflow with pull-based execution, local authorization, and audit history. (completed 2026-03-23)
-- [ ] **Phase 10: Pilot Proof and Failure-Safe Operations** - Validate outage-safe behavior and ship the pilot-ready docs and demo story.
+- [x] **Phase 10: Pilot Proof and Failure-Safe Operations** - Validate outage-safe behavior and ship the pilot-ready docs and demo story. (completed 2026-03-23)
 
 ## Phase Details
 
@@ -112,4 +112,4 @@ Plans:
 | 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 3/3 | Complete   | 2026-03-22 |
 | 9. Audited Remote Management | v2.0 | 3/3 | Complete | 2026-03-23 |
-| 10. Pilot Proof and Failure-Safe Operations | v2.0 | 1/2 | In Progress | - |
+| 10. Pilot Proof and Failure-Safe Operations | 2/2 | Complete   | 2026-03-23 | - |
