@@ -1,0 +1,36 @@
+- Docker Compose is the single supported self-hosted entrypoint for Phase 1.
+- The canonical runtime topology is Nebula plus PostgreSQL and Qdrant, with local Ollama kept optional.
+- Nebula must reject local_dev runtime profile, default secrets, and the mock premium provider outside local mode.
+- Readiness remains HTTP 200 for degraded optional dependencies and only fails when required services are not ready.
+- NEBULA_DATABASE_URL is the primary persistence setting for self-hosted runtime, with SQLite retained only as the local fallback.
+- The baseline Alembic migration must safely adopt an existing bootstrap-created SQLite schema instead of assuming a pristine database.
+- The operator console ships as a top-level Next.js app instead of blending UI code into the Python backend.
+- The admin key stays in browser memory only, backed by a module-scoped in-memory session and no durable browser storage.
+- Browser traffic stays same-origin through `/api/admin/[...path]`, and the proxy forwards `X-Nebula-Admin-Key` to FastAPI.
+- Tenant management stays list-first with editing in an adjacent detail surface rather than a separate route.
+- Revoked API keys remain visible with muted styling so operators keep lifecycle context.
+- Raw API keys are shown exactly once in a dedicated reveal dialog with copy support.
+- Policy editing is structured around grouped controls, not raw JSON editing.
+- Capture flags stay in the advanced section with explicit runtime caveat text.
+- Known premium models are derived from the stored policy set plus the configured default premium model.
+- Playground execution stays admin-authenticated and resolves tenant context server-side instead of requiring a recoverable tenant API key.
+- The first playground surface returns a normal completion body plus `X-Request-ID` and `X-Nebula-*` headers, while the UI initially renders only content and request id.
+- The shell exposes the Playground route in Phase 3 so operators can navigate there without losing the memory-only admin session.
+- Immediate response metadata and persisted ledger data render in separate panels so operators can tell what came from headers versus recorded usage.
+- The Playground follows up by request id through `queryKeys.usageLedgerEntry` instead of bundling ledger data into the completion response.
+- Phase 3 navigation exposes both Playground and Observability in the shell once the routes are live.
+- Premium-provider readiness is exposed as an optional dependency so degraded upstream reachability does not falsely mark the whole gateway unavailable.
+- Observability stays focused on a ledger workflow plus dependency state, not charts or aggregate dashboards.
+- The console fetches runtime health through a same-origin proxy to the public backend endpoint rather than reusing admin-key auth.
+- The `/v1/admin/policy/options` response is the authoritative machine-readable boundary between runtime-enforced, soft-signal, and advisory policy fields.
+- Runtime enforcement remains centralized in `PolicyService.resolve()`; the admin route only publishes contract metadata.
+- Denied and fallback-blocked backend responses use HTTPException headers with the existing X-Nebula contract instead of a separate error envelope.
+- ROUT-01 verification is pinned through X-Request-ID lookups against usage-ledger rows for denied and provider-error paths.
+- The console treats /v1/admin/policy/options as the only source of truth for which policy fields are runtime-enforced.
+- Prompt and response capture settings remain in the persisted payload but are represented only as deferred explanatory copy in Phase 4.
+- Phase 5 benchmark storytelling is modeled as comparison-group metadata in the dataset layer so the report renderer can stay black-box and dataset-driven.
+- The live demo path reuses the existing benchmark runner with a dedicated dataset instead of adding a second CLI or alternate artifact flow.
+- README becomes a navigation layer and product-proof entrypoint rather than a mixed local-development dump.
+- Deployment guidance remains singular around docker-compose.selfhosted.yml and deploy/selfhosted.env.example.
+- The live pilot package should be repeatable from a short checklist that mirrors the benchmark-led demo script.
+- Playground copy must explicitly distinguish immediate response evidence from the persisted ledger record for the same request.
