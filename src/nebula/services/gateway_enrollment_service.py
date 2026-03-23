@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from nebula.core.config import Settings
 from nebula.db.models import LocalHostedIdentityModel
 from nebula.models.deployment import EnrollmentExchangeRequest, EnrollmentExchangeResponse
+from nebula.services.heartbeat_service import derive_capability_flags
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +62,7 @@ class GatewayEnrollmentService:
         request_body = EnrollmentExchangeRequest(
             enrollment_token=enrollment_token,
             nebula_version=_nebula_version(),
-            capability_flags=["semantic_cache", "premium_routing"],
+            capability_flags=derive_capability_flags(self.settings),
         )
 
         try:

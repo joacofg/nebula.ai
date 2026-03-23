@@ -43,6 +43,7 @@ async def configured_async_client(**env_overrides: str):
 
 
 async def _create_active_deployment(
+    app: FastAPI,
     client: httpx.AsyncClient,
     capability_flags: list[str] | None = None,
 ) -> tuple[str, str]:
@@ -66,7 +67,7 @@ async def _create_active_deployment(
     exchange_resp = await client.post("/v1/enrollment/exchange", json=payload)
     assert exchange_resp.status_code == 200
     exchange = EnrollmentExchangeResponse.model_validate(exchange_resp.json())
-    client._transport.app.state.container.gateway_enrollment_service._store_local_identity(exchange)
+    app.state.container.gateway_enrollment_service._store_local_identity(exchange)
     credential = exchange.deployment_credential
     return deployment_id, credential
 
@@ -94,7 +95,7 @@ def _session_factory(app: FastAPI) -> sessionmaker:
 @pytest.mark.asyncio
 async def test_poll_valid_credential_returns_next_queued_action_and_marks_in_progress() -> None:
     async with configured_async_client() as (app, client):
-        deployment_id, credential = await _create_active_deployment(client)
+        deployment_id, credential = await _create_active_deployment(app, client)
         action_id = await _queue_rotation_action(client, deployment_id)
 
         response = await client.post(
@@ -121,7 +122,7 @@ async def test_allowlist_failure_completes_action_as_failed_with_unauthorized_lo
         NEBULA_HOSTED_PLANE_URL="http://testserver/v1",
         NEBULA_REMOTE_MANAGEMENT_ENABLED="true",
     ) as (app, client):
-        deployment_id, _ = await _create_active_deployment(client)
+        deployment_id, _ = await _create_active_deployment(app, client)
         action_id = await _queue_rotation_action(client, deployment_id)
 
         await app.state.container.remote_management_service.poll_and_apply_once()
@@ -135,13 +136,13 @@ async def test_allowlist_failure_completes_action_as_failed_with_unauthorized_lo
 
 
 @pytest.mark.asyncio
-async def test_successful_completion_returns_new_credential_and_persists_it_locally() -> None:
+async def test_successful_rotation_returns_new_credential_and_follow_up_poll_accepts_it() -> None:
     async with configured_async_client(
         NEBULA_HOSTED_PLANE_URL="http://testserver/v1",
         NEBULA_REMOTE_MANAGEMENT_ENABLED="true",
         NEBULA_REMOTE_MANAGEMENT_ALLOWED_ACTIONS='["rotate_deployment_credential"]',
     ) as (app, client):
-        deployment_id, old_credential = await _create_active_deployment(client)
+        deployment_id, old_credential = await _create_active_deployment(app, client)
         action_id = await _queue_rotation_action(client, deployment_id)
 
         await app.state.container.remote_management_service.poll_and_apply_once()
@@ -159,12 +160,28 @@ async def test_successful_completion_returns_new_credential_and_persists_it_loca
             assert identity is not None
             assert identity.credential_raw != old_credential
             assert identity.credential_prefix == identity.credential_raw[:12]
+            new_credential = identity.credential_raw
+
+        second_action_id = await _queue_rotation_action(client, deployment_id, note="rotate again")
+
+        old_poll = await client.post(
+            "/v1/remote-actions/poll",
+            headers=_deployment_headers(old_credential),
+        )
+        assert old_poll.status_code == 401
+
+        new_poll = await client.post(
+            "/v1/remote-actions/poll",
+            headers=_deployment_headers(new_credential),
+        )
+        assert new_poll.status_code == 200
+        assert new_poll.json()["action"]["id"] == second_action_id
 
 
 @pytest.mark.asyncio
 async def test_failed_completion_keeps_old_credential_active_and_records_failure_reason() -> None:
     async with configured_async_client() as (app, client):
-        deployment_id, credential = await _create_active_deployment(client)
+        deployment_id, credential = await _create_active_deployment(app, client)
         action_id = await _queue_rotation_action(client, deployment_id)
 
         poll_resp = await client.post(
@@ -213,3 +230,22 @@ async def test_failed_completion_keeps_old_credential_active_and_records_failure
             deployment = session.get(DeploymentModel, deployment_id)
             assert deployment is not None
             assert deployment.credential_prefix == credential[:12]
+
+
+@pytest.mark.asyncio
+async def test_disabled_remote_management_starts_poller_but_skips_polling() -> None:
+    async with configured_async_client(
+        NEBULA_HOSTED_PLANE_URL="http://testserver/v1",
+        NEBULA_REMOTE_MANAGEMENT_ENABLED="false",
+    ) as (app, client):
+        deployment_id, _ = await _create_active_deployment(app, client)
+        action_id = await _queue_rotation_action(client, deployment_id)
+
+        assert app.state.container.remote_management_service._task is not None
+        await app.state.container.remote_management_service._poll_once()
+
+        Session = _session_factory(app)
+        with Session() as session:
+            action = session.get(DeploymentRemoteActionModel, action_id)
+            assert action is not None
+            assert action.status == "queued"
