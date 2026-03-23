@@ -3,11 +3,11 @@
 import { LoaderCircle, PanelRightOpen } from "lucide-react";
 
 import type { DeploymentRecord } from "@/lib/admin-api";
+import { RemoteActionCard } from "@/components/deployments/remote-action-card";
 import { DeploymentStatusBadge } from "@/components/deployments/deployment-status-badge";
 import { FreshnessBadge } from "@/components/deployments/freshness-badge";
 import { DependencyHealthPills } from "@/components/deployments/dependency-health-pills";
 import { TrustBoundaryCard } from "@/components/hosted/trust-boundary-card";
-import { formatRelativeTime } from "@/lib/freshness";
 
 type DeploymentDetailDrawerProps = {
   deployment: DeploymentRecord;
@@ -144,6 +144,8 @@ export function DeploymentDetailDrawer({
       <div className="mt-6 border-t border-border/50 pt-4">
         <TrustBoundaryCard />
       </div>
+
+      <RemoteActionCard deployment={deployment} />
 
       {/* Lifecycle actions */}
       <div className="mt-6 border-t border-border/50 pt-4 space-y-2">

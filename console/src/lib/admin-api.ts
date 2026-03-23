@@ -172,6 +172,37 @@ export type DependencySummary = {
   unavailable: string[];
 };
 
+export type RemoteActionStatus = "queued" | "in_progress" | "applied" | "failed";
+
+export type RemoteActionFailureReason =
+  | "unauthorized_local_policy"
+  | "expired"
+  | "unsupported_capability"
+  | "invalid_state"
+  | "apply_error";
+
+export type RemoteActionRecord = {
+  id: string;
+  deployment_id: string;
+  action_type: "rotate_deployment_credential";
+  status: RemoteActionStatus;
+  note: string;
+  requested_at: string;
+  expires_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  failure_reason: RemoteActionFailureReason | null;
+  failure_detail: string | null;
+  result_credential_prefix: string | null;
+};
+
+export type RemoteActionSummary = {
+  queued: number;
+  applied: number;
+  failed: number;
+  last_action_at: string | null;
+};
+
 export type DeploymentRecord = {
   id: string;
   display_name: string;
@@ -188,6 +219,7 @@ export type DeploymentRecord = {
   freshness_status: FreshnessStatus | null;
   freshness_reason: string | null;
   dependency_summary: DependencySummary | null;
+  remote_action_summary: RemoteActionSummary | null;
 };
 
 export type DeploymentCreateInput = {
@@ -233,6 +265,24 @@ export function unlinkDeployment(adminKey: string, deploymentId: string) {
   return adminRequest<DeploymentRecord>(
     `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/unlink`,
     { adminKey, method: "POST" },
+  );
+}
+
+export function queueRotateDeploymentCredential(adminKey: string, deploymentId: string, note: string) {
+  return adminRequest<RemoteActionRecord>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/remote-actions/rotate-credential`,
+    {
+      adminKey,
+      method: "POST",
+      body: { note },
+    },
+  );
+}
+
+export function listRemoteActions(adminKey: string, deploymentId: string) {
+  return adminRequest<RemoteActionRecord[]>(
+    `${ADMIN_DEPLOYMENTS_ENDPOINT}/${deploymentId}/remote-actions`,
+    { adminKey },
   );
 }
 
