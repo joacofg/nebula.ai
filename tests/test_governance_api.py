@@ -223,13 +223,32 @@ def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None
             )
 
     body = ledger.json()
-    statuses = {(entry["terminal_status"], entry["final_route_target"]) for entry in body}
+    by_status = {entry["terminal_status"]: entry for entry in body}
 
     assert ledger.status_code == 200
-    assert ("completed", "local") in statuses
-    assert ("policy_denied", "denied") in statuses
-    assert ("cache_hit", "cache") in statuses
-    assert ("fallback_completed", "premium") in statuses
+    assert by_status["completed"]["final_route_target"] == "local"
+    assert by_status["completed"]["final_provider"] == "ollama"
+    assert by_status["completed"]["fallback_used"] is False
+    assert by_status["completed"]["cache_hit"] is False
+    assert by_status["completed"]["policy_outcome"] == "default"
+
+    assert by_status["policy_denied"]["final_route_target"] == "denied"
+    assert by_status["policy_denied"]["route_reason"] == "explicit_premium_model"
+    assert by_status["policy_denied"]["policy_outcome"] == "Premium model 'openai/gpt-4o-mini' is not allowed for this tenant."
+
+    assert by_status["cache_hit"]["final_route_target"] == "cache"
+    assert by_status["cache_hit"]["final_provider"] == "cache"
+    assert by_status["cache_hit"]["route_reason"] == "cache_hit"
+    assert by_status["cache_hit"]["cache_hit"] is True
+    assert by_status["cache_hit"]["fallback_used"] is False
+    assert by_status["cache_hit"]["policy_outcome"] == "default"
+
+    assert by_status["fallback_completed"]["final_route_target"] == "premium"
+    assert by_status["fallback_completed"]["final_provider"] == "mock-premium"
+    assert by_status["fallback_completed"]["route_reason"] == "local_provider_error_fallback"
+    assert by_status["fallback_completed"]["fallback_used"] is True
+    assert by_status["fallback_completed"]["cache_hit"] is False
+    assert by_status["fallback_completed"]["policy_outcome"] == "default"
 
 
 def test_policy_can_block_premium_models_and_fallback() -> None:

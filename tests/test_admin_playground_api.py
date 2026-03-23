@@ -53,19 +53,31 @@ def test_admin_playground_completion() -> None:
                 headers=admin_headers(),
             )
 
+    ledger_body = ledger.json()
+
     assert response.status_code == 200
     assert request_id
     assert response.json()["request_id"] == request_id
     assert response.json()["choices"][0]["message"]["content"] == "premium response"
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert response.headers["X-Nebula-Provider"] == "mock-premium"
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
-    assert response.headers["X-Nebula-Policy-Outcome"]
+    assert response.headers["X-Nebula-Policy-Mode"] == "auto"
+    assert response.headers["X-Nebula-Policy-Outcome"] == "default"
     assert ledger.status_code == 200
-    assert len(ledger.json()) == 1
-    assert ledger.json()[0]["request_id"] == request_id
+    assert len(ledger_body) == 1
+    assert ledger_body[0]["request_id"] == request_id
+    assert ledger_body[0]["tenant_id"] == response.headers["X-Nebula-Tenant-ID"]
+    assert ledger_body[0]["final_route_target"] == response.headers["X-Nebula-Route-Target"]
+    assert ledger_body[0]["final_provider"] == response.headers["X-Nebula-Provider"]
+    assert ledger_body[0]["fallback_used"] is False
+    assert ledger_body[0]["cache_hit"] is False
+    assert ledger_body[0]["route_reason"] == response.headers["X-Nebula-Route-Reason"]
+    assert ledger_body[0]["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
+    assert ledger_body[0]["terminal_status"] == "completed"
 
 
 def test_usage_ledger_request_id_filter() -> None:

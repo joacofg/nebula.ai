@@ -30,6 +30,7 @@ describe("playground-recorded-outcome", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Recorded outcome" })).toBeInTheDocument();
     expect(
       screen.getByText(
         "Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome.",
@@ -51,6 +52,9 @@ describe("playground-recorded-outcome", () => {
     expect(screen.getByText("openai-compatible")).toBeInTheDocument();
     expect(screen.getByText("fallback")).toBeInTheDocument();
     expect(screen.getByText("allowed")).toBeInTheDocument();
+    expect(screen.getByText("21")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("33")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(screen.getByText("$0.0180")).toBeInTheDocument();

@@ -132,14 +132,18 @@ test("operator can filter the ledger and inspect dependency health", async ({ pa
   await page.getByRole("link", { name: "Observability" }).click();
   await expect(page).toHaveURL(/\/observability$/, { timeout: 30_000 });
 
-  await expect(page.getByRole("heading", { name: "Usage ledger" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Persisted request explanation" })).toBeVisible();
+  await expect(page.getByText("Inspect ledger-backed request outcomes by tenant, route target, terminal status, and time window to confirm the final route, fallback, provider, and policy evidence behind each request.")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dependency health" })).toBeVisible();
 
   await page.getByRole("combobox", { name: "Tenant" }).selectOption("team-b");
   await expect(page.getByRole("cell", { name: "team-b" })).toBeVisible();
+  await expect(page.getByText("req-team-b")).toBeVisible();
   await expect(page.getByText("premium_provider")).toBeVisible();
   await expect(page.getByText("degraded")).toBeVisible();
-  await expect(
-    page.getByText("Optional dependency degradation does not block gateway readiness."),
-  ).toBeVisible();
+  await expect(page.getByText("Required dependency failures block confidence immediately, while degraded optional dependencies stay visible here so operators can explain reduced capability without losing the persisted request trail.")).toBeVisible();
+  await expect(page.getByText("Route reason")).toBeVisible();
+  await expect(page.getByText("direct_premium_model")).toBeVisible();
+  await expect(page.getByText("Policy outcome")).toBeVisible();
+  await expect(page.getByText("allowed")).toBeVisible();
 });

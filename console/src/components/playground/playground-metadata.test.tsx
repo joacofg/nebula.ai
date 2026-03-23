@@ -21,6 +21,13 @@ describe("playground-metadata", () => {
       />,
     );
 
+    expect(screen.getByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "These fields describe the live route, policy, and tenant evidence before the ledger finishes recording the same request.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Request ID")).toBeInTheDocument();
     expect(screen.getByText("Route target")).toBeInTheDocument();
     expect(screen.getByText("Route reason")).toBeInTheDocument();
     expect(screen.getByText("Tenant")).toBeInTheDocument();
@@ -30,9 +37,13 @@ describe("playground-metadata", () => {
     expect(screen.getByText("Cache hit")).toBeInTheDocument();
     expect(screen.getByText("Fallback used")).toBeInTheDocument();
     expect(screen.getByText("Latency")).toBeInTheDocument();
+    expect(screen.getByText("req-play-001")).toBeInTheDocument();
     expect(screen.getByText("tenant-alpha")).toBeInTheDocument();
+    expect(screen.getByText("premium")).toBeInTheDocument();
     expect(screen.getByText("complex_prompt")).toBeInTheDocument();
+    expect(screen.getByText("openai-compatible")).toBeInTheDocument();
     expect(screen.getByText("auto")).toBeInTheDocument();
+    expect(screen.getByText("allowed")).toBeInTheDocument();
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("187 ms")).toBeInTheDocument();
