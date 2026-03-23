@@ -1,9 +1,12 @@
 # Roadmap: Nebula.ai
 
-## Shipped Milestones
+## Milestones
 
-- [x] **v1.0**: Self-hosted operator product shipped with deployment hardening, operator console, playground and observability workflows, governance hardening, and benchmark-backed product proof. See [v1.0 roadmap archive](/Users/joaquinfernandezdegamboa/Proj/nebula/.planning/milestones/v1.0-ROADMAP.md) and [v1.0 requirements archive](/Users/joaquinfernandezdegamboa/Proj/nebula/.planning/milestones/v1.0-REQUIREMENTS.md).
+- ✅ **v1.0 Self-Hosted Operator Product** - Phases 1-5 (shipped 2026-03-17; archive: `.planning/milestones/v1.0-ROADMAP.md`)
+- ✅ **v2.0 Hosted Control Plane Validation** - Phases 6-10 (shipped 2026-03-23; archive: `.planning/milestones/v2.0-ROADMAP.md`)
 
-## Next Milestone
+## Current Status
 
-Not planned yet. Start it with `$gsd-new-milestone`.
+- No active milestone is open.
+- Start the next milestone with `$gsd-new-milestone`.
+- See archived milestone detail in `.planning/milestones/`.

@@ -110,6 +110,23 @@ This topology is designed for product proof and pilot evaluation:
 - A `degraded` dependency state can still be acceptable when optional services such as Qdrant or local Ollama are unavailable.
 - Estimated premium cost in benchmark artifacts is based on `benchmarks/pricing.json`, not provider invoice reconciliation.
 
+## Outbound-only hosted linking
+
+Nebula can optionally link a self-hosted deployment to a hosted control plane. Any such linking is outbound-only: the self-hosted gateway initiates connections to the hosted plane, not the other way around. Hosted linking is optional for self-hosted deployments and does not affect the gateway's ability to serve traffic.
+
+The data sent during hosted linking is limited by the same metadata-only default export contract defined in [`docs/hosted-default-export.schema.json`](hosted-default-export.schema.json). That contract explicitly excludes raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state.
+
+Richer diagnostics beyond the default export are operator-initiated exceptions, not automatic behavior. See [architecture.md](architecture.md) for the full trust-boundary narrative.
+
+## Hosted pilot workflow
+
+- Operators create a deployment slot in the hosted plane, generate a short-lived enrollment token, and pass that token to the self-hosted gateway for one outbound exchange.
+- After enrollment, steady-state hosted communication uses a deployment-scoped credential instead of the enrollment token.
+- If the hosted plane is unreachable, Nebula keeps serving traffic locally; hosted inventory simply becomes stale or offline until heartbeat visibility returns.
+- The only hosted remote-management action in v2.0 is rotate_deployment_credential, and it fails closed when local policy or deployment state does not allow it.
+- The hosted plane is metadata-and-intent only; local runtime policy and request serving remain authoritative inside the self-hosted gateway.
+- The default hosted export contract is defined in docs/hosted-default-export.schema.json.
+
 ## Related docs
 
 - [README](../README.md)
