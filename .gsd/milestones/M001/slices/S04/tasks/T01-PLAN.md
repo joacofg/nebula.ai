@@ -44,3 +44,9 @@ Create the single canonical document that explains Nebula's day-1 value after a 
 - `docs/quickstart.md` — linked handoff from first-request confirmation to the day-1 value proof.
 - `docs/reference-migration.md` — linked handoff from migration proof to day-1 operator-visible value.
 - `README.md` — updated documentation map/entrypoint link to the new day-1 value proof.
+
+## Observability Impact
+
+- Signals clarified: the documentation now names the exact public proof signals (`X-Nebula-*` headers plus `X-Request-ID`) and the operator corroboration surfaces (Playground, usage ledger, Observability dependency health) that future tasks must keep aligned.
+- Inspection path for future agents: start from `docs/day-1-value.md`, then confirm the linked public and operator evidence against `docs/quickstart.md`, `docs/reference-migration.md`, and the slice verification grep that checks `day-1 value`, `X-Request-ID`, `Playground`, `Observability`, `route reason`, and `policy` references.
+- Failure state made visible: if docs drift, agents can detect it through missing or inconsistent references to request correlation, route reason, policy outcome, Playground's admin-only role, or Observability's dependency-health framing.

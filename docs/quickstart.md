@@ -215,6 +215,8 @@ Use the console Observability views to inspect the request after the public call
 
 For this quickstart, Observability is the place to verify that the request shows up in the same operator-facing surfaces your team will use later for troubleshooting and governance review.
 
+If you want the single canonical walkthrough that ties these headers, `X-Request-ID`, Playground, the usage ledger, and Observability into one day-1 proof path, continue with [`docs/day-1-value.md`](day-1-value.md).
+
 ## What to do next
 
 Once the first request works:

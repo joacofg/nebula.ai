@@ -40,7 +40,7 @@
 
 ## Tasks
 
-- [ ] **T01: Publish the canonical day-1 value proof path** `est:45m`
+- [x] **T01: Publish the canonical day-1 value proof path** `est:45m`
   - Why: S04's main gap is narrative cohesion; without one canonical artifact, the existing migration, Playground, ledger, and Observability proof surfaces remain scattered and do not clearly satisfy R005/R009.
   - Files: `docs/day-1-value.md`, `docs/quickstart.md`, `docs/reference-migration.md`, `README.md`
   - Do: Write one canonical `docs/day-1-value.md` that starts from the S03 public request and `X-Request-ID` correlation pattern, explains immediate versus persisted evidence, and positions Playground and Observability as operator corroboration rather than the adoption target; then add minimal links from the quickstart, migration guide, and README so the repo has one explicit day-1 value path without duplicating contract/setup content.

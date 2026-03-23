@@ -39,6 +39,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 - [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
 - [Reference migration](docs/reference-migration.md): canonical before/after migration proof for moving an existing chat-completions caller onto Nebula with public-header and usage-ledger confirmation
+- [Day-1 value proof](docs/day-1-value.md): canonical walkthrough from public `X-Nebula-*` headers and `X-Request-ID` to Playground, persisted ledger evidence, and Observability health context
 - [Production model](docs/production-model.md): canonical operating-model reference for tenant, policy, API key, operator, and app/workload guidance
 - [Adoption API contract](docs/adoption-api-contract.md): the only canonical public compatibility boundary for `POST /v1/chat/completions`
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
