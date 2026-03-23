@@ -2,19 +2,6 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-## Active
-
-### R003 — A developer can complete the documented happy-path integration in under 30 minutes.
-- Class: launchability
-- Status: validated
-- Description: A developer can complete the documented happy-path integration in under 30 minutes.
-- Why it matters: The milestone is about adoption speed, not just architecture clarity.
-- Source: user
-- Primary owning slice: M001/S02
-- Supporting slices: M001/S01, M001/S03, M001/S05
-- Validation: S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health.
-- Notes: Console verification in this worktree now includes passing Vitest coverage for playground metadata/recorded outcome/page seams and updated Playwright assertions in console/e2e/playground.spec.ts and console/e2e/observability.spec.ts. The planned `npm --prefix console run test -- --run observability` command currently has no matching test file, and Playwright startup is blocked by a pre-existing TypeScript error in console/src/components/deployments/remote-action-card.tsx, so those failures are recorded as verification-environment / unrelated-worktree blockers rather than evidence that the integrated adoption proof regressed.
-
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -38,6 +25,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M001/S02
 - Validation: S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details.
 - Notes: Validated by the canonical docs/adoption-api-contract.md and aligned README.md/docs/architecture.md references back to the single source of truth.
+
+### R003 — A developer can complete the documented happy-path integration in under 30 minutes.
+- Class: launchability
+- Status: validated
+- Description: A developer can complete the documented happy-path integration in under 30 minutes.
+- Why it matters: The milestone is about adoption speed, not just architecture clarity.
+- Source: user
+- Primary owning slice: M001/S02
+- Supporting slices: M001/S01, M001/S03, M001/S05
+- Validation: S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health.
+- Notes: Console verification in this worktree now includes passing Vitest coverage for playground metadata/recorded outcome/page seams and updated Playwright assertions in console/e2e/playground.spec.ts and console/e2e/observability.spec.ts. The planned `npm --prefix console run test -- --run observability` command currently has no matching test file, and Playwright startup is blocked by a pre-existing TypeScript error in console/src/components/deployments/remote-action-card.tsx, so those failures are recorded as verification-environment / unrelated-worktree blockers rather than evidence that the integrated adoption proof regressed.
 
 ### R004 — At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
 - Class: core-capability
@@ -69,8 +67,8 @@ This file is the explicit capability and coverage contract for the project.
 - Source: user
 - Primary owning slice: M001/S02
 - Supporting slices: M002/S01
-- Validation: S02 added the canonical docs/production-model.md operating-model reference plus linked entry docs that explain tenant, policy, API key, operator, and app/workload boundaries against the current runtime truth, including when X-Nebula-Tenant-ID is required and why app/workload remain conceptual in M001.
-- Notes: Validated by documentation integrity checks across README.md, docs/self-hosting.md, docs/architecture.md, docs/production-model.md, and docs/quickstart.md. Backend/console executable checks were blocked in this worktree because pytest and console vitest were not provisioned locally, so product-behavior regression coverage still needs rerun in a prepared environment.
+- Validation: S02 established the canonical docs/production-model.md operating-model reference; M002/S01 then verified the console truth surface matches that model by proving API key issuance/inventory explain tenant inference vs X-Nebula-Tenant-ID requirements, Playground reads as an admin-only non-streaming corroboration surface, and Observability reads as the persisted request-evidence plus dependency-health context surface, all backed by passing focused vitest coverage.
+- Notes: M002/S01 extended the previously validated production-model proof into the highest-impact console truth surfaces. Passing vitest coverage now locks runtime-aligned API-key scope wording, operator-only Playground framing, and Observability persisted-evidence/dependency-health framing across console/src/components/api-keys/create-api-key-dialog.test.tsx, console/src/components/api-keys/api-key-table.test.tsx, console/src/components/playground/playground-form.test.tsx, console/src/components/playground/playground-page.test.tsx, and console/src/app/(console)/observability/page.test.tsx.
 
 ### R007 — Documentation explains adoption paths for startup product teams, platform teams, and enterprise/self-hosted operators.
 - Class: admin/support
@@ -225,10 +223,10 @@ This file is the explicit capability and coverage contract for the project.
 |---|---|---|---|---|---|
 | R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests. |
 | R002 | constraint | validated | M001/S01 | M001/S02 | S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details. |
-| R003 | launchability | validated | M001/S02 | M001/S01, M001/S03, M001/S05 | S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests, and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health. |
+| R003 | launchability | validated | M001/S02 | M001/S01, M001/S03, M001/S05 | S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health. |
 | R004 | core-capability | validated | M001/S03 | M001/S05 | S03 added the executable reference migration proof in tests/test_reference_migration.py plus the canonical docs/reference-migration.md guide, demonstrating that an OpenAI-style chat-completions caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key, with X-Nebula-Tenant-ID only for ambiguous multi-tenant keys) while preserving an OpenAI-like response and correlating X-Request-ID/X-Nebula-* headers to GET /v1/admin/usage/ledger evidence. |
 | R005 | differentiator | validated | M001/S04 | M001/S03, M001/S05 | S04 added the canonical docs/day-1-value.md walkthrough and aligned console proof surfaces so a successful public chat-completions request can be explained immediately through X-Nebula-* headers and X-Request-ID, then corroborated through Playground immediate metadata, persisted usage-ledger outcome, and Observability dependency-health context. |
-| R006 | operability | validated | M001/S02 | M002/S01 | S02 added the canonical docs/production-model.md operating-model reference plus linked entry docs that explain tenant, policy, API key, operator, and app/workload boundaries against the current runtime truth, including when X-Nebula-Tenant-ID is required and why app/workload remain conceptual in M001. |
+| R006 | operability | validated | M001/S02 | M002/S01 | S02 established the canonical docs/production-model.md operating-model reference; M002/S01 then verified the console truth surface matches that model by proving API key issuance/inventory explain tenant inference vs X-Nebula-Tenant-ID requirements, Playground reads as an admin-only non-streaming corroboration surface, and Observability reads as the persisted request-evidence plus dependency-health context surface, all backed by passing focused vitest coverage. |
 | R007 | admin/support | validated | M001/S02 | M001/S04 | S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md. |
 | R008 | quality-attribute | validated | M001/S03 | none | S03 keeps the migration example realistic and trustworthy by grounding the guide in tests/test_reference_migration.py, limiting caller changes to the real public contract, explicitly showing when X-Nebula-Tenant-ID is and is not required, and requiring public-header plus usage-ledger correlation instead of relying on a toy curl-only demo. |
 | R009 | failure-visibility | validated | M001/S04 | M001/S05 | S04 proved the request-explanation path across public headers, X-Request-ID correlation, usage-ledger records, Playground metadata, recorded outcome cards, and Observability request detail so adopters can see route target, route reason, fallback usage, and policy outcome during integration and validation. |
@@ -245,7 +243,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 1
-- Mapped to slices: 1
-- Validated: 9 (R001, R002, R004, R005, R006, R007, R008, R009, R010)
+- Active requirements: 0
+- Mapped to slices: 0
+- Validated: 10 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010)
 - Unmapped active requirements: 0

@@ -39,8 +39,9 @@ describe("create-api-key-dialog", () => {
       />,
     );
 
-    expect(screen.getByText(/Use allowed_tenant_ids to define every tenant the key may access/i)).toBeInTheDocument();
-    expect(screen.getByText(/honoring an explicit X-Nebula-Tenant-ID/i)).toBeInTheDocument();
+    expect(screen.getByText(/Creates a client API key through/i)).toBeInTheDocument();
+    expect(screen.getAllByText(/allowed_tenant_ids/i).length).toBeGreaterThan(0);
+    expect(screen.getByText((content) => content.includes("Nebula resolves requests by honoring an explicit"))).toBeInTheDocument();
     expect(screen.getByText(/public callers must send the tenant header/i)).toBeInTheDocument();
     expect(screen.getByText(/A single allowed tenant is inferred automatically/i)).toBeInTheDocument();
   });

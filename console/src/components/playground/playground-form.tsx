@@ -47,10 +47,11 @@ export function PlaygroundForm({
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Run prompt</div>
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
-          Playground request
+          Operator playground request
         </h3>
         <p className="mt-2 text-sm text-slate-600">
-          Choose a tenant, set the target model, and send a single prompt through Nebula.
+          Choose the tenant context on purpose, set the target model, and send one admin-session prompt through the
+          non-streaming playground path.
         </p>
       </div>
 

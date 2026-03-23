@@ -73,10 +73,12 @@ export default function ObservabilityPage() {
       <header className="panel px-6 py-5">
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Observability</div>
         <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-          Usage ledger
+          Persisted request evidence
         </h2>
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
-          Inspect recorded request outcomes by tenant, route target, terminal status, and time window.
+          Inspect the persisted usage ledger for recorded request outcomes by tenant, route target, terminal status,
+          and time window, then use dependency health as supporting runtime context for the same operator
+          investigation.
         </p>
       </header>
 
@@ -118,7 +120,7 @@ export default function ObservabilityPage() {
         <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Dependency health</div>
           <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-            Dependency health
+            Dependency health context
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             These dependency states do not replace the ledger record; they provide supporting runtime context for the
