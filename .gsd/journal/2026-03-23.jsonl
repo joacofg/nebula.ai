@@ -143,3 +143,5 @@
 {"ts":"2026-03-23T23:16:09.385Z","flowId":"63e8939b-9cbe-407b-b6cd-8a03dc3ff8e9","seq":2,"eventType":"dispatch-match","rule":"completing-milestone → complete-milestone","data":{"unitType":"complete-milestone","unitId":"M001"}}
 {"ts":"2026-03-23T23:16:09.392Z","flowId":"63e8939b-9cbe-407b-b6cd-8a03dc3ff8e9","seq":3,"eventType":"unit-start","data":{"unitType":"complete-milestone","unitId":"M001"}}
 {"ts":"2026-03-23T23:17:54.914Z","flowId":"63e8939b-9cbe-407b-b6cd-8a03dc3ff8e9","seq":4,"eventType":"unit-end","data":{"unitType":"complete-milestone","unitId":"M001","status":"completed","artifactVerified":true},"causedBy":{"flowId":"63e8939b-9cbe-407b-b6cd-8a03dc3ff8e9","seq":3}}
+{"ts":"2026-03-23T23:17:55.539Z","flowId":"63e8939b-9cbe-407b-b6cd-8a03dc3ff8e9","seq":5,"eventType":"iteration-end","data":{"iteration":28}}
+{"ts":"2026-03-23T23:17:55.539Z","flowId":"a4a2f556-5dff-4b5b-b723-a950ee54a763","seq":1,"eventType":"iteration-start","data":{"iteration":29}}
