@@ -9,6 +9,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
 
 from nebula.db.models import DeploymentModel, DeploymentRemoteActionModel, LocalHostedIdentityModel
+from nebula.models.deployment import EnrollmentExchangeResponse
 from tests.support import admin_headers, configured_app
 
 
@@ -27,8 +28,12 @@ def _exchange_payload(capability_flags: list[str] | None = None) -> dict[str, ob
 @asynccontextmanager
 async def configured_async_client(**env_overrides: str):
     with configured_app(**env_overrides) as app:
+        transport = httpx.ASGITransport(app=app)
         async with app.router.lifespan_context(app):
-            transport = httpx.ASGITransport(app=app)
+            if hasattr(app.state.container, "gateway_enrollment_service"):
+                app.state.container.gateway_enrollment_service._http_transport = transport
+            if hasattr(app.state.container, "remote_management_service"):
+                app.state.container.remote_management_service._http_transport = transport
             async with httpx.AsyncClient(
                 transport=transport,
                 base_url="http://testserver",
@@ -60,7 +65,9 @@ async def _create_active_deployment(
     payload["enrollment_token"] = token
     exchange_resp = await client.post("/v1/enrollment/exchange", json=payload)
     assert exchange_resp.status_code == 200
-    credential = exchange_resp.json()["deployment_credential"]
+    exchange = EnrollmentExchangeResponse.model_validate(exchange_resp.json())
+    client._transport.app.state.container.gateway_enrollment_service._store_local_identity(exchange)
+    credential = exchange.deployment_credential
     return deployment_id, credential
 
 
