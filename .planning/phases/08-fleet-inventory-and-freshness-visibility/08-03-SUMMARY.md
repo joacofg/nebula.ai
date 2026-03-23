@@ -35,6 +35,10 @@ metrics:
   tasks_completed: 3
   files_created: 5
   files_modified: 2
+requirements-completed:
+  - INVT-01
+  - INVT-02
+  - INVT-04
 ---
 
 # Phase 8 Plan 3: Frontend Fleet Inventory UI Summary

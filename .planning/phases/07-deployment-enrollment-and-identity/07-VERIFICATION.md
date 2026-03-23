@@ -1,9 +1,9 @@
 ---
 phase: 07-deployment-enrollment-and-identity
 verified: 2026-03-21T23:30:00Z
-status: human_needed
+status: passed
 score: 12/12 must-haves verified
-re_verification: false
+re_verification: true
 human_verification:
   - test: "Navigate to http://localhost:3000/deployments"
     expected: "Empty state shows 'No deployments linked' heading with 'Create deployment slot' CTA button"
@@ -25,9 +25,9 @@ human_verification:
 # Phase 07: Deployment Enrollment and Identity Verification Report
 
 **Phase Goal:** Implement deployment enrollment and identity management — operators can register deployments, link gateways via outbound enrollment exchange, and manage deployment lifecycle (revoke/unlink/relink).
-**Verified:** 2026-03-21T23:30:00Z
-**Status:** human_needed — all automated checks pass; console UI requires visual inspection
-**Re-verification:** No — initial verification
+**Verified:** 2026-03-22T00:00:00Z
+**Status:** passed — automated checks and the recorded browser UAT both passed
+**Re-verification:** Yes — human verification closed in `07-HUMAN-UAT.md`
 
 ---
 
@@ -48,7 +48,7 @@ human_verification:
 | 9 | Operator can revoke a deployment and its credential is immediately invalidated | VERIFIED | `revoke_deployment` clears `credential_hash`/`credential_prefix`, sets `enrollment_state="revoked"` and `revoked_at`; test_revoke_deployment passes |
 | 10 | Operator can unlink a deployment cleanly without data loss | VERIFIED | `unlink_deployment` clears credentials, sets `enrollment_state="unlinked"` and `unlinked_at`; test_unlink_deployment passes |
 | 11 | Relink reuses same deployment record with new credentials, no duplicates | VERIFIED | `generate_enrollment_token` accepts `revoked`/`unlinked` state and resets to `pending`; test_relink_preserves_single_record verifies single record after full revoke+relink cycle |
-| 12 | Console UI allows creating deployment slots, viewing status, and performing lifecycle actions | PARTIAL — automated checks pass; visual rendering needs human review | page.tsx, all 8 component files exist; TypeScript compiles clean; API functions wired via React Query |
+| 12 | Console UI allows creating deployment slots, viewing status, and performing lifecycle actions | VERIFIED | `07-HUMAN-UAT.md` records all 5 browser checks as passed after the automated implementation checks completed. |
 
 **Score:** 12/12 truths verified (1 requires human for visual confirmation)
 
@@ -112,47 +112,15 @@ No blockers. No placeholders in business logic paths. All stubs are either test 
 
 ---
 
-### Human Verification Required
+### Human Verification
 
-The following items require human testing in a running console.
-
-#### 1. Console Deployment Page — Empty State
-
-**Test:** Start gateway (`make run`) and console (`make console-dev`), navigate to http://localhost:3000/deployments
-**Expected:** Empty state shows "No deployments linked" heading with a "Create deployment slot" CTA button
-**Why human:** Visual layout, empty state copy, and button placement require browser rendering
-
-#### 2. Create Slot + Token Reveal Dialog
-
-**Test:** Click "Create deployment slot", fill in display_name="test-gw-1" and environment="development", submit
-**Expected:** EnrollmentTokenRevealDialog opens immediately (no second click required) showing: token starting with `nbet_` in a dark code slab, NEBULA_ENROLLMENT_TOKEN env var instruction block, "This token will not be shown again" disclosure, and a "Copy token" button that toggles to "Copied" for 2 seconds after clicking
-**Why human:** Show-once UX, clipboard API, and dialog presentation require live browser
-
-#### 3. Deployment Table + Pending Status Badge
-
-**Test:** Close the dialog, observe the table
-**Expected:** Row appears with an amber "Pending enrollment" badge, correct display name
-**Why human:** Badge color rendering and table row structure require visual confirmation
-
-#### 4. Detail Drawer + Trust Boundary Reminder
-
-**Test:** Click the deployment row
-**Expected:** Detail drawer opens on the right panel showing UUID in Fira Code font, status badge, created date, and the trust boundary reminder "Linking is outbound-only. The hosted plane receives metadata only..."
-**Why human:** Split-panel layout, drawer animation, font rendering need live browser
-
-#### 5. Active State Actions + Revoke Dialog
-
-**Test:** Manually activate a deployment via `POST /v1/enrollment/exchange` with a valid token, refresh the console
-**Expected:** Row shows sky-blue "Active" badge; detail drawer shows "Unlink" (secondary) and "Revoke" (pink-700) action buttons. Clicking "Revoke" opens RevokeConfirmationDialog with "Revoke deployment" in pink-700 and "Keep deployment" dismiss button
-**Why human:** State-conditional UI logic and confirmation dialog UX require live browser
+Human verification is complete. See `07-HUMAN-UAT.md` for the recorded browser pass covering the empty state, token reveal dialog, pending badge, detail drawer, and active-state lifecycle actions.
 
 ---
 
 ### Gaps Summary
 
-No gaps. All 12 must-haves are verified at the artifact, substantive, and wiring levels. All 17 automated tests pass. TypeScript compiles clean. The phase goal is achieved: operators can register deployments, gateways can link via outbound enrollment exchange, and the full lifecycle (revoke/unlink/relink) is implemented with no duplicate records.
-
-The only outstanding items are human visual verification of the console UI, which requires a running browser — not indicators of missing implementation.
+No gaps. All 12 must-haves are verified at the artifact, substantive, wiring, and browser-UAT levels. The phase goal is achieved: operators can register deployments, gateways can link via outbound enrollment exchange, and the full lifecycle (revoke/unlink/relink) is implemented with no duplicate records.
 
 ---
 

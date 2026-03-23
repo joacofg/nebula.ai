@@ -50,6 +50,7 @@ patterns-established:
   - "Freshness computation always normalises tzinfo before comparison to handle SQLite naive datetimes"
 requirements-completed:
   - INVT-01
+  - INVT-02
   - INVT-04
 duration: 12min
 completed: 2026-03-22
