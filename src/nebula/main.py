@@ -9,6 +9,7 @@ from nebula.api.routes.admin import router as admin_router
 from nebula.api.routes.chat import router as chat_router
 from nebula.api.routes.enrollment import exchange_router, router as enrollment_router
 from nebula.api.routes.heartbeat import heartbeat_router
+from nebula.api.routes.remote_management import remote_management_router
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
 from nebula.observability.logging import configure_logging
@@ -55,6 +56,7 @@ def create_app() -> FastAPI:
     app.include_router(enrollment_router, prefix=settings.api_v1_prefix)
     app.include_router(exchange_router, prefix=settings.api_v1_prefix)
     app.include_router(heartbeat_router, prefix=settings.api_v1_prefix)
+    app.include_router(remote_management_router, prefix=settings.api_v1_prefix)
     if settings.enable_metrics:
         app.mount("/metrics", make_asgi_app())
 

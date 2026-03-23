@@ -67,6 +67,21 @@ class RemoteActionRecord(BaseModel):
     result_credential_prefix: str | None = None
 
 
+class RemoteActionPollResponse(BaseModel):
+    action: RemoteActionRecord | None = None
+
+
+class RemoteActionCompletionRequest(BaseModel):
+    status: Literal["applied", "failed"]
+    failure_reason: RemoteActionFailureReason | None = None
+    failure_detail: str | None = None
+
+
+class RemoteActionCompletionResponse(BaseModel):
+    acknowledged: bool
+    new_deployment_credential: str | None = None
+
+
 class EnrollmentTokenResponse(BaseModel):
     token: str
     expires_at: str

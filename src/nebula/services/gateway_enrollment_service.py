@@ -144,6 +144,24 @@ class GatewayEnrollmentService:
                 identity.unlinked_at = datetime.now(UTC)
                 session.commit()
 
+    def replace_deployment_credential(self, new_credential: str) -> None:
+        cred_hash = hashlib.sha256(new_credential.encode("utf-8")).hexdigest()
+        cred_prefix = new_credential[:12]
+
+        with self._session() as session:
+            identity = session.scalars(
+                select(LocalHostedIdentityModel).where(
+                    LocalHostedIdentityModel.unlinked_at.is_(None)
+                )
+            ).first()
+            if identity is None:
+                raise ValueError("No active local hosted identity exists.")
+
+            identity.credential_hash = cred_hash
+            identity.credential_prefix = cred_prefix
+            identity.credential_raw = new_credential
+            session.commit()
+
     def _store_local_identity(self, exchange: EnrollmentExchangeResponse) -> None:
         """Persist the enrollment exchange result to local_hosted_identity table."""
         cred_hash = hashlib.sha256(

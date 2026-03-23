@@ -17,6 +17,7 @@ from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from nebula.services.provider_registry import ProviderRegistry
+from nebula.services.remote_management_service import RemoteManagementService
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
@@ -73,6 +74,10 @@ class ServiceContainer:
             gateway_enrollment_service=self.gateway_enrollment_service,
             runtime_health_service=self.runtime_health_service,
         )
+        self.remote_management_service = RemoteManagementService(
+            settings=settings,
+            gateway_enrollment_service=self.gateway_enrollment_service,
+        )
         self.chat_service = ChatService(
             settings=settings,
             cache_service=self.cache_service,
@@ -87,6 +92,7 @@ class ServiceContainer:
         await self.cache_service.initialize()
 
     async def shutdown(self) -> None:
+        await self.remote_management_service.stop()
         await self.heartbeat_service.stop()
         await self.provider_registry.close()
         await self.premium_provider_health_service.close()

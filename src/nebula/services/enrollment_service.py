@@ -14,6 +14,8 @@ from nebula.models.deployment import (
     DeploymentRecord,
     EnrollmentExchangeResponse,
     EnrollmentTokenResponse,
+    RemoteActionCompletionRequest,
+    RemoteActionCompletionResponse,
     RemoteActionRecord,
 )
 from nebula.services.heartbeat_ingest_service import compute_freshness
@@ -259,6 +261,111 @@ class EnrollmentService:
             ).all()
             return [self._to_remote_action_record(row) for row in rows]
 
+    def claim_next_remote_action(self, raw_credential: str) -> RemoteActionRecord | None:
+        now = self._now()
+        with self._session() as session:
+            deployment = self._get_active_deployment_for_credential(session, raw_credential)
+            if deployment is None:
+                return None
+
+            queued_actions = session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(
+                    DeploymentRemoteActionModel.deployment_id == deployment.id,
+                    DeploymentRemoteActionModel.status == "queued",
+                )
+                .order_by(DeploymentRemoteActionModel.requested_at.asc())
+                .with_for_update()
+            ).all()
+
+            for action in queued_actions:
+                expires_at = action.expires_at
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=UTC)
+                if expires_at <= now:
+                    action.status = "failed"
+                    action.finished_at = now
+                    action.failure_reason = "expired"
+                    action.failure_detail = "Remote action expired before the deployment claimed it."
+                    action.updated_at = now
+                    continue
+
+                action.status = "in_progress"
+                action.started_at = now
+                action.updated_at = now
+                session.commit()
+                session.refresh(action)
+                return self._to_remote_action_record(action)
+
+            session.commit()
+            return None
+
+    def complete_remote_action(
+        self,
+        raw_credential: str,
+        action_id: str,
+        payload: RemoteActionCompletionRequest,
+    ) -> RemoteActionCompletionResponse | None:
+        now = self._now()
+        with self._session() as session:
+            deployment = self._get_active_deployment_for_credential(session, raw_credential)
+            if deployment is None:
+                return None
+
+            action = session.scalars(
+                select(DeploymentRemoteActionModel)
+                .where(
+                    DeploymentRemoteActionModel.id == action_id,
+                    DeploymentRemoteActionModel.deployment_id == deployment.id,
+                )
+                .with_for_update()
+            ).first()
+            if action is None:
+                return RemoteActionCompletionResponse(acknowledged=False)
+
+            action.finished_at = now
+            action.updated_at = now
+
+            if payload.status == "failed":
+                action.status = "failed"
+                action.failure_reason = payload.failure_reason
+                action.failure_detail = payload.failure_detail
+                session.commit()
+                return RemoteActionCompletionResponse(
+                    acknowledged=True,
+                    new_deployment_credential=None,
+                )
+
+            if action.action_type != "rotate_deployment_credential" or action.status != "in_progress":
+                action.status = "failed"
+                action.failure_reason = "invalid_state"
+                action.failure_detail = "Remote action was not in progress for rotation."
+                session.commit()
+                return RemoteActionCompletionResponse(
+                    acknowledged=True,
+                    new_deployment_credential=None,
+                )
+
+            raw_credential = f"nbdc_{secrets.token_urlsafe(32)}"
+            deployment.credential_hash = self._hash_token(raw_credential)
+            deployment.credential_prefix = raw_credential[:12]
+            deployment.updated_at = now
+            action.status = "applied"
+            action.failure_reason = None
+            action.failure_detail = None
+            action.result_credential_prefix = raw_credential[:12]
+            session.commit()
+            return RemoteActionCompletionResponse(
+                acknowledged=True,
+                new_deployment_credential=raw_credential,
+            )
+
+    def validate_deployment_credential(self, raw_credential: str | None) -> bool:
+        if not raw_credential:
+            return False
+        with self._session() as session:
+            return self._get_active_deployment_for_credential(session, raw_credential) is not None
+
     def _to_record(self, model: DeploymentModel) -> DeploymentRecord:
         def _iso(dt: datetime | None) -> str | None:
             return dt.isoformat() if dt is not None else None
@@ -306,6 +413,21 @@ class EnrollmentService:
 
     def _hash_token(self, raw_token: str) -> str:
         return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+    def _get_active_deployment_for_credential(
+        self,
+        session: Session,
+        raw_credential: str,
+    ) -> DeploymentModel | None:
+        cred_hash = self._hash_token(raw_credential)
+        return session.scalars(
+            select(DeploymentModel)
+            .where(
+                DeploymentModel.credential_hash == cred_hash,
+                DeploymentModel.enrollment_state == "active",
+            )
+            .with_for_update()
+        ).first()
 
     def _now(self) -> datetime:
         return datetime.now(UTC)
