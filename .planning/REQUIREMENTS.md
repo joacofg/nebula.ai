@@ -20,9 +20,9 @@
 
 ### Remote Management
 
-- [ ] **RMGT-01**: Hosted control plane can queue at least one allowlisted, non-serving-impacting remote-management action for a linked deployment.
+- [x] **RMGT-01**: Hosted control plane can queue at least one allowlisted, non-serving-impacting remote-management action for a linked deployment.
 - [ ] **RMGT-02**: A linked deployment pulls remote-management actions outbound, applies them only after local authorization checks, and records auditable queued, applied, or failed outcomes.
-- [ ] **RMGT-03**: Remote-management actions are TTL-bound, idempotent, and prevented from directly mutating local runtime policy or provider credentials from the hosted plane.
+- [x] **RMGT-03**: Remote-management actions are TTL-bound, idempotent, and prevented from directly mutating local runtime policy or provider credentials from the hosted plane.
 
 ### Trust Boundary and Pilot Proof
 
@@ -65,9 +65,9 @@
 | INVT-02 | Phase 8 | Complete |
 | INVT-03 | Phase 10 | Pending |
 | INVT-04 | Phase 8 | Complete |
-| RMGT-01 | Phase 9 | Pending |
+| RMGT-01 | Phase 9 | Complete |
 | RMGT-02 | Phase 9 | Pending |
-| RMGT-03 | Phase 9 | Pending |
+| RMGT-03 | Phase 9 | Complete |
 | TRST-01 | Phase 6 | Complete |
 | TRST-02 | Phase 6 | Complete |
 | TRST-03 | Phase 10 | Pending |

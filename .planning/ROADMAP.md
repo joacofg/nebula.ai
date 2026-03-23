@@ -81,9 +81,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 09-01: Define the initial allowlisted remote action and hosted queue contract
-- [ ] 09-02: Implement outbound polling, local authorization, and apply/ack flows
-- [ ] 09-03: Add TTL, idempotency, and hosted/local audit history
+- [x] 09-01-PLAN.md — Define rotate_deployment_credential queue models, persistence, and hosted admin queue/history APIs
+- [ ] 09-02-PLAN.md — Implement outbound polling, local authorization, and credential-rotation completion flow
+- [ ] 09-03-PLAN.md — Add expiry-aware audit rollups and the hosted deployment-detail action/history UI
 
 ### Phase 10: Pilot Proof and Failure-Safe Operations
 **Goal**: Nebula can demonstrate that hosted-control-plane outages degrade visibility only and that the hybrid model is credible in pilot conversations.
@@ -111,5 +111,5 @@ Plans:
 | 6. Trust Boundary and Hosted Contract | v2.0 | 0/3 | Not started | - |
 | 7. Deployment Enrollment and Identity | v2.0 | 3/3 | Complete   | 2026-03-21 |
 | 8. Fleet Inventory and Freshness Visibility | v2.0 | 3/3 | Complete   | 2026-03-22 |
-| 9. Audited Remote Management | v2.0 | 0/3 | Not started | - |
+| 9. Audited Remote Management | v2.0 | 1/3 | In Progress | - |
 | 10. Pilot Proof and Failure-Safe Operations | v2.0 | 0/2 | Not started | - |
