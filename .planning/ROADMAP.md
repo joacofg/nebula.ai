@@ -96,8 +96,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 10-01: Validate outage-safe serving, stale visibility, and mixed hosted/local failure behavior
-- [ ] 10-02: Produce the pilot docs, demo flow, and trust-boundary narrative
+- [ ] 10-01-PLAN.md — Prove hosted outages degrade visibility only while serving and readiness stay available
+- [ ] 10-02-PLAN.md — Publish the pilot-ready trust-boundary, onboarding, and outage-safe narrative
 
 ## Progress
 
