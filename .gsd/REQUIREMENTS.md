@@ -2,6 +2,85 @@
 
 This file is the explicit capability and coverage contract for the project.
 
+## Active
+
+### R032 — Hosted console gives a clear fleet posture view across linked deployments without implying hosted authority.
+- Class: operability
+- Status: active
+- Description: The hosted console gives operators an at-a-glance fleet posture view across linked deployments so they can quickly understand what is linked, current enough to trust as current, stale or offline, and operationally blocked for bounded hosted actions.
+- Why it matters: The current hosted surfaces have the ingredients, but multi-deployment evaluators still need a faster, clearer reading surface to build adoption confidence.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S01, M004/S03
+- Validation: mapped
+- Notes: The posture view must stay descriptive and metadata-backed rather than sounding like hosted is certifying runtime truth.
+
+### R033 — Operators can quickly distinguish linked, pending, stale, offline, and blocked deployment states from the hosted console.
+- Class: failure-visibility
+- Status: active
+- Description: The hosted console makes linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible without forcing operators to infer meaning from scattered row details.
+- Why it matters: Adoption trust drops when evaluators cannot tell whether a problem is onboarding incompleteness, metadata staleness, or a real bounded-action limitation.
+- Source: inferred
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S04
+- Validation: mapped
+- Notes: Prefer grouped interpretation and explicit reasons over raw status badges alone.
+
+### R034 — Hosted fleet summaries stay grounded in metadata-only facts and explicitly avoid serving-time or policy authority claims.
+- Class: constraint
+- Status: active
+- Description: Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
+- Why it matters: M004 fails if the hosted UX becomes clearer but also blurrier about authority.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03
+- Validation: mapped
+- Notes: “Fleet posture” and “confidence” are safer top-level terms than headline “readiness” because they preserve the descriptive boundary.
+
+### R035 — The hosted console makes bounded hosted action availability and blocking reasons legible without implying broader remote control.
+- Class: integration
+- Status: active
+- Description: The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
+- Why it matters: Operators need confidence about what hosted can and cannot do, especially when a deployment is stale, offline, revoked, unlinked, or unsupported.
+- Source: inferred
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: mapped
+- Notes: The UI should reinforce the existing fail-closed rules rather than expanding the action model.
+
+### R036 — Hosted onboarding and linkage state become easier to interpret for multi-deployment evaluators adopting Nebula across more than one deployment.
+- Class: launchability
+- Status: active
+- Description: Multi-deployment evaluators can understand slot creation, pending enrollment, active linkage, and hosted freshness posture across more than one deployment without manually reconstructing the adoption story from several separate views.
+- Why it matters: M004 is intended to help real evaluators and operators with more than a single-node toy setup.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: mapped
+- Notes: Optimize for the multi-deployment case first; the single-deployment case should benefit as a simpler subset.
+
+### R037 — Nebula provides an integrated proof showing hosted surfaces reinforce adoption and operator confidence while local runtime enforcement remains authoritative.
+- Class: core-capability
+- Status: active
+- Description: Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
+- Why it matters: The milestone needs a believable proof story, not only a UX pass.
+- Source: user
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S04
+- Validation: mapped
+- Notes: The proof should explicitly preserve the local-authority trust model and metadata-only hosted boundary.
+
+### R038 — Hosted adoption reinforcement improves operator confidence through clearer status interpretation, freshness meaning, and evidence framing.
+- Class: differentiator
+- Status: active
+- Description: The hosted experience gives operators more confidence because hosted statuses, freshness meaning, dependency summaries, and evidence framing are easier to interpret in context.
+- Why it matters: The milestone objective is reinforcement: clearer, more confidence-building, and more useful for evaluators and operators.
+- Source: user
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S02, M004/S04
+- Validation: mapped
+- Notes: Confidence must come from clearer interpretation, not from hidden authority or new hosted dependency.
+
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -35,7 +114,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M001/S02
 - Supporting slices: M001/S01, M001/S03, M001/S05
 - Validation: S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health.
-- Notes: Console verification in this worktree now includes passing Vitest coverage for playground metadata/recorded outcome/page seams and updated Playwright assertions in console/e2e/playground.spec.ts and console/e2e/observability.spec.ts. The planned `npm --prefix console run test -- --run observability` command currently has no matching test file, and Playwright startup is blocked by a pre-existing TypeScript error in console/src/components/deployments/remote-action-card.tsx, so those failures are recorded as verification-environment / unrelated-worktree blockers rather than evidence that the integrated adoption proof regressed.
+- Notes: Console verification in this worktree now includes passing Vitest coverage for playground metadata/recorded outcome/page seams and updated Playwright assertions in console/e2e/playground.spec.ts and console/e2e/observability.spec.ts. The planned npm --prefix console run test -- --run observability command currently has no matching test file, and Playwright startup is blocked by a pre-existing TypeScript error in console/src/components/deployments/remote-action-card.tsx, so those failures are recorded as verification-environment / unrelated-worktree blockers rather than evidence that the integrated adoption proof regressed.
 
 ### R004 — At least one realistic application or service proves direct provider usage can be replaced with Nebula with minimal code changes.
 - Class: core-capability
@@ -166,7 +245,7 @@ This file is the explicit capability and coverage contract for the project.
 - Source: user
 - Primary owning slice: M003/S05
 - Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
-- Validation: S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
+- Validation: S05 validated the final narrow embeddings adoption assembly by making docs/embeddings-integrated-adoption-proof.md discoverable from README.md and docs/architecture.md as a pointer-only walkthrough, then rerunning focused embeddings pytest coverage successfully. The assembled proof keeps docs/embeddings-adoption-contract.md as the only detailed public contract while tying the public POST /v1/embeddings path to X-Request-ID/X-Nebula-* headers, GET /v1/admin/usage/ledger?request_id=..., and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
 - Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
 
 ## Deferred
@@ -191,7 +270,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M002/S02
 - Supporting slices: none
 - Validation: M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance.
-- Notes: M002/S03 completed the final integrated production-structuring walkthrough without introducing first-class app/workload runtime or admin entities. The slice validated that docs/integrated-adoption-proof.md, .gsd/milestones/M002/slices/S03/S03-UAT.md, and focused Tenants/Playground/Observability Vitest coverage now compose one coherent operator story from tenant/API-key structuring through public request, X-Request-ID/X-Nebula-* headers, usage-ledger correlation, and admin corroboration surfaces. Requirement remains deferred because the proof deliberately preserves app/workload as conceptual guidance only.
+- Notes: M002/S03 completed the final integrated production-structuring walkthrough without introducing first-class app/workload runtime or admin entities. Requirement remains deferred because the proof deliberately preserves app/workload as conceptual guidance only.
 
 ### R013 — Nebula provides dedicated helper libraries, wrappers, or SDK conveniences beyond the compatibility-first path.
 - Class: admin/support
@@ -211,9 +290,9 @@ This file is the explicit capability and coverage contract for the project.
 - Why it matters: There may be adoption leverage here later, but it is not the core proof path for M001.
 - Source: user
 - Primary owning slice: M004/S01
-- Supporting slices: none
-- Validation: unmapped
-- Notes: Must preserve the metadata-only trust boundary by default.
+- Supporting slices: M004/S02, M004/S03, M004/S04
+- Validation: mapped via M004 planning, still deferred until execution proves the reinforcement path.
+- Notes: M004 is the dedicated milestone for this requirement. Must preserve the metadata-only trust boundary by default and keep local runtime enforcement authoritative.
 
 ### R025 — Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
 - Class: integration
@@ -247,6 +326,28 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Prefer backend/operator evidence reuse first.
+
+### R039 — Hosted plane derives richer comparative fleet analytics or recommendations beyond the current metadata-backed posture model.
+- Class: differentiator
+- Status: deferred
+- Description: The hosted plane derives richer comparative fleet analytics, recommendations, or evaluative scoring beyond the current metadata-backed posture model.
+- Why it matters: There may be future product value here, but it would push the hosted side closer to interpretive authority and broaden the scope beyond adoption reinforcement.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Defer unless repeated evaluator demand proves that a descriptive posture surface is not enough.
+
+### R040 — Hosted plane expands beyond the current bounded remote-action model into broader remote management workflows.
+- Class: integration
+- Status: deferred
+- Description: The hosted plane expands beyond the current audited rotate_deployment_credential action into broader remote management workflows.
+- Why it matters: This could add operational value later, but it would materially change the trust boundary and control semantics.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Keep deferred; M004 should reinforce clarity around the current bounded action rather than widen it.
 
 ## Out of Scope
 
@@ -349,34 +450,67 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: n/a
 - Notes: The internal embeddings capability already exists; new infra should be treated as a smell unless directly justified.
 
+### R041 — Hosted plane does not become authoritative for serving-time health, routing, fallback, or policy enforcement.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: The hosted plane does not become authoritative for serving-time health, routing, fallback, or policy enforcement.
+- Why it matters: This is the core trust-boundary guardrail for M004 and prevents confidence-building UX from drifting into false authority.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Local runtime enforcement remains authoritative even when hosted signals are unavailable or stale.
+
+### R042 — M004 does not become a broad hosted product expansion unrelated to adoption reinforcement.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M004 does not become a broad hosted product expansion program unrelated to onboarding clarity, fleet understanding, or operator confidence.
+- Why it matters: Protects the milestone from drifting into generic control-plane scope.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Hosted changes must justify themselves through reinforcement value, not feature count.
+
+### R043 — M004 does not introduce commercial packaging, billing, or enterprise-access redesign work.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M004 does not introduce commercial packaging, billing, or enterprise-access redesign work.
+- Why it matters: Prevents the milestone from diverging into go-to-market or enterprise-platform work.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Explicit non-goal repeated here because hosted/control-plane scope often drifts in that direction.
+
 ## Traceability
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
 |---|---|---|---|---|---|
-| R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests. |
-| R002 | constraint | validated | M001/S01 | M001/S02 | S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details. |
-| R003 | launchability | validated | M001/S02 | M001/S01, M001/S03, M001/S05 | S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health. |
-| R004 | core-capability | validated | M001/S03 | M001/S05 | S03 added the executable reference migration proof in tests/test_reference_migration.py plus the canonical docs/reference-migration.md guide, demonstrating that an OpenAI-style chat-completions caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key, with X-Nebula-Tenant-ID only for ambiguous multi-tenant keys) while preserving an OpenAI-like response and correlating X-Request-ID/X-Nebula-* headers to GET /v1/admin/usage/ledger evidence. |
-| R005 | differentiator | validated | M001/S04 | M001/S03, M001/S05 | S04 added the canonical docs/day-1-value.md walkthrough and aligned console proof surfaces so a successful public chat-completions request can be explained immediately through X-Nebula-* headers and X-Request-ID, then corroborated through Playground immediate metadata, persisted usage-ledger outcome, and Observability dependency-health context. |
-| R006 | operability | validated | M001/S02 | M002/S01 | S02 established the canonical docs/production-model.md operating-model reference; M002/S01 then verified the console truth surface matches that model by proving API key issuance/inventory explain tenant inference vs X-Nebula-Tenant-ID requirements, Playground reads as an admin-only non-streaming corroboration surface, and Observability reads as the persisted request-evidence plus dependency-health context surface, all backed by passing focused vitest coverage. |
-| R007 | admin/support | validated | M001/S02 | M001/S04 | S02 now routes startup teams, platform-minded adopters, and enterprise/self-hosted operators through one supported self-hosted quickstart, one production-model reference, and one public API contract boundary without fragmented or conflicting guidance across README.md, docs/self-hosting.md, docs/architecture.md, docs/quickstart.md, and docs/production-model.md. |
-| R008 | quality-attribute | validated | M001/S03 | none | S03 keeps the migration example realistic and trustworthy by grounding the guide in tests/test_reference_migration.py, limiting caller changes to the real public contract, explicitly showing when X-Nebula-Tenant-ID is and is not required, and requiring public-header plus usage-ledger correlation instead of relying on a toy curl-only demo. |
-| R009 | failure-visibility | validated | M001/S04 | M001/S05 | S04 proved the request-explanation path across public headers, X-Request-ID correlation, usage-ledger records, Playground metadata, recorded outcome cards, and Observability request detail so adopters can see route target, route reason, fallback usage, and policy outcome during integration and validation. |
-| R010 | constraint | validated | M001/S01 | none | S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features. |
+| R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | validated |
+| R002 | constraint | validated | M001/S01 | M001/S02 | validated |
+| R003 | launchability | validated | M001/S02 | M001/S01, M001/S03, M001/S05 | validated |
+| R004 | core-capability | validated | M001/S03 | M001/S05 | validated |
+| R005 | differentiator | validated | M001/S04 | M001/S03, M001/S05 | validated |
+| R006 | operability | validated | M001/S02 | M002/S01 | validated |
+| R007 | admin/support | validated | M001/S02 | M001/S04 | validated |
+| R008 | quality-attribute | validated | M001/S03 | none | validated |
+| R009 | failure-visibility | validated | M001/S04 | M001/S05 | validated |
+| R010 | constraint | validated | M001/S01 | none | validated |
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
-| R012 | operability | deferred | M002/S02 | none | M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance. |
+| R012 | operability | deferred | M002/S02 | none | unmapped |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
-| R014 | integration | deferred | M004/S01 | none | unmapped |
+| R014 | integration | deferred | M004/S01 | M004/S02, M004/S03, M004/S04 | mapped |
 | R015 | anti-feature | out-of-scope | none | none | n/a |
 | R016 | anti-feature | out-of-scope | none | none | n/a |
 | R017 | anti-feature | out-of-scope | none | none | n/a |
 | R018 | anti-feature | out-of-scope | none | none | n/a |
 | R019 | anti-feature | out-of-scope | none | none | n/a |
-| R020 | primary-user-loop | validated | M003/S01 | M003/S03 | M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches. |
-| R021 | constraint | validated | M003/S02 | M003/S05 | S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract. |
-| R022 | core-capability | validated | M003/S03 | M003/S05 | S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks. |
-| R023 | failure-visibility | validated | M003/S04 | M003/S05 | S04 proved that the same public POST /v1/embeddings request can be correlated through X-Request-ID and X-Nebula-* headers to a metadata-only usage-ledger row, then intentionally discovered and explained in Observability by filtering Route target = embeddings and inspecting persisted request/detail fields. Close-out reran /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py successfully; console source and Playwright proof files show embeddings-specific filter/detail/operator corroboration wiring, while local Vitest/Playwright execution remained partially blocked by missing console runners in this worktree. |
-| R024 | constraint | validated | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work. |
+| R020 | primary-user-loop | validated | M003/S01 | M003/S03 | validated |
+| R021 | constraint | validated | M003/S02 | M003/S05 | validated |
+| R022 | core-capability | validated | M003/S03 | M003/S05 | validated |
+| R023 | failure-visibility | validated | M003/S04 | M003/S05 | validated |
+| R024 | constraint | validated | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | validated |
 | R025 | integration | deferred | none | none | unmapped |
 | R026 | admin/support | deferred | none | none | unmapped |
 | R027 | operability | deferred | none | none | unmapped |
@@ -384,10 +518,22 @@ This file is the explicit capability and coverage contract for the project.
 | R029 | anti-feature | out-of-scope | none | none | n/a |
 | R030 | anti-feature | out-of-scope | none | none | n/a |
 | R031 | anti-feature | out-of-scope | none | none | n/a |
+| R032 | operability | active | M004/S02 | M004/S01, M004/S03 | mapped |
+| R033 | failure-visibility | active | M004/S02 | M004/S04 | mapped |
+| R034 | constraint | active | M004/S01 | M004/S02, M004/S03 | mapped |
+| R035 | integration | active | M004/S02 | M004/S03 | mapped |
+| R036 | launchability | active | M004/S02 | M004/S03 | mapped |
+| R037 | core-capability | active | M004/S03 | M004/S04 | mapped |
+| R038 | differentiator | active | M004/S03 | M004/S02, M004/S04 | mapped |
+| R039 | differentiator | deferred | none | none | unmapped |
+| R040 | integration | deferred | none | none | unmapped |
+| R041 | anti-feature | out-of-scope | none | none | n/a |
+| R042 | anti-feature | out-of-scope | none | none | n/a |
+| R043 | anti-feature | out-of-scope | none | none | n/a |
 
 ## Coverage Summary
 
-- Active requirements: 0
-- Mapped to slices: 0
-- Validated: 15 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024)
+- Active requirements: 7
+- Mapped to slices: 7
+- Validated: 15
 - Unmapped active requirements: 0
