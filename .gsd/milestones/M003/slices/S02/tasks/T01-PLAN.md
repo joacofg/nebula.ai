@@ -42,3 +42,9 @@ Create the one canonical public embeddings contract document for Nebula. This ta
 ## Expected Output
 
 - `docs/embeddings-adoption-contract.md` — canonical embeddings adoption contract doc grounded in the S01 runtime and test-backed boundary.
+
+## Observability Impact
+
+- This task adds the human-readable contract for the already-shipped embeddings evidence surface, so future agents can inspect `POST /v1/embeddings` success and failure behavior through response headers, `X-Request-ID`, and `/v1/admin/usage/ledger` without reverse-engineering tests.
+- The document must make provider-error visibility explicit by naming the inspectable failure categories backed by code/tests: validation rejection, upstream failure, and empty-result failure, plus the corresponding ledger correlation path.
+- The contract must also preserve the redaction boundary by stating that ledger/admin evidence is metadata-only and does not include raw embedding inputs or vectors.

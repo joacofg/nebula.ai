@@ -24,6 +24,14 @@
 - `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_service_flows.py -k embedding`
 - `test -f docs/embeddings-adoption-contract.md && ! grep -q "TBD\|TODO" docs/embeddings-adoption-contract.md && [ "$(rg -c "^## " docs/embeddings-adoption-contract.md)" -ge 6 ]`
 - `rg -n "embeddings-adoption-contract|POST /v1/embeddings" README.md docs/architecture.md docs/embeddings-adoption-contract.md`
+- `rg -n "embeddings_validation_error|embeddings_upstream_error|embeddings_empty_result|X-Request-ID|/v1/admin/usage/ledger" src/nebula/api/routes/embeddings.py tests/test_embeddings_api.py tests/test_governance_api.py tests/test_service_flows.py docs/embeddings-adoption-contract.md`
+
+## Observability / Diagnostics
+
+- Public success responses on `POST /v1/embeddings` emit `X-Request-ID` plus `X-Nebula-Tenant-ID`, `X-Nebula-Route-Target`, `X-Nebula-Route-Reason`, `X-Nebula-Provider`, `X-Nebula-Cache-Hit`, `X-Nebula-Fallback-Used`, `X-Nebula-Policy-Mode`, and `X-Nebula-Policy-Outcome`; the canonical doc must name these as the inspectable runtime evidence surface.
+- Every embeddings request records a usage-ledger row keyed by `request_id`, with metadata-only fields such as tenant, requested model, final route target/provider, route reason, terminal status, and policy outcome; the doc must explain that `/v1/admin/usage/ledger` is the durable operator lookup path without implying prompt or vector capture.
+- Failure visibility must stay inspectable: request-shape rejections surface FastAPI/Pydantic `422` validation output, while provider failures map to `422` or `502` with route-specific ledger `terminal_status` / `route_reason` values like `provider_error`, `embeddings_validation_error`, `embeddings_upstream_error`, and `embeddings_empty_result`.
+- Redaction boundary: no raw embedding inputs or returned vectors are promised in ledger/admin evidence; only request metadata and correlation identifiers are documented.
 
 ## Integration Closure
 
@@ -33,7 +41,7 @@
 
 ## Tasks
 
-- [ ] **T01: Author the canonical embeddings contract document** `est:45m`
+- [x] **T01: Author the canonical embeddings contract document** `est:45m`
   - Why: R021 is primarily a documentation boundary requirement, so the slice closes only when a single canonical file states the supported embeddings contract and exclusions from runtime truth.
   - Files: `docs/embeddings-adoption-contract.md`, `docs/adoption-api-contract.md`, `src/nebula/api/routes/embeddings.py`, `src/nebula/models/openai.py`, `tests/test_embeddings_api.py`, `tests/test_governance_api.py`, `tests/test_service_flows.py`
   - Do: Write `docs/embeddings-adoption-contract.md` using the chat contract doc as the structural pattern; document only the S01-proven embeddings scope, auth, request shape, response shape, response headers, evidence correlation, failure semantics, and explicit unsupported/deferred claims; include a local verification section that points to the focused embeddings tests and doc checks; keep wording narrow so the doc does not imply broader OpenAI embeddings parity.
