@@ -56,11 +56,11 @@ describe("RemoteActionCard", () => {
     expect(await screen.findByText("No remote actions recorded yet.")).toBeInTheDocument();
     expect(screen.getByText(reinforcement.boundedActionPhrasing.description)).toBeInTheDocument();
     expect(
-      screen.getByText(/Hosted summaries here are metadata-backed and descriptive only\./),
+      screen.getByText(
+        `${reinforcement.allowedDescriptiveClaims[0]} ${reinforcement.operatorReadingGuidance[2]}`,
+      ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Use local runtime observability to confirm serving-time behavior/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
     expect(screen.queryByText(/broader remote control/i)).not.toBeInTheDocument();
   });
 

@@ -132,8 +132,10 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
           {reinforcement.boundedActionPhrasing.description}
         </p>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          Hosted summaries here are metadata-backed and descriptive only. Use local runtime
-          observability to confirm serving-time behavior before treating this deployment as healthy.
+          {reinforcement.allowedDescriptiveClaims[0]} {reinforcement.operatorReadingGuidance[2]}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {reinforcement.operatorReadingGuidance[1]}
         </p>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">

@@ -38,7 +38,7 @@
 
 ## Tasks
 
-- [ ] **T01: Tighten shared hosted wording and the narrowest UI seam** `est:45m`
+- [x] **T01: Tighten shared hosted wording and the narrowest UI seam** `est:45m`
   - Why: R034 is still active because the hosted walkthrough must stay explicitly descriptive-only across all reused surfaces; the highest-risk gap is wording or evidence-mapping drift between the shared contract and the deployments summary/drawer flow.
   - Files: `console/src/lib/hosted-contract.ts`, `console/src/app/(console)/deployments/page.tsx`, `console/src/components/deployments/fleet-posture-summary.tsx`, `console/src/components/deployments/deployment-detail-drawer.tsx`, `console/src/components/deployments/remote-action-card.tsx`
   - Do: Compare the current hosted walkthrough surfaces against the canonical proof path, identify the smallest real interpretation gap, then fix it by reusing or minimally extending shared hosted-contract exports and threading that wording through the narrowest affected UI seam; keep `fleet-posture.ts` as the semantic authority, avoid adding new statuses/cards/workflows, and prefer drawer-level connective clarification if the gap is context-reading rather than summary math.

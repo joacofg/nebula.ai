@@ -132,15 +132,14 @@ describe("DeploymentsPage", () => {
     expect(screen.getByText("Deployment detail")).toBeInTheDocument();
     expect(screen.getByText("What this deployment shares")).toBeInTheDocument();
     expect(screen.getAllByText(reinforcement.operatorReadingGuidance[0]).length).toBeGreaterThan(0);
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[2])).toBeInTheDocument();
     expect(screen.getAllByText(reinforcement.boundedActionPhrasing.description).length).toBeGreaterThan(0);
     expect(
       screen.getByText(
-        /Hosted summaries here are metadata-backed and descriptive only\./,
+        `${reinforcement.allowedDescriptiveClaims[0]} ${reinforcement.operatorReadingGuidance[2]}`,
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Use local runtime observability to confirm serving-time behavior/),
-    ).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
     expect(screen.queryByText(/hosted plane serves traffic/i)).not.toBeInTheDocument();
   });
 

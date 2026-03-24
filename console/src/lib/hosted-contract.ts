@@ -73,6 +73,7 @@ export const reinforcementContract = {
   operatorReadingGuidance: [
     "Read hosted fleet posture as an operator summary derived from deployment metadata exports.",
     "Use freshness and dependency summaries to prioritize investigation, then confirm serving-time behavior from the local runtime and its observability surfaces.",
+    "Treat drawer-level freshness and dependency details as supporting evidence for that fleet posture summary, not as hosted authority over current runtime health.",
     "Treat hosted remote-action availability as bounded operational assistance, not broad remote control.",
   ],
   boundedActionPhrasing: {
