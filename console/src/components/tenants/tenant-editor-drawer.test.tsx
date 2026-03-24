@@ -28,6 +28,30 @@ describe("tenant-editor-drawer", () => {
     expect(screen.getByLabelText("id")).toHaveAttribute("readonly");
   });
 
+  it("renders runtime-truth guidance for tenant boundaries and metadata", () => {
+    renderWithProviders(
+      <TenantEditorDrawer
+        mode="create"
+        tenant={null}
+        isSaving={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(
+      screen.getByText(/Create a real tenant boundary for policy and attribution/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/issue API keys separately for the callers that should use it/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Use metadata for optional operator notes, ownership hints, or runbook context only/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Nebula does not enforce app or workload schema from this field/i)).toBeInTheDocument();
+    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+  });
+
   it("validates metadata JSON before submit", async () => {
     renderWithProviders(
       <TenantEditorDrawer

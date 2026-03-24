@@ -44,3 +44,9 @@ Update the tenant-facing console copy so operators can map conceptual apps and w
 - `console/src/app/(console)/tenants/page.tsx` — page header copy aligned to the runtime-truth tenant/API-key/app-workload guidance
 - `console/src/components/tenants/tenant-editor-drawer.tsx` — drawer copy aligned to tenant reality and optional metadata notes framing
 - `console/src/components/tenants/tenant-table.tsx` — unchanged or minimally adjusted wording only if needed for coherence
+
+## Observability Impact
+
+- Changed signals: tenant page header and tenant drawer helper text now expose the tenant/API-key/app-workload contract directly in rendered UI copy.
+- How to inspect: run focused vitest assertions in `console/src/app/(console)/tenants/page.test.tsx`, `console/src/components/tenants/tenant-editor-drawer.test.tsx`, and `console/src/components/tenants/tenant-table.test.tsx`, or manually open the Tenants page and drawer to inspect the rendered copy.
+- Failure visibility: copy drift now fails targeted text assertions that identify whether the page shell, drawer guidance, or table semantics regressed toward fake app/workload runtime objects.

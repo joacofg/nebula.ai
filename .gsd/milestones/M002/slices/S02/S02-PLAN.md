@@ -35,7 +35,7 @@
 
 ## Tasks
 
-- [ ] **T01: Reframe tenant surfaces around runtime-truth app/workload guidance** `est:45m`
+- [x] **T01: Reframe tenant surfaces around runtime-truth app/workload guidance** `est:45m`
   - Why: The slice’s user-facing value lives in the tenant page and drawer, where current wording is generic or misleading and does not yet teach operators how to map apps/workloads onto real tenants and keys.
   - Files: `console/src/app/(console)/tenants/page.tsx`, `console/src/components/tenants/tenant-editor-drawer.tsx`, `console/src/components/tenants/tenant-table.tsx`
   - Do: Update the tenant page header copy to explain that tenants are the enforced boundary, API keys segment callers, and app/workload naming stays conceptual unless implemented; replace the drawer’s “workspace” language with runtime-truthful tenant guidance; mention `metadata` only as optional notes/runbook context; touch the tenant table only if needed to keep the wording coherent without adding fake columns or pseudo-entities.

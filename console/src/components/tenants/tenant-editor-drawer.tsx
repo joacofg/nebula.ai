@@ -103,8 +103,11 @@ export function TenantEditorDrawer({
           <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{heading}</h3>
           <p className="mt-2 text-sm text-slate-500">
             {isEditMode
-              ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"}.`
-              : "Create a workspace with governance metadata and an explicit active state."}
+              ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"} and keep this tenant as the authoritative runtime boundary.`
+              : "Create a real tenant boundary for policy and attribution, then issue API keys separately for the callers that should use it."}
+          </p>
+          <p className="mt-2 text-sm text-slate-500">
+            Use metadata for optional operator notes, ownership hints, or runbook context only. Nebula does not enforce app or workload schema from this field.
           </p>
         </div>
         <button
