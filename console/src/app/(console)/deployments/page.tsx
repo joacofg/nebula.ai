@@ -18,6 +18,7 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 import { CreateDeploymentSlotDrawer } from "@/components/deployments/create-deployment-slot-drawer";
 import { DeploymentDetailDrawer } from "@/components/deployments/deployment-detail-drawer";
 import { DeploymentTable } from "@/components/deployments/deployment-table";
@@ -32,6 +33,7 @@ type DrawerState =
 export default function DeploymentsPage() {
   const queryClient = useQueryClient();
   const { adminKey } = useAdminSession();
+  const { reinforcement } = getHostedContractContent();
 
   const [drawerState, setDrawerState] = useState<DrawerState>({ mode: "create" });
   const [selectedDeploymentId, setSelectedDeploymentId] = useState<string | null>(null);
@@ -124,6 +126,9 @@ export default function DeploymentsPage() {
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
             Manage linked self-hosted Nebula deployments through{" "}
             <span className="font-[var(--font-fira-code)]">{ADMIN_DEPLOYMENTS_ENDPOINT}</span>.
+          </p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            {reinforcement.operatorReadingGuidance[2]} {reinforcement.allowedDescriptiveClaims[4]}
           </p>
         </div>
         <button

@@ -9,6 +9,7 @@ import {
   type RemoteActionRecord,
   type RemoteActionStatus,
 } from "@/lib/admin-api";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 import { useAdminSession } from "@/lib/admin-session-provider";
 
 const historyTimestampFormatter = new Intl.DateTimeFormat("en", {
@@ -63,6 +64,7 @@ function formatTimestamp(value: string | null) {
 
 export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
   const { adminKey } = useAdminSession();
+  const { reinforcement } = getHostedContractContent();
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RemoteActionRecord[]>([]);
@@ -146,8 +148,11 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
         </div>
         <h4 className="mt-2 text-lg font-semibold text-slate-950">Rotate hosted-link credential</h4>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          This rotates the hosted-link credential only. It does not change serving traffic,
-          tenant policy, or provider credentials.
+          {reinforcement.boundedActionPhrasing.description}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          Hosted summaries here are metadata-backed and descriptive only. Use local runtime
+          observability to confirm serving-time behavior before treating this deployment as healthy.
         </p>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">

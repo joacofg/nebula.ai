@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { RemoteActionCard } from "@/components/deployments/remote-action-card";
 import type { DeploymentRecord } from "@/lib/admin-api";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 import { renderWithProviders } from "@/test/render";
 
 const baseDeployment: DeploymentRecord = {
@@ -32,8 +33,34 @@ function renderCard(deployment: DeploymentRecord = baseDeployment) {
 }
 
 describe("RemoteActionCard", () => {
+  const { reinforcement } = getHostedContractContent();
+
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("renders bounded hosted wording without implying broader control", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    renderCard();
+
+    expect(await screen.findByText("No remote actions recorded yet.")).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.boundedActionPhrasing.description)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Hosted summaries here are metadata-backed and descriptive only\./),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Use local runtime observability to confirm serving-time behavior/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/broader remote control/i)).not.toBeInTheDocument();
   });
 
   it("requires a 1-280 character note and only queues after confirmation", async () => {
@@ -91,9 +118,7 @@ describe("RemoteActionCard", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
     expect(confirmMock).toHaveBeenCalledTimes(2);
-    expect(
-      screen.getByText("Rotate after audit", { selector: "p" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Rotate after audit", { selector: "p" })).toBeInTheDocument();
   });
 
   it("fails closed for stale, offline, revoked, unlinked, and unsupported deployments", async () => {

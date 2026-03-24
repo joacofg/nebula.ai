@@ -50,7 +50,7 @@
   - Do: Reuse the shared hosted-contract exports to present the reinforcement guardrails and operator-reading guidance on the trust-boundary card and public trust-boundary page, keeping the message descriptive and explicitly non-authoritative; add or update focused render assertions for the new sections and wording.
   - Verify: `npm --prefix console run test -- --run src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`
   - Done when: A reader can open the public trust-boundary surfaces and see the canonical reinforcement framing, freshness caveat, and non-authority guardrails without conflicting local wording.
-- [ ] **T03: Align deployment-facing hosted action copy and publish the slice boundary artifact** `est:1h`
+- [x] **T03: Align deployment-facing hosted action copy and publish the slice boundary artifact** `est:1h`
   - Why: S01 must close the loop where hosted authority drift is most likely to reappear: deployment management copy and downstream planning handoff.
   - Files: `console/src/components/deployments/remote-action-card.tsx`, `console/src/components/deployments/remote-action-card.test.tsx`, `console/src/app/(console)/deployments/page.tsx`, `docs/hosted-reinforcement-boundary.md`
   - Do: Replace deployment-facing hosted wording that could drift with phrasing sourced from the shared hosted contract, keeping remote actions explicitly bounded to audited credential rotation and visibility-only semantics; add a concise slice artifact documenting allowed hosted claims, prohibited authority implications, and acceptance rules for S02/S03.
