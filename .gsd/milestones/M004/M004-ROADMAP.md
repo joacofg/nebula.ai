@@ -52,7 +52,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Hosted reinforcement boundary** `risk:high` `depends:[]`
   > After this: The hosted reinforcement guardrails are explicit in code/doc language, so downstream slices can improve fleet posture and confidence without drifting into hosted authority.
 
-- [ ] **S02: Fleet posture UX** `risk:high` `depends:[S01]`
+- [x] **S02: Fleet posture UX** `risk:high` `depends:[S01]`
   > After this: An operator can open the hosted console and immediately read fleet posture across deployments — linked vs pending, current vs stale/offline, bounded-action blocked states, and confidence cues — without mistaking hosted state for local runtime authority.
 
 - [ ] **S03: Confidence proof and trust walkthrough** `risk:medium` `depends:[S01,S02]`

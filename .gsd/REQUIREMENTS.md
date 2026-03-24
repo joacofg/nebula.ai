@@ -4,28 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R032 — The hosted console gives operators an at-a-glance fleet posture view across linked deployments so they can quickly understand what is linked, current enough to trust as current, stale or offline, and operationally blocked for bounded hosted actions.
-- Class: operability
-- Status: active
-- Description: The hosted console gives operators an at-a-glance fleet posture view across linked deployments so they can quickly understand what is linked, current enough to trust as current, stale or offline, and operationally blocked for bounded hosted actions.
-- Why it matters: The current hosted surfaces have the ingredients, but multi-deployment evaluators still need a faster, clearer reading surface to build adoption confidence.
-- Source: user
-- Primary owning slice: M004/S02
-- Supporting slices: M004/S01, M004/S03
-- Validation: mapped
-- Notes: The posture view must stay descriptive and metadata-backed rather than sounding like hosted is certifying runtime truth.
-
-### R033 — The hosted console makes linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible without forcing operators to infer meaning from scattered row details.
-- Class: failure-visibility
-- Status: active
-- Description: The hosted console makes linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible without forcing operators to infer meaning from scattered row details.
-- Why it matters: Adoption trust drops when evaluators cannot tell whether a problem is onboarding incompleteness, metadata staleness, or a real bounded-action limitation.
-- Source: inferred
-- Primary owning slice: M004/S02
-- Supporting slices: M004/S04
-- Validation: mapped
-- Notes: Prefer grouped interpretation and explicit reasons over raw status badges alone.
-
 ### R034 — Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
 - Class: constraint
 - Status: active
@@ -36,28 +14,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M004/S02, M004/S03
 - Validation: mapped
 - Notes: M004/S01 execution materially advanced this requirement: console/src/lib/hosted-contract.ts now centralizes allowed descriptive claims, prohibited authority claims, operator reading guidance, and bounded-action phrasing; those guardrails are rendered on the trust-boundary card/page and deployment-management surfaces, documented in docs/hosted-reinforcement-boundary.md, and locked by focused Vitest coverage plus backend contract checks run during task execution. Keep status active until S02/S03 prove the assembled hosted posture UX and integrated milestone behavior.
-
-### R035 — The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
-- Class: integration
-- Status: active
-- Description: The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
-- Why it matters: Operators need confidence about what hosted can and cannot do, especially when a deployment is stale, offline, revoked, unlinked, or unsupported.
-- Source: inferred
-- Primary owning slice: M004/S02
-- Supporting slices: M004/S03
-- Validation: mapped
-- Notes: The UI should reinforce the existing fail-closed rules rather than expanding the action model.
-
-### R036 — Multi-deployment evaluators can understand slot creation, pending enrollment, active linkage, and hosted freshness posture across more than one deployment without manually reconstructing the adoption story from several separate views.
-- Class: launchability
-- Status: active
-- Description: Multi-deployment evaluators can understand slot creation, pending enrollment, active linkage, and hosted freshness posture across more than one deployment without manually reconstructing the adoption story from several separate views.
-- Why it matters: M004 is intended to help real evaluators and operators with more than a single-node toy setup.
-- Source: user
-- Primary owning slice: M004/S02
-- Supporting slices: M004/S03
-- Validation: mapped
-- Notes: Optimize for the multi-deployment case first; the single-deployment case should benefit as a simpler subset.
 
 ### R037 — Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
 - Class: core-capability
@@ -247,6 +203,50 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
 - Validation: S05 validated the final narrow embeddings adoption assembly by making docs/embeddings-integrated-adoption-proof.md discoverable from README.md and docs/architecture.md as a pointer-only walkthrough, then rerunning focused embeddings pytest coverage successfully. The assembled proof keeps docs/embeddings-adoption-contract.md as the only detailed public contract while tying the public POST /v1/embeddings path to X-Request-ID/X-Nebula-* headers, GET /v1/admin/usage/ledger?request_id=..., and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
 - Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
+
+### R032 — The hosted console gives operators an at-a-glance fleet posture view across linked deployments so they can quickly understand what is linked, current enough to trust as current, stale or offline, and operationally blocked for bounded hosted actions.
+- Class: operability
+- Status: validated
+- Description: The hosted console gives operators an at-a-glance fleet posture view across linked deployments so they can quickly understand what is linked, current enough to trust as current, stale or offline, and operationally blocked for bounded hosted actions.
+- Why it matters: The current hosted surfaces have the ingredients, but multi-deployment evaluators still need a faster, clearer reading surface to build adoption confidence.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S01, M004/S03
+- Validation: M004/S02 added a real hosted fleet-posture entry surface on the deployments page via console/src/components/deployments/fleet-posture.ts, fleet-posture-summary.tsx, and deployment-table.tsx. The shared helper derives linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts from existing DeploymentRecord metadata only, and focused Vitest coverage passed in src/components/deployments/fleet-posture.test.ts, fleet-posture-summary.test.tsx, deployment-table.test.tsx, remote-action-card.test.tsx, and src/lib/hosted-contract.test.ts.
+- Notes: Validated as a descriptive hosted fleet-reading surface only; local runtime authority remains explicitly out of scope and reinforced through hosted-contract wording reused on the deployments page.
+
+### R033 — The hosted console makes linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible without forcing operators to infer meaning from scattered row details.
+- Class: failure-visibility
+- Status: validated
+- Description: The hosted console makes linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible without forcing operators to infer meaning from scattered row details.
+- Why it matters: Adoption trust drops when evaluators cannot tell whether a problem is onboarding incompleteness, metadata staleness, or a real bounded-action limitation.
+- Source: inferred
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S04
+- Validation: M004/S02 made linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible in the deployments inventory by adding helper-derived posture labels/details and bounded-action summaries to console/src/components/deployments/deployment-table.tsx, backed by focused coverage in src/components/deployments/deployment-table.test.tsx and shared helper tests in src/components/deployments/fleet-posture.test.ts.
+- Notes: Validated by scan-time table cues plus shared posture derivation; operators no longer need drawer-only detail to distinguish enrollment/linkage/freshness/bounded-action states.
+
+### R035 — The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
+- Class: integration
+- Status: validated
+- Description: The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
+- Why it matters: Operators need confidence about what hosted can and cannot do, especially when a deployment is stale, offline, revoked, unlinked, or unsupported.
+- Source: inferred
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: M004/S02 extracted bounded hosted action availability into console/src/components/deployments/fleet-posture.ts via getBoundedActionAvailability(), then reused that seam from console/src/components/deployments/remote-action-card.tsx and deployment-table.tsx. Passing focused Vitest coverage in src/components/deployments/fleet-posture.test.ts and remote-action-card.test.tsx proves hosted shows the one bounded remote action as available, blocked, or unavailable with explicit reasons for pending, stale, offline, revoked, unlinked, and unsupported deployments without implying broader authority.
+- Notes: Validated through one shared bounded-action seam reused by table, summary counts, and RemoteActionCard so availability/blocked/unavailable semantics remain aligned and fail-closed.
+
+### R036 — Multi-deployment evaluators can understand slot creation, pending enrollment, active linkage, and hosted freshness posture across more than one deployment without manually reconstructing the adoption story from several separate views.
+- Class: launchability
+- Status: validated
+- Description: Multi-deployment evaluators can understand slot creation, pending enrollment, active linkage, and hosted freshness posture across more than one deployment without manually reconstructing the adoption story from several separate views.
+- Why it matters: M004 is intended to help real evaluators and operators with more than a single-node toy setup.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: M004/S02 added a deployments-page fleet summary above the inventory table in console/src/app/(console)/deployments/page.tsx using console/src/components/deployments/fleet-posture-summary.tsx and shared posture derivation from fleet-posture.ts. The summary surfaces linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts with hosted-contract wording, and focused Vitest coverage passed in src/components/deployments/fleet-posture-summary.test.tsx plus the slice verification suite.
+- Notes: Validated for the multi-deployment hosted entrypoint case by adding fleet-level counts and summary guidance above the table, reducing the need to reconstruct posture from per-row inspection.
 
 ## Deferred
 
@@ -518,11 +518,11 @@ This file is the explicit capability and coverage contract for the project.
 | R029 | anti-feature | out-of-scope | none | none | n/a |
 | R030 | anti-feature | out-of-scope | none | none | n/a |
 | R031 | anti-feature | out-of-scope | none | none | n/a |
-| R032 | operability | active | M004/S02 | M004/S01, M004/S03 | mapped |
-| R033 | failure-visibility | active | M004/S02 | M004/S04 | mapped |
+| R032 | operability | validated | M004/S02 | M004/S01, M004/S03 | M004/S02 added a real hosted fleet-posture entry surface on the deployments page via console/src/components/deployments/fleet-posture.ts, fleet-posture-summary.tsx, and deployment-table.tsx. The shared helper derives linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts from existing DeploymentRecord metadata only, and focused Vitest coverage passed in src/components/deployments/fleet-posture.test.ts, fleet-posture-summary.test.tsx, deployment-table.test.tsx, remote-action-card.test.tsx, and src/lib/hosted-contract.test.ts. |
+| R033 | failure-visibility | validated | M004/S02 | M004/S04 | M004/S02 made linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible in the deployments inventory by adding helper-derived posture labels/details and bounded-action summaries to console/src/components/deployments/deployment-table.tsx, backed by focused coverage in src/components/deployments/deployment-table.test.tsx and shared helper tests in src/components/deployments/fleet-posture.test.ts. |
 | R034 | constraint | active | M004/S01 | M004/S02, M004/S03 | mapped |
-| R035 | integration | active | M004/S02 | M004/S03 | mapped |
-| R036 | launchability | active | M004/S02 | M004/S03 | mapped |
+| R035 | integration | validated | M004/S02 | M004/S03 | M004/S02 extracted bounded hosted action availability into console/src/components/deployments/fleet-posture.ts via getBoundedActionAvailability(), then reused that seam from console/src/components/deployments/remote-action-card.tsx and deployment-table.tsx. Passing focused Vitest coverage in src/components/deployments/fleet-posture.test.ts and remote-action-card.test.tsx proves hosted shows the one bounded remote action as available, blocked, or unavailable with explicit reasons for pending, stale, offline, revoked, unlinked, and unsupported deployments without implying broader authority. |
+| R036 | launchability | validated | M004/S02 | M004/S03 | M004/S02 added a deployments-page fleet summary above the inventory table in console/src/app/(console)/deployments/page.tsx using console/src/components/deployments/fleet-posture-summary.tsx and shared posture derivation from fleet-posture.ts. The summary surfaces linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts with hosted-contract wording, and focused Vitest coverage passed in src/components/deployments/fleet-posture-summary.test.tsx plus the slice verification suite. |
 | R037 | core-capability | active | M004/S03 | M004/S04 | mapped |
 | R038 | differentiator | active | M004/S03 | M004/S02, M004/S04 | mapped |
 | R039 | differentiator | deferred | none | none | unmapped |
@@ -533,7 +533,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 7
-- Mapped to slices: 7
-- Validated: 15 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024)
+- Active requirements: 3
+- Mapped to slices: 3
+- Validated: 19 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024, R032, R033, R035, R036)
 - Unmapped active requirements: 0
