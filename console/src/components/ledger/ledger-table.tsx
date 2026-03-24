@@ -30,6 +30,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
         <thead className="bg-slate-50 text-slate-600">
           <tr>
             <th className="px-4 py-3 font-semibold">Timestamp</th>
+            <th className="px-4 py-3 font-semibold">Request ID</th>
             <th className="px-4 py-3 font-semibold">Tenant</th>
             <th className="px-4 py-3 font-semibold">Route target</th>
             <th className="px-4 py-3 font-semibold">Provider</th>
@@ -44,10 +45,11 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
             return (
               <tr
                 key={row.request_id}
-                className={selected ? "bg-sky-50" : "hover:bg-slate-50"}
+                className={selected ? "cursor-pointer bg-sky-50" : "cursor-pointer hover:bg-slate-50"}
                 onClick={() => onSelectRow(row.request_id)}
               >
                 <td className="px-4 py-3">{new Date(row.timestamp).toLocaleString()}</td>
+                <td className="px-4 py-3 font-[var(--font-fira-code)] text-xs text-slate-700">{row.request_id}</td>
                 <td className="px-4 py-3">{row.tenant_id}</td>
                 <td className="px-4 py-3">{row.final_route_target}</td>
                 <td className="px-4 py-3">{row.final_provider ?? "N/A"}</td>
