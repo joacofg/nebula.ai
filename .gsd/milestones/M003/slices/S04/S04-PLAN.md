@@ -43,7 +43,7 @@
 
 ## Tasks
 
-- [ ] **T01: Make embeddings ledger rows intentionally discoverable in Observability** `est:45m`
+- [x] **T01: Make embeddings ledger rows intentionally discoverable in Observability** `est:45m`
   - Why: R023 is not credibly satisfied if embeddings evidence exists only in backend truth but the operator surface cannot intentionally filter to embeddings rows.
   - Files: `console/src/components/ledger/ledger-filters.tsx`, `console/src/components/ledger/ledger-filters.test.tsx`, `console/src/app/(console)/observability/page.tsx`, `console/src/lib/admin-api.ts`
   - Do: Update the shared ledger filter surface so embeddings is a first-class route-target option, keep the existing admin API query path unchanged, and add focused unit coverage that proves an operator can select embeddings filtering without widening the filter model or inventing a new admin endpoint.

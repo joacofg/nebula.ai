@@ -15,7 +15,7 @@ type LedgerFiltersProps = {
   onRefresh: () => void;
 };
 
-const ROUTE_TARGET_OPTIONS = ["cache", "local", "premium", "denied"];
+const ROUTE_TARGET_OPTIONS = ["cache", "local", "premium", "denied", "embeddings"];
 const TERMINAL_STATUS_OPTIONS = [
   "completed",
   "cache_hit",

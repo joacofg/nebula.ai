@@ -42,8 +42,36 @@ describe("ledger-filters", () => {
     expect(screen.getByText("Terminal status")).toBeInTheDocument();
     expect(screen.getByText("From")).toBeInTheDocument();
     expect(screen.getByText("To")).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "embeddings" })).toBeInTheDocument();
 
     await user.click(screen.getByRole("button", { name: "Refresh" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses the existing route target callback when embeddings is selected", async () => {
+    const user = userEvent.setup();
+    const onRouteTargetChange = vi.fn();
+
+    renderWithProviders(
+      <LedgerFilters
+        tenants={[]}
+        tenantId=""
+        routeTarget=""
+        terminalStatus=""
+        fromTimestamp=""
+        toTimestamp=""
+        onTenantIdChange={vi.fn()}
+        onRouteTargetChange={onRouteTargetChange}
+        onTerminalStatusChange={vi.fn()}
+        onFromTimestampChange={vi.fn()}
+        onToTimestampChange={vi.fn()}
+        onRefresh={vi.fn()}
+      />,
+    );
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Route target" }), "embeddings");
+
+    expect(onRouteTargetChange).toHaveBeenCalledWith("embeddings");
+    expect(screen.getByRole("option", { name: "embeddings" })).toBeSelected();
   });
 });
