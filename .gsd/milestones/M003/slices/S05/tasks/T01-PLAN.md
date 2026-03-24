@@ -49,3 +49,7 @@ PY`
 ## Expected Output
 
 - `docs/embeddings-integrated-adoption-proof.md` — embeddings-specific final assembly walkthrough tying contract, migration, and durable evidence into one narrow proof package.
+
+## Observability Impact
+
+This task does not introduce new runtime signals, but it changes how future agents and reviewers inspect the existing embeddings proof path. The walkthrough must explicitly name the canonical evidence chain — public `POST /v1/embeddings`, `X-Request-ID` plus `X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability as secondary corroboration — so a future agent can inspect the same signals without promoting Observability above the public response or ledger row. The visible failure state for this task is documentation drift: if the walkthrough omits `X-Request-ID`, breaks the public-to-ledger correlation story, or implies that Observability can replace the public request path, the assembled proof becomes misleading even though runtime behavior remains unchanged.
