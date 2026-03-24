@@ -58,6 +58,10 @@ S02 and S03 may add fleet posture synthesis, confidence framing, and integrated 
 7. If new hosted summaries mention fleet posture or confidence, pair them with a local-runtime confirmation caveat.
 8. If deployment-management copy changes, keep it bounded to the existing audited credential-rotation action unless the backend capability and milestone plan both expand.
 
+## Canonical integrated walkthrough
+
+For the evaluator-facing end-to-end proof that composes this boundary across the public trust-boundary page and deployments console, use [`docs/hosted-integrated-adoption-proof.md`](hosted-integrated-adoption-proof.md).
+
 ## Inspection and drift checks
 
 To inspect this boundary later:

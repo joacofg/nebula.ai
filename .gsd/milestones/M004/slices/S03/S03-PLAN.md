@@ -39,7 +39,7 @@
 
 ## Tasks
 
-- [ ] **T01: Author the canonical hosted integrated proof walkthrough** `est:45m`
+- [x] **T01: Author the canonical hosted integrated proof walkthrough** `est:45m`
   - Why: S03’s primary gap is proof assembly, not missing product seams; the slice needs one discoverable artifact that joins the real hosted story without inventing new authority or duplicate contracts.
   - Files: `docs/hosted-integrated-adoption-proof.md`, `docs/hosted-reinforcement-boundary.md`, `console/src/app/trust-boundary/page.tsx`, `console/src/app/(console)/deployments/page.tsx`, `console/src/components/deployments/deployment-detail-drawer.tsx`, `console/src/components/deployments/remote-action-card.tsx`
   - Do: Write a composition-first walkthrough doc patterned after `docs/integrated-adoption-proof.md` that explicitly walks through the public trust-boundary page, deployments fleet summary, mixed-state table interpretation, detail-drawer trust boundary, dependency context, and bounded remote action framing; keep all trust language anchored to the shared hosted-contract seam and boundary doc; add or tighten links/discoverability only if needed to make the proof doc useful without duplicating canonical contract text.

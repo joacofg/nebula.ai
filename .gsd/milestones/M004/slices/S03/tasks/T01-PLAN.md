@@ -50,3 +50,9 @@ Write the canonical hosted integrated proof artifact for M004. This task should 
 - `docs/hosted-reinforcement-boundary.md` — optional discoverability or cross-link adjustment if needed
 - `console/src/app/trust-boundary/page.tsx` — optional link/reference touch only if required for discoverability
 - `console/src/app/(console)/deployments/page.tsx` — optional link/reference touch only if required for discoverability
+
+## Observability Impact
+
+- Signals preserved: hosted freshness state, dependency summary, bounded remote-action availability, and trust-boundary wording remain the inspection signals this walkthrough points evaluators toward.
+- Inspection path: future agents should inspect `docs/hosted-integrated-adoption-proof.md` alongside `docs/hosted-reinforcement-boundary.md`, `console/src/lib/hosted-contract.ts`, `console/src/app/trust-boundary/page.tsx`, and the deployments summary/table/drawer surfaces to confirm the walkthrough still composes the same evidence path.
+- Failure visibility: wording drift, missing cross-links, or a walkthrough that implies hosted authority should become visible through the document verification grep, slice-level Vitest coverage, and the later Playwright trust/deployments proof.

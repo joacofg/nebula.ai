@@ -57,12 +57,13 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
       return;
     }
 
+    const activeAdminKey = adminKey;
     let cancelled = false;
 
     async function loadHistory() {
       setIsLoadingHistory(true);
       try {
-        const rows = await listRemoteActions(adminKey, deployment.id);
+        const rows = await listRemoteActions(activeAdminKey, deployment.id);
         if (!cancelled) {
           setHistory(rows);
         }
