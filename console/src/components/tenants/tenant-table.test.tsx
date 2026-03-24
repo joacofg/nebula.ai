@@ -37,6 +37,15 @@ describe("tenants-page tenant-table", () => {
     expect(screen.getByText("Inactive")).toBeInTheDocument();
   });
 
+  it("does not introduce app or workload pseudo-entity columns", () => {
+    renderWithProviders(
+      <TenantTable tenants={TENANTS} selectedTenantId={null} onSelectTenant={vi.fn()} />,
+    );
+
+    expect(screen.queryByRole("columnheader", { name: /app/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: /workload/i })).not.toBeInTheDocument();
+  });
+
   it("selects the chosen tenant row", async () => {
     const onSelectTenant = vi.fn();
     renderWithProviders(

@@ -60,10 +60,12 @@ export default function PlaygroundPage() {
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Playground</div>
             <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-              Prompt routing sandbox
+              Operator corroboration sandbox
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">
-              Run prompt requests through the live Nebula routing path with the active operator session.
+              Use the active admin session to run a non-streaming corroboration request for the tenant you select here.
+              This checks the live Nebula routing path without acting as the public <code>POST /v1/chat/completions</code>{" "}
+              integration boundary.
             </p>
           </div>
           <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">

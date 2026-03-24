@@ -96,8 +96,13 @@ export default function TenantsPage() {
           <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
             Tenant operations
           </h2>
-          <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Dense tenant control surface backed by <span className="font-[var(--font-fira-code)]">{ADMIN_TENANTS_ENDPOINT}</span>.
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            Tenants are Nebula&apos;s enforced runtime boundary for policy, request attribution, and usage.
+            Use API keys to segment which callers can reach each tenant, and treat app or workload names as
+            team conventions you capture in tenant names, key names, or notes rather than as product objects.
+          </p>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            This console surface stays grounded in <span className="font-[var(--font-fira-code)]">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
           </p>
         </div>
         <button

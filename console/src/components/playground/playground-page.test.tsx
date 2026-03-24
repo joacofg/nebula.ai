@@ -22,6 +22,31 @@ vi.mock("@/lib/admin-api", async () => {
 });
 
 describe("playground-page", () => {
+  it("frames playground as an operator corroboration surface instead of the public integration boundary", async () => {
+    adminApi.listTenants.mockResolvedValue([
+      {
+        id: "default",
+        name: "Default Workspace",
+        description: "Bootstrap tenant",
+        metadata: {},
+        active: true,
+        created_at: "2026-03-16T12:00:00Z",
+        updated_at: "2026-03-16T12:00:00Z",
+      },
+    ]);
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+
+    expect(await screen.findByRole("heading", { name: "Operator corroboration sandbox" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Use the active admin session to run a non-streaming corroboration request for the tenant you select here/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/This checks the live Nebula routing path without acting as the public/i)).toBeInTheDocument();
+    expect(screen.getByText(/POST \/v1\/chat\/completions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/public adoption target/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     adminApi.listTenants.mockResolvedValue([

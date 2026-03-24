@@ -78,7 +78,8 @@ export default function ObservabilityPage() {
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           Inspect ledger-backed request outcomes by tenant, route target, terminal status, and time window to
           confirm the final route, fallback, provider, and policy evidence behind each request after you correlate
-          the same request through public X-Request-ID and X-Nebula-* headers.
+          the same request through public X-Request-ID and X-Nebula-* headers, then use dependency health as
+          supporting runtime context for the same operator investigation.
         </p>
       </header>
 
@@ -120,11 +121,12 @@ export default function ObservabilityPage() {
         <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Dependency health</div>
           <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-            Dependency health
+            Dependency health context
           </h2>
           <p className="mt-2 max-w-2xl text-sm text-slate-600">
-            Required dependency failures block confidence immediately, while degraded optional dependencies stay
-            visible here so operators can explain reduced capability without losing the persisted request trail.
+            These dependency states do not replace the ledger record. Required dependency failures block confidence
+            immediately, while degraded optional dependencies stay visible here so operators can explain reduced
+            capability without losing the persisted request trail.
           </p>
         </header>
 

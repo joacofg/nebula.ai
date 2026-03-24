@@ -72,4 +72,32 @@ describe("playground-form", () => {
     expect(screen.getByRole("button", { name: "Run prompt" })).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+
+  it("explains the operator-only tenant-selected non-streaming flow", () => {
+    renderWithProviders(
+      <PlaygroundForm
+        tenants={tenants}
+        selectedTenantId="default"
+        model="nebula-auto"
+        prompt="Corroborate the current route"
+        disabled={false}
+        isSubmitting={false}
+        sessionMissing={false}
+        onSelectedTenantIdChange={vi.fn()}
+        onModelChange={vi.fn()}
+        onPromptChange={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+      { adminKey: "nebula-admin-key" },
+    );
+
+    expect(screen.getByRole("heading", { name: "Operator playground request" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Choose the tenant context on purpose, set the target model, and send one admin-session prompt/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/non-streaming playground path/i)).toBeInTheDocument();
+    expect(screen.getByText(/The first response stays immediate and only shows completion content plus the request id/i)).toBeInTheDocument();
+    expect(screen.getByText(/recorded ledger evidence appears after Nebula persists the outcome/i)).toBeInTheDocument();
+    expect(screen.queryByText(/public integration boundary/i)).not.toBeInTheDocument();
+  });
 });
