@@ -49,7 +49,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Hosted reinforcement boundary** `risk:high` `depends:[]`
+- [x] **S01: Hosted reinforcement boundary** `risk:high` `depends:[]`
   > After this: The hosted reinforcement guardrails are explicit in code/doc language, so downstream slices can improve fleet posture and confidence without drifting into hosted authority.
 
 - [ ] **S02: Fleet posture UX** `risk:high` `depends:[S01]`
