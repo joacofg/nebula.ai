@@ -53,7 +53,7 @@
   - Verify: `npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx src/app/(console)/deployments/page.test.tsx`
   - Done when: focused tests pass and would fail if the deployments walkthrough stopped reusing hosted-contract wording, stopped surfacing mixed-fleet interpretation, or implied hosted runtime authority.
 
-- [ ] **T03: Add browser proof for the hosted trust walkthrough** `est:1h`
+- [x] **T03: Add browser proof for the hosted trust walkthrough** `est:1h`
   - Why: The roadmap requires an integrated proof that exercises the real console flow; browser-level evidence closes the credibility gap between isolated render tests and the hosted adoption story operators actually experience.
   - Files: `console/e2e/deployments-proof.spec.ts`, `console/e2e/trust-boundary.spec.ts`, `console/src/app/(console)/deployments/page.tsx`, `console/src/components/deployments/deployment-detail-drawer.tsx`, `docs/hosted-integrated-adoption-proof.md`
   - Do: Create a narrow Playwright walkthrough that uses mocked deployment/admin responses to open the deployments page, confirm mixed fleet posture cues, select a deployment, and assert the trust-boundary and bounded-action text in the detail drawer; keep the flow tightly aligned with the doc and existing public trust-boundary proof rather than expanding into broader dashboard coverage.

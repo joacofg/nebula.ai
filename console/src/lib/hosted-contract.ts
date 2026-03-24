@@ -106,21 +106,28 @@ export const trustBoundaryCopy = {
   footnote: "Richer diagnostics must be operator-initiated exceptions to this default contract.",
 } as const;
 
+function assertNonEmptyArray<T>(value: readonly T[], fieldName: string) {
+  if (value.length < 1) {
+    throw new Error(`${fieldName} must not be empty.`);
+  }
+}
+
 function assertReinforcementContract() {
   const { allowedDescriptiveClaims, prohibitedAuthorityClaims, operatorReadingGuidance, boundedActionPhrasing } =
     reinforcementContract;
 
-  if (allowedDescriptiveClaims.length === 0) {
-    throw new Error("reinforcementContract.allowedDescriptiveClaims must not be empty.");
-  }
-
-  if (prohibitedAuthorityClaims.length === 0) {
-    throw new Error("reinforcementContract.prohibitedAuthorityClaims must not be empty.");
-  }
-
-  if (operatorReadingGuidance.length === 0) {
-    throw new Error("reinforcementContract.operatorReadingGuidance must not be empty.");
-  }
+  assertNonEmptyArray(
+    allowedDescriptiveClaims,
+    "reinforcementContract.allowedDescriptiveClaims",
+  );
+  assertNonEmptyArray(
+    prohibitedAuthorityClaims,
+    "reinforcementContract.prohibitedAuthorityClaims",
+  );
+  assertNonEmptyArray(
+    operatorReadingGuidance,
+    "reinforcementContract.operatorReadingGuidance",
+  );
 
   const requiredAllowedPhrases = [
     "metadata-backed and descriptive only",
