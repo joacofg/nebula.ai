@@ -23,6 +23,7 @@
 - `pytest tests/test_governance_api.py -k embeddings`
 - `pytest tests/test_service_flows.py -k embedding`
 - `pytest tests/test_service_flows.py -k 'embedding and (blank or upstream or empty)'`
+- `pytest tests/test_embeddings_api.py -k 'upstream or invalid'`
 
 ## Observability / Diagnostics
 
@@ -45,7 +46,7 @@
   - Do: Add narrow OpenAI-style embeddings request/response models in `src/nebula/models/openai.py`; extend `OllamaEmbeddingsService` so it can embed a single string or ordered flat list of strings while forwarding the requested model; and add focused service-level tests that lock down model passthrough, batch ordering, and intentional failure behavior for blank/invalid upstream results without introducing broad parameter parity.
   - Verify: `pytest tests/test_service_flows.py -k embedding`
   - Done when: the codebase has stable embeddings schemas plus service behavior that can power the public route truthfully for string and simple batch input.
-- [ ] **T02: Wire the authenticated public endpoint and ledger correlation** `est:2h`
+- [x] **T02: Wire the authenticated public endpoint and ledger correlation** `est:2h`
   - Why: S01 is only complete when a real client can call `/v1/embeddings`, receive a usable response, and correlate the request to durable backend evidence.
   - Files: `src/nebula/api/routes/embeddings.py`, `src/nebula/api/dependencies.py`, `src/nebula/main.py`, `src/nebula/models/governance.py`, `src/nebula/services/governance_store.py`, `tests/test_embeddings_api.py`, `tests/test_governance_api.py`
   - Do: Add a dedicated embeddings API route that reuses `get_tenant_context` and request ID middleware, depends directly on the existing embeddings service rather than chat orchestration, returns the narrow OpenAI-style response shape, and persists correlatable usage metadata into the existing ledger; register the router and any needed dependency accessors; and add API/integration tests for authenticated happy-path requests, validation boundaries, auth failures, `X-Request-ID`, and ledger lookup by request id.

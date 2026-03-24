@@ -8,6 +8,7 @@ from nebula.services.auth_service import (
     AuthenticatedTenantContext,
 )
 from nebula.services.chat_service import ChatService
+from nebula.services.embeddings_service import OllamaEmbeddingsService
 
 
 def get_container(request_or_app) -> ServiceContainer:
@@ -17,6 +18,10 @@ def get_container(request_or_app) -> ServiceContainer:
 
 def get_chat_service(request: Request) -> ChatService:
     return get_container(request).chat_service
+
+
+def get_embeddings_service(request: Request) -> OllamaEmbeddingsService:
+    return get_container(request).embeddings_service
 
 
 def get_tenant_context(
