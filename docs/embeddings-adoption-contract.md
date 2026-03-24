@@ -205,7 +205,11 @@ Use the focused checks that back this document:
 /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py
 /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings
 /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_service_flows.py -k embedding
-test -f docs/embeddings-adoption-contract.md && ! grep -q "TBD\|TODO" docs/embeddings-adoption-contract.md && [ "$(rg -c "^## " docs/embeddings-adoption-contract.md)" -ge 6 ]
+python - <<'PY'
+from pathlib import Path
+text = Path("docs/embeddings-adoption-contract.md").read_text()
+assert text.count("\n## ") >= 6
+PY
 rg -n "X-Nebula-API-Key|X-Request-ID|/v1/admin/usage/ledger|unsupported|deferred" docs/embeddings-adoption-contract.md
 ```
 

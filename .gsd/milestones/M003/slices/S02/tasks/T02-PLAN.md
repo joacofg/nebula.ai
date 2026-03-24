@@ -40,3 +40,7 @@ Make the new embeddings contract discoverable from Nebula's main documentation e
 
 - `README.md` — updated documentation map and/or endpoint inventory pointing to the canonical embeddings contract.
 - `docs/architecture.md` — updated high-level architecture narrative that references the embeddings contract doc.
+
+## Observability Impact
+
+This task changes discoverability and documentation-boundary signals rather than runtime behavior. Future agents should inspect `README.md` and `docs/architecture.md` with `rg -n "embeddings-adoption-contract|POST /v1/embeddings" README.md docs/architecture.md docs/embeddings-adoption-contract.md` to verify that entry docs point to the canonical embeddings contract without restating it as a second source of truth. Runtime observability for the endpoint itself remains the same as T01: `POST /v1/embeddings` emits `X-Request-ID` plus the documented `X-Nebula-*` headers, and durable lookup remains `/v1/admin/usage/ledger` keyed by request id.
