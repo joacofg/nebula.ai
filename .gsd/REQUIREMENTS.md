@@ -135,8 +135,8 @@ This file is the explicit capability and coverage contract for the project.
 - Source: inferred
 - Primary owning slice: M002/S02
 - Supporting slices: none
-- Validation: unmapped
-- Notes: Defer unless M001 reveals this is a real blocker.
+- Validation: M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance.
+- Notes: Keep deferred. This slice strengthened tenant-surface guidance and regression coverage rather than making app/workload explicit runtime/admin objects.
 
 ### R013 — Nebula provides dedicated helper libraries, wrappers, or SDK conveniences beyond the compatibility-first path.
 - Class: admin/support
@@ -232,7 +232,7 @@ This file is the explicit capability and coverage contract for the project.
 | R009 | failure-visibility | validated | M001/S04 | M001/S05 | S04 proved the request-explanation path across public headers, X-Request-ID correlation, usage-ledger records, Playground metadata, recorded outcome cards, and Observability request detail so adopters can see route target, route reason, fallback usage, and policy outcome during integration and validation. |
 | R010 | constraint | validated | M001/S01 | none | S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features. |
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
-| R012 | operability | deferred | M002/S02 | none | unmapped |
+| R012 | operability | deferred | M002/S02 | none | M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance. |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
 | R014 | integration | deferred | M004/S01 | none | unmapped |
 | R015 | anti-feature | out-of-scope | none | none | n/a |
