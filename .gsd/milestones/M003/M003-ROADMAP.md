@@ -57,7 +57,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Realistic migration proof** `risk:medium` `depends:[S01,S02]`
   > After this: A believable OpenAI-style embeddings caller migration proves Nebula can replace a direct provider path with minimal caller changes.
 
-- [ ] **S04: Durable evidence correlation** `risk:medium` `depends:[S01,S03]`
+- [x] **S04: Durable evidence correlation** `risk:medium` `depends:[S01,S03]`
   > After this: The same embeddings request can be tied to durable backend/operator evidence so teams can explain and validate the migration proof.
 
 - [ ] **S05: Final adoption assembly** `risk:low` `depends:[S02,S03,S04]`
