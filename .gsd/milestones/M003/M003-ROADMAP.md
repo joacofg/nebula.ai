@@ -60,7 +60,7 @@ This milestone is complete only when all are true:
 - [x] **S04: Durable evidence correlation** `risk:medium` `depends:[S01,S03]`
   > After this: The same embeddings request can be tied to durable backend/operator evidence so teams can explain and validate the migration proof.
 
-- [ ] **S05: Final adoption assembly** `risk:low` `depends:[S02,S03,S04]`
+- [x] **S05: Final adoption assembly** `risk:low` `depends:[S02,S03,S04]`
   > After this: The full embeddings adoption story is assembled end-to-end — contract, migration path, and proof surfaces agree without widening scope.
 
 ## Boundary Map

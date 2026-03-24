@@ -28,5 +28,5 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
 
 - [x] M001: API Adoption Happy Path — Slice work is complete, but milestone close-out failed integrated verification in this worktree because several canonical adoption docs and the reference-migration proof file are currently absent from the assembled state.
 - [x] M002: Production Structuring Model — Clarified the runtime-truth production model across API Keys, Tenants, Playground, Observability, and the integrated walkthrough so operators can structure production around real tenants and API keys without inventing app/workload runtime objects.
-- [ ] M003: Broader Adoption Surface — Extend Nebula beyond chat completions through a narrow public embeddings adoption path with tight compatibility boundaries and realistic migration proof.
+- [x] M003: Broader Adoption Surface — Extended Nebula beyond chat completions through a narrow public embeddings adoption path with tight compatibility boundaries, realistic migration proof, durable evidence correlation, and a final integrated adoption walkthrough.
 - [ ] M004: Hosted Adoption Reinforcement — Improve hosted/control-plane touches only where they strengthen onboarding, fleet understanding, and operator confidence without violating the metadata-only trust boundary.
