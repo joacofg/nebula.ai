@@ -141,6 +141,7 @@ describe("DeploymentsPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
     expect(screen.queryByText(/hosted plane serves traffic/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/broader remote control/i)).not.toBeInTheDocument();
   });
 
   it("keeps the create state as a bounded console entrypoint while loading real fleet posture", async () => {

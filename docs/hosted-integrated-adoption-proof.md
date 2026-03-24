@@ -21,9 +21,10 @@ The hosted integrated proof is complete only when an evaluator can start from th
 
 1. hosted summaries are metadata-backed and descriptive only
 2. hosted fleet posture reflects what deployments most recently reported, not what the local runtime is enforcing right now
-3. bounded hosted actions are limited to audited deployment credential rotation and related status visibility
-4. the hosted plane is not in the request-serving path and does not have local runtime authority
-5. stale or offline hosted signals do not change local routing, fallback, policy, provider selection, or serving-time authority
+3. drawer-level freshness and dependency details act as supporting evidence for that fleet posture summary, not as hosted authority over current runtime health
+4. bounded hosted actions are limited to audited deployment credential rotation and related status visibility
+5. the hosted plane is not in the request-serving path and does not have local runtime authority
+6. stale or offline hosted signals do not change local routing, fallback, policy, provider selection, or serving-time authority
 
 If any step in the walkthrough weakens those claims, the proof has drifted away from the canonical hosted contract.
 
@@ -57,7 +58,7 @@ This matters because the hosted integrated proof is not supposed to create a sec
 
 From there, continue into `console/src/app/(console)/deployments/page.tsx`.
 
-This is the real hosted fleet posture entrypoint. Its job is not to restate the full trust boundary from scratch. Instead, it composes existing surfaces around one operator reading rule: treat hosted remote-action availability as bounded operational assistance, not broad remote control, while still keeping the hosted action scope limited to audited deployment credential rotation.
+This is the real hosted fleet posture entrypoint. Its job is not to restate the full trust boundary from scratch. Instead, it composes existing surfaces around two operator reading rules: treat drawer-level freshness and dependency details as supporting evidence for fleet posture rather than hosted runtime authority, and treat hosted remote-action availability as bounded operational assistance, not broad remote control, while still keeping the hosted action scope limited to audited deployment credential rotation.
 
 The page should be read as the first authenticated confirmation that the hosted plane can summarize multiple deployments without becoming the runtime authority for any of them.
 
@@ -102,6 +103,8 @@ The detail drawer is where the proof becomes more contextual without widening au
 - the bounded remote-action card
 
 This composition matters because it shows how Nebula gives operators enough metadata to interpret a deployment's posture without claiming that the hosted plane is enforcing routing, fallback, tenant policy, or provider selection.
+
+The freshness panel's posture label, detail text, and supporting-evidence guidance are part of that proof seam: they tell the evaluator how to read drawer-level context without upgrading hosted recency or dependency cues into serving-time truth.
 
 In other words, the drawer should deepen the evaluator's understanding of one deployment while still redirecting serving-time trust back to the local runtime.
 
