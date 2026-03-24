@@ -38,7 +38,7 @@
 
 ## Tasks
 
-- [ ] **T01: Lock shared hosted reinforcement guardrails in the canonical content module** `est:45m`
+- [x] **T01: Lock shared hosted reinforcement guardrails in the canonical content module** `est:45m`
   - Why: S01 succeeds or fails on preventing vocabulary drift. The safest move is to extend the existing schema-backed `hosted-contract.ts` seam rather than create new local copy islands.
   - Files: `console/src/lib/hosted-contract.ts`, `console/src/lib/hosted-contract.test.ts`
   - Do: Add structured reinforcement vocabulary and trust-boundary guardrails to the shared hosted contract module, including allowed descriptive framing, explicit non-authority claims to avoid, and bounded-action wording hooks that downstream UI can consume; extend focused tests to lock the new exports and keep schema/copy parity strict.

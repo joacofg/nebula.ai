@@ -52,6 +52,37 @@ export const freshnessStates = [
 ] as const;
 
 // ---------------------------------------------------------------------------
+// Reinforcement vocabulary and guardrails
+// ---------------------------------------------------------------------------
+
+export const reinforcementContract = {
+  allowedDescriptiveClaims: [
+    "Hosted summaries are metadata-backed and descriptive only.",
+    "Hosted fleet posture describes what deployments most recently reported, not what the local runtime is enforcing right now.",
+    "Hosted freshness indicates report recency, not serving-time health or request success.",
+    "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane.",
+    "Hosted remote actions stay bounded to audited deployment-credential rotation and related audit visibility.",
+  ],
+  prohibitedAuthorityClaims: [
+    "Do not say the hosted plane serves traffic or sits in the request-serving path.",
+    "Do not say the hosted plane has local runtime authority.",
+    "Do not say the hosted plane enforces tenant policy, routing, fallback, or provider selection.",
+    "Do not say the hosted plane holds provider credentials, raw prompts, raw responses, or tenant secrets by default.",
+    "Do not describe hosted freshness or fleet posture as authoritative health for serving traffic.",
+  ],
+  operatorReadingGuidance: [
+    "Read hosted fleet posture as an operator summary derived from deployment metadata exports.",
+    "Use freshness and dependency summaries to prioritize investigation, then confirm serving-time behavior from the local runtime and its observability surfaces.",
+    "Treat hosted remote-action availability as bounded operational assistance, not broad remote control.",
+  ],
+  boundedActionPhrasing: {
+    label: "Audited credential rotation only",
+    description:
+      "Deployment-bound hosted actions are limited to audited credential rotation and related status visibility; they never imply tenant-policy, routing, fallback, or provider-credential authority.",
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
 // Copy strings
 // ---------------------------------------------------------------------------
 
@@ -75,6 +106,93 @@ export const trustBoundaryCopy = {
   footnote: "Richer diagnostics must be operator-initiated exceptions to this default contract.",
 } as const;
 
+function assertReinforcementContract() {
+  const { allowedDescriptiveClaims, prohibitedAuthorityClaims, operatorReadingGuidance, boundedActionPhrasing } =
+    reinforcementContract;
+
+  if (allowedDescriptiveClaims.length === 0) {
+    throw new Error("reinforcementContract.allowedDescriptiveClaims must not be empty.");
+  }
+
+  if (prohibitedAuthorityClaims.length === 0) {
+    throw new Error("reinforcementContract.prohibitedAuthorityClaims must not be empty.");
+  }
+
+  if (operatorReadingGuidance.length === 0) {
+    throw new Error("reinforcementContract.operatorReadingGuidance must not be empty.");
+  }
+
+  const requiredAllowedPhrases = [
+    "metadata-backed and descriptive only",
+    "fleet posture",
+    "request-serving",
+    "freshness indicates report recency",
+    "credential rotation",
+  ];
+
+  for (const phrase of requiredAllowedPhrases) {
+    if (!allowedDescriptiveClaims.some((claim) => claim.includes(phrase))) {
+      throw new Error(
+        `reinforcementContract.allowedDescriptiveClaims must include a claim containing \"${phrase}\".`
+      );
+    }
+  }
+
+  const requiredProhibitedPhrases = [
+    "serves traffic",
+    "request-serving path",
+    "local runtime authority",
+    "tenant policy, routing, fallback, or provider selection",
+    "provider credentials, raw prompts, raw responses, or tenant secrets",
+  ];
+
+  for (const phrase of requiredProhibitedPhrases) {
+    if (!prohibitedAuthorityClaims.some((claim) => claim.includes(phrase))) {
+      throw new Error(
+        `reinforcementContract.prohibitedAuthorityClaims must include a guardrail containing \"${phrase}\".`
+      );
+    }
+  }
+
+  const requiredGuidancePhrases = [
+    "operator summary",
+    "local runtime",
+    "bounded operational assistance",
+  ];
+
+  for (const phrase of requiredGuidancePhrases) {
+    if (!operatorReadingGuidance.some((claim) => claim.includes(phrase))) {
+      throw new Error(
+        `reinforcementContract.operatorReadingGuidance must include guidance containing \"${phrase}\".`
+      );
+    }
+  }
+
+  if (!boundedActionPhrasing.label.includes("credential rotation")) {
+    throw new Error(
+      'reinforcementContract.boundedActionPhrasing.label must reference "credential rotation".'
+    );
+  }
+
+  const boundedDescription = boundedActionPhrasing.description;
+  const requiredBoundedDescriptionPhrases = [
+    "audited credential rotation",
+    "status visibility",
+    "tenant-policy",
+    "routing",
+    "fallback",
+    "provider-credential authority",
+  ];
+
+  for (const phrase of requiredBoundedDescriptionPhrases) {
+    if (!boundedDescription.includes(phrase)) {
+      throw new Error(
+        `reinforcementContract.boundedActionPhrasing.description must include \"${phrase}\".`
+      );
+    }
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Schema-backed content helper
 // ---------------------------------------------------------------------------
@@ -89,6 +207,7 @@ export interface HostedContractContent {
   excludedByDefault: readonly string[];
   freshnessStates: readonly { key: string; description: string }[];
   copy: typeof trustBoundaryCopy;
+  reinforcement: typeof reinforcementContract;
 }
 
 export function getHostedContractContent(): HostedContractContent {
@@ -132,6 +251,8 @@ export function getHostedContractContent(): HostedContractContent {
     );
   }
 
+  assertReinforcementContract();
+
   // Build the exported data list in schema property order
   const defaultExportedData: ExportedField[] = schemaKeys.map((key) => ({
     key,
@@ -143,5 +264,6 @@ export function getHostedContractContent(): HostedContractContent {
     excludedByDefault,
     freshnessStates,
     copy: trustBoundaryCopy,
+    reinforcement: reinforcementContract,
   };
 }

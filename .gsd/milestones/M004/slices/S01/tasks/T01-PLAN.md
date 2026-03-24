@@ -44,3 +44,9 @@ Extend the existing schema-backed `console/src/lib/hosted-contract.ts` module so
 
 - `console/src/lib/hosted-contract.ts` — extended shared reinforcement vocabulary and guardrail exports
 - `console/src/lib/hosted-contract.test.ts` — focused tests locking the new shared guardrails and wording
+
+## Observability Impact
+
+- Signals changed: focused Vitest failures now surface drift in hosted reinforcement vocabulary, allowed descriptive framing, prohibited authority claims, and operator-reading guidance in addition to schema parity.
+- Inspection surfaces: future agents should inspect `console/src/lib/hosted-contract.ts` for the canonical exports and `console/src/lib/hosted-contract.test.ts` for the exact locked phrases and guardrail assertions.
+- Failure visibility: copy drift becomes visible as exact string or array assertion failures, while schema drift continues to fail fast through the shared contract helper.
