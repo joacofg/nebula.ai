@@ -2,19 +2,6 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-## Active
-
-### R024 — The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
-- Class: constraint
-- Status: active
-- Description: The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
-- Why it matters: The product value here is disciplined adoption proof; losing scope control would weaken the overall v3 strategy.
-- Source: user
-- Primary owning slice: M003/S05
-- Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
-- Validation: mapped
-- Notes: This is a milestone-wide guardrail, not a single implementation detail.
-
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -170,6 +157,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M003/S05
 - Validation: S04 proved that the same public POST /v1/embeddings request can be correlated through X-Request-ID and X-Nebula-* headers to a metadata-only usage-ledger row, then intentionally discovered and explained in Observability by filtering Route target = embeddings and inspecting persisted request/detail fields. Close-out reran /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py successfully; console source and Playwright proof files show embeddings-specific filter/detail/operator corroboration wiring, while local Vitest/Playwright execution remained partially blocked by missing console runners in this worktree.
 - Notes: Validated on the existing usage-ledger/admin API path only. The proof explicitly preserves the metadata-only boundary: no raw embeddings input text, returned vectors, new payload-capture fields, or new admin API family were introduced.
+
+### R024 — The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
+- Class: constraint
+- Status: validated
+- Description: The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
+- Why it matters: The product value here is disciplined adoption proof; losing scope control would weaken the overall v3 strategy.
+- Source: user
+- Primary owning slice: M003/S05
+- Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
+- Validation: S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
+- Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
 
 ## Deferred
 
@@ -378,7 +376,7 @@ This file is the explicit capability and coverage contract for the project.
 | R021 | constraint | validated | M003/S02 | M003/S05 | S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract. |
 | R022 | core-capability | validated | M003/S03 | M003/S05 | S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks. |
 | R023 | failure-visibility | validated | M003/S04 | M003/S05 | S04 proved that the same public POST /v1/embeddings request can be correlated through X-Request-ID and X-Nebula-* headers to a metadata-only usage-ledger row, then intentionally discovered and explained in Observability by filtering Route target = embeddings and inspecting persisted request/detail fields. Close-out reran /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py successfully; console source and Playwright proof files show embeddings-specific filter/detail/operator corroboration wiring, while local Vitest/Playwright execution remained partially blocked by missing console runners in this worktree. |
-| R024 | constraint | active | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | mapped |
+| R024 | constraint | validated | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work. |
 | R025 | integration | deferred | none | none | unmapped |
 | R026 | admin/support | deferred | none | none | unmapped |
 | R027 | operability | deferred | none | none | unmapped |
@@ -389,7 +387,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 1
-- Mapped to slices: 1
-- Validated: 14 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023)
+- Active requirements: 0
+- Mapped to slices: 0
+- Validated: 15 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024)
 - Unmapped active requirements: 0
