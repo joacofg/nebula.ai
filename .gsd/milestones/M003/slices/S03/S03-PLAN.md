@@ -23,6 +23,7 @@
 - `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`
 - `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`
 - `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings`
+- `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py -k upstream_failures`
 - `test -f docs/embeddings-reference-migration.md && ! grep -q "TBD\|TODO" docs/embeddings-reference-migration.md && [ "$(rg -c "^## " docs/embeddings-reference-migration.md)" -ge 6 ]`
 - `rg -n "tests/test_embeddings_reference_migration.py|X-Nebula-API-Key|X-Request-ID|/v1/admin/usage/ledger|What this migration proves|What not to use as migration proof" docs/embeddings-reference-migration.md`
 - `rg -n "embeddings-reference-migration" docs/embeddings-adoption-contract.md README.md docs/architecture.md docs/*.md`
@@ -42,7 +43,7 @@
 
 ## Tasks
 
-- [ ] **T01: Add executable embeddings migration proof coverage** `est:55m`
+- [x] **T01: Add executable embeddings migration proof coverage** `est:55m`
   - Why: R022 closes only if the believable caller swap is executable, not just described; the test must lock the exact minimal-change path and public-to-ledger evidence story before prose is written.
   - Files: `tests/test_embeddings_reference_migration.py`, `tests/test_governance_api.py`, `tests/support.py`, `src/nebula/api/routes/embeddings.py`, `src/nebula/models/openai.py`, `src/nebula/services/embeddings_service.py`
   - Do: Create a dedicated embeddings migration proof test file that mirrors the existing chat reference-migration pattern without bringing in Playground or console flows; use `configured_app()` and a deterministic embeddings-service stub, send an authenticated public `/v1/embeddings` request with a realistic OpenAI-style body, capture `X-Request-ID`, query `/v1/admin/usage/ledger?request_id=...`, and assert the public body, `X-Nebula-*` headers, ledger metadata, and metadata-only redaction boundary all agree; keep the request/example inside the canonical embeddings contract and avoid unsupported options or helper abstractions.
