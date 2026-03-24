@@ -11,30 +11,33 @@ describe("TrustBoundaryPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders the recommended-for-pilots intro", () => {
+  it("renders shared canonical intro language", () => {
     render(<TrustBoundaryPage />);
     expect(
-      screen.getByText(/recommended for pilots/)
-    ).toBeInTheDocument();
+      screen.getAllByText(
+        "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane."
+      ).length
+    ).toBeGreaterThan(0);
     expect(
-      screen.getByText(
-        "Hosted-control-plane outages degrade visibility only; they do not break the self-hosted serving path."
-      )
-    ).toBeInTheDocument();
+      screen.getAllByText(
+        "Hosted fleet posture describes what deployments most recently reported, not what the local runtime is enforcing right now."
+      ).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(
+        "If the hosted control plane is unreachable, Nebula keeps serving with local policy and local provider access. Hosted freshness simply ages toward stale or offline until heartbeats resume."
+      ).length
+    ).toBeGreaterThan(0);
   });
 
   it("renders Metadata-only by default", () => {
     render(<TrustBoundaryPage />);
-    expect(
-      screen.getByText("Metadata-only by default")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Metadata-only by default")).toBeInTheDocument();
   });
 
   it("renders Excluded by default section", () => {
     render(<TrustBoundaryPage />);
-    expect(
-      screen.getByText("Excluded by default")
-    ).toBeInTheDocument();
+    expect(screen.getByText("Excluded by default")).toBeInTheDocument();
   });
 
   it("renders all freshness state keys", () => {
@@ -53,6 +56,31 @@ describe("TrustBoundaryPage", () => {
     expect(
       screen.getByText(
         "Nebula's hosted control plane is not in the request-serving path."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("renders hosted fleet posture guidance and prohibited authority guardrails", () => {
+    render(<TrustBoundaryPage />);
+    expect(
+      screen.getByRole("heading", { name: "Hosted fleet posture guidance" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        "Use freshness and dependency summaries to prioritize investigation, then confirm serving-time behavior from the local runtime and its observability surfaces."
+      ).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getAllByRole("heading", { name: "Reinforcement guardrails" }).length
+    ).toBeGreaterThan(0);
+    expect(
+      screen.getByText(
+        "Do not say the hosted plane serves traffic or sits in the request-serving path."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Do not say the hosted plane has local runtime authority."
       )
     ).toBeInTheDocument();
   });
@@ -76,6 +104,11 @@ describe("TrustBoundaryPage", () => {
     expect(
       screen.getByText(/v2.0 allows one audited rotate_deployment_credential action only\./)
     ).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        "Deployment-bound hosted actions are limited to audited credential rotation and related status visibility; they never imply tenant-policy, routing, fallback, or provider-credential authority."
+      ).length
+    ).toBeGreaterThan(0);
   });
 
   it("indicates the page is public", () => {

@@ -44,7 +44,7 @@
   - Do: Add structured reinforcement vocabulary and trust-boundary guardrails to the shared hosted contract module, including allowed descriptive framing, explicit non-authority claims to avoid, and bounded-action wording hooks that downstream UI can consume; extend focused tests to lock the new exports and keep schema/copy parity strict.
   - Verify: `npm --prefix console run test -- --run src/lib/hosted-contract.test.ts`
   - Done when: The hosted contract module is the single source of truth for reinforcement vocabulary/guardrails and its tests fail if downstream copy would drift from the metadata-only, non-authoritative boundary.
-- [ ] **T02: Render the canonical trust-boundary guardrails on hosted public surfaces** `est:45m`
+- [x] **T02: Render the canonical trust-boundary guardrails on hosted public surfaces** `est:45m`
   - Why: The milestone needs one canonical narrative surface that downstream slices and proof artifacts can cite, not just an internal content module.
   - Files: `console/src/components/hosted/trust-boundary-card.tsx`, `console/src/components/hosted/trust-boundary-card.test.tsx`, `console/src/app/trust-boundary/page.tsx`, `console/src/app/trust-boundary/page.test.tsx`
   - Do: Reuse the shared hosted-contract exports to present the reinforcement guardrails and operator-reading guidance on the trust-boundary card and public trust-boundary page, keeping the message descriptive and explicitly non-authoritative; add or update focused render assertions for the new sections and wording.
