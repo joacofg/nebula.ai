@@ -3,13 +3,21 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from pathlib import Path
 
+import httpx
 import pytest
 from fastapi import HTTPException
+from pydantic import ValidationError
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
 from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
-from nebula.models.openai import ChatCompletionRequest
+from nebula.models.openai import ChatCompletionRequest, EmbeddingsRequest
+from nebula.services.embeddings_service import (
+    EmbeddingsEmptyResultError,
+    EmbeddingsUpstreamError,
+    EmbeddingsValidationError,
+    OllamaEmbeddingsService,
+)
 from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.chat_service import ChatService
@@ -27,6 +35,45 @@ class FakeGovernanceStore:
 
     def record_usage(self, record) -> None:
         self.records.append(record)
+
+
+class StubAsyncResponse:
+    def __init__(self, *, status_code: int = 200, json_body: dict | None = None) -> None:
+        self.status_code = status_code
+        self._json_body = json_body or {}
+        self.request = httpx.Request("POST", "http://testserver/api/embed")
+
+    def raise_for_status(self) -> None:
+        if self.status_code >= 400:
+            raise httpx.HTTPStatusError(
+                f"status={self.status_code}",
+                request=self.request,
+                response=httpx.Response(
+                    self.status_code,
+                    request=self.request,
+                    json=self._json_body,
+                ),
+            )
+
+    def json(self) -> dict:
+        return self._json_body
+
+
+class StubAsyncClient:
+    def __init__(self, responses: list[StubAsyncResponse] | None = None, *, error: Exception | None = None) -> None:
+        self.responses = responses or []
+        self.error = error
+        self.calls: list[tuple[str, dict]] = []
+
+    async def post(self, path: str, json: dict) -> StubAsyncResponse:
+        self.calls.append((path, json))
+        if self.error is not None:
+            raise self.error
+        assert self.responses, "No stubbed response available"
+        return self.responses.pop(0)
+
+    async def aclose(self) -> None:
+        return None
 
 
 class FakePolicyService:
@@ -346,3 +393,107 @@ async def test_runtime_policy_resolution_enforces_toggles_and_soft_budget_signal
     assert resolution.fallback_enabled is False
     assert resolution.soft_budget_exceeded is True
     assert resolution.policy_outcome == "cache=disabled;fallback=disabled;soft_budget=exceeded"
+
+
+def test_embeddings_request_accepts_string_or_flat_list_only() -> None:
+    single = EmbeddingsRequest(model="nomic-embed-text", input="hello")
+    batch = EmbeddingsRequest(model="nomic-embed-text", input=["first", "second"])
+
+    assert single.input == "hello"
+    assert batch.input == ["first", "second"]
+
+    with pytest.raises(ValidationError):
+        EmbeddingsRequest(model="nomic-embed-text", input=[])
+
+    with pytest.raises(ValidationError):
+        EmbeddingsRequest(model="nomic-embed-text", input=[["nested"]])
+
+    with pytest.raises(ValidationError):
+        EmbeddingsRequest(model="   ", input="hello")
+
+
+@pytest.mark.asyncio
+async def test_embeddings_service_passes_through_requested_model_for_single_input() -> None:
+    service = OllamaEmbeddingsService(Settings())
+    stub_client = StubAsyncClient(
+        responses=[StubAsyncResponse(json_body={"embeddings": [[0.1, 0.2, 0.3]]})]
+    )
+    service.client = stub_client  # type: ignore[assignment]
+
+    result = await service.create_embeddings(model="custom-embed-model", input="hello")
+
+    assert stub_client.calls == [
+        (
+            "/api/embed",
+            {"model": "custom-embed-model", "input": "hello"},
+        )
+    ]
+    assert result.model == "custom-embed-model"
+    assert result.data[0].index == 0
+    assert result.data[0].embedding == [0.1, 0.2, 0.3]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_service_preserves_batch_ordering() -> None:
+    service = OllamaEmbeddingsService(Settings())
+    stub_client = StubAsyncClient(
+        responses=[
+            StubAsyncResponse(
+                json_body={
+                    "embeddings": [
+                        [1.0, 1.1],
+                        [2.0, 2.2],
+                    ]
+                }
+            )
+        ]
+    )
+    service.client = stub_client  # type: ignore[assignment]
+
+    result = await service.create_embeddings(
+        model="batch-model",
+        input=["first prompt", "second prompt"],
+    )
+
+    assert stub_client.calls == [
+        (
+            "/api/embed",
+            {"model": "batch-model", "input": ["first prompt", "second prompt"]},
+        )
+    ]
+    assert [item.index for item in result.data] == [0, 1]
+    assert [item.embedding for item in result.data] == [[1.0, 1.1], [2.0, 2.2]]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_service_rejects_blank_input_explicitly() -> None:
+    service = OllamaEmbeddingsService(Settings())
+
+    with pytest.raises(EmbeddingsValidationError) as exc_info:
+        await service.create_embeddings(model="batch-model", input="   ")
+
+    assert str(exc_info.value) == "Embedding input must not be blank."
+
+
+@pytest.mark.asyncio
+async def test_embeddings_service_raises_upstream_error_on_http_failure() -> None:
+    service = OllamaEmbeddingsService(Settings())
+    stub_client = StubAsyncClient(error=httpx.ConnectError("connection refused"))
+    service.client = stub_client  # type: ignore[assignment]
+
+    with pytest.raises(EmbeddingsUpstreamError) as exc_info:
+        await service.create_embeddings(model="batch-model", input="hello")
+
+    assert str(exc_info.value) == "Ollama embeddings request failed."
+
+
+@pytest.mark.asyncio
+async def test_embeddings_service_rejects_empty_upstream_embeddings() -> None:
+    service = OllamaEmbeddingsService(Settings())
+    stub_client = StubAsyncClient(responses=[StubAsyncResponse(json_body={"embeddings": []})])
+    service.client = stub_client  # type: ignore[assignment]
+
+    with pytest.raises(EmbeddingsEmptyResultError) as exc_info:
+        await service.create_embeddings(model="batch-model", input="hello")
+
+    assert str(exc_info.value) == "Ollama returned no embeddings."
