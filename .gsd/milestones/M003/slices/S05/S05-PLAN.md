@@ -64,7 +64,7 @@ for needle in ['docs/embeddings-adoption-contract.md','docs/embeddings-reference
     assert needle in text, needle
 PY`
   - Done when: `docs/embeddings-integrated-adoption-proof.md` exists as the embeddings-specific final walkthrough, links only to already-canonical sources for detailed semantics, and clearly protects the milestone from parity/helper/hosted-plane scope drift.
-- [ ] **T02: Wire discoverability and close out R024 evidence** `est:45m`
+- [x] **T02: Wire discoverability and close out R024 evidence** `est:45m`
   - Why: The new assembly doc only validates the milestone guardrail if readers can find it from entry surfaces and the assembled package is re-checked against the executable proof and narrow-scope boundaries.
   - Files: `README.md`, `docs/architecture.md`, `docs/embeddings-integrated-adoption-proof.md`, `.gsd/REQUIREMENTS.md`, `tests/test_embeddings_reference_migration.py`, `tests/test_embeddings_api.py`, `tests/test_governance_api.py`
   - Do: Add pointer-only links to `docs/embeddings-integrated-adoption-proof.md` from `README.md` and `docs/architecture.md` without duplicating embeddings contract semantics; make any minimal wording alignment edits in the new assembly doc if verification uncovers drift; run the focused embeddings proof suite and doc-source checks; then update `R024` in `.gsd/REQUIREMENTS.md` from `active` to `validated` with verification text that cites the final assembly doc and the rerun checks.

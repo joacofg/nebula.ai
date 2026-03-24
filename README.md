@@ -41,6 +41,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 - [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
 - [Embeddings adoption contract](docs/embeddings-adoption-contract.md): the canonical public `POST /v1/embeddings` boundary, supported evidence surface, and explicit exclusions
 - [Embeddings reference migration](docs/embeddings-reference-migration.md): the minimal-change before/after guide derived from `tests/test_embeddings_reference_migration.py`
+- [Embeddings integrated adoption proof](docs/embeddings-integrated-adoption-proof.md): the pointer-only walkthrough that joins the public request, `X-Request-ID`/`X-Nebula-*` headers, usage-ledger correlation, and Observability corroboration into one review path
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 
@@ -126,7 +127,7 @@ The supported self-hosted environment template lives at `deploy/selfhosted.env.e
 ## Selected endpoints
 
 - `POST /v1/chat/completions`
-- `POST /v1/embeddings` — see `docs/embeddings-adoption-contract.md` for the canonical supported boundary and exclusions
+- `POST /v1/embeddings` — see `docs/embeddings-adoption-contract.md` for the canonical supported boundary and exclusions, and `docs/embeddings-integrated-adoption-proof.md` for the joined public-response-to-ledger-to-Observability proof path
 - `GET /v1/admin/session`
 - `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
 - `GET /v1/admin/usage/ledger`
