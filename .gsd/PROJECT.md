@@ -16,7 +16,7 @@ M002 is complete in this worktree and passed milestone close-out verification. T
 
 ## Architecture / Key Patterns
 
-Nebula routes `POST /v1/chat/completions` traffic across local, cache, premium, and fallback paths, returning `X-Nebula-*` metadata headers and persisting usage outcomes to the governance ledger. The backend is FastAPI with a service-container pattern; the operator console is Next.js and proxies same-origin admin traffic to gateway APIs. Governance is tenant-centric today. The hosted control plane is metadata-only by default and is not authoritative for local runtime enforcement. Existing product proof is benchmark- and operator-surface-heavy; v3.x shifts emphasis toward real developer adoption proof.
+Nebula routes `POST /v1/chat/completions` traffic across local, cache, premium, and fallback paths, returning `X-Nebula-*` metadata headers and persisting usage outcomes to the governance ledger. The backend is FastAPI with a service-container pattern; the operator console is Next.js and proxies same-origin admin traffic to gateway APIs. Governance is tenant-centric today. The hosted control plane is metadata-only by default and is not authoritative for local runtime enforcement. Existing product proof is benchmark- and operator-surface-heavy; v3.x shifts emphasis toward real developer adoption proof. Internal embeddings capability already exists through `src/nebula/services/embeddings_service.py` and is used by semantic cache and runtime health, but it is not yet exposed as a public adoption surface.
 
 ## Capability Contract
 
@@ -26,5 +26,5 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
 
 - [x] M001: API Adoption Happy Path — Slice work is complete, but milestone close-out failed integrated verification in this worktree because several canonical adoption docs and the reference-migration proof file are currently absent from the assembled state.
 - [x] M002: Production Structuring Model — Clarified the runtime-truth production model across API Keys, Tenants, Playground, Observability, and the integrated walkthrough so operators can structure production around real tenants and API keys without inventing app/workload runtime objects.
-- [ ] M003: Broader Adoption Surface — Expand the adoption surface beyond the initial happy path only where real demand and proof justify it.
+- [ ] M003: Broader Adoption Surface — Extend Nebula beyond chat completions through a narrow public embeddings adoption path with tight compatibility boundaries and realistic migration proof.
 - [ ] M004: Hosted Adoption Reinforcement — Improve hosted/control-plane touches only where they strengthen onboarding, fleet understanding, and operator confidence without violating the metadata-only trust boundary.
