@@ -48,7 +48,7 @@ This milestone is complete only when all are true:
 
 ## Slices
 
-- [ ] **S01: Public embeddings endpoint** `risk:high` `depends:[]`
+- [x] **S01: Public embeddings endpoint** `risk:high` `depends:[]`
   > After this: A client can send a strict happy-path authenticated `POST /v1/embeddings` request to Nebula and receive a usable embeddings response within the intended narrow contract.
 
 - [ ] **S02: Canonical embeddings contract docs** `risk:medium` `depends:[S01]`
