@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("operator can filter the ledger and inspect dependency health", async ({ page }) => {
+test("operator can filter to an embeddings ledger row and inspect the persisted request evidence", async ({ page }) => {
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
   });
@@ -34,6 +34,28 @@ test("operator can filter the ledger and inspect dependency health", async ({ pa
   await page.route("**/api/admin/usage/ledger**", async (route) => {
     const url = new URL(route.request().url());
     const tenantId = url.searchParams.get("tenant_id");
+    const routeTarget = url.searchParams.get("route_target");
+
+    const embeddingsRow = {
+      request_id: "req-embed-001",
+      tenant_id: "default",
+      requested_model: "nomic-embed-text",
+      final_route_target: "embeddings",
+      final_provider: "ollama",
+      fallback_used: false,
+      cache_hit: false,
+      response_model: "nomic-embed-text",
+      prompt_tokens: 0,
+      completion_tokens: 0,
+      total_tokens: 0,
+      estimated_cost: 0,
+      latency_ms: 82,
+      timestamp: "2026-03-17T01:02:03Z",
+      terminal_status: "completed",
+      route_reason: "embeddings_direct",
+      policy_outcome: "embeddings=completed",
+    };
+
     const rows =
       tenantId === "team-b"
         ? [
@@ -57,27 +79,30 @@ test("operator can filter the ledger and inspect dependency health", async ({ pa
               policy_outcome: "allowed",
             },
           ]
-        : [
-            {
-              request_id: "req-default",
-              tenant_id: "default",
-              requested_model: "llama3.2:3b",
-              final_route_target: "local",
-              final_provider: "ollama",
-              fallback_used: false,
-              cache_hit: false,
-              response_model: "llama3.2:3b",
-              prompt_tokens: 14,
-              completion_tokens: 7,
-              total_tokens: 21,
-              estimated_cost: 0,
-              latency_ms: 160,
-              timestamp: "2026-03-16T21:00:00Z",
-              terminal_status: "completed",
-              route_reason: "local_model",
-              policy_outcome: "allowed",
-            },
-          ];
+        : routeTarget === "embeddings"
+          ? [embeddingsRow]
+          : [
+              embeddingsRow,
+              {
+                request_id: "req-default",
+                tenant_id: "default",
+                requested_model: "llama3.2:3b",
+                final_route_target: "local",
+                final_provider: "ollama",
+                fallback_used: false,
+                cache_hit: false,
+                response_model: "llama3.2:3b",
+                prompt_tokens: 14,
+                completion_tokens: 7,
+                total_tokens: 21,
+                estimated_cost: 0,
+                latency_ms: 160,
+                timestamp: "2026-03-16T21:00:00Z",
+                terminal_status: "completed",
+                route_reason: "local_model",
+                policy_outcome: "allowed",
+              },
+            ];
 
     await route.fulfill({
       status: 200,
@@ -135,11 +160,38 @@ test("operator can filter the ledger and inspect dependency health", async ({ pa
   await expect(page.getByRole("heading", { name: "Usage ledger" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Dependency health" })).toBeVisible();
 
-  await page.getByRole("combobox", { name: "Tenant" }).selectOption("team-b");
-  await expect(page.getByRole("cell", { name: "team-b" })).toBeVisible();
+  await page.getByRole("combobox", { name: "Route target" }).selectOption("embeddings");
+
+  const embeddingsRow = page.getByRole("row", { name: /req-embed-001/i });
+  await expect(embeddingsRow).toBeVisible();
+  await expect(page.getByRole("cell", { name: "embeddings" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "ollama" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "completed" })).toBeVisible();
+
+  await embeddingsRow.click();
+
+  await expect(page.getByText("Request detail")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "req-embed-001" })).toBeVisible();
+  await expect(page.getByText("Request ID")).toBeVisible();
+  await expect(page.getByText("Route target")).toBeVisible();
+  await expect(page.getByText("Terminal status")).toBeVisible();
+  await expect(page.getByText("Requested model")).toBeVisible();
+  await expect(page.getByText("Response model")).toBeVisible();
+  await expect(page.getByText("Provider")).toBeVisible();
+  await expect(page.getByText("Route reason")).toBeVisible();
+  await expect(page.getByText("Policy outcome")).toBeVisible();
+  await expect(page.getByText("Fallback used")).toBeVisible();
+  await expect(page.getByText("Cache hit")).toBeVisible();
+  await expect(page.getByText("embeddings_direct")).toBeVisible();
+  await expect(page.getByText("embeddings=completed")).toBeVisible();
+  await expect(page.getByText("No")).toBeVisible();
+
   await expect(page.getByText("premium_provider")).toBeVisible();
   await expect(page.getByText("degraded")).toBeVisible();
   await expect(
     page.getByText("Optional dependency degradation does not block gateway readiness."),
   ).toBeVisible();
+
+  await expect(page.getByText("minimal migration keeps the provider-style request body")).toHaveCount(0);
+  await expect(page.getByText("[0, 0.25]")).toHaveCount(0);
 });
