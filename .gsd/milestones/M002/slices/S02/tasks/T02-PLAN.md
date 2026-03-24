@@ -46,3 +46,9 @@ Lock the updated tenant-surface guidance with focused vitest coverage so future 
 - `console/src/app/(console)/tenants/page.test.tsx` — new focused tenant page truth-surface test
 - `console/src/components/tenants/tenant-editor-drawer.test.tsx` — extended drawer regression coverage for runtime-truth guidance
 - `console/src/components/tenants/tenant-table.test.tsx` — unchanged or minimally updated table regression coverage aligned to the final UI
+
+## Observability Impact
+
+- Signals changed: focused page, drawer, and table text assertions now expose whether tenant-facing guidance still presents tenants as the enforced boundary and keeps app/workload naming conceptual only.
+- How to inspect later: run the tenant-surface vitest files directly to see which operator surface drifted — page shell, drawer guidance, or table semantics.
+- Failure state made visible: any copy regression that reintroduces fake app/workload entities, workspace framing, or enforced metadata schema language will fail with a targeted assertion message instead of shipping silently.

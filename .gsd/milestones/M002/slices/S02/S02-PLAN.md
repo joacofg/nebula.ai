@@ -41,7 +41,7 @@
   - Do: Update the tenant page header copy to explain that tenants are the enforced boundary, API keys segment callers, and app/workload naming stays conceptual unless implemented; replace the drawer’s “workspace” language with runtime-truthful tenant guidance; mention `metadata` only as optional notes/runbook context; touch the tenant table only if needed to keep the wording coherent without adding fake columns or pseudo-entities.
   - Verify: `npm --prefix console run test -- --run 'src/app/(console)/tenants/page.test.tsx' src/components/tenants/tenant-editor-drawer.test.tsx src/components/tenants/tenant-table.test.tsx`
   - Done when: the tenant page and drawer visibly teach the operator how to structure apps/workloads with tenants and keys, and no touched tenant surface implies that app/workload are real runtime objects.
-- [ ] **T02: Add tenant-surface regression tests for app/workload truth boundaries** `est:40m`
+- [x] **T02: Add tenant-surface regression tests for app/workload truth boundaries** `est:40m`
   - Why: S01 established that operator trust surfaces must be locked with targeted tests; this slice needs the same guardrails so future copy changes do not reintroduce fake entities.
   - Files: `console/src/app/(console)/tenants/page.test.tsx`, `console/src/components/tenants/tenant-editor-drawer.test.tsx`, `console/src/components/tenants/tenant-table.test.tsx`
   - Do: Add a new page-level test for the tenant shell copy, extend drawer tests to assert the new runtime-truth guidance and metadata framing, and update the tenant table test only if any visible semantics change; keep assertions anchored to tenants, API-key scope, and the absence of first-class app/workload wording.
