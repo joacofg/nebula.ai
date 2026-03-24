@@ -22,6 +22,7 @@
 - `pytest tests/test_embeddings_api.py`
 - `pytest tests/test_governance_api.py -k embeddings`
 - `pytest tests/test_service_flows.py -k embedding`
+- `pytest tests/test_service_flows.py -k 'embedding and (blank or upstream or empty)'`
 
 ## Observability / Diagnostics
 
@@ -38,7 +39,7 @@
 
 ## Tasks
 
-- [ ] **T01: Extend embeddings internals for the public narrow contract** `est:1.5h`
+- [x] **T01: Extend embeddings internals for the public narrow contract** `est:1.5h`
   - Why: The existing embeddings helper only supports one string and ignores the caller’s `model`, so the public route would be fake without a real service/schema foundation.
   - Files: `src/nebula/services/embeddings_service.py`, `src/nebula/models/openai.py`, `tests/test_service_flows.py`
   - Do: Add narrow OpenAI-style embeddings request/response models in `src/nebula/models/openai.py`; extend `OllamaEmbeddingsService` so it can embed a single string or ordered flat list of strings while forwarding the requested model; and add focused service-level tests that lock down model passthrough, batch ordering, and intentional failure behavior for blank/invalid upstream results without introducing broad parameter parity.
