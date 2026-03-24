@@ -2,6 +2,65 @@
 
 This file is the explicit capability and coverage contract for the project.
 
+Use it to track what is actively in scope, what has been validated by completed work, what is intentionally deferred, and what is explicitly out of scope.
+
+## Active
+
+### R020 — Nebula exposes a narrow public embeddings adoption path through a stable `/v1/embeddings` compatibility boundary.
+- Class: primary-user-loop
+- Status: active
+- Description: Nebula exposes a real public `/v1/embeddings` path that a common OpenAI-style embeddings caller can target without broad contract ambiguity.
+- Why it matters: Chat-only adoption leaves a common high-demand surface uncovered; embeddings expands the adoption story without requiring a broader platform rewrite.
+- Source: user
+- Primary owning slice: M003/S01
+- Supporting slices: M003/S03
+- Validation: mapped
+- Notes: Keep the public promise intentionally narrow and compatibility-first.
+
+### R021 — The public embeddings contract explicitly defines supported request/response behavior and names unsupported or deferred edges.
+- Class: constraint
+- Status: active
+- Description: Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
+- Why it matters: A narrow embeddings promise only works if adopters can see the line clearly and do not infer broader parity than Nebula intends to support.
+- Source: user
+- Primary owning slice: M003/S02
+- Supporting slices: M003/S05
+- Validation: mapped
+- Notes: Default to the strict happy path: `input` + `model`, string input and simple batch input, standard float response shape.
+
+### R022 — A common OpenAI-style embeddings caller can migrate to Nebula with minimal code changes.
+- Class: core-capability
+- Status: active
+- Description: Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
+- Why it matters: Adoption trust comes from a believable migration move, not from abstract API claims.
+- Source: user
+- Primary owning slice: M003/S03
+- Supporting slices: M003/S05
+- Validation: mapped
+- Notes: The proof should be realistic and generic, not a toy example or a Nebula-specific workflow.
+
+### R023 — An embeddings adoption request can be tied to durable backend/operator evidence so teams can explain what happened during validation.
+- Class: failure-visibility
+- Status: active
+- Description: The embeddings adoption path leaves enough durable evidence that a team can correlate a public request with backend/operator proof and explain the outcome.
+- Why it matters: Early trust depends on being able to validate and explain the behavior, especially when introducing a new public surface.
+- Source: inferred
+- Primary owning slice: M003/S04
+- Supporting slices: M003/S05
+- Validation: mapped
+- Notes: Prefer reuse of existing durable evidence surfaces over new console work.
+
+### R024 — M003 preserves the v3 guardrails while widening the adoption surface.
+- Class: constraint
+- Status: active
+- Description: The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
+- Why it matters: The product value here is disciplined adoption proof; losing scope control would weaken the overall v3 strategy.
+- Source: user
+- Primary owning slice: M003/S05
+- Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
+- Validation: mapped
+- Notes: This is a milestone-wide guardrail, not a single implementation detail.
+
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -125,7 +184,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M002/S01
 - Supporting slices: M003/S01
 - Validation: unmapped
-- Notes: There is embeddings-related code in the repo, but not yet a committed public adoption surface.
+- Notes: Superseded in practice by the active M003 requirement set if this milestone completes, but kept here as historical planning context until execution proves the new path.
 
 ### R012 — App and workload concepts become more explicit in runtime or admin product surfaces beyond documentation and conceptual guidance.
 - Class: operability
@@ -147,7 +206,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M003/S01
 - Supporting slices: none
 - Validation: unmapped
-- Notes: Explicitly avoid ecosystem explosion in M001.
+- Notes: Explicitly avoid ecosystem explosion in M001 and M003.
 
 ### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
 - Class: integration
@@ -159,6 +218,39 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Must preserve the metadata-only trust boundary by default.
+
+### R025 — Nebula supports broader embeddings-option parity beyond the strict happy path.
+- Class: integration
+- Status: deferred
+- Description: Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
+- Why it matters: Some adopters may eventually expect deeper parity, but that would expand the maintenance contract before the narrow path is proven.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Keep deferred unless repeated demand shows a clear need.
+
+### R026 — Nebula provides helper libraries or wrappers specifically for embeddings adoption.
+- Class: admin/support
+- Status: deferred
+- Description: Nebula provides dedicated helper artifacts around the embeddings adoption path rather than relying on existing compatible client patterns.
+- Why it matters: Could reduce friction later, but pushes the product toward SDK surface expansion.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Only revisit if minimal-change migration proof proves insufficient without helper ergonomics.
+
+### R027 — Nebula expands console/operator surfaces specifically for embeddings beyond what is needed for credible proof.
+- Class: operability
+- Status: deferred
+- Description: Nebula adds embeddings-specific console or operator surfaces beyond the minimum durable evidence needed for adoption proof.
+- Why it matters: There may be product value later, but it is not required for this milestone's narrow adoption goal.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Prefer backend/operator evidence reuse first.
 
 ## Out of Scope
 
@@ -217,10 +309,59 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: n/a
 - Notes: The adoption path should work first through existing OpenAI-compatible client patterns.
 
+### R028 — M003 turns into a general OpenAI API parity milestone.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not become a broad OpenAI-surface expansion beyond the narrow embeddings adoption path.
+- Why it matters: Prevents scope confusion and protects the v3 strategy from parity creep.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: The milestone should widen the story carefully, not chase general parity.
+
+### R029 — M003 introduces a broad multi-language SDK or helper-package push.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not introduce a broad SDK, wrapper, or helper-package expansion around embeddings adoption.
+- Why it matters: Prevents one narrow adoption milestone from turning into long-tail ecosystem maintenance.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Tiny proof-specific helper artifacts remain optional only if absolutely necessary.
+
+### R030 — M003 expands hosted-plane scope beyond adoption-proof reinforcement.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not expand the hosted/control-plane beyond what directly reinforces the embeddings adoption proof.
+- Why it matters: Protects the metadata-only trust boundary and avoids misallocating effort.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Any hosted-plane change must justify itself through direct adoption-proof leverage.
+
+### R031 — M003 adds infrastructure work that does not directly strengthen embeddings adoption proof.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not add infrastructure, platform, or operational work unless it directly improves the embeddings adoption story or proof.
+- Why it matters: Keeps the milestone from drifting into generalized engineering work instead of product adoption.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: The internal embeddings capability already exists; new infra should be treated as a smell unless directly justified.
+
 ## Traceability
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
 |---|---|---|---|---|---|
+| R020 | primary-user-loop | active | M003/S01 | M003/S03 | mapped |
+| R021 | constraint | active | M003/S02 | M003/S05 | mapped |
+| R022 | core-capability | active | M003/S03 | M003/S05 | mapped |
+| R023 | failure-visibility | active | M003/S04 | M003/S05 | mapped |
+| R024 | constraint | active | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | mapped |
 | R001 | primary-user-loop | validated | M001/S01 | M001/S02, M001/S03 | S01 established and verified a stable public adoption target on POST /v1/chat/completions with X-Nebula-API-Key auth, required user-message validation, streaming/non-streaming coverage, and canonical contract documentation grounded in tests. |
 | R002 | constraint | validated | M001/S01 | M001/S02 | S01 documents the supported public chat-completions boundary, explicit admin Playground non-equivalence, and links entry docs to the canonical contract without duplicating drifting details. |
 | R003 | launchability | validated | M001/S02 | M001/S01, M001/S03, M001/S05 | S05 closed the integrated adoption proof by linking docs/quickstart.md, docs/reference-migration.md, docs/day-1-value.md, docs/integrated-adoption-proof.md, backend request-correlation tests (tests/test_reference_migration.py, tests/test_admin_playground_api.py, tests/test_governance_api.py, tests/test_chat_completions.py, tests/test_response_headers.py), and aligned console proof surfaces so the same request story reads as public POST /v1/chat/completions -> X-Nebula-* / X-Request-ID -> usage ledger -> Playground corroboration -> Observability persisted explanation plus dependency health. |
@@ -235,15 +376,22 @@ This file is the explicit capability and coverage contract for the project.
 | R012 | operability | deferred | M002/S02 | none | M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance. |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
 | R014 | integration | deferred | M004/S01 | none | unmapped |
+| R025 | integration | deferred | none | none | unmapped |
+| R026 | admin/support | deferred | none | none | unmapped |
+| R027 | operability | deferred | none | none | unmapped |
 | R015 | anti-feature | out-of-scope | none | none | n/a |
 | R016 | anti-feature | out-of-scope | none | none | n/a |
 | R017 | anti-feature | out-of-scope | none | none | n/a |
 | R018 | anti-feature | out-of-scope | none | none | n/a |
 | R019 | anti-feature | out-of-scope | none | none | n/a |
+| R028 | anti-feature | out-of-scope | none | none | n/a |
+| R029 | anti-feature | out-of-scope | none | none | n/a |
+| R030 | anti-feature | out-of-scope | none | none | n/a |
+| R031 | anti-feature | out-of-scope | none | none | n/a |
 
 ## Coverage Summary
 
-- Active requirements: 0
-- Mapped to slices: 0
-- Validated: 10 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010)
+- Active requirements: 5
+- Mapped to slices: 5
+- Validated: 10
 - Unmapped active requirements: 0
