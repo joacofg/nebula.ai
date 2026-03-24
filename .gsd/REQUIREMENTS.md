@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R021 — Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
-- Class: constraint
-- Status: active
-- Description: Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
-- Why it matters: A narrow embeddings promise only works if adopters can see the line clearly and do not infer broader parity than Nebula intends to support.
-- Source: user
-- Primary owning slice: M003/S02
-- Supporting slices: M003/S05
-- Validation: mapped
-- Notes: Default to the strict happy path: `input` + `model`, string input and simple batch input, standard float response shape.
-
 ### R022 — Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
 - Class: core-capability
 - Status: active
@@ -170,6 +159,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M003/S03
 - Validation: M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches.
 - Notes: Validated so far for the runtime happy path and durable request-ID correlation. S02-S04 still need to add the canonical docs, migration proof, and broader evidence assembly for the full milestone story.
+
+### R021 — Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
+- Class: constraint
+- Status: validated
+- Description: Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
+- Why it matters: A narrow embeddings promise only works if adopters can see the line clearly and do not infer broader parity than Nebula intends to support.
+- Source: user
+- Primary owning slice: M003/S02
+- Supporting slices: M003/S05
+- Validation: S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract.
+- Notes: Validated for the narrow public POST /v1/embeddings boundary only: X-Nebula-API-Key auth, model plus string-or-flat-list input, float-vector response shape, X-Request-ID/X-Nebula-* evidence headers, metadata-only /v1/admin/usage/ledger correlation, explicit 401/422/502 failure classes, and explicit unsupported/deferred edges including bearer auth, encoding_format, alternate encodings, and broader parity claims.
 
 ## Deferred
 
@@ -375,7 +375,7 @@ This file is the explicit capability and coverage contract for the project.
 | R018 | anti-feature | out-of-scope | none | none | n/a |
 | R019 | anti-feature | out-of-scope | none | none | n/a |
 | R020 | primary-user-loop | validated | M003/S01 | M003/S03 | M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches. |
-| R021 | constraint | active | M003/S02 | M003/S05 | mapped |
+| R021 | constraint | validated | M003/S02 | M003/S05 | S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract. |
 | R022 | core-capability | active | M003/S03 | M003/S05 | mapped |
 | R023 | failure-visibility | active | M003/S04 | M003/S05 | mapped |
 | R024 | constraint | active | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | mapped |
@@ -389,7 +389,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 4
-- Mapped to slices: 4
-- Validated: 11 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020)
+- Active requirements: 3
+- Mapped to slices: 3
+- Validated: 12 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021)
 - Unmapped active requirements: 0
