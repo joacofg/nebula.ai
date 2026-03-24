@@ -51,7 +51,7 @@ This milestone is complete only when all are true:
   > After this: the highest-impact operator-facing docs and product surfaces agree on the tenant/API-key/runtime-truth model, and the biggest production-structuring contradiction is removed.
 - [x] **S02: App/workload guidance without fake runtime entities** `risk:medium` `depends:[S01]`
   > After this: a team can map apps and workloads onto Nebula's real tenant/key model using concrete guidance without the product pretending app/workload are enforced objects.
-- [ ] **S03: Integrated production-structuring walkthrough** `risk:low` `depends:[S01,S02]`
+- [x] **S03: Integrated production-structuring walkthrough** `risk:low` `depends:[S01,S02]`
   > After this: one end-to-end production-structuring story is demoable across the canonicals and operator surfaces as a coherent operator workflow.
 
 ## Boundary Map

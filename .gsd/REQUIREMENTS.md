@@ -136,7 +136,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M002/S02
 - Supporting slices: none
 - Validation: M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance.
-- Notes: Keep deferred. This slice strengthened tenant-surface guidance and regression coverage rather than making app/workload explicit runtime/admin objects.
+- Notes: M002/S03 completed the final integrated production-structuring walkthrough without introducing first-class app/workload runtime or admin entities. The slice validated that docs/integrated-adoption-proof.md, .gsd/milestones/M002/slices/S03/S03-UAT.md, and focused Tenants/Playground/Observability Vitest coverage now compose one coherent operator story from tenant/API-key structuring through public request, X-Request-ID/X-Nebula-* headers, usage-ledger correlation, and admin corroboration surfaces. Requirement remains deferred because the proof deliberately preserves app/workload as conceptual guidance only.
 
 ### R013 — Nebula provides dedicated helper libraries, wrappers, or SDK conveniences beyond the compatibility-first path.
 - Class: admin/support
