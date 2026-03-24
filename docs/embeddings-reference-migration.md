@@ -171,6 +171,8 @@ For the reference migration proof, the operator-side confirmation should line up
 
 The tested boundary is metadata-only. The ledger evidence should help you correlate the request, but it should **not** expose raw `input` strings or returned embedding vectors.
 
+Observability is a secondary operator surface for this same durable row, not a replacement proof source. After you confirm the `X-Request-ID` and query `GET /v1/admin/usage/ledger?request_id=...`, you can open the Observability page, filter to `Route target = embeddings`, and inspect the matching request id plus route/outcome metadata as UI corroboration of that ledger record.
+
 ## Minimal verification path
 
 After migrating one caller, use this exact sanity-check sequence:
