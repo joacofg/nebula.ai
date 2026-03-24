@@ -96,9 +96,8 @@ describe("playground-form", () => {
       screen.getByText(/Choose the tenant context on purpose, set the target model, and send one admin-session prompt/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/non-streaming playground path/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/The first response stays immediate and only shows completion content plus the request id/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/The first response stays immediate and only shows completion content plus the request id/i)).toBeInTheDocument();
     expect(screen.getByText(/recorded ledger evidence appears after Nebula persists the outcome/i)).toBeInTheDocument();
+    expect(screen.queryByText(/public integration boundary/i)).not.toBeInTheDocument();
   });
 });

@@ -74,6 +74,8 @@ describe("observability-page", () => {
     expect(
       screen.getByText(/then use dependency health as supporting runtime context/i),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/replace the public request/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
     expect(
       screen.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),

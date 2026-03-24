@@ -43,6 +43,8 @@ describe("playground-page", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(/This checks the live Nebula routing path without acting as the public/i)).toBeInTheDocument();
     expect(screen.getByText(/POST \/v1\/chat\/completions/i)).toBeInTheDocument();
+    expect(screen.queryByText(/public adoption target/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
   });
 
   beforeEach(() => {
