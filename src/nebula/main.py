@@ -7,6 +7,7 @@ from prometheus_client import make_asgi_app
 from nebula.api.dependencies import get_container
 from nebula.api.routes.admin import router as admin_router
 from nebula.api.routes.chat import router as chat_router
+from nebula.api.routes.embeddings import router as embeddings_router
 from nebula.api.routes.enrollment import exchange_router, router as enrollment_router
 from nebula.api.routes.heartbeat import heartbeat_router
 from nebula.api.routes.remote_management import remote_management_router
@@ -53,6 +54,7 @@ def create_app() -> FastAPI:
     )
     app.add_middleware(RequestContextMiddleware)
     app.include_router(chat_router, prefix=settings.api_v1_prefix)
+    app.include_router(embeddings_router, prefix=settings.api_v1_prefix)
     app.include_router(admin_router, prefix=settings.api_v1_prefix)
     app.include_router(enrollment_router, prefix=settings.api_v1_prefix)
     app.include_router(exchange_router, prefix=settings.api_v1_prefix)

@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatMessage(BaseModel):
@@ -74,6 +74,8 @@ class ChatCompletionChunk(BaseModel):
 
 
 class EmbeddingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     model: str = Field(min_length=1)
     input: str | list[str]
 
