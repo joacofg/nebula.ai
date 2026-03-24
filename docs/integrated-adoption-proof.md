@@ -14,15 +14,16 @@ Use this walkthrough when you need one discoverable story that proves Nebula's d
 
 ## What this integrated proof establishes
 
-The integrated adoption proof is complete only when one team can start from the supported quickstart, issue one real public `POST /v1/chat/completions` request, and then corroborate that same request across the operator surfaces without changing the public adoption boundary.
+The integrated adoption proof is complete only when one team can start from production structuring grounded in [`docs/production-model.md`](production-model.md), issue one real public `POST /v1/chat/completions` request, and then corroborate that same request across the operator surfaces without changing the public adoption boundary.
 
 That means the proof must stay grounded in:
 
-1. one real public request
-2. public `X-Nebula-*` response headers plus `X-Request-ID`
-3. usage-ledger correlation for the same request
-4. Playground corroboration as an admin-only surface
-5. Observability corroboration as the persisted explanation and dependency-health surface
+1. tenant and API-key structure as the real runtime boundary
+2. one real public request
+3. public `X-Nebula-*` response headers plus `X-Request-ID`
+4. usage-ledger correlation for the same request
+5. Playground corroboration as an admin-only surface
+6. Observability corroboration as the persisted explanation and dependency-health surface
 
 If this order changes, the adoption story weakens. Playground is not the public target, and Observability is not a substitute for the public request.
 
@@ -30,7 +31,34 @@ If this order changes, the adoption story weakens. Playground is not the public 
 
 Follow this sequence in order.
 
-### 1. Start with the supported quickstart and public route
+### 1. Start with production structuring, not with console clicks
+
+Before sending traffic, align on the runtime boundary described in [`docs/production-model.md`](production-model.md).
+
+Keep this framing explicit:
+
+- **tenant** is Nebula's enforced governance boundary for policy, authorization, and usage attribution
+- **API keys** carry caller scope on the public `POST /v1/chat/completions` path
+- **operator admin sessions** are separate from application credentials and exist only for `/v1/admin/*` and console work
+- **app** and **workload** remain naming guidance for your team, not first-class Nebula runtime or admin objects
+
+This matters because the integrated proof is supposed to show a truthful production-structuring path, not invent a new adoption model around conceptual labels.
+
+Use [`docs/quickstart.md`](quickstart.md) for supported self-hosted setup after this framing is clear. Use [`docs/reference-migration.md`](reference-migration.md) if you are mapping an existing OpenAI-style caller onto Nebula's public route.
+
+### 2. Decide whether the public caller needs `X-Nebula-Tenant-ID`
+
+Before the first request, make the tenant-header rule explicit instead of treating it as boilerplate.
+
+As defined in [`docs/production-model.md`](production-model.md) and exercised in [`docs/reference-migration.md`](reference-migration.md):
+
+- if the API key resolves to one tenant unambiguously, Nebula infers the tenant automatically
+- if the API key is intentionally authorized for multiple tenants, the caller must send `X-Nebula-Tenant-ID`
+- if that multi-tenant caller omits the header, Nebula rejects the request because the tenant is ambiguous
+
+So the happy path is still tenant-scoped structure first. `X-Nebula-Tenant-ID` is required only for intentionally multi-tenant keys, not for every public request.
+
+### 3. Send the supported public request on the real adoption boundary
 
 Begin with [`docs/quickstart.md`](quickstart.md) to configure the supported self-hosted deployment and send the first successful public `POST /v1/chat/completions` request.
 
@@ -43,7 +71,7 @@ At this stage, keep two boundaries explicit:
 
 This integrated proof does not restate those details. It depends on them.
 
-### 2. Record the public `X-Nebula-*` and `X-Request-ID` evidence
+### 4. Record the public `X-Nebula-*` and `X-Request-ID` evidence
 
 After the real public request succeeds, inspect the response headers before moving to any admin surface.
 
@@ -70,7 +98,7 @@ This is the first proof seam because it shows, on the public route itself:
 
 If the public route does not expose this evidence, the integrated adoption proof is incomplete even if the response body is successful.
 
-### 3. Correlate the same request in the usage ledger
+### 5. Correlate the same request in the usage ledger
 
 Use the `X-Request-ID` from the public response to inspect the persisted operator record in `GET /v1/admin/usage/ledger`.
 
@@ -87,7 +115,7 @@ This is the canonical persistence check because it proves the public request is 
 
 For the exact public-to-ledger migration proof language, follow [`docs/reference-migration.md`](reference-migration.md). For the broader operator-visible explanation flow, continue through [`docs/day-1-value.md`](day-1-value.md).
 
-### 4. Use Playground only as admin-side corroboration
+### 6. Use Playground only as admin-side corroboration
 
 Once the public request and usage-ledger correlation are established, use Playground as a controlled operator-side corroboration surface.
 
@@ -97,12 +125,13 @@ Keep the boundary explicit:
 - Playground uses the operator trust model, not `X-Nebula-API-Key`
 - Playground is not the public adoption target
 - Playground is not the migration proof target
+- Playground does not create a new app or workload boundary; it corroborates the tenant- and key-structured runtime already proved on the public path
 
 What Playground contributes to the integrated proof is immediate operator-side metadata corroboration. It can help an operator compare route target, provider, fallback state, policy framing, and `X-Request-ID` behavior on a controlled request after the public route already proved adoption.
 
 Do not invert that order. If a team starts with Playground, they have skipped the public contract boundary that adoption actually depends on.
 
-### 5. Use Observability as the persisted explanation surface
+### 7. Use Observability as the persisted explanation surface
 
 Finish by validating the request in Observability.
 
@@ -110,6 +139,7 @@ Observability closes the integrated proof because it shows that operators can st
 
 - the persisted request remains explainable through recorded route, provider, fallback, and policy evidence
 - current dependency-health state is visible alongside that request-level inspection
+- the same tenant-structured runtime story remains visible without implying separate app/workload admin objects
 
 That makes Observability the persisted explanation plus dependency-health corroboration surface.
 
@@ -126,23 +156,25 @@ Use this map when deciding which document to open next.
 
 | Need | Canonical doc | Why it stays separate |
 |---|---|---|
+| Runtime-truth tenant, policy, API-key, and operator model | [`docs/production-model.md`](production-model.md) | Keeps the enforced boundary and app/workload guidance from drifting into walkthrough shorthand |
 | Supported self-hosted setup and first public request | [`docs/quickstart.md`](quickstart.md) | Keeps deployment and first-request instructions in one place |
 | Minimal before/after migration proof for an existing caller | [`docs/reference-migration.md`](reference-migration.md) | Keeps the adoption diff and public-to-ledger proof executable |
 | Operator-visible request explanation after adoption | [`docs/day-1-value.md`](day-1-value.md) | Keeps the value proof focused on headers, ledger, Playground, and Observability |
 | Public request/response boundary | [`docs/adoption-api-contract.md`](adoption-api-contract.md) | Prevents contract drift from being copied into walkthrough docs |
-| Tenant, policy, API-key, and operator runtime framing | [`docs/production-model.md`](production-model.md) | Prevents operating-model drift and preserves runtime-truth language |
 
 ## Minimal integrated walkthrough
 
 Use this concise path when you need the final integrated adoption proof in one sequence:
 
-1. Complete the supported self-hosted startup in [`docs/quickstart.md`](quickstart.md).
-2. Send one real public `POST /v1/chat/completions` request.
-3. Confirm the OpenAI-like response body and record `X-Request-ID` plus the public `X-Nebula-*` headers.
-4. Query or inspect `GET /v1/admin/usage/ledger` for the same request id.
-5. Optionally use [`docs/reference-migration.md`](reference-migration.md) to frame the same proof as a before/after caller migration.
-6. Use Playground only as admin-side corroboration, not as the adoption target.
-7. Finish in Observability to confirm the persisted explanation and dependency-health context.
+1. Use [`docs/production-model.md`](production-model.md) to choose tenant structure and decide whether callers should use tenant-scoped keys or intentionally multi-tenant keys.
+2. Complete the supported self-hosted startup in [`docs/quickstart.md`](quickstart.md).
+3. Send one real public `POST /v1/chat/completions` request.
+4. Add `X-Nebula-Tenant-ID` only when the API key is intentionally authorized for multiple tenants.
+5. Confirm the OpenAI-like response body and record `X-Request-ID` plus the public `X-Nebula-*` headers.
+6. Query or inspect `GET /v1/admin/usage/ledger` for the same request id.
+7. Optionally use [`docs/reference-migration.md`](reference-migration.md) to frame the same proof as a before/after caller migration.
+8. Use Playground only as admin-side corroboration, not as the adoption target.
+9. Finish in Observability to confirm the persisted explanation and dependency-health context.
 
 That is Nebula's canonical integrated adoption proof.
 
@@ -166,7 +198,11 @@ This walkthrough is useful because it makes adoption-story drift visible.
 
 The integrated proof has failed if any of these become true:
 
-- the public `POST /v1/chat/completions` request is no longer the first step
+- production structuring is no longer the explicit first step before the public request
+- tenants or API keys are no longer described as the enforced runtime boundary
+- app or workload labels are described as first-class Nebula runtime or admin entities
+- `X-Nebula-Tenant-ID` is described as always required instead of conditionally required for intentionally multi-tenant keys
+- the public `POST /v1/chat/completions` request is no longer the first runtime proof step
 - `X-Request-ID` is missing from the joined proof path
 - public `X-Nebula-*` headers are no longer treated as the first explainability surface
 - usage-ledger correlation is omitted or no longer lines up with the public request

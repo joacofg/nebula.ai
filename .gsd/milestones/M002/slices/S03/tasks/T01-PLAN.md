@@ -40,3 +40,9 @@ Make the final canonical walkthrough explicitly production-structuring-first. Th
 ## Expected Output
 
 - `docs/integrated-adoption-proof.md` — updated final walkthrough that explicitly composes production structuring, public proof, and operator corroboration in one ordered story.
+
+## Observability Impact
+
+- Signals preserved: the walkthrough should continue to point operators at the existing runtime-truth anchors — `X-Request-ID`, `X-Nebula-*` response headers, usage-ledger records, Playground request metadata, and Observability dependency-health context.
+- Future inspection path: a future agent should be able to read `docs/integrated-adoption-proof.md` and verify, in order, that production-structuring choices come first, the public request remains the first runtime proof, tenant-header guidance stays conditional, and Playground/Observability remain corroboration-only surfaces.
+- Failure visibility: regressions become visible as wording drift that treats app/workload as enforced objects, implies `X-Nebula-Tenant-ID` is always required, or moves Playground / Observability ahead of the public-request and usage-ledger proof steps.

@@ -36,7 +36,7 @@
 
 ## Tasks
 
-- [ ] **T01: Tighten the canonical integrated walkthrough** `est:40m`
+- [x] **T01: Tighten the canonical integrated walkthrough** `est:40m`
   - Why: S03 is the final assembly slice, so the first increment must make the end-to-end production-structuring story explicit in the canonical docs rather than leaving the operator to infer how the pieces fit together.
   - Files: `docs/integrated-adoption-proof.md`, `docs/production-model.md`, `docs/quickstart.md`, `docs/reference-migration.md`
   - Do: Update `docs/integrated-adoption-proof.md` so it clearly starts with tenant/API-key structuring grounded in `docs/production-model.md`, then walks the operator through the public request, conditional `X-Nebula-Tenant-ID` rule, usage-ledger correlation, Playground corroboration, and Observability corroboration without restating full contract/setup details from the canonicals.
