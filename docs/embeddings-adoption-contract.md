@@ -10,6 +10,8 @@ It is intentionally narrow. Every supported claim here is grounded in the curren
 
 If code, tests, and prose disagree, treat the tests and live behavior as authoritative and update this document.
 
+For a human-readable minimal-change caller walkthrough derived from the executable proof, see [`docs/embeddings-reference-migration.md`](embeddings-reference-migration.md). That guide is intentionally subordinate to this contract document and should not be treated as a broader compatibility surface.
+
 ## Scope and intent
 
 Nebula exposes an OpenAI-like embeddings surface for the currently shipped public adoption path, but it does **not** claim full OpenAI embeddings API parity.

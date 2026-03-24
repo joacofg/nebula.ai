@@ -40,6 +40,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
 - [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
 - [Embeddings adoption contract](docs/embeddings-adoption-contract.md): the canonical public `POST /v1/embeddings` boundary, supported evidence surface, and explicit exclusions
+- [Embeddings reference migration](docs/embeddings-reference-migration.md): the minimal-change before/after guide derived from `tests/test_embeddings_reference_migration.py`
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 

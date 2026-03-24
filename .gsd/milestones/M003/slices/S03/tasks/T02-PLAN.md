@@ -45,3 +45,9 @@ Turn the executable embeddings migration proof into the canonical human-readable
 - `docs/embeddings-adoption-contract.md` — updated pointer section or related-doc link to the migration guide.
 - `README.md` — updated documentation map if needed to surface the new guide.
 - `docs/architecture.md` — updated pointer-only discoverability link if needed.
+
+## Observability Impact
+
+- Signals preserved: the guide must point readers to the same public proof signals exercised by `tests/test_embeddings_reference_migration.py`, specifically `X-Request-ID`, the embeddings `X-Nebula-*` response headers, and `GET /v1/admin/usage/ledger?request_id=...`.
+- Inspection path for future agents: validate the human-readable guide against the executable proof test first, then confirm discoverability through pointer-only links in `docs/embeddings-adoption-contract.md`, `README.md`, and `docs/architecture.md`.
+- Failure visibility added by this task: documentation drift becomes locally diagnosable by the doc verification commands, especially missing guide sections, omitted proof headers, or broken discoverability links, without changing runtime behavior.
