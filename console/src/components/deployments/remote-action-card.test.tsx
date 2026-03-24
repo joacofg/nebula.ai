@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getBoundedActionAvailability } from "@/components/deployments/fleet-posture";
 import { RemoteActionCard } from "@/components/deployments/remote-action-card";
 import type { DeploymentRecord } from "@/lib/admin-api";
 import { getHostedContractContent } from "@/lib/hosted-contract";
@@ -155,6 +156,7 @@ describe("RemoteActionCard", () => {
     ];
 
     for (const testCase of cases) {
+      expect(getBoundedActionAvailability(testCase.deployment).disabledReason).toBe(testCase.reason);
       const { unmount } = renderWithProviders(<RemoteActionCard deployment={testCase.deployment} />, {
         adminKey: "nebula-admin-key",
       });

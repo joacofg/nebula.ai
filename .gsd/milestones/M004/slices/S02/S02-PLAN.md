@@ -37,7 +37,7 @@
 
 ## Tasks
 
-- [ ] **T01: Extract shared fleet posture and bounded-action derivation** `est:45m`
+- [x] **T01: Extract shared fleet posture and bounded-action derivation** `est:45m`
   - Why: S02's biggest risk is semantic drift: if the page summary, table, and remote-action card each derive posture differently, operators will see contradictory state and the hosted trust boundary will blur.
   - Files: `console/src/components/deployments/fleet-posture.ts`, `console/src/components/deployments/fleet-posture.test.ts`, `console/src/components/deployments/remote-action-card.tsx`, `console/src/components/deployments/remote-action-card.test.tsx`
   - Do: Add a pure helper module that maps `DeploymentRecord[]` into fleet posture counts and per-row interpretation details using existing enrollment, freshness, capability, and remote-action metadata only; extract shared bounded-action disabled-reason logic from `RemoteActionCard`; keep wording descriptive and aligned with the hosted contract rather than inventing new authority-leaning language.

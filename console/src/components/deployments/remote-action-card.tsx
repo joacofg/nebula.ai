@@ -9,6 +9,7 @@ import {
   type RemoteActionRecord,
   type RemoteActionStatus,
 } from "@/lib/admin-api";
+import { getBoundedActionAvailability } from "@/components/deployments/fleet-posture";
 import { getHostedContractContent } from "@/lib/hosted-contract";
 import { useAdminSession } from "@/lib/admin-session-provider";
 
@@ -31,28 +32,6 @@ type RemoteActionCardProps = {
   deployment: DeploymentRecord;
 };
 
-function getDisabledReason(deployment: DeploymentRecord): string | null {
-  if (deployment.enrollment_state !== "active") {
-    if (deployment.enrollment_state === "revoked") {
-      return "Rotation is unavailable because this hosted link has been revoked.";
-    }
-    if (deployment.enrollment_state === "unlinked") {
-      return "Rotation is unavailable because this deployment is no longer linked.";
-    }
-    return "Rotation is unavailable until this deployment finishes enrollment.";
-  }
-  if (deployment.freshness_status === "stale") {
-    return "Rotation is blocked because the deployment is stale and no longer trusted for remote changes.";
-  }
-  if (deployment.freshness_status === "offline") {
-    return "Rotation is blocked because the deployment is offline and cannot confirm credential handoff.";
-  }
-  if (!deployment.capability_flags.includes("remote_credential_rotation")) {
-    return "Rotation is unavailable because this deployment did not advertise remote credential rotation support.";
-  }
-  return null;
-}
-
 function formatStatusLabel(status: RemoteActionStatus) {
   return status.replace("_", " ");
 }
@@ -70,7 +49,7 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
   const [history, setHistory] = useState<RemoteActionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const disabledReason = getDisabledReason(deployment);
+  const { disabledReason } = getBoundedActionAvailability(deployment);
 
   useEffect(() => {
     if (!adminKey) {
