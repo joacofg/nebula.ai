@@ -51,7 +51,7 @@ This milestone is complete only when all are true:
 - [x] **S01: Public embeddings endpoint** `risk:high` `depends:[]`
   > After this: A client can send a strict happy-path authenticated `POST /v1/embeddings` request to Nebula and receive a usable embeddings response within the intended narrow contract.
 
-- [ ] **S02: Canonical embeddings contract docs** `risk:medium` `depends:[S01]`
+- [x] **S02: Canonical embeddings contract docs** `risk:medium` `depends:[S01]`
   > After this: One canonical doc defines the public embeddings boundary, supported behavior, and explicit exclusions, grounded in the real S01 runtime path.
 
 - [ ] **S03: Realistic migration proof** `risk:medium` `depends:[S01,S02]`
