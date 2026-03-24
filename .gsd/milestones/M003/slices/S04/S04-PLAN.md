@@ -49,7 +49,7 @@
   - Do: Update the shared ledger filter surface so embeddings is a first-class route-target option, keep the existing admin API query path unchanged, and add focused unit coverage that proves an operator can select embeddings filtering without widening the filter model or inventing a new admin endpoint.
   - Verify: `npm --prefix console run test -- --run src/components/ledger/ledger-filters.test.tsx`
   - Done when: the Observability filter controls can intentionally request embeddings rows through the existing usage-ledger API contract and the focused test locks that behavior.
-- [ ] **T02: Expose embeddings request explanation fields in the ledger detail surface** `est:55m`
+- [x] **T02: Expose embeddings request explanation fields in the ledger detail surface** `est:55m`
   - Why: Filtering to the right row is not enough; the selected row must show enough persisted metadata for an operator to explain the same embeddings request coherently.
   - Files: `console/src/components/ledger/ledger-request-detail.tsx`, `console/src/components/ledger/ledger-request-detail.test.tsx`, `console/src/components/ledger/ledger-table.tsx`, `console/src/components/ledger/ledger-table.test.tsx`, `console/src/lib/admin-api.ts`
   - Do: Expand the request-detail rendering to include the persisted identity/context fields most relevant to embeddings correlation — request id, tenant, route target, requested/response model, status, timestamp, provider, route reason, policy outcome, and existing fallback/cache/token metadata — while preserving the metadata-only boundary and keeping the ledger table aligned with row selection behavior.
