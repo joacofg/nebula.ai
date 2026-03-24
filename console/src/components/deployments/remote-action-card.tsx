@@ -91,7 +91,8 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
       setError("Enter a note between 1 and 280 characters.");
       return;
     }
-    if (!adminKey) {
+    const activeAdminKey = adminKey;
+    if (!activeAdminKey) {
       setError("Missing Nebula admin session.");
       return;
     }
@@ -110,7 +111,7 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
     setIsSubmitting(true);
     setError(null);
     try {
-      const queued = await queueRotateDeploymentCredential(adminKey, deployment.id, trimmedNote);
+      const queued = await queueRotateDeploymentCredential(activeAdminKey, deployment.id, trimmedNote);
       setHistory((current) => [queued, ...current.filter((row) => row.id !== queued.id)]);
       setNote("");
     } catch (queueError) {

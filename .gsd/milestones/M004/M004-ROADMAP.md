@@ -55,7 +55,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Fleet posture UX** `risk:high` `depends:[S01]`
   > After this: An operator can open the hosted console and immediately read fleet posture across deployments — linked vs pending, current vs stale/offline, bounded-action blocked states, and confidence cues — without mistaking hosted state for local runtime authority.
 
-- [ ] **S03: Confidence proof and trust walkthrough** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Confidence proof and trust walkthrough** `risk:medium` `depends:[S01,S02]`
   > After this: One integrated proof shows the hosted console reinforcing onboarding clarity and multi-deployment understanding while keeping local runtime enforcement authoritative.
 
 - [ ] **S04: Targeted reinforcement refinements** `risk:low` `depends:[S02,S03]`

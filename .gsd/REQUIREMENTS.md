@@ -13,29 +13,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M004/S01
 - Supporting slices: M004/S02, M004/S03
 - Validation: mapped
-- Notes: M004/S01 execution materially advanced this requirement: console/src/lib/hosted-contract.ts now centralizes allowed descriptive claims, prohibited authority claims, operator reading guidance, and bounded-action phrasing; those guardrails are rendered on the trust-boundary card/page and deployment-management surfaces, documented in docs/hosted-reinforcement-boundary.md, and locked by focused Vitest coverage plus backend contract checks run during task execution. Keep status active until S02/S03 prove the assembled hosted posture UX and integrated milestone behavior.
-
-### R037 — Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
-- Class: core-capability
-- Status: active
-- Description: Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
-- Why it matters: The milestone needs a believable proof story, not only a UX pass.
-- Source: user
-- Primary owning slice: M004/S03
-- Supporting slices: M004/S04
-- Validation: mapped
-- Notes: The proof should explicitly preserve the local-authority trust model and metadata-only hosted boundary.
-
-### R038 — The hosted experience gives operators more confidence because hosted statuses, freshness meaning, dependency summaries, and evidence framing are easier to interpret in context.
-- Class: differentiator
-- Status: active
-- Description: The hosted experience gives operators more confidence because hosted statuses, freshness meaning, dependency summaries, and evidence framing are easier to interpret in context.
-- Why it matters: The milestone objective is reinforcement: clearer, more confidence-building, and more useful for evaluators and operators.
-- Source: user
-- Primary owning slice: M004/S03
-- Supporting slices: M004/S02, M004/S04
-- Validation: mapped
-- Notes: Confidence must come from clearer interpretation, not from hidden authority or new hosted dependency.
+- Notes: S03 close-out revalidated that the assembled hosted trust walkthrough still derives wording from console/src/lib/hosted-contract.ts, keeps stale/offline and bounded-action interpretation descriptive only, and routes serving-time truth back to local runtime observability even in the integrated browser flow.
 
 ## Validated
 
@@ -248,6 +226,28 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: M004/S02 added a deployments-page fleet summary above the inventory table in console/src/app/(console)/deployments/page.tsx using console/src/components/deployments/fleet-posture-summary.tsx and shared posture derivation from fleet-posture.ts. The summary surfaces linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts with hosted-contract wording, and focused Vitest coverage passed in src/components/deployments/fleet-posture-summary.test.tsx plus the slice verification suite.
 - Notes: Validated for the multi-deployment hosted entrypoint case by adding fleet-level counts and summary guidance above the table, reducing the need to reconstruct posture from per-row inspection.
 
+### R037 — Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
+- Class: core-capability
+- Status: validated
+- Description: Nebula provides a canonical integrated proof showing how the hosted console reinforces onboarding clarity, fleet understanding, and operator confidence without becoming authoritative for local runtime enforcement.
+- Why it matters: The milestone needs a believable proof story, not only a UX pass.
+- Source: user
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S04
+- Validation: M004/S03 added the canonical hosted integrated proof in docs/hosted-integrated-adoption-proof.md, focused Vitest coverage for trust-boundary/deployments composition in console/src/app/trust-boundary/page.test.tsx, console/src/app/(console)/deployments/page.test.tsx, console/src/components/deployments/fleet-posture-summary.test.tsx, and console/src/components/deployments/remote-action-card.test.tsx, plus browser proof in console/e2e/trust-boundary.spec.ts and console/e2e/deployments-proof.spec.ts. Close-out reran npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx', npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts, /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q, and the required docs/source grep checks successfully. The integrated proof now shows hosted onboarding/fleet understanding reinforcement while explicitly preserving local runtime authority and metadata-only hosted scope.
+- Notes: Validated as a composition-first proof only: the hosted walkthrough reuses shared hosted-contract wording and existing deployments/trust-boundary surfaces rather than introducing new hosted authority or runtime control.
+
+### R038 — The hosted experience gives operators more confidence because hosted statuses, freshness meaning, dependency summaries, and evidence framing are easier to interpret in context.
+- Class: differentiator
+- Status: validated
+- Description: The hosted experience gives operators more confidence because hosted statuses, freshness meaning, dependency summaries, and evidence framing are easier to interpret in context.
+- Why it matters: The milestone objective is reinforcement: clearer, more confidence-building, and more useful for evaluators and operators.
+- Source: user
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S02, M004/S04
+- Validation: M004/S03 validated confidence-building hosted interpretation by assembling docs/hosted-integrated-adoption-proof.md with the real trust-boundary page, deployments fleet summary/table, drawer trust disclosure, dependency context, and bounded remote-action framing, then locking that interpretation through focused Vitest coverage and Playwright walkthrough proof. Verified by rerunning npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx', npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts, and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q. The passing proof demonstrates that hosted statuses, stale/offline meaning, bounded-action availability, and drawer-level evidence framing are easier to read in context without implying hosted serving-time authority.
+- Notes: Confidence is improved through clearer interpretation of existing metadata-backed facts: shared trust wording, freshness semantics, dependency context, and bounded-action framing remain descriptive and non-authoritative.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -292,7 +292,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M004/S01
 - Supporting slices: M004/S02, M004/S03, M004/S04
 - Validation: mapped via M004 planning, still deferred until execution proves the reinforcement path.
-- Notes: M004 is the dedicated milestone for this requirement. Must preserve the metadata-only trust boundary by default and keep local runtime enforcement authoritative.
+- Notes: M004/S03 materially advanced the deferred hosted-reinforcement requirement by providing the first canonical integrated proof and executable browser walkthrough for trust-boundary plus fleet-posture reinforcement, while still keeping the requirement deferred until milestone close-out confirms S04 refinements are unnecessary or complete.
 
 ### R025 — Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
 - Class: integration
@@ -523,8 +523,8 @@ This file is the explicit capability and coverage contract for the project.
 | R034 | constraint | active | M004/S01 | M004/S02, M004/S03 | mapped |
 | R035 | integration | validated | M004/S02 | M004/S03 | M004/S02 extracted bounded hosted action availability into console/src/components/deployments/fleet-posture.ts via getBoundedActionAvailability(), then reused that seam from console/src/components/deployments/remote-action-card.tsx and deployment-table.tsx. Passing focused Vitest coverage in src/components/deployments/fleet-posture.test.ts and remote-action-card.test.tsx proves hosted shows the one bounded remote action as available, blocked, or unavailable with explicit reasons for pending, stale, offline, revoked, unlinked, and unsupported deployments without implying broader authority. |
 | R036 | launchability | validated | M004/S02 | M004/S03 | M004/S02 added a deployments-page fleet summary above the inventory table in console/src/app/(console)/deployments/page.tsx using console/src/components/deployments/fleet-posture-summary.tsx and shared posture derivation from fleet-posture.ts. The summary surfaces linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts with hosted-contract wording, and focused Vitest coverage passed in src/components/deployments/fleet-posture-summary.test.tsx plus the slice verification suite. |
-| R037 | core-capability | active | M004/S03 | M004/S04 | mapped |
-| R038 | differentiator | active | M004/S03 | M004/S02, M004/S04 | mapped |
+| R037 | core-capability | validated | M004/S03 | M004/S04 | M004/S03 added the canonical hosted integrated proof in docs/hosted-integrated-adoption-proof.md, focused Vitest coverage for trust-boundary/deployments composition in console/src/app/trust-boundary/page.test.tsx, console/src/app/(console)/deployments/page.test.tsx, console/src/components/deployments/fleet-posture-summary.test.tsx, and console/src/components/deployments/remote-action-card.test.tsx, plus browser proof in console/e2e/trust-boundary.spec.ts and console/e2e/deployments-proof.spec.ts. Close-out reran npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx', npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts, /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q, and the required docs/source grep checks successfully. The integrated proof now shows hosted onboarding/fleet understanding reinforcement while explicitly preserving local runtime authority and metadata-only hosted scope. |
+| R038 | differentiator | validated | M004/S03 | M004/S02, M004/S04 | M004/S03 validated confidence-building hosted interpretation by assembling docs/hosted-integrated-adoption-proof.md with the real trust-boundary page, deployments fleet summary/table, drawer trust disclosure, dependency context, and bounded remote-action framing, then locking that interpretation through focused Vitest coverage and Playwright walkthrough proof. Verified by rerunning npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx', npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts, and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q. The passing proof demonstrates that hosted statuses, stale/offline meaning, bounded-action availability, and drawer-level evidence framing are easier to read in context without implying hosted serving-time authority. |
 | R039 | differentiator | deferred | none | none | unmapped |
 | R040 | integration | deferred | none | none | unmapped |
 | R041 | anti-feature | out-of-scope | none | none | n/a |
@@ -533,7 +533,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 3
-- Mapped to slices: 3
-- Validated: 19 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024, R032, R033, R035, R036)
+- Active requirements: 1
+- Mapped to slices: 1
+- Validated: 21 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024, R032, R033, R035, R036, R037, R038)
 - Unmapped active requirements: 0
