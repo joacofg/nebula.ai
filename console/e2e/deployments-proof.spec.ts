@@ -209,11 +209,8 @@ test("deployments walkthrough proves mixed fleet posture stays descriptive and b
   await expect(page.getByText(reinforcement.operatorReadingGuidance[0]).first()).toBeVisible();
   await expect(page.getByText(reinforcement.boundedActionPhrasing.label)).toBeVisible();
   await expect(page.getByText(reinforcement.boundedActionPhrasing.description).first()).toBeVisible();
-  await expect(
-    page.getByText(
-      "Hosted summaries here are metadata-backed and descriptive only. Use local runtime observability to confirm serving-time behavior before treating this deployment as healthy.",
-    ),
-  ).toBeVisible();
+  await expect(page.getByText(reinforcement.allowedDescriptiveClaims[0]).first()).toBeVisible();
+  await expect(page.getByText(reinforcement.operatorReadingGuidance[1]).first()).toBeVisible();
   await expect(page.getByText("Rotated after quarterly access review")).toBeVisible();
   await expect(page.getByText("Credential prefix: nbdc_prod_1234")).toBeVisible();
   await expect(

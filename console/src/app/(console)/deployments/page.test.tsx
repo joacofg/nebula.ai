@@ -132,14 +132,14 @@ describe("DeploymentsPage", () => {
     expect(screen.getByText("Deployment detail")).toBeInTheDocument();
     expect(screen.getByText("What this deployment shares")).toBeInTheDocument();
     expect(screen.getAllByText(reinforcement.operatorReadingGuidance[0]).length).toBeGreaterThan(0);
-    expect(screen.getByText(reinforcement.operatorReadingGuidance[2])).toBeInTheDocument();
+    expect(screen.getAllByText(reinforcement.operatorReadingGuidance[2]).length).toBeGreaterThan(0);
     expect(screen.getAllByText(reinforcement.boundedActionPhrasing.description).length).toBeGreaterThan(0);
     expect(
       screen.getByText(
         `${reinforcement.allowedDescriptiveClaims[0]} ${reinforcement.operatorReadingGuidance[2]}`,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
+    expect(screen.getAllByText(reinforcement.operatorReadingGuidance[1]).length).toBeGreaterThan(0);
     expect(screen.queryByText(/hosted plane serves traffic/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/broader remote control/i)).not.toBeInTheDocument();
   });

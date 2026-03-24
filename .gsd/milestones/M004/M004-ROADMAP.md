@@ -58,7 +58,7 @@ This milestone is complete only when all are true:
 - [x] **S03: Confidence proof and trust walkthrough** `risk:medium` `depends:[S01,S02]`
   > After this: One integrated proof shows the hosted console reinforcing onboarding clarity and multi-deployment understanding while keeping local runtime enforcement authoritative.
 
-- [ ] **S04: Targeted reinforcement refinements** `risk:low` `depends:[S02,S03]`
+- [x] **S04: Targeted reinforcement refinements** `risk:low` `depends:[S02,S03]`
   > After this: Any wording, evidence-mapping, or interpretation gaps found during the integrated proof are closed without widening hosted scope.
 
 ## Boundary Map

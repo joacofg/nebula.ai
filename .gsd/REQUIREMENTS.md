@@ -2,19 +2,6 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-## Active
-
-### R034 — Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
-- Class: constraint
-- Status: active
-- Description: Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
-- Why it matters: M004 fails if the hosted UX becomes clearer but also blurrier about authority.
-- Source: user
-- Primary owning slice: M004/S01
-- Supporting slices: M004/S02, M004/S03
-- Validation: mapped
-- Notes: S03 close-out revalidated that the assembled hosted trust walkthrough still derives wording from console/src/lib/hosted-contract.ts, keeps stale/offline and bounded-action interpretation descriptive only, and routes serving-time truth back to local runtime observability even in the integrated browser flow.
-
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -127,6 +114,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features.
 - Notes: Validated by the unsupported/deferred section in docs/adoption-api-contract.md and the focused tests that define the current boundary.
 
+### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Class: integration
+- Status: validated
+- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Why it matters: There may be adoption leverage here later, but it is not the core proof path for M001.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03, M004/S04
+- Validation: M004 execution now proves the hosted reinforcement path materially improves adoption and operator confidence without widening hosted authority: S01 established the shared trust-boundary contract, S02 delivered the metadata-backed fleet-posture UX, S03 added the canonical integrated proof, and S04 closed the remaining wording/evidence-mapping gaps and reran the full slice verification bar successfully (focused Vitest, Playwright trust-boundary + deployments proof, backend hosted guardrail pytest, and source/doc grep checks).
+- Notes: Validated at milestone close-out because the assembled hosted experience now improves onboarding clarity, multi-deployment fleet understanding, and bounded-action interpretation through descriptive metadata-backed surfaces only. S04 also removed the prior Playwright verification blocker by updating console/playwright.config.ts to start the Next standalone server correctly for output: standalone builds and ensuring static assets are available to the standalone server during e2e runs.
+
 ### R020 — Nebula exposes a real public `/v1/embeddings` path that a common OpenAI-style embeddings caller can target without broad contract ambiguity.
 - Class: primary-user-loop
 - Status: validated
@@ -203,6 +201,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M004/S04
 - Validation: M004/S02 made linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible in the deployments inventory by adding helper-derived posture labels/details and bounded-action summaries to console/src/components/deployments/deployment-table.tsx, backed by focused coverage in src/components/deployments/deployment-table.test.tsx and shared helper tests in src/components/deployments/fleet-posture.test.ts.
 - Notes: Validated by scan-time table cues plus shared posture derivation; operators no longer need drawer-only detail to distinguish enrollment/linkage/freshness/bounded-action states.
+
+### R034 — Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
+- Class: constraint
+- Status: validated
+- Description: Hosted posture summaries, trust-boundary wording, and any derived status language remain grounded in metadata-only facts that the hosted plane legitimately has, and they explicitly avoid implying authority over serving-time health, routing, fallback, or policy enforcement.
+- Why it matters: M004 fails if the hosted UX becomes clearer but also blurrier about authority.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03
+- Validation: M004/S04 closed the remaining wording/evidence-mapping gaps by keeping console/src/lib/hosted-contract.ts as the single trust-boundary wording authority, reusing its guidance in the deployments page, detail drawer, and bounded remote-action surfaces, and rerunning the full slice verification bar successfully: npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx'; npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts; /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q; and the required console/src+docs grep/artifact checks.
+- Notes: S04 also fixed the Playwright production-server path for Next standalone output by running the standalone server and copying .next/static into the standalone tree during e2e startup, so the real browser walkthrough now passes in this worktree instead of relying on prior slice evidence.
 
 ### R035 — The hosted console makes it obvious when the one bounded hosted remote action is available, blocked, or irrelevant, and explains why without implying that hosted has broader operational authority.
 - Class: integration
@@ -282,17 +291,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Explicitly avoid ecosystem explosion in M001 and M003.
-
-### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Class: integration
-- Status: deferred
-- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Why it matters: There may be adoption leverage here later, but it is not the core proof path for M001.
-- Source: user
-- Primary owning slice: M004/S01
-- Supporting slices: M004/S02, M004/S03, M004/S04
-- Validation: mapped via M004 planning, still deferred until execution proves the reinforcement path.
-- Notes: M004/S03 materially advanced the deferred hosted-reinforcement requirement by providing the first canonical integrated proof and executable browser walkthrough for trust-boundary plus fleet-posture reinforcement, while still keeping the requirement deferred until milestone close-out confirms S04 refinements are unnecessary or complete.
 
 ### R025 — Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
 - Class: integration
@@ -500,7 +498,7 @@ This file is the explicit capability and coverage contract for the project.
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
 | R012 | operability | deferred | M002/S02 | none | M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance. |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
-| R014 | integration | deferred | M004/S01 | M004/S02, M004/S03, M004/S04 | mapped via M004 planning, still deferred until execution proves the reinforcement path. |
+| R014 | integration | validated | M004/S01 | M004/S02, M004/S03, M004/S04 | M004 execution now proves the hosted reinforcement path materially improves adoption and operator confidence without widening hosted authority: S01 established the shared trust-boundary contract, S02 delivered the metadata-backed fleet-posture UX, S03 added the canonical integrated proof, and S04 closed the remaining wording/evidence-mapping gaps and reran the full slice verification bar successfully (focused Vitest, Playwright trust-boundary + deployments proof, backend hosted guardrail pytest, and source/doc grep checks). |
 | R015 | anti-feature | out-of-scope | none | none | n/a |
 | R016 | anti-feature | out-of-scope | none | none | n/a |
 | R017 | anti-feature | out-of-scope | none | none | n/a |
@@ -520,7 +518,7 @@ This file is the explicit capability and coverage contract for the project.
 | R031 | anti-feature | out-of-scope | none | none | n/a |
 | R032 | operability | validated | M004/S02 | M004/S01, M004/S03 | M004/S02 added a real hosted fleet-posture entry surface on the deployments page via console/src/components/deployments/fleet-posture.ts, fleet-posture-summary.tsx, and deployment-table.tsx. The shared helper derives linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts from existing DeploymentRecord metadata only, and focused Vitest coverage passed in src/components/deployments/fleet-posture.test.ts, fleet-posture-summary.test.tsx, deployment-table.test.tsx, remote-action-card.test.tsx, and src/lib/hosted-contract.test.ts. |
 | R033 | failure-visibility | validated | M004/S02 | M004/S04 | M004/S02 made linked, pending enrollment, stale, offline, revoked, unlinked, and bounded-action-blocked states legible in the deployments inventory by adding helper-derived posture labels/details and bounded-action summaries to console/src/components/deployments/deployment-table.tsx, backed by focused coverage in src/components/deployments/deployment-table.test.tsx and shared helper tests in src/components/deployments/fleet-posture.test.ts. |
-| R034 | constraint | active | M004/S01 | M004/S02, M004/S03 | mapped |
+| R034 | constraint | validated | M004/S01 | M004/S02, M004/S03 | M004/S04 closed the remaining wording/evidence-mapping gaps by keeping console/src/lib/hosted-contract.ts as the single trust-boundary wording authority, reusing its guidance in the deployments page, detail drawer, and bounded remote-action surfaces, and rerunning the full slice verification bar successfully: npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx'; npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts; /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q; and the required console/src+docs grep/artifact checks. |
 | R035 | integration | validated | M004/S02 | M004/S03 | M004/S02 extracted bounded hosted action availability into console/src/components/deployments/fleet-posture.ts via getBoundedActionAvailability(), then reused that seam from console/src/components/deployments/remote-action-card.tsx and deployment-table.tsx. Passing focused Vitest coverage in src/components/deployments/fleet-posture.test.ts and remote-action-card.test.tsx proves hosted shows the one bounded remote action as available, blocked, or unavailable with explicit reasons for pending, stale, offline, revoked, unlinked, and unsupported deployments without implying broader authority. |
 | R036 | launchability | validated | M004/S02 | M004/S03 | M004/S02 added a deployments-page fleet summary above the inventory table in console/src/app/(console)/deployments/page.tsx using console/src/components/deployments/fleet-posture-summary.tsx and shared posture derivation from fleet-posture.ts. The summary surfaces linked/current, pending enrollment, stale/offline visibility, and bounded-action-blocked counts with hosted-contract wording, and focused Vitest coverage passed in src/components/deployments/fleet-posture-summary.test.tsx plus the slice verification suite. |
 | R037 | core-capability | validated | M004/S03 | M004/S04 | M004/S03 added the canonical hosted integrated proof in docs/hosted-integrated-adoption-proof.md, focused Vitest coverage for trust-boundary/deployments composition in console/src/app/trust-boundary/page.test.tsx, console/src/app/(console)/deployments/page.test.tsx, console/src/components/deployments/fleet-posture-summary.test.tsx, and console/src/components/deployments/remote-action-card.test.tsx, plus browser proof in console/e2e/trust-boundary.spec.ts and console/e2e/deployments-proof.spec.ts. Close-out reran npm --prefix console run test -- --run src/lib/hosted-contract.test.ts src/app/trust-boundary/page.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/components/deployments/fleet-posture.test.ts src/components/deployments/fleet-posture-summary.test.tsx src/components/deployments/deployment-table.test.tsx src/components/deployments/remote-action-card.test.tsx 'src/app/(console)/deployments/page.test.tsx', npm --prefix console run e2e -- e2e/trust-boundary.spec.ts e2e/deployments-proof.spec.ts, /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_hosted_contract.py tests/test_remote_management_api.py -q, and the required docs/source grep checks successfully. The integrated proof now shows hosted onboarding/fleet understanding reinforcement while explicitly preserving local runtime authority and metadata-only hosted scope. |
@@ -533,7 +531,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 1
-- Mapped to slices: 1
-- Validated: 21 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024, R032, R033, R035, R036, R037, R038)
+- Active requirements: 0
+- Mapped to slices: 0
+- Validated: 23 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038)
 - Unmapped active requirements: 0
