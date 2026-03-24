@@ -54,7 +54,7 @@ This milestone is complete only when all are true:
 - [x] **S02: Canonical embeddings contract docs** `risk:medium` `depends:[S01]`
   > After this: One canonical doc defines the public embeddings boundary, supported behavior, and explicit exclusions, grounded in the real S01 runtime path.
 
-- [ ] **S03: Realistic migration proof** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: Realistic migration proof** `risk:medium` `depends:[S01,S02]`
   > After this: A believable OpenAI-style embeddings caller migration proves Nebula can replace a direct provider path with minimal caller changes.
 
 - [ ] **S04: Durable evidence correlation** `risk:medium` `depends:[S01,S03]`

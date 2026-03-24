@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R022 — Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
-- Class: core-capability
-- Status: active
-- Description: Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
-- Why it matters: Adoption trust comes from a believable migration move, not from abstract API claims.
-- Source: user
-- Primary owning slice: M003/S03
-- Supporting slices: M003/S05
-- Validation: mapped
-- Notes: The proof should be realistic and generic, not a toy example or a Nebula-specific workflow.
-
 ### R023 — The embeddings adoption path leaves enough durable evidence that a team can correlate a public request with backend/operator proof and explain the outcome.
 - Class: failure-visibility
 - Status: active
@@ -170,6 +159,17 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M003/S05
 - Validation: S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract.
 - Notes: Validated for the narrow public POST /v1/embeddings boundary only: X-Nebula-API-Key auth, model plus string-or-flat-list input, float-vector response shape, X-Request-ID/X-Nebula-* evidence headers, metadata-only /v1/admin/usage/ledger correlation, explicit 401/422/502 failure classes, and explicit unsupported/deferred edges including bearer auth, encoding_format, alternate encodings, and broader parity claims.
+
+### R022 — Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
+- Class: core-capability
+- Status: validated
+- Description: Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
+- Why it matters: Adoption trust comes from a believable migration move, not from abstract API claims.
+- Source: user
+- Primary owning slice: M003/S03
+- Supporting slices: M003/S05
+- Validation: S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks.
+- Notes: Validated for the narrow public POST /v1/embeddings path only. The proof explicitly excludes bearer auth, encoding_format, broader parity claims, helper SDK wrappers, and any persistence of raw input text or returned embedding vectors.
 
 ## Deferred
 
@@ -376,7 +376,7 @@ This file is the explicit capability and coverage contract for the project.
 | R019 | anti-feature | out-of-scope | none | none | n/a |
 | R020 | primary-user-loop | validated | M003/S01 | M003/S03 | M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches. |
 | R021 | constraint | validated | M003/S02 | M003/S05 | S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract. |
-| R022 | core-capability | active | M003/S03 | M003/S05 | mapped |
+| R022 | core-capability | validated | M003/S03 | M003/S05 | S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks. |
 | R023 | failure-visibility | active | M003/S04 | M003/S05 | mapped |
 | R024 | constraint | active | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | mapped |
 | R025 | integration | deferred | none | none | unmapped |
@@ -389,7 +389,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 3
-- Mapped to slices: 3
-- Validated: 12 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021)
+- Active requirements: 2
+- Mapped to slices: 2
+- Validated: 13 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022)
 - Unmapped active requirements: 0
