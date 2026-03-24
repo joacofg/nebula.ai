@@ -47,7 +47,7 @@
   - Do: Write `docs/embeddings-adoption-contract.md` using the chat contract doc as the structural pattern; document only the S01-proven embeddings scope, auth, request shape, response shape, response headers, evidence correlation, failure semantics, and explicit unsupported/deferred claims; include a local verification section that points to the focused embeddings tests and doc checks; keep wording narrow so the doc does not imply broader OpenAI embeddings parity.
   - Verify: `test -f docs/embeddings-adoption-contract.md && ! grep -q "TBD\|TODO" docs/embeddings-adoption-contract.md && [ "$(rg -c "^## " docs/embeddings-adoption-contract.md)" -ge 6 ] && rg -n "X-Nebula-API-Key|X-Request-ID|unsupported|deferred|/v1/admin/usage/ledger" docs/embeddings-adoption-contract.md`
   - Done when: `docs/embeddings-adoption-contract.md` is the only detailed embeddings contract file, it cites the runtime/test-backed boundary accurately, and it explicitly names both supported behavior and exclusions.
-- [ ] **T02: Link entry docs back to the canonical embeddings contract** `est:25m`
+- [x] **T02: Link entry docs back to the canonical embeddings contract** `est:25m`
   - Why: The contract only stays canonical if readers can discover it from the repo entry points without those entry docs becoming competing sources of truth.
   - Files: `README.md`, `docs/architecture.md`, `docs/embeddings-adoption-contract.md`
   - Do: Update `README.md` and `docs/architecture.md` to mention the narrow public embeddings surface and link to `docs/embeddings-adoption-contract.md`; keep these edits pointer-only by adding discoverability and endpoint inventory references rather than duplicating request/response details from the canonical doc.
