@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 class ChatMessage(BaseModel):
@@ -77,3 +77,57 @@ class ChatCompletionChunk(BaseModel):
     model: str
     choices: list[ChatCompletionChunkChoice]
     system_fingerprint: str | None = None
+
+
+class EmbeddingsRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: str = Field(min_length=1)
+    input: str | list[str]
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("model must not be blank")
+        return value
+
+    @field_validator("input")
+    @classmethod
+    def validate_input(cls, value: str | list[str]) -> str | list[str]:
+        if isinstance(value, str):
+            if not value.strip():
+                raise ValueError("input must not be blank")
+            return value
+
+        if not value:
+            raise ValueError("input list must not be empty")
+
+        normalized: list[str] = []
+        for item in value:
+            if isinstance(item, list):
+                raise ValueError("input must be a flat list of strings")
+            if not isinstance(item, str):
+                raise ValueError("input list must contain only strings")
+            if not item.strip():
+                raise ValueError("input list entries must not be blank")
+            normalized.append(item)
+        return normalized
+
+
+class EmbeddingData(BaseModel):
+    object: Literal["embedding"] = "embedding"
+    index: int
+    embedding: list[float]
+
+
+class EmbeddingsUsage(BaseModel):
+    prompt_tokens: int = 0
+    total_tokens: int = 0
+
+
+class EmbeddingsResponse(BaseModel):
+    object: Literal["list"] = "list"
+    data: list[EmbeddingData]
+    model: str
+    usage: EmbeddingsUsage = Field(default_factory=EmbeddingsUsage)

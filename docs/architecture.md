@@ -14,6 +14,8 @@ Nebula is a self-hosted gateway that routes LLM traffic across local, cached, fa
 4. The response returns route metadata in the `X-Nebula-*` header contract.
 5. Usage and outcome details are persisted so operators can inspect them later in the usage ledger and console.
 
+Nebula also exposes a narrow public embeddings surface at `POST /v1/embeddings`. The canonical request/response, evidence, and exclusion contract for that path lives in [`docs/embeddings-adoption-contract.md`](embeddings-adoption-contract.md); this architecture guide intentionally does not restate those details. For the minimal-change caller walkthrough that proves how an OpenAI-style embeddings integration moves onto that path, see [`docs/embeddings-reference-migration.md`](embeddings-reference-migration.md). For the joined final proof order from public request to `X-Request-ID`/`X-Nebula-*` headers to usage-ledger correlation and Observability corroboration, see [`docs/embeddings-integrated-adoption-proof.md`](embeddings-integrated-adoption-proof.md).
+
 ## Runtime components
 
 ### Gateway
@@ -94,6 +96,8 @@ Nebula's operator-facing proof depends on two views working together:
 
 - Playground shows immediate route, provider, fallback, and latency metadata for a live request
 - Observability shows dependency health and recorded usage-ledger evidence after the fact
+- Embeddings adopters should use the canonical [`docs/embeddings-adoption-contract.md`](embeddings-adoption-contract.md) when they need the exact `POST /v1/embeddings` evidence surface, supported behavior, and explicit exclusions
+- The pointer-only joined walkthrough in [`docs/embeddings-integrated-adoption-proof.md`](embeddings-integrated-adoption-proof.md) is the discoverability layer for following one embeddings request through public headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without redefining the contract
 
 That split matters: the immediate response proves what just happened, while the usage ledger proves what the system persisted and can explain later.
 

@@ -114,6 +114,61 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features.
 - Notes: Validated by the unsupported/deferred section in docs/adoption-api-contract.md and the focused tests that define the current boundary.
 
+### R020 — Nebula exposes a real public `/v1/embeddings` path that a common OpenAI-style embeddings caller can target without broad contract ambiguity.
+- Class: primary-user-loop
+- Status: validated
+- Description: Nebula exposes a real public `/v1/embeddings` path that a common OpenAI-style embeddings caller can target without broad contract ambiguity.
+- Why it matters: Chat-only adoption leaves a common high-demand surface uncovered; embeddings expands the adoption story without requiring a broader platform rewrite.
+- Source: user
+- Primary owning slice: M003/S01
+- Supporting slices: M003/S03
+- Validation: M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches.
+- Notes: Validated so far for the runtime happy path and durable request-ID correlation. S02-S04 still need to add the canonical docs, migration proof, and broader evidence assembly for the full milestone story.
+
+### R021 — Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
+- Class: constraint
+- Status: validated
+- Description: Nebula documents the supported embeddings boundary canonically, including what request shapes and response behavior are supported and what is intentionally out of scope.
+- Why it matters: A narrow embeddings promise only works if adopters can see the line clearly and do not infer broader parity than Nebula intends to support.
+- Source: user
+- Primary owning slice: M003/S02
+- Supporting slices: M003/S05
+- Validation: S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract.
+- Notes: Validated for the narrow public POST /v1/embeddings boundary only: X-Nebula-API-Key auth, model plus string-or-flat-list input, float-vector response shape, X-Request-ID/X-Nebula-* evidence headers, metadata-only /v1/admin/usage/ledger correlation, explicit 401/422/502 failure classes, and explicit unsupported/deferred edges including bearer auth, encoding_format, alternate encodings, and broader parity claims.
+
+### R022 — Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
+- Class: core-capability
+- Status: validated
+- Description: Nebula proves a realistic embeddings caller can switch from a direct provider path to Nebula with minimal caller changes.
+- Why it matters: Adoption trust comes from a believable migration move, not from abstract API claims.
+- Source: user
+- Primary owning slice: M003/S03
+- Supporting slices: M003/S05
+- Validation: S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks.
+- Notes: Validated for the narrow public POST /v1/embeddings path only. The proof explicitly excludes bearer auth, encoding_format, broader parity claims, helper SDK wrappers, and any persistence of raw input text or returned embedding vectors.
+
+### R023 — The embeddings adoption path leaves enough durable evidence that a team can correlate a public request with backend/operator proof and explain the outcome.
+- Class: failure-visibility
+- Status: validated
+- Description: The embeddings adoption path leaves enough durable evidence that a team can correlate a public request with backend/operator proof and explain the outcome.
+- Why it matters: Early trust depends on being able to validate and explain the behavior, especially when introducing a new public surface.
+- Source: inferred
+- Primary owning slice: M003/S04
+- Supporting slices: M003/S05
+- Validation: S04 proved that the same public POST /v1/embeddings request can be correlated through X-Request-ID and X-Nebula-* headers to a metadata-only usage-ledger row, then intentionally discovered and explained in Observability by filtering Route target = embeddings and inspecting persisted request/detail fields. Close-out reran /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py successfully; console source and Playwright proof files show embeddings-specific filter/detail/operator corroboration wiring, while local Vitest/Playwright execution remained partially blocked by missing console runners in this worktree.
+- Notes: Validated on the existing usage-ledger/admin API path only. The proof explicitly preserves the metadata-only boundary: no raw embeddings input text, returned vectors, new payload-capture fields, or new admin API family were introduced.
+
+### R024 — The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
+- Class: constraint
+- Status: validated
+- Description: The milestone widens Nebula's public adoption story without turning into broad parity work, SDK sprawl, major hosted-plane expansion, or unrelated infrastructure expansion.
+- Why it matters: The product value here is disciplined adoption proof; losing scope control would weaken the overall v3 strategy.
+- Source: user
+- Primary owning slice: M003/S05
+- Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
+- Validation: S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
+- Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -125,7 +180,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M002/S01
 - Supporting slices: M003/S01
 - Validation: unmapped
-- Notes: There is embeddings-related code in the repo, but not yet a committed public adoption surface.
+- Notes: Superseded in practice by the active M003 requirement set if this milestone completes, but kept here as historical planning context until execution proves the new path.
 
 ### R012 — App and workload concepts become more explicit in runtime or admin product surfaces beyond documentation and conceptual guidance.
 - Class: operability
@@ -147,7 +202,7 @@ This file is the explicit capability and coverage contract for the project.
 - Primary owning slice: M003/S01
 - Supporting slices: none
 - Validation: unmapped
-- Notes: Explicitly avoid ecosystem explosion in M001.
+- Notes: Explicitly avoid ecosystem explosion in M001 and M003.
 
 ### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
 - Class: integration
@@ -159,6 +214,39 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Must preserve the metadata-only trust boundary by default.
+
+### R025 — Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
+- Class: integration
+- Status: deferred
+- Description: Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
+- Why it matters: Some adopters may eventually expect deeper parity, but that would expand the maintenance contract before the narrow path is proven.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Keep deferred unless repeated demand shows a clear need.
+
+### R026 — Nebula provides dedicated helper artifacts around the embeddings adoption path rather than relying on existing compatible client patterns.
+- Class: admin/support
+- Status: deferred
+- Description: Nebula provides dedicated helper artifacts around the embeddings adoption path rather than relying on existing compatible client patterns.
+- Why it matters: Could reduce friction later, but pushes the product toward SDK surface expansion.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Only revisit if minimal-change migration proof proves insufficient without helper ergonomics.
+
+### R027 — Nebula adds embeddings-specific console or operator surfaces beyond the minimum durable evidence needed for adoption proof.
+- Class: operability
+- Status: deferred
+- Description: Nebula adds embeddings-specific console or operator surfaces beyond the minimum durable evidence needed for adoption proof.
+- Why it matters: There may be product value later, but it is not required for this milestone's narrow adoption goal.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Prefer backend/operator evidence reuse first.
 
 ## Out of Scope
 
@@ -217,6 +305,50 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: n/a
 - Notes: The adoption path should work first through existing OpenAI-compatible client patterns.
 
+### R028 — M003 does not become a broad OpenAI-surface expansion beyond the narrow embeddings adoption path.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not become a broad OpenAI-surface expansion beyond the narrow embeddings adoption path.
+- Why it matters: Prevents scope confusion and protects the v3 strategy from parity creep.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: The milestone should widen the story carefully, not chase general parity.
+
+### R029 — M003 does not introduce a broad SDK, wrapper, or helper-package expansion around embeddings adoption.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not introduce a broad SDK, wrapper, or helper-package expansion around embeddings adoption.
+- Why it matters: Prevents one narrow adoption milestone from turning into long-tail ecosystem maintenance.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Tiny proof-specific helper artifacts remain optional only if absolutely necessary.
+
+### R030 — M003 does not expand the hosted/control-plane beyond what directly reinforces the embeddings adoption proof.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not expand the hosted/control-plane beyond what directly reinforces the embeddings adoption proof.
+- Why it matters: Protects the metadata-only trust boundary and avoids misallocating effort.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Any hosted-plane change must justify itself through direct adoption-proof leverage.
+
+### R031 — M003 does not add infrastructure, platform, or operational work unless it directly improves the embeddings adoption story or proof.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M003 does not add infrastructure, platform, or operational work unless it directly improves the embeddings adoption story or proof.
+- Why it matters: Keeps the milestone from drifting into generalized engineering work instead of product adoption.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: The internal embeddings capability already exists; new infra should be treated as a smell unless directly justified.
+
 ## Traceability
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
@@ -240,10 +372,22 @@ This file is the explicit capability and coverage contract for the project.
 | R017 | anti-feature | out-of-scope | none | none | n/a |
 | R018 | anti-feature | out-of-scope | none | none | n/a |
 | R019 | anti-feature | out-of-scope | none | none | n/a |
+| R020 | primary-user-loop | validated | M003/S01 | M003/S03 | M003/S01 proved a real authenticated POST /v1/embeddings path with a strict narrow contract: string or flat list-of-strings input plus model, OpenAI-style float-vector responses, direct reuse of the existing tenant/API-key auth boundary, and passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding including explicit blank/upstream/empty-result branches. |
+| R021 | constraint | validated | M003/S02 | M003/S05 | S02 verified the canonical embeddings contract boundary with passing focused coverage in tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_service_flows.py -k embedding; confirmed docs/embeddings-adoption-contract.md exists with no TODO/TBD markers and >=6 sections; and confirmed README.md plus docs/architecture.md point readers back to the canonical file instead of restating the contract. |
+| R022 | core-capability | validated | M003/S03 | M003/S05 | S03 added the executable embeddings migration proof in tests/test_embeddings_reference_migration.py plus the canonical docs/embeddings-reference-migration.md guide, demonstrating that an OpenAI-style embeddings caller can switch to Nebula with minimal caller changes (base URL plus X-Nebula-API-Key via default headers, while keeping the same client.embeddings.create call shape) and correlate X-Request-ID/X-Nebula-* response headers to GET /v1/admin/usage/ledger metadata-only evidence. Close-out verification re-ran pytest tests/test_embeddings_reference_migration.py, tests/test_embeddings_api.py, tests/test_governance_api.py -k embeddings, and tests/test_embeddings_api.py -k upstream_failures successfully, plus migration-doc integrity/discoverability checks. |
+| R023 | failure-visibility | validated | M003/S04 | M003/S05 | S04 proved that the same public POST /v1/embeddings request can be correlated through X-Request-ID and X-Nebula-* headers to a metadata-only usage-ledger row, then intentionally discovered and explained in Observability by filtering Route target = embeddings and inspecting persisted request/detail fields. Close-out reran /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py and /Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py successfully; console source and Playwright proof files show embeddings-specific filter/detail/operator corroboration wiring, while local Vitest/Playwright execution remained partially blocked by missing console runners in this worktree. |
+| R024 | constraint | validated | M003/S05 | M003/S01, M003/S02, M003/S03, M003/S04 | S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work. |
+| R025 | integration | deferred | none | none | unmapped |
+| R026 | admin/support | deferred | none | none | unmapped |
+| R027 | operability | deferred | none | none | unmapped |
+| R028 | anti-feature | out-of-scope | none | none | n/a |
+| R029 | anti-feature | out-of-scope | none | none | n/a |
+| R030 | anti-feature | out-of-scope | none | none | n/a |
+| R031 | anti-feature | out-of-scope | none | none | n/a |
 
 ## Coverage Summary
 
 - Active requirements: 0
 - Mapped to slices: 0
-- Validated: 10 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010)
+- Validated: 15 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024)
 - Unmapped active requirements: 0

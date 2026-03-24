@@ -8,8 +8,16 @@ function boolLabel(value: boolean) {
   return value ? "Yes" : "No";
 }
 
-function displayValue(value: string | null) {
-  return value && value.trim().length > 0 ? value : "N/A";
+function valueOrFallback(value: string | null | undefined) {
+  return value && value.length > 0 ? value : "N/A";
+}
+
+function formatTimestamp(value: string) {
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) {
+    return value;
+  }
+  return timestamp.toLocaleString();
 }
 
 export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
@@ -28,11 +36,15 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">
+        <DetailRow label="Request ID" value={entry.request_id} mono />
+        <DetailRow label="Timestamp" value={formatTimestamp(entry.timestamp)} />
         <DetailRow label="Tenant" value={entry.tenant_id} mono />
         <DetailRow label="Route target" value={entry.final_route_target} />
-        <DetailRow label="Provider" value={displayValue(entry.final_provider)} />
-        <DetailRow label="Route reason" value={displayValue(entry.route_reason)} />
-        <DetailRow label="Policy outcome" value={displayValue(entry.policy_outcome)} />
+        <DetailRow label="Requested model" value={entry.requested_model} />
+        <DetailRow label="Response model" value={valueOrFallback(entry.response_model)} />
+        <DetailRow label="Provider" value={valueOrFallback(entry.final_provider)} />
+        <DetailRow label="Route reason" value={valueOrFallback(entry.route_reason)} />
+        <DetailRow label="Policy outcome" value={valueOrFallback(entry.policy_outcome)} />
         <DetailRow label="Fallback used" value={boolLabel(entry.fallback_used)} />
         <DetailRow label="Cache hit" value={boolLabel(entry.cache_hit)} />
         <DetailRow label="Terminal status" value={entry.terminal_status} />
