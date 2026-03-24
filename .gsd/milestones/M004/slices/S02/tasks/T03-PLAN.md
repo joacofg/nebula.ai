@@ -48,3 +48,9 @@ Upgrade the deployment inventory table so operators can understand each deployme
 - `console/src/components/deployments/deployment-status-badge.tsx` — reused or minimally adjusted badge support for the upgraded scan surface.
 - `console/src/app/(console)/deployments/page.tsx` — any necessary wiring updates to feed table posture data while preserving selection flow.
 - `console/src/components/deployments/fleet-posture.ts` — any small helper refinements needed to support final table rendering.
+
+## Observability Impact
+
+- Runtime signals: the inventory table should render helper-derived row posture labels, freshness interpretation, and bounded-action availability from `console/src/components/deployments/fleet-posture.ts` instead of ad hoc per-cell conditionals.
+- Inspection surfaces: future agents should inspect `console/src/components/deployments/deployment-table.tsx` for the scan-time row composition and `console/src/components/deployments/deployment-table.test.tsx` for explicit expectations around pending, linked, revoked, unlinked, stale/offline, and blocked states.
+- Failure visibility: regressions should fail in focused table tests that distinguish derivation-seam breakage from row-rendering drift, while preserving row-selection assertions so broken drawer-opening behavior remains visible.

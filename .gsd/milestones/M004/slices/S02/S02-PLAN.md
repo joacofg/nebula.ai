@@ -49,7 +49,7 @@
   - Do: Build a summary component that renders fleet posture cards or grouped cues for linked/current, pending enrollment, stale/offline visibility, and bounded-action blocked deployments; wire it into the deployments page using the shared posture helper and hosted-contract wording; keep the page copy explicit that hosted posture is metadata-backed and local runtime remains authoritative.
   - Verify: `npm --prefix console run test -- --run src/components/deployments/fleet-posture-summary.test.tsx src/lib/hosted-contract.test.ts`
   - Done when: the deployments page shows a trustworthy summary layer above the table and its explanatory text still comes from the shared hosted-contract seam.
-- [ ] **T03: Make deployment scan-time state legible in the inventory table** `est:45m`
+- [x] **T03: Make deployment scan-time state legible in the inventory table** `est:45m`
   - Why: The fleet summary alone is not enough; R033 and R035 also require operators to understand each deployment's state and bounded-action eligibility without opening the detail drawer for every row.
   - Files: `console/src/components/deployments/deployment-table.tsx`, `console/src/components/deployments/deployment-table.test.tsx`, `console/src/components/deployments/deployment-status-badge.tsx`, `console/src/app/(console)/deployments/page.tsx`, `console/src/components/deployments/fleet-posture.ts`
   - Do: Update the table to surface enrollment state plus a compact posture/action-status interpretation column or equivalent scan-friendly cues derived from the shared helper; preserve current selection/drawer behavior; keep the table from becoming a noisy operations dashboard by emphasizing legibility over extra telemetry.
