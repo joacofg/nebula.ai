@@ -53,7 +53,7 @@ PY`
 
 ## Tasks
 
-- [ ] **T01: Author the embeddings integrated adoption walkthrough** `est:45m`
+- [x] **T01: Author the embeddings integrated adoption walkthrough** `est:45m`
   - Why: S05's primary gap is the missing final assembly artifact that joins the already-shipped embeddings contract, migration proof, and durable evidence path into one credible narrow adoption story.
   - Files: `docs/embeddings-integrated-adoption-proof.md`, `docs/integrated-adoption-proof.md`, `docs/embeddings-adoption-contract.md`, `docs/embeddings-reference-migration.md`, `tests/test_embeddings_reference_migration.py`, `console/e2e/observability.spec.ts`
   - Do: Create `docs/embeddings-integrated-adoption-proof.md` using `docs/integrated-adoption-proof.md` as the structural precedent but keep it embeddings-specific; preserve the required proof order of public request -> response headers -> usage ledger -> Observability corroboration; explicitly say the contract doc remains canonical and the migration guide/test remain the proof source; include sections for what the walkthrough establishes, canonical proof order, minimal integrated walkthrough, what it intentionally does not duplicate, and failure modes that reveal scope drift under `R024`.
