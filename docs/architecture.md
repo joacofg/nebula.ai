@@ -55,6 +55,10 @@ The Next.js console is a separate service that proxies same-origin browser traff
 - usage-ledger inspection
 - runtime health and Observability views
 
+The Playground is intentionally distinct from the public `POST /v1/chat/completions` adoption contract. It is an admin-only inspection surface, not the public client integration path, and the tested milestone boundary keeps it non-streaming.
+
+For the canonical operator/application split and the current tenant-versus-app/workload model, see [production-model.md](production-model.md). For the supported first-request flow, see [quickstart.md](quickstart.md).
+
 ## Benchmark harness
 
 Nebula includes a repo-native benchmark harness in `src/nebula/benchmarking/run.py`. It runs versioned scenario datasets and writes:
@@ -121,4 +125,4 @@ That topology runs:
 - PostgreSQL
 - Qdrant
 
-See [self-hosting.md](self-hosting.md) for the canonical runbook.
+See [self-hosting.md](self-hosting.md) for the canonical runbook, [quickstart.md](quickstart.md) for the supported adoption flow, and [adoption-api-contract.md](adoption-api-contract.md) for the public `POST /v1/chat/completions` compatibility boundary.

@@ -149,7 +149,7 @@ function PlaygroundResponseCard({
   if (!result) {
     return (
       <div className="panel px-6 py-5 text-sm text-slate-500">
-        Submit a prompt to see the assistant response and request id.
+        Submit a prompt to see the assistant response, routing evidence, and request correlation id.
       </div>
     );
   }
@@ -164,11 +164,14 @@ function PlaygroundResponseCard({
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
       <PlaygroundMetadata
         requestId={result.requestId}
+        tenantId={result.tenantId}
         routeTarget={result.routeTarget}
+        routeReason={result.routeReason}
         provider={result.provider}
         cacheHit={result.cacheHit}
         fallbackUsed={result.fallbackUsed}
         latencyMs={result.latencyMs}
+        policyMode={result.policyMode}
         policyOutcome={result.policyOutcome}
       />
       {recordedOutcomeQuery.isLoading ? (

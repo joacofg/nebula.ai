@@ -102,7 +102,12 @@ describe("playground-page", () => {
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-123");
     });
+    expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
+    expect(screen.getAllByText("Route reason")).toHaveLength(2);
+    expect(await screen.findByText("Policy mode")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Recorded outcome" })).toBeInTheDocument();
     expect(await screen.findByText("Terminal status")).toBeInTheDocument();
+    expect(await screen.findByText("fallback_completed")).toBeInTheDocument();
   });
 
   it("keeps the immediate response visible while the ledger lookup is pending", async () => {
@@ -147,7 +152,7 @@ describe("playground-page", () => {
 
     expect(
       await screen.findByText(
-        "Persisted ledger record for the same request after Nebula finishes writing usage data.",
+        "Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome.",
       ),
     ).toBeInTheDocument();
   });
@@ -197,8 +202,11 @@ describe("playground-page", () => {
     await user.click(screen.getByRole("button", { name: "Run prompt" }));
 
     expect(await screen.findByText("Local provider failed.")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
+    expect(screen.getAllByText("local_provider_error_fallback")).toHaveLength(2);
+    expect(screen.getAllByText("allowed").length).toBeGreaterThanOrEqual(2);
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
     });
