@@ -23,6 +23,7 @@ import { CreateDeploymentSlotDrawer } from "@/components/deployments/create-depl
 import { DeploymentDetailDrawer } from "@/components/deployments/deployment-detail-drawer";
 import { DeploymentTable } from "@/components/deployments/deployment-table";
 import { EnrollmentTokenRevealDialog } from "@/components/deployments/enrollment-token-reveal-dialog";
+import { FleetPostureSummary } from "@/components/deployments/fleet-posture-summary";
 import { RevokeConfirmationDialog } from "@/components/deployments/revoke-confirmation-dialog";
 import { UnlinkConfirmationDialog } from "@/components/deployments/unlink-confirmation-dialog";
 
@@ -141,51 +142,57 @@ export default function DeploymentsPage() {
         </button>
       </header>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)]">
-        <div>
-          {deploymentsQuery.isLoading ? (
-            <div className="panel px-6 py-8 text-sm text-slate-500">
-              Loading deployment inventory...
-            </div>
-          ) : deploymentsQuery.isError ? (
-            <div className="panel border-rose-200 bg-rose-50 px-6 py-8 text-sm text-rose-900">
-              {deploymentsQuery.error instanceof Error
-                ? deploymentsQuery.error.message
-                : "Unable to load deployments."}
-            </div>
-          ) : (
-            <DeploymentTable
-              deployments={deploymentsQuery.data ?? []}
-              selectedDeploymentId={selectedDeploymentId}
-              onSelectDeployment={(deployment) => {
-                setSelectedDeploymentId(deployment.id);
-                setDrawerState({ mode: "detail", deployment });
-              }}
-            />
-          )}
-        </div>
-
-        {drawerState.mode === "create" ? (
-          <CreateDeploymentSlotDrawer
-            isSaving={createMutation.isPending}
-            onClose={() => {
-              if (selectedDeployment) {
-                setDrawerState({ mode: "detail", deployment: selectedDeployment });
-              }
-            }}
-            onSubmit={async (payload) => {
-              await createMutation.mutateAsync(payload);
-            }}
-          />
+      <div className="space-y-6">
+        {deploymentsQuery.isLoading ? (
+          <div className="panel px-6 py-8 text-sm text-slate-500">
+            Loading deployment inventory...
+          </div>
+        ) : deploymentsQuery.isError ? (
+          <div className="panel border-rose-200 bg-rose-50 px-6 py-8 text-sm text-rose-900">
+            {deploymentsQuery.error instanceof Error
+              ? deploymentsQuery.error.message
+              : "Unable to load deployments."}
+          </div>
         ) : (
-          <DeploymentDetailDrawer
-            deployment={selectedDeployment ?? drawerState.deployment}
-            isGeneratingToken={generateTokenMutation.isPending}
-            onGenerateToken={(deploymentId) => generateTokenMutation.mutate(deploymentId)}
-            onRequestRevoke={(deploymentId) => setRevokeTargetId(deploymentId)}
-            onRequestUnlink={(deploymentId) => setUnlinkTargetId(deploymentId)}
-            onClose={() => setDrawerState({ mode: "create" })}
-          />
+          <>
+            <FleetPostureSummary deployments={deploymentsQuery.data ?? []} />
+
+            <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)]">
+              <div>
+                <DeploymentTable
+                  deployments={deploymentsQuery.data ?? []}
+                  selectedDeploymentId={selectedDeploymentId}
+                  onSelectDeployment={(deployment) => {
+                    setSelectedDeploymentId(deployment.id);
+                    setDrawerState({ mode: "detail", deployment });
+                  }}
+                />
+              </div>
+
+              {drawerState.mode === "create" ? (
+                <CreateDeploymentSlotDrawer
+                  isSaving={createMutation.isPending}
+                  onClose={() => {
+                    if (selectedDeployment) {
+                      setDrawerState({ mode: "detail", deployment: selectedDeployment });
+                    }
+                  }}
+                  onSubmit={async (payload) => {
+                    await createMutation.mutateAsync(payload);
+                  }}
+                />
+              ) : (
+                <DeploymentDetailDrawer
+                  deployment={selectedDeployment ?? drawerState.deployment}
+                  isGeneratingToken={generateTokenMutation.isPending}
+                  onGenerateToken={(deploymentId) => generateTokenMutation.mutate(deploymentId)}
+                  onRequestRevoke={(deploymentId) => setRevokeTargetId(deploymentId)}
+                  onRequestUnlink={(deploymentId) => setUnlinkTargetId(deploymentId)}
+                  onClose={() => setDrawerState({ mode: "create" })}
+                />
+              )}
+            </div>
+          </>
         )}
       </div>
 

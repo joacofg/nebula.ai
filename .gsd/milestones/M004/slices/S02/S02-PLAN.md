@@ -43,7 +43,7 @@
   - Do: Add a pure helper module that maps `DeploymentRecord[]` into fleet posture counts and per-row interpretation details using existing enrollment, freshness, capability, and remote-action metadata only; extract shared bounded-action disabled-reason logic from `RemoteActionCard`; keep wording descriptive and aligned with the hosted contract rather than inventing new authority-leaning language.
   - Verify: `npm --prefix console run test -- --run src/components/deployments/fleet-posture.test.ts src/components/deployments/remote-action-card.test.tsx`
   - Done when: one shared helper produces the fleet posture model and bounded-action block reasons, and `RemoteActionCard` consumes it without changing the bounded hosted action scope.
-- [ ] **T02: Add the deployments fleet posture summary surface** `est:45m`
+- [x] **T02: Add the deployments fleet posture summary surface** `est:45m`
   - Why: R032 and R036 require an at-a-glance hosted reading surface at the page entrypoint; without a real summary above the table, operators still have to reconstruct fleet posture from row-by-row inspection.
   - Files: `console/src/components/deployments/fleet-posture-summary.tsx`, `console/src/components/deployments/fleet-posture-summary.test.tsx`, `console/src/app/(console)/deployments/page.tsx`, `console/src/lib/hosted-contract.ts`
   - Do: Build a summary component that renders fleet posture cards or grouped cues for linked/current, pending enrollment, stale/offline visibility, and bounded-action blocked deployments; wire it into the deployments page using the shared posture helper and hosted-contract wording; keep the page copy explicit that hosted posture is metadata-backed and local runtime remains authoritative.
