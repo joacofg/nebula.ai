@@ -9,6 +9,8 @@ import {
   type RemoteActionRecord,
   type RemoteActionStatus,
 } from "@/lib/admin-api";
+import { getBoundedActionAvailability } from "@/components/deployments/fleet-posture";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 import { useAdminSession } from "@/lib/admin-session-provider";
 
 const historyTimestampFormatter = new Intl.DateTimeFormat("en", {
@@ -30,28 +32,6 @@ type RemoteActionCardProps = {
   deployment: DeploymentRecord;
 };
 
-function getDisabledReason(deployment: DeploymentRecord): string | null {
-  if (deployment.enrollment_state !== "active") {
-    if (deployment.enrollment_state === "revoked") {
-      return "Rotation is unavailable because this hosted link has been revoked.";
-    }
-    if (deployment.enrollment_state === "unlinked") {
-      return "Rotation is unavailable because this deployment is no longer linked.";
-    }
-    return "Rotation is unavailable until this deployment finishes enrollment.";
-  }
-  if (deployment.freshness_status === "stale") {
-    return "Rotation is blocked because the deployment is stale and no longer trusted for remote changes.";
-  }
-  if (deployment.freshness_status === "offline") {
-    return "Rotation is blocked because the deployment is offline and cannot confirm credential handoff.";
-  }
-  if (!deployment.capability_flags.includes("remote_credential_rotation")) {
-    return "Rotation is unavailable because this deployment did not advertise remote credential rotation support.";
-  }
-  return null;
-}
-
 function formatStatusLabel(status: RemoteActionStatus) {
   return status.replace("_", " ");
 }
@@ -63,12 +43,13 @@ function formatTimestamp(value: string | null) {
 
 export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
   const { adminKey } = useAdminSession();
+  const { reinforcement } = getHostedContractContent();
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<RemoteActionRecord[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const disabledReason = getDisabledReason(deployment);
+  const { disabledReason } = getBoundedActionAvailability(deployment);
 
   useEffect(() => {
     if (!adminKey) {
@@ -76,12 +57,13 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
       return;
     }
 
+    const activeAdminKey = adminKey;
     let cancelled = false;
 
     async function loadHistory() {
       setIsLoadingHistory(true);
       try {
-        const rows = await listRemoteActions(adminKey, deployment.id);
+        const rows = await listRemoteActions(activeAdminKey, deployment.id);
         if (!cancelled) {
           setHistory(rows);
         }
@@ -109,7 +91,8 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
       setError("Enter a note between 1 and 280 characters.");
       return;
     }
-    if (!adminKey) {
+    const activeAdminKey = adminKey;
+    if (!activeAdminKey) {
       setError("Missing Nebula admin session.");
       return;
     }
@@ -128,7 +111,7 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
     setIsSubmitting(true);
     setError(null);
     try {
-      const queued = await queueRotateDeploymentCredential(adminKey, deployment.id, trimmedNote);
+      const queued = await queueRotateDeploymentCredential(activeAdminKey, deployment.id, trimmedNote);
       setHistory((current) => [queued, ...current.filter((row) => row.id !== queued.id)]);
       setNote("");
     } catch (queueError) {
@@ -146,8 +129,13 @@ export function RemoteActionCard({ deployment }: RemoteActionCardProps) {
         </div>
         <h4 className="mt-2 text-lg font-semibold text-slate-950">Rotate hosted-link credential</h4>
         <p className="mt-2 text-sm leading-6 text-slate-600">
-          This rotates the hosted-link credential only. It does not change serving traffic,
-          tenant policy, or provider credentials.
+          {reinforcement.boundedActionPhrasing.description}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {reinforcement.allowedDescriptiveClaims[0]} {reinforcement.operatorReadingGuidance[2]}
+        </p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">
+          {reinforcement.operatorReadingGuidance[1]}
         </p>
 
         <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50/80 p-3">

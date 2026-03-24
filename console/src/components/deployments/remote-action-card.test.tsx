@@ -2,8 +2,10 @@ import userEvent from "@testing-library/user-event";
 import { screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { getBoundedActionAvailability } from "@/components/deployments/fleet-posture";
 import { RemoteActionCard } from "@/components/deployments/remote-action-card";
 import type { DeploymentRecord } from "@/lib/admin-api";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 import { renderWithProviders } from "@/test/render";
 
 const baseDeployment: DeploymentRecord = {
@@ -32,8 +34,34 @@ function renderCard(deployment: DeploymentRecord = baseDeployment) {
 }
 
 describe("RemoteActionCard", () => {
+  const { reinforcement } = getHostedContractContent();
+
   afterEach(() => {
     vi.unstubAllGlobals();
+  });
+
+  it("renders bounded hosted wording without implying broader control", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify([]), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        }),
+      ),
+    );
+
+    renderCard();
+
+    expect(await screen.findByText("No remote actions recorded yet.")).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.boundedActionPhrasing.description)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        `${reinforcement.allowedDescriptiveClaims[0]} ${reinforcement.operatorReadingGuidance[2]}`,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
+    expect(screen.queryByText(/broader remote control/i)).not.toBeInTheDocument();
   });
 
   it("requires a 1-280 character note and only queues after confirmation", async () => {
@@ -91,9 +119,7 @@ describe("RemoteActionCard", () => {
       expect(fetchMock).toHaveBeenCalledTimes(2);
     });
     expect(confirmMock).toHaveBeenCalledTimes(2);
-    expect(
-      screen.getByText("Rotate after audit", { selector: "p" }),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Rotate after audit", { selector: "p" })).toBeInTheDocument();
   });
 
   it("fails closed for stale, offline, revoked, unlinked, and unsupported deployments", async () => {
@@ -105,31 +131,38 @@ describe("RemoteActionCard", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const cases: Array<{ deployment: DeploymentRecord; reason: string }> = [
+    const cases: Array<{ deployment: DeploymentRecord; reason: string; status: ReturnType<typeof getBoundedActionAvailability>["status"] }> = [
       {
         deployment: { ...baseDeployment, freshness_status: "stale" },
         reason: "Rotation is blocked because the deployment is stale and no longer trusted for remote changes.",
+        status: "blocked",
       },
       {
         deployment: { ...baseDeployment, freshness_status: "offline" },
         reason: "Rotation is blocked because the deployment is offline and cannot confirm credential handoff.",
+        status: "blocked",
       },
       {
         deployment: { ...baseDeployment, enrollment_state: "revoked" },
         reason: "Rotation is unavailable because this hosted link has been revoked.",
+        status: "unavailable",
       },
       {
         deployment: { ...baseDeployment, enrollment_state: "unlinked" },
         reason: "Rotation is unavailable because this deployment is no longer linked.",
+        status: "unavailable",
       },
       {
         deployment: { ...baseDeployment, capability_flags: [] },
         reason:
           "Rotation is unavailable because this deployment did not advertise remote credential rotation support.",
+        status: "unavailable",
       },
     ];
 
     for (const testCase of cases) {
+      expect(getBoundedActionAvailability(testCase.deployment).status).toBe(testCase.status);
+      expect(getBoundedActionAvailability(testCase.deployment).disabledReason).toBe(testCase.reason);
       const { unmount } = renderWithProviders(<RemoteActionCard deployment={testCase.deployment} />, {
         adminKey: "nebula-admin-key",
       });

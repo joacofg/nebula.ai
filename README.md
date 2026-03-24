@@ -37,8 +37,17 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 
 ## Documentation map
 
+- [Integrated adoption proof](docs/integrated-adoption-proof.md): canonical joined walkthrough from the first public request through `X-Nebula-*` / `X-Request-ID`, usage-ledger correlation, Playground corroboration, and Observability corroboration
+- [Quickstart](docs/quickstart.md): canonical happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
+- [Reference migration](docs/reference-migration.md): canonical before/after migration proof for moving an existing chat-completions caller onto Nebula with public-header and usage-ledger confirmation
+- [Day-1 value proof](docs/day-1-value.md): canonical walkthrough from public `X-Nebula-*` headers and `X-Request-ID` to Playground, persisted ledger evidence, and Observability health context
+- [Production model](docs/production-model.md): canonical operating-model reference for tenant, policy, API key, operator, and app/workload guidance
+- [Adoption API contract](docs/adoption-api-contract.md): the only canonical public compatibility boundary for `POST /v1/chat/completions`
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
 - [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
+- [Embeddings adoption contract](docs/embeddings-adoption-contract.md): the canonical public `POST /v1/embeddings` boundary, supported evidence surface, and explicit exclusions
+- [Embeddings reference migration](docs/embeddings-reference-migration.md): the minimal-change before/after guide derived from `tests/test_embeddings_reference_migration.py`
+- [Embeddings integrated adoption proof](docs/embeddings-integrated-adoption-proof.md): the pointer-only walkthrough that joins the public request, `X-Request-ID`/`X-Nebula-*` headers, usage-ledger correlation, and Observability corroboration into one review path
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 
@@ -47,6 +56,8 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 ### Supported self-hosted path
 
 Nebula's supported deployment path is the Compose stack documented in [docs/self-hosting.md](docs/self-hosting.md).
+
+For the end-to-end adoption flow after startup, use [docs/quickstart.md](docs/quickstart.md). If you are replacing an existing OpenAI-style caller, continue with [docs/reference-migration.md](docs/reference-migration.md) for the canonical before/after proof. For the operator-versus-application boundary, tenant model, and app/workload guidance, use [docs/production-model.md](docs/production-model.md).
 
 ```bash
 cp deploy/selfhosted.env.example deploy/selfhosted.env
@@ -121,9 +132,12 @@ The gateway and console use explicit bootstrap/admin credentials. In self-hosted
 
 The supported self-hosted environment template lives at `deploy/selfhosted.env.example`.
 
+Use [docs/quickstart.md](docs/quickstart.md) for the supported first-request flow, [docs/reference-migration.md](docs/reference-migration.md) for the canonical migration proof, and [docs/production-model.md](docs/production-model.md) for the current tenant, API-key, operator, app, and workload boundaries.
+
 ## Selected endpoints
 
-- `POST /v1/chat/completions`
+- `POST /v1/chat/completions` — public adoption path; see [docs/adoption-api-contract.md](docs/adoption-api-contract.md) for the supported boundary, [docs/reference-migration.md](docs/reference-migration.md) for the canonical migration proof, `X-Nebula-API-Key` auth contract, streaming behavior, and unsupported/deferred items
+- `POST /v1/embeddings` — public embeddings adoption path; see [docs/embeddings-adoption-contract.md](docs/embeddings-adoption-contract.md) for the canonical supported boundary and exclusions, and [docs/embeddings-integrated-adoption-proof.md](docs/embeddings-integrated-adoption-proof.md) for the joined public-response-to-ledger-to-Observability proof path
 - `GET /v1/admin/session`
 - `GET|PUT /v1/admin/tenants/{tenant_id}/policy`
 - `GET /v1/admin/usage/ledger`

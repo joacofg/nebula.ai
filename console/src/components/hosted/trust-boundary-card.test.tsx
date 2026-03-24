@@ -25,13 +25,50 @@ describe("TrustBoundaryCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders shared operator guidance and reinforcement guardrails", () => {
+    render(<TrustBoundaryCard />);
+
+    expect(
+      screen.getByRole("heading", { name: "Shared reading guidance" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Read hosted fleet posture as an operator summary derived from deployment metadata exports."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "Reinforcement guardrails" })
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hosted summaries are metadata-backed and descriptive only."
+      )
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hosted fleet posture describes what deployments most recently reported, not what the local runtime is enforcing right now."
+      )
+    ).toBeInTheDocument();
+  });
+
+  it("renders bounded action phrasing from the shared contract", () => {
+    render(<TrustBoundaryCard />);
+
+    expect(
+      screen.getByText("Audited credential rotation only")
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Deployment-bound hosted actions are limited to audited credential rotation and related status visibility; they never imply tenant-policy, routing, fallback, or provider-credential authority."
+      )
+    ).toBeInTheDocument();
+  });
+
   it("renders the freshness warning", () => {
     render(<TrustBoundaryCard />);
 
     expect(
-      screen.getByText(
-        "Hosted freshness is not local runtime authority."
-      )
+      screen.getByText("Hosted freshness is not local runtime authority.")
     ).toBeInTheDocument();
   });
 

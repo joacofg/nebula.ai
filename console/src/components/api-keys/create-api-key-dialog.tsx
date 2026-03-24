@@ -83,11 +83,18 @@ export function CreateApiKeyDialog({
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">New API key</div>
             <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
-              Issue a tenant-scoped key
+              Issue client credentials with tenant scope
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Creates a key through <span className="font-[var(--font-fira-code)]">{API_KEYS_ENDPOINT}</span> with
-              explicit <span className="font-[var(--font-fira-code)]">allowed_tenant_ids</span>.
+              Creates a client API key through <span className="font-[var(--font-fira-code)]">{API_KEYS_ENDPOINT}</span>.
+              {" "}Use <span className="font-[var(--font-fira-code)]">allowed_tenant_ids</span> to define every tenant the
+              key may access.
+            </p>
+            <p className="mt-2 text-sm text-slate-500">
+              Nebula resolves requests by honoring an explicit <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>
+              when it matches an allowed tenant; otherwise it falls back to <span className="font-[var(--font-fira-code)]">tenant_id</span>,
+              then to the only allowed tenant. If you authorize multiple tenants without a default
+              <span className="font-[var(--font-fira-code)]"> tenant_id</span>, public callers must send the tenant header.
             </p>
           </div>
           <button type="button" className="secondary-button px-3 py-2" onClick={onClose}>
@@ -130,11 +137,19 @@ export function CreateApiKeyDialog({
                 </option>
               ))}
             </select>
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Default tenant for callers that omit <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>.
+              Leave the key single-tenant or send the header when requests should resolve elsewhere.
+            </p>
           </div>
 
           <div>
             <span className="field-label">allowed_tenant_ids</span>
-            <div className="grid gap-2 rounded-2xl border border-border bg-slate-50 p-3 sm:grid-cols-2">
+            <p className="mt-2 text-xs leading-5 text-slate-500">
+              Every tenant this key may access. A single allowed tenant is inferred automatically; multiple
+              allowed tenants are an intentional multi-tenant authorization boundary.
+            </p>
+            <div className="mt-3 grid gap-2 rounded-2xl border border-border bg-slate-50 p-3 sm:grid-cols-2">
               {tenants.map((tenant) => (
                 <label key={tenant.id} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-800">
                   <input

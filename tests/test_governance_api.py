@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from nebula.models.governance import TenantPolicy
 from nebula.providers.base import CompletionResult
+from nebula.services.embeddings_service import EmbeddingsResult, EmbeddingVector
 from tests.support import (
     FakeCacheService,
     StubProvider,
@@ -140,8 +141,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     assert invalid.status_code == 401
     assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
-    assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
-    assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
+    assert authorized.json()["default_premium_model"] == "gpt-4o-mini"
+    assert "gpt-4o-mini" in authorized.json()["known_premium_models"]
     assert authorized.json()["runtime_enforced_fields"] == [
         "routing_mode_default",
         "allowed_premium_models",
@@ -223,13 +224,74 @@ def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None
             )
 
     body = ledger.json()
-    statuses = {(entry["terminal_status"], entry["final_route_target"]) for entry in body}
+    by_status = {entry["terminal_status"]: entry for entry in body}
 
     assert ledger.status_code == 200
-    assert ("completed", "local") in statuses
-    assert ("completed", "premium") in statuses
-    assert ("cache_hit", "cache") in statuses
-    assert ("fallback_completed", "premium") in statuses
+    assert by_status["completed"]["final_route_target"] == "local"
+    assert by_status["completed"]["final_provider"] == "ollama"
+    assert by_status["completed"]["fallback_used"] is False
+    assert by_status["completed"]["cache_hit"] is False
+    assert by_status["completed"]["policy_outcome"] == "default"
+
+    assert by_status["policy_denied"]["final_route_target"] == "denied"
+    assert by_status["policy_denied"]["route_reason"] == "explicit_premium_model"
+    assert by_status["policy_denied"]["policy_outcome"] == "Premium model 'openai/gpt-4o-mini' is not allowed for this tenant."
+
+    assert by_status["cache_hit"]["final_route_target"] == "cache"
+    assert by_status["cache_hit"]["final_provider"] == "cache"
+    assert by_status["cache_hit"]["route_reason"] == "cache_hit"
+    assert by_status["cache_hit"]["cache_hit"] is True
+    assert by_status["cache_hit"]["fallback_used"] is False
+    assert by_status["cache_hit"]["policy_outcome"] == "default"
+
+    assert by_status["fallback_completed"]["final_route_target"] == "premium"
+    assert by_status["fallback_completed"]["final_provider"] == "mock-premium"
+    assert by_status["fallback_completed"]["route_reason"] == "local_provider_error_fallback"
+    assert by_status["fallback_completed"]["fallback_used"] is True
+    assert by_status["fallback_completed"]["cache_hit"] is False
+    assert by_status["fallback_completed"]["policy_outcome"] == "default"
+
+
+def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            async def stub_create_embeddings(*, model: str, input: str | list[str]) -> EmbeddingsResult:
+                inputs = [input] if isinstance(input, str) else input
+                return EmbeddingsResult(
+                    model=model,
+                    data=[
+                        EmbeddingVector(index=index, embedding=[float(index), float(index) + 0.5])
+                        for index, _ in enumerate(inputs)
+                    ],
+                )
+
+            app.state.container.embeddings_service.create_embeddings = stub_create_embeddings
+            response = client.post(
+                "/v1/embeddings",
+                headers=auth_headers(),
+                json={"model": "nomic-embed-text", "input": ["first", "second"]},
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    assert request_id
+    assert ledger.status_code == 200
+    body = ledger.json()
+    assert len(body) == 1
+    assert body[0]["request_id"] == request_id
+    assert body[0]["tenant_id"] == "default"
+    assert body[0]["requested_model"] == "nomic-embed-text"
+    assert body[0]["final_route_target"] == "embeddings"
+    assert body[0]["final_provider"] == "ollama"
+    assert body[0]["terminal_status"] == "completed"
+    assert body[0]["route_reason"] == "embeddings_direct"
+    assert body[0]["policy_outcome"] == "embeddings=completed"
+    assert "input" not in body[0]
+    assert "embedding" not in body[0]
 
 
 def test_policy_can_block_premium_models_and_fallback() -> None:
@@ -413,6 +475,12 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
 
     assert denied.status_code == 403
     assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.headers["X-Nebula-Route-Target"] == "premium"
+    assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert denied.headers["X-Nebula-Provider"] == "policy"
     assert ledger.status_code == 200
     assert ledger.json()[0]["request_id"] == request_id
-    assert ledger.json()[0]["policy_outcome"] == "Request exceeds the tenant premium spend guardrail."
+    assert ledger.json()[0]["final_route_target"] == denied.headers["X-Nebula-Route-Target"]
+    assert ledger.json()[0]["final_provider"] == denied.headers["X-Nebula-Provider"]
+    assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
+    assert ledger.json()[0]["policy_outcome"] == denied.json()["detail"]

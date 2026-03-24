@@ -1,8 +1,13 @@
 import { getHostedContractContent } from "@/lib/hosted-contract";
 
 export function TrustBoundaryCard() {
-  const { defaultExportedData, excludedByDefault, freshnessStates, copy } =
-    getHostedContractContent();
+  const {
+    defaultExportedData,
+    excludedByDefault,
+    freshnessStates,
+    copy,
+    reinforcement,
+  } = getHostedContractContent();
 
   return (
     <section className="panel mx-auto max-w-2xl px-6 py-6 sm:px-8 sm:py-8">
@@ -25,6 +30,21 @@ export function TrustBoundaryCard() {
       </ul>
 
       <h3 className="mt-6 text-sm font-semibold text-slate-900">
+        Shared reading guidance
+      </h3>
+      <ul className="mt-2 grid gap-1.5">
+        {reinforcement.operatorReadingGuidance.map((guidance) => (
+          <li
+            key={guidance}
+            className="flex items-start gap-2 text-sm text-slate-700"
+          >
+            <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-emerald-500" />
+            <span>{guidance}</span>
+          </li>
+        ))}
+      </ul>
+
+      <h3 className="mt-6 text-sm font-semibold text-slate-900">
         Freshness states
       </h3>
       <ul className="mt-2 grid gap-1.5">
@@ -35,6 +55,30 @@ export function TrustBoundaryCard() {
           </li>
         ))}
       </ul>
+
+      <h3 className="mt-6 text-sm font-semibold text-slate-900">
+        Reinforcement guardrails
+      </h3>
+      <ul className="mt-2 grid gap-1.5">
+        {reinforcement.allowedDescriptiveClaims.map((claim) => (
+          <li
+            key={claim}
+            className="flex items-start gap-2 text-sm text-slate-700"
+          >
+            <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+            <span>{claim}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-6 rounded-xl border border-slate-200 bg-slate-50 px-4 py-4">
+        <p className="text-sm font-semibold text-slate-900">
+          {reinforcement.boundedActionPhrasing.label}
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">
+          {reinforcement.boundedActionPhrasing.description}
+        </p>
+      </div>
 
       <h3 className="mt-6 text-sm font-semibold text-slate-900">
         {copy.excludedHeading}

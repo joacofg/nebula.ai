@@ -6,6 +6,7 @@ import {
   getHostedContractContent,
   excludedByDefault,
   freshnessStates,
+  reinforcementContract,
 } from "@/lib/hosted-contract";
 
 // Load the canonical schema directly for parity assertions
@@ -86,6 +87,83 @@ describe("hosted-contract content module", () => {
     expect(content.copy.excludedHeading).toBe("Excluded by default");
     expect(content.copy.footnote).toBe(
       "Richer diagnostics must be operator-initiated exceptions to this default contract."
+    );
+  });
+
+  it("locks the hosted reinforcement vocabulary and authority guardrails", () => {
+    const content = getHostedContractContent();
+
+    expect(content.reinforcement).toEqual(reinforcementContract);
+    expect(content.reinforcement.allowedDescriptiveClaims).toEqual([
+      "Hosted summaries are metadata-backed and descriptive only.",
+      "Hosted fleet posture describes what deployments most recently reported, not what the local runtime is enforcing right now.",
+      "Hosted freshness indicates report recency, not serving-time health or request success.",
+      "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane.",
+      "Hosted remote actions stay bounded to audited deployment-credential rotation and related audit visibility.",
+    ]);
+    expect(content.reinforcement.prohibitedAuthorityClaims).toEqual([
+      "Do not say the hosted plane serves traffic or sits in the request-serving path.",
+      "Do not say the hosted plane has local runtime authority.",
+      "Do not say the hosted plane enforces tenant policy, routing, fallback, or provider selection.",
+      "Do not say the hosted plane holds provider credentials, raw prompts, raw responses, or tenant secrets by default.",
+      "Do not describe hosted freshness or fleet posture as authoritative health for serving traffic.",
+    ]);
+    expect(content.reinforcement.operatorReadingGuidance).toEqual([
+      "Read hosted fleet posture as an operator summary derived from deployment metadata exports.",
+      "Use freshness and dependency summaries to prioritize investigation, then confirm serving-time behavior from the local runtime and its observability surfaces.",
+      "Treat drawer-level freshness and dependency details as supporting evidence for that fleet posture summary, not as hosted authority over current runtime health.",
+      "Treat hosted remote-action availability as bounded operational assistance, not broad remote control.",
+    ]);
+    expect(content.reinforcement.boundedActionPhrasing).toEqual({
+      label: "Audited credential rotation only",
+      description:
+        "Deployment-bound hosted actions are limited to audited credential rotation and related status visibility; they never imply tenant-policy, routing, fallback, or provider-credential authority.",
+    });
+  });
+
+  it("fails fast if reinforcement guardrails drift away from required phrases", () => {
+    const content = getHostedContractContent();
+
+    expect(
+      content.reinforcement.allowedDescriptiveClaims.some((claim) =>
+        claim.includes("metadata-backed and descriptive only")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.allowedDescriptiveClaims.some((claim) =>
+        claim.includes("fleet posture")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.allowedDescriptiveClaims.some((claim) =>
+        claim.includes("freshness indicates report recency")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.prohibitedAuthorityClaims.some((claim) =>
+        claim.includes("request-serving path")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.prohibitedAuthorityClaims.some((claim) =>
+        claim.includes("local runtime authority")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.prohibitedAuthorityClaims.some((claim) =>
+        claim.includes("tenant policy, routing, fallback, or provider selection")
+      )
+    ).toBe(true);
+    expect(
+      content.reinforcement.operatorReadingGuidance.some((claim) =>
+        claim.includes("local runtime")
+      )
+    ).toBe(true);
+    expect(content.reinforcement.boundedActionPhrasing.label).toContain(
+      "credential rotation"
+    );
+    expect(content.reinforcement.boundedActionPhrasing.description).toContain(
+      "related status visibility"
     );
   });
 
