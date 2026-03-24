@@ -131,31 +131,37 @@ describe("RemoteActionCard", () => {
     );
     vi.stubGlobal("fetch", fetchMock);
 
-    const cases: Array<{ deployment: DeploymentRecord; reason: string }> = [
+    const cases: Array<{ deployment: DeploymentRecord; reason: string; status: ReturnType<typeof getBoundedActionAvailability>["status"] }> = [
       {
         deployment: { ...baseDeployment, freshness_status: "stale" },
         reason: "Rotation is blocked because the deployment is stale and no longer trusted for remote changes.",
+        status: "blocked",
       },
       {
         deployment: { ...baseDeployment, freshness_status: "offline" },
         reason: "Rotation is blocked because the deployment is offline and cannot confirm credential handoff.",
+        status: "blocked",
       },
       {
         deployment: { ...baseDeployment, enrollment_state: "revoked" },
         reason: "Rotation is unavailable because this hosted link has been revoked.",
+        status: "unavailable",
       },
       {
         deployment: { ...baseDeployment, enrollment_state: "unlinked" },
         reason: "Rotation is unavailable because this deployment is no longer linked.",
+        status: "unavailable",
       },
       {
         deployment: { ...baseDeployment, capability_flags: [] },
         reason:
           "Rotation is unavailable because this deployment did not advertise remote credential rotation support.",
+        status: "unavailable",
       },
     ];
 
     for (const testCase of cases) {
+      expect(getBoundedActionAvailability(testCase.deployment).status).toBe(testCase.status);
       expect(getBoundedActionAvailability(testCase.deployment).disabledReason).toBe(testCase.reason);
       const { unmount } = renderWithProviders(<RemoteActionCard deployment={testCase.deployment} />, {
         adminKey: "nebula-admin-key",

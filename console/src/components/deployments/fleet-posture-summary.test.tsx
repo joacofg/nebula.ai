@@ -67,6 +67,7 @@ describe("FleetPostureSummary", () => {
     expect(screen.getByText("Stale or offline visibility")).toBeInTheDocument();
     expect(screen.getByText("Bounded actions blocked")).toBeInTheDocument();
     expect(screen.getByText(reinforcement.allowedDescriptiveClaims[0])).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.allowedDescriptiveClaims[1])).toBeInTheDocument();
     expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
     expect(screen.getByText(reinforcement.boundedActionPhrasing.description)).toBeInTheDocument();
 
@@ -124,5 +125,26 @@ describe("FleetPostureSummary", () => {
     expect(
       screen.getByText(reinforcement.allowedDescriptiveClaims[1]),
     ).toBeInTheDocument();
+  });
+
+  it("keeps stale and offline caveats aligned with mixed-fleet interpretation guidance", () => {
+    render(
+      <FleetPostureSummary
+        deployments={[
+          baseDeployment,
+          { ...baseDeployment, id: "dep-stale-guidance", display_name: "Stale Guidance", freshness_status: "stale" },
+          { ...baseDeployment, id: "dep-offline-guidance", display_name: "Offline Guidance", freshness_status: "offline" },
+        ]}
+      />,
+    );
+
+    expect(
+      screen.getByText(
+        "Investigate stale or offline metadata visibility before trusting this hosted fleet posture as current.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[0])).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.operatorReadingGuidance[1])).toBeInTheDocument();
+    expect(screen.queryByText(/serving-time health/i)).not.toBeInTheDocument();
   });
 });

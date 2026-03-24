@@ -2,8 +2,11 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import TrustBoundaryPage from "@/app/trust-boundary/page";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 
 describe("TrustBoundaryPage", () => {
+  const { copy, reinforcement } = getHostedContractContent();
+
   it("renders the page heading", () => {
     render(<TrustBoundaryPage />);
     expect(
@@ -13,21 +16,9 @@ describe("TrustBoundaryPage", () => {
 
   it("renders shared canonical intro language", () => {
     render(<TrustBoundaryPage />);
-    expect(
-      screen.getAllByText(
-        "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane."
-      ).length
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(
-        "Hosted fleet posture describes what deployments most recently reported, not what the local runtime is enforcing right now."
-      ).length
-    ).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(
-        "If the hosted control plane is unreachable, Nebula keeps serving with local policy and local provider access. Hosted freshness simply ages toward stale or offline until heartbeats resume."
-      ).length
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(reinforcement.allowedDescriptiveClaims[3]).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(reinforcement.allowedDescriptiveClaims[1]).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(copy.outageBody).length).toBeGreaterThan(0);
   });
 
   it("renders Metadata-only by default", () => {
@@ -50,14 +41,8 @@ describe("TrustBoundaryPage", () => {
 
   it("renders the freshness warning and not-in-path statements", () => {
     render(<TrustBoundaryPage />);
-    expect(
-      screen.getByText("Hosted freshness is not local runtime authority.")
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Nebula's hosted control plane is not in the request-serving path."
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(copy.freshnessWarning)).toBeInTheDocument();
+    expect(screen.getByText(copy.notInPath)).toBeInTheDocument();
   });
 
   it("renders hosted fleet posture guidance and prohibited authority guardrails", () => {
@@ -65,50 +50,45 @@ describe("TrustBoundaryPage", () => {
     expect(
       screen.getByRole("heading", { name: "Hosted fleet posture guidance" })
     ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(
-        "Use freshness and dependency summaries to prioritize investigation, then confirm serving-time behavior from the local runtime and its observability surfaces."
-      ).length
-    ).toBeGreaterThan(0);
+    expect(screen.getAllByText(reinforcement.operatorReadingGuidance[1]).length).toBeGreaterThan(0);
     expect(
       screen.getAllByRole("heading", { name: "Reinforcement guardrails" }).length
     ).toBeGreaterThan(0);
-    expect(
-      screen.getByText(
-        "Do not say the hosted plane serves traffic or sits in the request-serving path."
-      )
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Do not say the hosted plane has local runtime authority."
-      )
-    ).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.prohibitedAuthorityClaims[0])).toBeInTheDocument();
+    expect(screen.getByText(reinforcement.prohibitedAuthorityClaims[1])).toBeInTheDocument();
   });
 
   it("renders the pilot onboarding, outage, and remote-management sections", () => {
     render(<TrustBoundaryPage />);
     expect(
-      screen.getByRole("heading", { name: "Pilot onboarding flow" })
+      screen.getByRole("heading", { name: copy.onboardingHeading })
+    ).toBeInTheDocument();
+    expect(screen.getByText(copy.onboardingBody)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: copy.outageHeading })
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Create a deployment slot in the hosted plane, exchange a short-lived enrollment token from the self-hosted gateway, then continue with a deployment-scoped hosted-link credential."
-      )
+      screen.getByRole("heading", { name: copy.remoteLimitsHeading })
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Hosted outage behavior" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("heading", { name: "Remote-management safety limits" })
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/v2.0 allows one audited rotate_deployment_credential action only\./)
-    ).toBeInTheDocument();
-    expect(
-      screen.getAllByText(
-        "Deployment-bound hosted actions are limited to audited credential rotation and related status visibility; they never imply tenant-policy, routing, fallback, or provider-credential authority."
-      ).length
-    ).toBeGreaterThan(0);
+    expect(screen.getByText(copy.remoteLimitsBody)).toBeInTheDocument();
+    expect(screen.getAllByText(reinforcement.boundedActionPhrasing.description).length).toBeGreaterThan(0);
+  });
+
+  it("renders the public trust walkthrough in canonical proof order", () => {
+    render(<TrustBoundaryPage />);
+
+    const introClaim = screen.getAllByText(reinforcement.allowedDescriptiveClaims[3])[0];
+    const fleetClaim = screen.getAllByText(reinforcement.allowedDescriptiveClaims[1])[0];
+    const cardHeading = screen.getByText(copy.heading);
+    const onboardingHeading = screen.getByRole("heading", { name: copy.onboardingHeading });
+    const guidanceHeading = screen.getByRole("heading", { name: "Hosted fleet posture guidance" });
+    const remoteLimitsHeading = screen.getByRole("heading", { name: copy.remoteLimitsHeading });
+
+    expect(introClaim.compareDocumentPosition(cardHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(fleetClaim.compareDocumentPosition(cardHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(cardHeading.compareDocumentPosition(onboardingHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(onboardingHeading.compareDocumentPosition(guidanceHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(guidanceHeading.compareDocumentPosition(remoteLimitsHeading)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
   });
 
   it("indicates the page is public", () => {

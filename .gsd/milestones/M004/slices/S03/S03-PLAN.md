@@ -46,7 +46,7 @@
   - Verify: `test -f docs/hosted-integrated-adoption-proof.md && rg -n "trust boundary|fleet posture|local runtime|bounded operational assistance|stale|offline|credential rotation" docs/hosted-integrated-adoption-proof.md docs/hosted-reinforcement-boundary.md`
   - Done when: `docs/hosted-integrated-adoption-proof.md` exists, is non-empty, and truthfully explains the integrated hosted walkthrough while explicitly preserving local runtime authority and metadata-only hosted scope.
 
-- [ ] **T02: Lock integrated hosted trust and evidence mapping in focused tests** `est:1h`
+- [x] **T02: Lock integrated hosted trust and evidence mapping in focused tests** `est:1h`
   - Why: The walkthrough only counts as canonical proof if code-level tests lock the public page, deployments entrypoint, and drawer-level hosted evidence story to the shared trust-boundary and fleet-posture seams.
   - Files: `console/src/app/(console)/deployments/page.test.tsx`, `console/src/components/deployments/fleet-posture-summary.test.tsx`, `console/src/components/deployments/remote-action-card.test.tsx`, `console/src/app/trust-boundary/page.test.tsx`, `console/src/lib/hosted-contract.ts`, `console/src/components/deployments/fleet-posture.ts`
   - Do: Add or extend focused Vitest coverage for the deployments page composition and any missing integrated assertions so the hosted walkthrough proves summary/table/drawer/trust-boundary alignment without snapshot sprawl; prefer asserting reuse of shared wording and helper-derived mixed-state semantics over large tree snapshots; keep the slice scoped to confidence-proof composition, not new mechanics.
