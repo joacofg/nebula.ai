@@ -294,6 +294,48 @@ def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
     assert "embedding" not in body[0]
 
 
+def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            async def stub_create_embeddings(*, model: str, input: str | list[str]) -> EmbeddingsResult:
+                inputs = [input] if isinstance(input, str) else input
+                return EmbeddingsResult(
+                    model=model,
+                    data=[
+                        EmbeddingVector(index=index, embedding=[float(index), float(index) + 0.5])
+                        for index, _ in enumerate(inputs)
+                    ],
+                )
+
+            app.state.container.embeddings_service.create_embeddings = stub_create_embeddings
+            response = client.post(
+                "/v1/embeddings",
+                headers=auth_headers(),
+                json={"model": "nomic-embed-text", "input": ["first", "second"]},
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    assert request_id
+    assert ledger.status_code == 200
+    body = ledger.json()
+    assert len(body) == 1
+    assert body[0]["request_id"] == request_id
+    assert body[0]["tenant_id"] == "default"
+    assert body[0]["requested_model"] == "nomic-embed-text"
+    assert body[0]["final_route_target"] == "embeddings"
+    assert body[0]["final_provider"] == "ollama"
+    assert body[0]["terminal_status"] == "completed"
+    assert body[0]["route_reason"] == "embeddings_direct"
+    assert body[0]["policy_outcome"] == "embeddings=completed"
+    assert "input" not in body[0]
+    assert "embedding" not in body[0]
+
+
 def test_policy_can_block_premium_models_and_fallback() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
