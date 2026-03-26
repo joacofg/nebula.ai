@@ -169,6 +169,162 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
 - Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
 
+### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Class: integration
+- Status: validated
+- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Why it matters: Hosted reinforcement is useful only if it strengthens onboarding and fleet understanding without weakening the local-authority trust boundary.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03, M004/S04
+- Validation: M004 validated the hosted reinforcement boundary, fleet-posture UX, integrated trust walkthrough, and close-out refinements while preserving metadata-only exports and local runtime authority.
+- Notes: Validated through `console/src/lib/hosted-contract.ts`, the deployments posture surfaces, `docs/hosted-reinforcement-boundary.md`, `docs/hosted-integrated-adoption-proof.md`, focused Vitest coverage, Playwright walkthroughs, and backend hosted-contract tests.
+
+### R032 — Hosted console gives a clear fleet posture view across linked deployments without implying hosted authority.
+- Class: operability
+- Status: validated
+- Description: Hosted console gives a clear fleet posture view across linked deployments without implying hosted authority.
+- Why it matters: Operators evaluating more than one deployment need posture synthesis, not just inventory, but the summary must stay descriptive.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03, M004/S04
+- Validation: M004 added a real fleet-posture summary and mixed-state interpretation surface on the deployments page, grounded in existing metadata and bounded-action semantics.
+- Notes: Validated by the shared fleet-posture derivation seam, summary/table tests, and integrated browser proof.
+
+### R033 — Operators can quickly distinguish linked, pending, stale, offline, and blocked deployment states from the hosted console.
+- Class: failure-visibility
+- Status: validated
+- Description: Operators can quickly distinguish linked, pending, stale, offline, and blocked deployment states from the hosted console.
+- Why it matters: Hosted reinforcement fails if operators have to infer posture by opening every deployment detail view.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: M004 encoded mixed-state fleet posture and bounded-action availability into page-level and row-level hosted surfaces.
+- Notes: Validated by focused tests on the deployments table, summary, and remote-action card plus the hosted deployments walkthrough.
+
+### R034 — Hosted fleet summaries stay grounded in metadata-only facts and explicitly avoid serving-time or policy authority claims.
+- Class: constraint
+- Status: validated
+- Description: Hosted fleet summaries stay grounded in metadata-only facts and explicitly avoid serving-time or policy authority claims.
+- Why it matters: Better hosted UX is harmful if it implies that hosted now certifies local runtime truth.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03, M004/S04
+- Validation: M004 centralized allowed descriptive claims, prohibited authority claims, and operator reading guidance into the hosted contract seam and reused that language across UI and docs.
+- Notes: Validated through shared wording reuse, grep/artifact checks, and integrated proof review.
+
+### R035 — Hosted console makes bounded hosted action availability and blocking reasons legible without implying broader remote control.
+- Class: operability
+- Status: validated
+- Description: Hosted console makes bounded hosted action availability and blocking reasons legible without implying broader remote control.
+- Why it matters: Remote actions can strengthen confidence only if their limits remain obvious.
+- Source: inferred
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S04
+- Validation: M004 reused a shared bounded-action availability seam across hosted surfaces and kept the action contract visibly narrow and fail-closed.
+- Notes: Validated by remote-action card tests, deployments interpretation coverage, and the trust-boundary wording.
+
+### R036 — Hosted onboarding and linkage state become easier to interpret for multi-deployment evaluators adopting Nebula across more than one deployment.
+- Class: admin/support
+- Status: validated
+- Description: Hosted onboarding and linkage state become easier to interpret for multi-deployment evaluators adopting Nebula across more than one deployment.
+- Why it matters: Hosted reinforcement should reduce evaluator confusion during rollout and linkage, not just display metadata.
+- Source: user
+- Primary owning slice: M004/S02
+- Supporting slices: M004/S03
+- Validation: M004 added a posture-first deployments experience that surfaces mixed-fleet linkage and freshness state without forcing operators into per-row reconstruction.
+- Notes: Validated by the top-of-page fleet summary and mixed-fleet integrated proof.
+
+### R037 — Nebula provides an integrated proof showing hosted surfaces reinforce adoption and operator confidence while local runtime enforcement remains authoritative.
+- Class: quality-attribute
+- Status: validated
+- Description: Nebula provides an integrated proof showing hosted surfaces reinforce adoption and operator confidence while local runtime enforcement remains authoritative.
+- Why it matters: Hosted reinforcement needs a joined story, not isolated UI claims.
+- Source: user
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S04
+- Validation: M004 delivered a canonical hosted integrated walkthrough plus browser verification that follows the public trust-boundary page into the authenticated hosted deployments posture flow.
+- Notes: Validated by `docs/hosted-integrated-adoption-proof.md`, hosted Playwright specs, and backend hosted-contract verification.
+
+### R038 — Hosted adoption reinforcement improves operator confidence through clearer status interpretation, freshness meaning, and evidence framing.
+- Class: differentiator
+- Status: validated
+- Description: Hosted adoption reinforcement improves operator confidence through clearer status interpretation, freshness meaning, and evidence framing.
+- Why it matters: The hosted plane should make Nebula easier to trust without becoming the source of truth.
+- Source: inferred
+- Primary owning slice: M004/S03
+- Supporting slices: M004/S04
+- Validation: M004 improved posture cues, freshness interpretation, and trust-boundary wording, then revalidated the assembled hosted story in close-out.
+- Notes: Validated by integrated proof artifacts and passing close-out verification.
+
+## Active
+
+### R039 — Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
+- Class: core-capability
+- Status: active
+- Description: Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
+- Why it matters: The current router is credible as a demo, but too shallow to be the center of a v4 control-plane story.
+- Source: user
+- Primary owning slice: M005/S01
+- Supporting slices: M005/S03
+- Validation: unmapped
+- Notes: Expected decision inputs include policy mode, model allowlist, provider health, budget state, historical outcome signals, and request complexity signals.
+
+### R040 — An operator can simulate a policy or routing change against real recent Nebula traffic before applying it.
+- Class: operability
+- Status: active
+- Description: An operator can simulate a policy or routing change against real recent Nebula traffic before applying it.
+- Why it matters: Policy changes are currently explicit but largely blind; v4 should reduce fear and guesswork.
+- Source: user
+- Primary owning slice: M005/S02
+- Supporting slices: M005/S05
+- Validation: unmapped
+- Notes: The simulation should reuse existing ledger evidence rather than introduce a parallel synthetic-only planning surface.
+
+### R041 — Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Class: integration
+- Status: active
+- Description: Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Why it matters: Real cost control needs enforceable behavior, not only operator interpretation after the fact.
+- Source: user
+- Primary owning slice: M005/S03
+- Supporting slices: M005/S01
+- Validation: unmapped
+- Notes: Hard limits should degrade or reroute requests intentionally rather than fail ambiguously whenever possible.
+
+### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Class: differentiator
+- Status: active
+- Description: Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Why it matters: Observability that only explains the past leaves too much operator work on the table.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S02, M005/S03
+- Validation: unmapped
+- Notes: Recommendations should stay grounded in existing metadata and decision logic, not opaque black-box scoring.
+
+### R043 — Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Class: operability
+- Status: active
+- Description: Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Why it matters: Cache value is central to Nebula's savings story, but the current product exposes almost no operator control or learning loop around it.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S05
+- Validation: unmapped
+- Notes: Threshold visibility, safe invalidation, and hit-quality evidence are stronger fits than a broad cache management subsystem.
+
+### R044 — v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
+- Class: constraint
+- Status: active
+- Description: v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
+- Why it matters: The strongest v4 wedge is decisioning; losing scope discipline would blur that advantage quickly.
+- Source: user
+- Primary owning slice: M005/S05
+- Supporting slices: M005/S01, M005/S02, M005/S03, M005/S04
+- Validation: unmapped
+- Notes: This is the main v4 anti-sprawl guardrail.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -203,17 +359,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Explicitly avoid ecosystem explosion in M001 and M003.
-
-### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Class: integration
-- Status: deferred
-- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Why it matters: There may be adoption leverage here later, but it is not the core proof path for M001.
-- Source: user
-- Primary owning slice: M004/S01
-- Supporting slices: none
-- Validation: unmapped
-- Notes: Must preserve the metadata-only trust boundary by default.
 
 ### R025 — Nebula supports embeddings options beyond the strict happy path public promise, such as broader optional parameter semantics or wider compatibility edges.
 - Class: integration
@@ -366,7 +511,7 @@ This file is the explicit capability and coverage contract for the project.
 | R011 | integration | deferred | M002/S01 | M003/S01 | unmapped |
 | R012 | operability | deferred | M002/S02 | none | M002/S02 added runtime-truth tenant-page, drawer, and table guidance plus passing focused vitest coverage proving operators can map app/workload concepts onto tenants and API keys without fake runtime entities, but it did not introduce first-class runtime or admin entities beyond conceptual guidance. |
 | R013 | admin/support | deferred | M003/S01 | none | unmapped |
-| R014 | integration | deferred | M004/S01 | none | unmapped |
+| R014 | integration | validated | M004/S01 | M004/S02, M004/S03, M004/S04 | M004 validated the hosted reinforcement boundary, fleet-posture UX, integrated trust walkthrough, and close-out refinements while preserving metadata-only exports and local runtime authority. |
 | R015 | anti-feature | out-of-scope | none | none | n/a |
 | R016 | anti-feature | out-of-scope | none | none | n/a |
 | R017 | anti-feature | out-of-scope | none | none | n/a |
@@ -384,10 +529,23 @@ This file is the explicit capability and coverage contract for the project.
 | R029 | anti-feature | out-of-scope | none | none | n/a |
 | R030 | anti-feature | out-of-scope | none | none | n/a |
 | R031 | anti-feature | out-of-scope | none | none | n/a |
+| R032 | operability | validated | M004/S02 | M004/S03, M004/S04 | M004 added a real fleet-posture summary and mixed-state interpretation surface on the deployments page, grounded in existing metadata and bounded-action semantics. |
+| R033 | failure-visibility | validated | M004/S02 | M004/S03 | M004 encoded mixed-state fleet posture and bounded-action availability into page-level and row-level hosted surfaces. |
+| R034 | constraint | validated | M004/S01 | M004/S02, M004/S03, M004/S04 | M004 centralized allowed descriptive claims, prohibited authority claims, and operator reading guidance into the hosted contract seam and reused that language across UI and docs. |
+| R035 | operability | validated | M004/S02 | M004/S04 | M004 reused a shared bounded-action availability seam across hosted surfaces and kept the action contract visibly narrow and fail-closed. |
+| R036 | admin/support | validated | M004/S02 | M004/S03 | M004 added a posture-first deployments experience that surfaces mixed-fleet linkage and freshness state without forcing operators into per-row reconstruction. |
+| R037 | quality-attribute | validated | M004/S03 | M004/S04 | M004 delivered a canonical hosted integrated walkthrough plus browser verification that follows the public trust-boundary page into the authenticated hosted deployments posture flow. |
+| R038 | differentiator | validated | M004/S03 | M004/S04 | M004 improved posture cues, freshness interpretation, and trust-boundary wording, then revalidated the assembled hosted story in close-out. |
+| R039 | core-capability | active | M005/S01 | M005/S03 | unmapped |
+| R040 | operability | active | M005/S02 | M005/S05 | unmapped |
+| R041 | integration | active | M005/S03 | M005/S01 | unmapped |
+| R042 | differentiator | active | M005/S04 | M005/S02, M005/S03 | unmapped |
+| R043 | operability | active | M005/S04 | M005/S05 | unmapped |
+| R044 | constraint | active | M005/S05 | M005/S01, M005/S02, M005/S03, M005/S04 | unmapped |
 
 ## Coverage Summary
 
-- Active requirements: 0
-- Mapped to slices: 0
-- Validated: 15 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R020, R021, R022, R023, R024)
+- Active requirements: 6
+- Mapped to slices: 6
+- Validated: 23 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038)
 - Unmapped active requirements: 0
