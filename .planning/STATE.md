@@ -4,8 +4,8 @@ milestone: none
 milestone_name: none
 current_plan: none
 status: archived
-stopped_at: Archived v2.0 milestone
-last_updated: "2026-03-23T19:15:00.000Z"
+stopped_at: Integrated v3.0 (M001-M003) into main
+last_updated: "2026-03-26T00:00:00.000Z"
 progress:
   total_phases: 0
   completed_phases: 0
@@ -20,7 +20,7 @@ progress:
 See: .planning/PROJECT.md (updated 2026-03-23)
 
 **Core value:** Reduce cost per successful LLM request while preserving reliability, control, and operator visibility.
-**Current focus:** No active milestone
+**Current focus:** v3.0 integrated; ready for v4.0
 
 ## Current Position
 
