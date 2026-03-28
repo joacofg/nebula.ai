@@ -6,6 +6,8 @@ export type TenantPolicy = {
   routing_mode_default: RoutingMode;
   allowed_premium_models: string[];
   semantic_cache_enabled: boolean;
+  semantic_cache_similarity_threshold: number;
+  semantic_cache_max_entry_age_hours: number;
   fallback_enabled: boolean;
   max_premium_cost_per_request: number | null;
   hard_budget_limit_usd: number | null;

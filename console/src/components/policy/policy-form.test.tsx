@@ -12,6 +12,8 @@ const baseSimulationResult: PolicySimulationResponse = {
     routing_mode_default: "premium_only",
     fallback_enabled: false,
     semantic_cache_enabled: true,
+    semantic_cache_similarity_threshold: 0.9,
+    semantic_cache_max_entry_age_hours: 168,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: 0.5,
     hard_budget_limit_usd: 10,
@@ -71,6 +73,8 @@ function renderPolicyForm({
         routing_mode_default: "auto",
         fallback_enabled: true,
         semantic_cache_enabled: true,
+        semantic_cache_similarity_threshold: 0.9,
+        semantic_cache_max_entry_age_hours: 168,
         allowed_premium_models: ["openai/gpt-4o-mini"],
         max_premium_cost_per_request: null,
         hard_budget_limit_usd: null,
@@ -87,6 +91,8 @@ function renderPolicyForm({
           "routing_mode_default",
           "allowed_premium_models",
           "semantic_cache_enabled",
+          "semantic_cache_similarity_threshold",
+          "semantic_cache_max_entry_age_hours",
           "fallback_enabled",
           "max_premium_cost_per_request",
           "hard_budget_limit_usd",
@@ -123,6 +129,10 @@ describe("policy-form", () => {
 
     await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
     await userEvent.click(screen.getByRole("checkbox", { name: "Fallback enabled" }));
+    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
+    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.82");
+    await userEvent.clear(screen.getByLabelText("Semantic cache max entry age hours"));
+    await userEvent.type(screen.getByLabelText("Semantic cache max entry age hours"), "48");
     await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
 
     await waitFor(() => {
@@ -130,6 +140,8 @@ describe("policy-form", () => {
         expect.objectContaining({
           routing_mode_default: "premium_only",
           fallback_enabled: false,
+          semantic_cache_similarity_threshold: 0.82,
+          semantic_cache_max_entry_age_hours: 48,
         }),
       );
     });
@@ -142,6 +154,8 @@ describe("policy-form", () => {
 
     await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
     await userEvent.click(screen.getByRole("checkbox", { name: "Fallback enabled" }));
+    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
+    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.88");
     await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
 
     await waitFor(() => {
@@ -149,6 +163,7 @@ describe("policy-form", () => {
         expect.objectContaining({
           routing_mode_default: "premium_only",
           fallback_enabled: false,
+          semantic_cache_similarity_threshold: 0.88,
         }),
       );
     });
@@ -202,6 +217,8 @@ describe("policy-form", () => {
           routing_mode_default: "auto",
           fallback_enabled: true,
           semantic_cache_enabled: true,
+          semantic_cache_similarity_threshold: 0.9,
+          semantic_cache_max_entry_age_hours: 168,
           allowed_premium_models: ["openai/gpt-4o-mini"],
           max_premium_cost_per_request: null,
           hard_budget_limit_usd: null,
@@ -218,6 +235,8 @@ describe("policy-form", () => {
             "routing_mode_default",
             "allowed_premium_models",
             "semantic_cache_enabled",
+            "semantic_cache_similarity_threshold",
+            "semantic_cache_max_entry_age_hours",
             "fallback_enabled",
             "max_premium_cost_per_request",
           ],
@@ -244,6 +263,8 @@ describe("policy-form", () => {
     expect(runtimeSection).toHaveTextContent("Routing mode");
     expect(runtimeSection).toHaveTextContent("Fallback enabled");
     expect(runtimeSection).toHaveTextContent("Semantic cache enabled");
+    expect(runtimeSection).toHaveTextContent("Semantic cache similarity threshold");
+    expect(runtimeSection).toHaveTextContent("Semantic cache max entry age hours");
     expect(runtimeSection).toHaveTextContent("Premium model allowlist");
     expect(runtimeSection).toHaveTextContent("Max premium cost per request");
     expect(runtimeSection).toHaveTextContent("Hard cumulative budget limit USD");
@@ -254,6 +275,15 @@ describe("policy-form", () => {
     );
     expect(runtimeSection).toHaveTextContent(
       "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Higher values require a closer semantic match before Nebula reuses a cached response.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.",
     );
     expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
 
@@ -268,6 +298,20 @@ describe("policy-form", () => {
         "Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("blocks save when cache tuning values are outside the enforced bounds", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
+    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "1.2");
+    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    expect(
+      await screen.findByText("Semantic cache similarity threshold must be between 0 and 1."),
+    ).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("disables hard-budget enforcement selection until a hard limit is configured", async () => {

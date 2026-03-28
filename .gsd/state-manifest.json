@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T04:01:28.770Z",
+  "exported_at": "2026-03-28T04:10:50.118Z",
   "milestones": [
     {
       "id": "M001",
@@ -2553,19 +2553,32 @@
       "milestone_id": "M005",
       "slice_id": "S04",
       "id": "T03",
-      "title": "Render observability recommendations and cache controls in existing operator surfaces",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.",
+      "status": "complete",
+      "one_liner": "Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.",
+      "narrative": "Updated the console observability page to fetch tenant recommendations together with usage-ledger and runtime-health data, then render bounded recommendation cards and cache-effectiveness context with explicit wording that the guidance comes from recent ledger-backed traffic plus supporting runtime context rather than black-box optimization. Kept cache tuning inspection-only on the observability page and confined editing to the existing policy editor. Extended the shared console TenantPolicy contract with semantic cache similarity threshold and max entry age fields, added a dedicated tenant recommendations query key, and updated the policy form so semantic-cache controls remain inside runtime-enforced controls with explicit preview/save semantics and bound validation. Refreshed focused Vitest coverage for observability and policy surfaces to assert recommendation framing, cache insight visibility, typed preview/save payloads, and invalid cache tuning behavior.",
+      "verification_result": "Ran `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` three times. The first run failed due to async observability test timing and a test-file syntax regression introduced during editing. The second run narrowed the remaining issue to a duplicate `168 hours` assertion in observability coverage. The final rerun passed all 14 tests across the four targeted files, proving recommendation cards, cache insight context, and cache-control save/preview semantics render on the intended surfaces.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-03-28T04:10:50.097Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Added `console/src/lib/query-keys.ts` and extended `console/src/lib/admin-api.ts` beyond the listed output files so the tenant recommendation query remained isolated and the console TenantPolicy contract matched the backend cache-tuning fields introduced earlier in the slice.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/lib/admin-api.ts",
+        "console/src/lib/query-keys.ts",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        ".gsd/milestones/M005/slices/S04/tasks/T03-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Kept recommendation rendering inside the existing Observability page and made cache tuning inspection-only there, with editing confined to the existing policy save/preview flow.",
+        "Extended the shared console TenantPolicy contract with the two backend cache-tuning knobs so preview and save semantics stay typed end to end instead of relying on ad-hoc UI state."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S04\nmilestone: M005\nkey_files:\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/components/policy/policy-form.tsx\n  - console/src/lib/admin-api.ts\n  - console/src/lib/query-keys.ts\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - console/src/components/policy/policy-form.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/milestones/M005/slices/S04/tasks/T03-SUMMARY.md\nkey_decisions:\n  - Kept recommendation rendering inside the existing Observability page and made cache tuning inspection-only there, with editing confined to the existing policy save/preview flow.\n  - Extended the shared console TenantPolicy contract with the two backend cache-tuning knobs so preview and save semantics stay typed end to end instead of relying on ad-hoc UI state.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-03-28T04:10:50.098Z\nblocker_discovered: false\n---\n\n# T03: Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.\n\n**Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.**\n\n## What Happened\n\nUpdated the console observability page to fetch tenant recommendations together with usage-ledger and runtime-health data, then render bounded recommendation cards and cache-effectiveness context with explicit wording that the guidance comes from recent ledger-backed traffic plus supporting runtime context rather than black-box optimization. Kept cache tuning inspection-only on the observability page and confined editing to the existing policy editor. Extended the shared console TenantPolicy contract with semantic cache similarity threshold and max entry age fields, added a dedicated tenant recommendations query key, and updated the policy form so semantic-cache controls remain inside runtime-enforced controls with explicit preview/save semantics and bound validation. Refreshed focused Vitest coverage for observability and policy surfaces to assert recommendation framing, cache insight visibility, typed preview/save payloads, and invalid cache tuning behavior.\n\n## Verification\n\nRan `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` three times. The first run failed due to async observability test timing and a test-file syntax regression introduced during editing. The second run narrowed the remaining issue to a duplicate `168 hours` assertion in observability coverage. The final rerun passed all 14 tests across the four targeted files, proving recommendation cards, cache insight context, and cache-control save/preview semantics render on the intended surfaces.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 1 | ❌ fail | 24400ms |\n| 2 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 1 | ❌ fail | 3600ms |\n| 3 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 2500ms |\n\n\n## Deviations\n\nAdded `console/src/lib/query-keys.ts` and extended `console/src/lib/admin-api.ts` beyond the listed output files so the tenant recommendation query remained isolated and the console TenantPolicy contract matched the backend cache-tuning fields introduced earlier in the slice.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/lib/admin-api.ts`\n- `console/src/lib/query-keys.ts`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `.gsd/milestones/M005/slices/S04/tasks/T03-SUMMARY.md`\n",
       "description": "Why: S04 is only true when operators can actually see grounded next-best-action guidance and tune cache behavior intentionally through existing product surfaces, not just via backend contracts.\n\nSteps:\n1. Update `console/src/app/(console)/observability/page.tsx` to fetch the new tenant recommendation/cache summary alongside ledger/runtime health and render bounded recommendation cards plus cache-effectiveness context with copy grounded in ledger-backed evidence.\n2. Extend `console/src/components/policy/policy-form.tsx` (and page wiring if needed) so cache tuning remains in the existing policy editor, with any new cache knobs grouped as runtime-enforced controls and evidence-oriented copy that avoids implying autosave or autonomous optimization.\n3. Add/align focused Vitest coverage in `console/src/app/(console)/observability/page.test.tsx`, `console/src/app/(console)/observability/observability-page.test.tsx`, `console/src/components/policy/policy-form.test.tsx`, and `console/src/components/policy/policy-page.test.tsx` for recommendation framing, cache insight visibility, and cache-control save/preview behavior.\n\nMust-haves:\n- Observability copy must explicitly say recommendations are based on recent ledger-backed traffic and supporting runtime context, not black-box optimization.\n- Policy-page work must keep cache tuning in the existing save/preview flow and avoid creating a separate cache-management area.\n- Normalize the existing observability wording drift in tests while preserving the established persisted-evidence framing.\n\nVerification:\n- `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`\n- UI tests prove recommendation cards, cache insight context, and cache-control save/preview semantics render on the intended surfaces.\n\nInputs:\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `console/src/lib/admin-api.ts`\n\nExpected output:\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`",
       "estimate": "1.5h",
       "files": [
@@ -3399,6 +3412,39 @@
       "verdict": "✅ pass",
       "duration_ms": 0,
       "created_at": "2026-03-28T04:01:28.739Z"
+    },
+    {
+      "id": 44,
+      "task_id": "T03",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 24400,
+      "created_at": "2026-03-28T04:10:50.097Z"
+    },
+    {
+      "id": 45,
+      "task_id": "T03",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 3600,
+      "created_at": "2026-03-28T04:10:50.097Z"
+    },
+    {
+      "id": 46,
+      "task_id": "T03",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 2500,
+      "created_at": "2026-03-28T04:10:50.097Z"
     }
   ]
 }

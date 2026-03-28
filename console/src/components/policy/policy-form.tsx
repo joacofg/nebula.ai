@@ -28,6 +28,8 @@ type PolicyFormState = {
   routingModeDefault: TenantPolicy["routing_mode_default"];
   fallbackEnabled: boolean;
   semanticCacheEnabled: boolean;
+  semanticCacheSimilarityThreshold: string;
+  semanticCacheMaxEntryAgeHours: string;
   allowedPremiumModels: string[];
   maxPremiumCostPerRequest: string;
   hardBudgetLimitUsd: string;
@@ -40,6 +42,8 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     routingModeDefault: policy.routing_mode_default,
     fallbackEnabled: policy.fallback_enabled,
     semanticCacheEnabled: policy.semantic_cache_enabled,
+    semanticCacheSimilarityThreshold: policy.semantic_cache_similarity_threshold.toString(),
+    semanticCacheMaxEntryAgeHours: policy.semantic_cache_max_entry_age_hours.toString(),
     allowedPremiumModels: policy.allowed_premium_models,
     maxPremiumCostPerRequest: policy.max_premium_cost_per_request?.toString() ?? "",
     hardBudgetLimitUsd: policy.hard_budget_limit_usd?.toString() ?? "",
@@ -57,6 +61,8 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
     routing_mode_default: state.routingModeDefault,
     fallback_enabled: state.fallbackEnabled,
     semantic_cache_enabled: state.semanticCacheEnabled,
+    semantic_cache_similarity_threshold: Number(state.semanticCacheSimilarityThreshold),
+    semantic_cache_max_entry_age_hours: Number(state.semanticCacheMaxEntryAgeHours),
     allowed_premium_models: state.allowedPremiumModels,
     max_premium_cost_per_request:
       state.maxPremiumCostPerRequest.trim() === "" ? null : Number(state.maxPremiumCostPerRequest),
@@ -127,6 +133,8 @@ export function PolicyForm({
   );
   const softSignalFields = useMemo(() => new Set(options.soft_signal_fields), [options.soft_signal_fields]);
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
+  const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
+  const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -135,6 +143,14 @@ export function PolicyForm({
     const nextPolicy = toPolicyPayload(formState, initialPolicy);
     if (nextPolicy.allowed_premium_models.length === 0) {
       setError("Select at least one premium model.");
+      return;
+    }
+    if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
+      setError("Semantic cache similarity threshold must be between 0 and 1.");
+      return;
+    }
+    if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
+      setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
       return;
     }
 
@@ -149,6 +165,14 @@ export function PolicyForm({
     const nextPolicy = toPolicyPayload(formState, initialPolicy);
     if (nextPolicy.allowed_premium_models.length === 0) {
       setError("Select at least one premium model.");
+      return;
+    }
+    if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
+      setError("Semantic cache similarity threshold must be between 0 and 1.");
+      return;
+    }
+    if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
+      setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
       return;
     }
 
@@ -382,16 +406,64 @@ export function PolicyForm({
           ) : null}
 
           {runtimeEnforcedFields.has("semantic_cache_enabled") ? (
-            <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
-              <input
-                type="checkbox"
-                checked={formState.semanticCacheEnabled}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, semanticCacheEnabled: event.target.checked }))
-                }
-              />
-              Semantic cache enabled
-            </label>
+            <div className="space-y-4 rounded-2xl border border-border bg-slate-50 px-4 py-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={formState.semanticCacheEnabled}
+                  onChange={(event) =>
+                    setFormState((current) => ({ ...current, semanticCacheEnabled: event.target.checked }))
+                  }
+                />
+                Semantic cache enabled
+              </label>
+              <p className="text-sm text-slate-500">
+                Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the
+                draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.
+              </p>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="field-label" htmlFor="semantic-cache-similarity-threshold">
+                    Semantic cache similarity threshold
+                  </label>
+                  <input
+                    id="semantic-cache-similarity-threshold"
+                    className="field-input"
+                    inputMode="decimal"
+                    value={formState.semanticCacheSimilarityThreshold}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        semanticCacheSimilarityThreshold: event.target.value,
+                      }))
+                    }
+                  />
+                  <p className="mt-2 text-sm text-slate-500">
+                    Higher values require a closer semantic match before Nebula reuses a cached response.
+                  </p>
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="semantic-cache-max-entry-age-hours">
+                    Semantic cache max entry age hours
+                  </label>
+                  <input
+                    id="semantic-cache-max-entry-age-hours"
+                    className="field-input"
+                    inputMode="numeric"
+                    value={formState.semanticCacheMaxEntryAgeHours}
+                    onChange={(event) =>
+                      setFormState((current) => ({
+                        ...current,
+                        semanticCacheMaxEntryAgeHours: event.target.value,
+                      }))
+                    }
+                  />
+                  <p className="mt-2 text-sm text-slate-500">
+                    Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.
+                  </p>
+                </div>
+              </div>
+            </div>
           ) : null}
 
           {runtimeEnforcedFields.has("allowed_premium_models") ? (

@@ -67,7 +67,7 @@ Expected output:
   - Estimate: 1h
   - Files: src/nebula/api/routes/admin.py, src/nebula/models/governance.py, src/nebula/core/container.py, console/src/lib/admin-api.ts, tests/test_governance_api.py
   - Verify: ./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x
-- [ ] **T03: Render observability recommendations and cache controls in existing operator surfaces** — Why: S04 is only true when operators can actually see grounded next-best-action guidance and tune cache behavior intentionally through existing product surfaces, not just via backend contracts.
+- [x] **T03: Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.** — Why: S04 is only true when operators can actually see grounded next-best-action guidance and tune cache behavior intentionally through existing product surfaces, not just via backend contracts.
 
 Steps:
 1. Update `console/src/app/(console)/observability/page.tsx` to fetch the new tenant recommendation/cache summary alongside ledger/runtime health and render bounded recommendation cards plus cache-effectiveness context with copy grounded in ledger-backed evidence.

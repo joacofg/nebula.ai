@@ -46,6 +46,8 @@ beforeEach(() => {
     routing_mode_default: "auto",
     fallback_enabled: true,
     semantic_cache_enabled: true,
+    semantic_cache_similarity_threshold: 0.9,
+    semantic_cache_max_entry_age_hours: 168,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: null,
     hard_budget_limit_usd: null,
@@ -62,6 +64,8 @@ beforeEach(() => {
       "routing_mode_default",
       "allowed_premium_models",
       "semantic_cache_enabled",
+      "semantic_cache_similarity_threshold",
+      "semantic_cache_max_entry_age_hours",
       "fallback_enabled",
       "max_premium_cost_per_request",
       "hard_budget_limit_usd",
@@ -74,6 +78,8 @@ beforeEach(() => {
     routing_mode_default: "premium_only",
     fallback_enabled: true,
     semantic_cache_enabled: true,
+    semantic_cache_similarity_threshold: 0.82,
+    semantic_cache_max_entry_age_hours: 48,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: null,
     hard_budget_limit_usd: 20,
@@ -88,6 +94,8 @@ beforeEach(() => {
       routing_mode_default: "premium_only",
       fallback_enabled: true,
       semantic_cache_enabled: true,
+      semantic_cache_similarity_threshold: 0.82,
+      semantic_cache_max_entry_age_hours: 48,
       allowed_premium_models: ["openai/gpt-4o-mini"],
       max_premium_cost_per_request: null,
       hard_budget_limit_usd: 20,
@@ -150,6 +158,23 @@ describe("policy-page", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Applies in live request evaluation")).toBeInTheDocument();
+    expect(screen.getByLabelText("Semantic cache similarity threshold")).toBeInTheDocument();
+    expect(screen.getByLabelText("Semantic cache max entry age hours")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Higher values require a closer semantic match before Nebula reuses a cached response.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
     expect(
       screen.getByText(
@@ -170,6 +195,10 @@ describe("policy-page", () => {
 
     await screen.findByRole("heading", { name: "Preview before save" });
     await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
+    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
+    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.82");
+    await userEvent.clear(screen.getByLabelText("Semantic cache max entry age hours"));
+    await userEvent.type(screen.getByLabelText("Semantic cache max entry age hours"), "48");
     await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
 
     await waitFor(() => {
@@ -177,7 +206,11 @@ describe("policy-page", () => {
         "admin-key",
         "tenant-a",
         expect.objectContaining({
-          candidate_policy: expect.objectContaining({ routing_mode_default: "premium_only" }),
+          candidate_policy: expect.objectContaining({
+            routing_mode_default: "premium_only",
+            semantic_cache_similarity_threshold: 0.82,
+            semantic_cache_max_entry_age_hours: 48,
+          }),
           limit: 50,
           changed_sample_limit: 5,
         }),
@@ -212,6 +245,8 @@ describe("policy-page", () => {
         routing_mode_default: "auto",
         fallback_enabled: true,
         semantic_cache_enabled: true,
+        semantic_cache_similarity_threshold: 0.9,
+        semantic_cache_max_entry_age_hours: 168,
         allowed_premium_models: ["openai/gpt-4o-mini"],
         max_premium_cost_per_request: null,
         hard_budget_limit_usd: null,

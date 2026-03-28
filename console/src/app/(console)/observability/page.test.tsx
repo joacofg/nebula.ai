@@ -7,6 +7,7 @@ import { renderWithProviders } from "@/test/render";
 const adminApi = vi.hoisted(() => ({
   listTenants: vi.fn(),
   listUsageLedger: vi.fn(),
+  getTenantRecommendations: vi.fn(),
 }));
 
 vi.mock("@/lib/admin-api", async () => {
@@ -15,11 +16,12 @@ vi.mock("@/lib/admin-api", async () => {
     ...actual,
     listTenants: adminApi.listTenants,
     listUsageLedger: adminApi.listUsageLedger,
+    getTenantRecommendations: adminApi.getTenantRecommendations,
   };
 });
 
 describe("observability-page", () => {
-  it("frames observability as persisted request evidence plus dependency-health context", async () => {
+  it("frames observability as persisted request evidence plus grounded recommendation and dependency context", async () => {
     adminApi.listTenants.mockResolvedValue([
       {
         id: "default",
@@ -50,8 +52,46 @@ describe("observability-page", () => {
         terminal_status: "completed",
         route_reason: "direct_premium_model",
         policy_outcome: "allowed",
+        route_signals: null,
       },
     ]);
+    adminApi.getTenantRecommendations.mockResolvedValue({
+      tenant_id: "default",
+      generated_at: "2026-03-27T18:00:00Z",
+      window_requests_evaluated: 24,
+      recommendations: [
+        {
+          code: "cache-tighten-threshold",
+          title: "Tighten cache similarity threshold",
+          priority: 1,
+          category: "cache",
+          summary: "Recent ledger-backed traffic shows reuse with mixed downstream outcomes.",
+          recommended_action: "Raise the similarity threshold in policy preview before saving.",
+          evidence: [
+            { label: "Requests evaluated", value: "24" },
+            { label: "Estimated hit rate", value: "42%" },
+          ],
+        },
+      ],
+      cache_summary: {
+        enabled: true,
+        similarity_threshold: 0.82,
+        max_entry_age_hours: 48,
+        runtime_status: "degraded",
+        runtime_detail: "Qdrant latency is elevated but cache lookups still succeed.",
+        estimated_hit_rate: 0.42,
+        avoided_premium_cost_usd: 1.275,
+        insights: [
+          {
+            code: "cache-health-watch",
+            title: "Watch degraded cache runtime",
+            level: "notice",
+            summary: "Recent cache reuse remains valuable, but degraded runtime may reduce consistency.",
+            evidence: [{ label: "Runtime status", value: "degraded" }],
+          },
+        ],
+      },
+    });
 
     vi.stubGlobal(
       "fetch",
@@ -72,10 +112,21 @@ describe("observability-page", () => {
       screen.getByText(/Inspect the persisted usage ledger for recorded request outcomes/i),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/then use dependency health as supporting runtime context/i),
+      screen.getByText(/use dependency health and recommendation summaries as supporting runtime context/i),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/replace the public request/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Next-best actions from recent tenant traffic" })).toBeInTheDocument();
+    expect(
+      screen.getByText(/Recommendations are derived from recent ledger-backed traffic plus supporting runtime context/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/not black-box optimization/i)).toBeInTheDocument();
+    expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
+    expect(screen.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
+    expect(screen.getByText("Similarity threshold")).toBeInTheDocument();
+    expect(screen.getByText("0.82")).toBeInTheDocument();
+    expect(screen.getByText("Max entry age")).toBeInTheDocument();
+    expect(screen.getByText("48 hours")).toBeInTheDocument();
+    expect(screen.getByText(/Tune these controls in the existing policy editor; this page stays inspection-only/i)).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
     expect(
       screen.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),
