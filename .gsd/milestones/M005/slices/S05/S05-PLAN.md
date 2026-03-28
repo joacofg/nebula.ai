@@ -13,7 +13,7 @@ Steps:
   - Estimate: 45m
   - Files: docs/v4-integrated-proof.md, docs/route-decision-vocabulary.md, docs/policy-guardrails.md, docs/evaluation.md, docs/integrated-adoption-proof.md, docs/embeddings-integrated-adoption-proof.md, docs/hosted-integrated-adoption-proof.md
   - Verify: test -f docs/v4-integrated-proof.md && grep -c '^## ' docs/v4-integrated-proof.md | awk '{exit !($1 >= 6)}' && ! grep -q 'TODO\|TBD' docs/v4-integrated-proof.md
-- [ ] **T02: Wire discoverability and lock the integrated proof path with focused verification** — Make the new v4 proof easy to find from existing documentation surfaces and prove the assembled v4 story still holds across backend, API, and console evidence paths. Keep documentation edits pointer-only, then add or update lightweight checks so close-out verification covers both behavior and discoverability.
+- [x] **T02: Added pointer-only README and architecture links for the v4 integrated proof and verified the end-to-end decisioning story across backend, admin API, console, and docs.** — Make the new v4 proof easy to find from existing documentation surfaces and prove the assembled v4 story still holds across backend, API, and console evidence paths. Keep documentation edits pointer-only, then add or update lightweight checks so close-out verification covers both behavior and discoverability.
 
 Steps:
 1. Add concise pointer-only references to `docs/v4-integrated-proof.md` from `README.md` and `docs/architecture.md`, placing the new walkthrough alongside existing integrated-proof entries without duplicating the v4 contract details there.

@@ -48,6 +48,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 - [Embeddings adoption contract](docs/embeddings-adoption-contract.md): the canonical public `POST /v1/embeddings` boundary, supported evidence surface, and explicit exclusions
 - [Embeddings reference migration](docs/embeddings-reference-migration.md): the minimal-change before/after guide derived from `tests/test_embeddings_reference_migration.py`
 - [Embeddings integrated adoption proof](docs/embeddings-integrated-adoption-proof.md): the pointer-only walkthrough that joins the public request, `X-Request-ID`/`X-Nebula-*` headers, usage-ledger correlation, and Observability corroboration into one review path
+- [v4 integrated proof](docs/v4-integrated-proof.md): pointer-only review order for simulation replay, hard guardrails, bounded recommendations, cache controls, Observability corroboration, and benchmark evidence
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 
