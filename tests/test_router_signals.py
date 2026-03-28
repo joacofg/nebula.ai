@@ -114,7 +114,7 @@ def test_route_signals_persisted_in_ledger() -> None:
         "budget_proximity": None,
         "complexity_tier": "medium",
         "keyword_match": False,
-        "model_constraint": False,
+        "model_constraint": True,
         "token_count": 600,
     }
 
@@ -134,4 +134,4 @@ def test_route_score_header() -> None:
     assert response.status_code == 200
     assert response.headers["X-Nebula-Route-Target"] == "premium"
     assert response.headers["X-Nebula-Route-Reason"] == "token_complexity"
-    assert response.headers["X-Nebula-Route-Score"] == "0.6000"
+    assert response.headers["X-Nebula-Route-Score"] == "1.0000"

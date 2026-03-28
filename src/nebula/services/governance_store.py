@@ -324,16 +324,22 @@ class GovernanceStore:
             rows = session.scalars(stmt.order_by(UsageLedgerModel.timestamp.desc()).limit(limit)).all()
             return [self._usage_from_model(row) for row in rows]
 
-    def tenant_spend_total(self, tenant_id: str) -> float:
+    def tenant_spend_total(
+        self,
+        tenant_id: str,
+        *,
+        before_timestamp: datetime | None = None,
+    ) -> float:
         with self._session() as session:
-            total = session.scalar(
-                select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
-                    UsageLedgerModel.tenant_id == tenant_id,
-                    UsageLedgerModel.terminal_status.in_(
-                        ["completed", "fallback_completed", "cache_hit"]
-                    ),
-                )
+            stmt = select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
+                UsageLedgerModel.tenant_id == tenant_id,
+                UsageLedgerModel.terminal_status.in_(
+                    ["completed", "fallback_completed", "cache_hit"]
+                ),
             )
+            if before_timestamp is not None:
+                stmt = stmt.where(UsageLedgerModel.timestamp < before_timestamp)
+            total = session.scalar(stmt)
             return float(total or 0.0)
 
     def health_status(self) -> dict[str, object]:
@@ -410,6 +416,7 @@ class GovernanceStore:
             terminal_status=row.terminal_status,
             route_reason=row.route_reason,
             policy_outcome=row.policy_outcome,
+            route_signals=row.route_signals,
         )
 
     def _policy_from_model(self, row: TenantPolicyModel) -> TenantPolicy:

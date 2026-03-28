@@ -117,3 +117,55 @@ class PolicyOptionsResponse(BaseModel):
     runtime_enforced_fields: list[str] = Field(default_factory=list)
     soft_signal_fields: list[str] = Field(default_factory=list)
     advisory_fields: list[str] = Field(default_factory=list)
+
+
+class PolicySimulationRequest(BaseModel):
+    candidate_policy: TenantPolicy
+    from_timestamp: datetime | None = None
+    to_timestamp: datetime | None = None
+    limit: int = Field(default=50, ge=1, le=200)
+    changed_sample_limit: int = Field(default=10, ge=1, le=50)
+
+
+class PolicySimulationWindow(BaseModel):
+    requested_from: datetime | None = None
+    requested_to: datetime | None = None
+    evaluated_from: datetime | None = None
+    evaluated_to: datetime | None = None
+    requested_limit: int
+    changed_sample_limit: int
+    returned_rows: int
+
+
+class PolicySimulationOutcomeCounts(BaseModel):
+    evaluated_rows: int = 0
+    changed_routes: int = 0
+    newly_denied: int = 0
+    baseline_premium_cost: float = 0.0
+    simulated_premium_cost: float = 0.0
+    premium_cost_delta: float = 0.0
+
+
+class PolicySimulationChangedRequest(BaseModel):
+    request_id: str
+    timestamp: datetime
+    requested_model: str
+    baseline_route_target: str
+    simulated_route_target: str
+    baseline_terminal_status: TerminalStatus
+    simulated_terminal_status: TerminalStatus
+    baseline_policy_outcome: str | None = None
+    simulated_policy_outcome: str | None = None
+    baseline_route_reason: str | None = None
+    simulated_route_reason: str | None = None
+    baseline_estimated_cost: float = 0.0
+    simulated_estimated_cost: float = 0.0
+
+
+class PolicySimulationResponse(BaseModel):
+    tenant_id: str
+    candidate_policy: TenantPolicy
+    approximation_notes: list[str] = Field(default_factory=list)
+    window: PolicySimulationWindow
+    summary: PolicySimulationOutcomeCounts
+    changed_requests: list[PolicySimulationChangedRequest] = Field(default_factory=list)

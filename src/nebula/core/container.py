@@ -15,6 +15,7 @@ from nebula.services.heartbeat_ingest_service import HeartbeatIngestService
 from nebula.services.heartbeat_service import HeartbeatService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
+from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.remote_management_service import RemoteManagementService
@@ -50,6 +51,11 @@ class ServiceContainer:
             pricing=self.pricing_catalog,
         )
         self.router_service = RouterService(settings)
+        self.policy_simulation_service = PolicySimulationService(
+            governance_store=self.governance_store,
+            router_service=self.router_service,
+            policy_service=self.policy_service,
+        )
         self.embeddings_service = OllamaEmbeddingsService(settings)
         self.local_provider = OllamaProvider(settings)
         self.premium_provider = self._build_premium_provider()

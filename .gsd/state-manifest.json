@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T02:53:50.715Z",
+  "exported_at": "2026-03-28T03:06:19.436Z",
   "milestones": [
     {
       "id": "M001",
@@ -511,14 +511,14 @@
       "milestone_id": "M005",
       "id": "S01",
       "title": "Adaptive routing model",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [],
       "demo": "Nebula has an interpretable routing decision model that uses explicit signals and records clearer route reasons than the current heuristic.",
       "created_at": "2026-03-28T02:38:45.197Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-03-28T02:56:34.812Z",
+      "full_summary_md": "---\nid: S01\nparent: M005\nmilestone: M005\nprovides:\n  - A stable route-decision vocabulary (`token_complexity`, explicit signal keys, route-score semantics) that downstream slices can reuse for simulation and recommendation work.\n  - Persisted ledger evidence for route signals and score-adjacent reasoning, available through the existing admin ledger path.\n  - An operator-visible Route Decision drawer section in Observability for inspecting why Nebula chose a route.\nrequires:\n  []\naffects:\n  - S02\n  - S03\n  - S04\n  - S05\nkey_files:\n  - src/nebula/services/router_service.py\n  - src/nebula/services/policy_service.py\n  - src/nebula/services/chat_service.py\n  - src/nebula/services/governance_store.py\n  - src/nebula/db/models.py\n  - src/nebula/models/governance.py\n  - src/nebula/api/routes/chat.py\n  - migrations/versions/20260326_0006_route_signals.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - docs/route-decision-vocabulary.md\n  - tests/test_router_signals.py\n  - .gsd/KNOWLEDGE.md\n  - .gsd/PROJECT.md\nkey_decisions:\n  - Kept override routes signal-free with default score 0.0 and limited structured signals to heuristic routing decisions.\n  - Exposed route score as an additive informational Nebula header without changing existing header names or semantics.\n  - Rendered route signals in Observability through explicit labeled rows instead of raw JSON so operator inspection remains stable as the vocabulary evolves.\n  - Kept R039 active because S01 materially strengthens routing interpretability and evidence surfaces but does not yet prove broader outcome-aware adaptive scoring.\npatterns_established:\n  - When adding new usage-ledger fields, update the DB model, record path, response schema, and hydration path together; otherwise admin reads can silently drop persisted data.\n  - Operator-facing decision evidence should use stable labeled fields and documented vocabulary rather than raw JSON blobs so downstream slices can build on a durable contract.\n  - Override route paths should remain signal-free to avoid implying heuristic scoring where no heuristic decision was made.\nobservability_surfaces:\n  - `X-Nebula-Route-Score` response header on public chat completions.\n  - Persisted `route_signals` field on usage-ledger admin records.\n  - Observability request-detail drawer Route Decision section showing labeled signal values.\n  - `docs/route-decision-vocabulary.md` as the stable operator/reference vocabulary for route reasons and signals.\ndrill_down_paths:\n  - .gsd/milestones/M005/slices/S01/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M005/slices/S01/tasks/T02-SUMMARY.md\n  - .gsd/milestones/M005/slices/S01/tasks/T03-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T02:56:34.813Z\nblocker_discovered: false\n---\n\n# S01: Adaptive routing model\n\n**Delivered an interpretable adaptive-routing foundation with explicit route signals, additive route-score/header exposure, persisted ledger evidence, and operator-visible route-decision vocabulary.**\n\n## What Happened\n\nS01 replaced Nebula's older opaque prompt-length routing posture with an interpretable route-decision model that produces explicit signal metadata and a normalized score at routing time, then carried that evidence all the way through the public response and operator-observability path. On the backend, the router now estimates token count, derives a complexity tier, records keyword and policy-constraint signals, and exposes a normalized score while preserving signal-free override paths for explicit model and routing-mode decisions. The chat path threads those route decisions into completion metadata, emits `X-Nebula-Route-Score` alongside the existing `X-Nebula-*` headers, and persists route signals into the usage ledger via the new `route_signals` JSON column and admin schema wiring. On the console side, the usage-ledger request drawer gained a dedicated Route Decision section that maps stable signal keys to readable operator labels instead of exposing raw JSON, and the slice added `docs/route-decision-vocabulary.md` as the canonical operator/reference vocabulary for signals, score semantics, and reason codes. During slice close-out I verified the assembled worktree rather than relying only on task summaries and found one real integration defect: the write path and migration persisted `route_signals`, but the admin ledger hydration path omitted the field. Fixing `GovernanceStore._usage_from_model()` closed that gap, after which the focused route-signal persistence test passed and the slice delivered the full backend-to-UI observability chain promised by the plan.\n\n## Verification\n\nRe-ran all slice-level verification from the assembled worktree and required all planned checks to pass. Backend verification passed with `./.venv/bin/pytest tests/test_router_signals.py::test_route_decision_carries_signals tests/test_router_signals.py::test_token_count_signal_from_prompt tests/test_router_signals.py::test_budget_proximity_signal tests/test_router_signals.py::test_model_constraint_signal tests/test_router_signals.py::test_score_by_complexity_tier tests/test_router_signals.py::test_route_signals_persisted_in_ledger tests/test_router_signals.py::test_route_score_header -x` (7 passed) and `./.venv/bin/pytest tests/test_chat_completions.py tests/test_admin_playground_api.py tests/test_governance_api.py tests/test_governance_runtime_hardening.py tests/test_response_headers.py tests/test_reference_migration.py tests/test_benchmarking.py tests/test_service_flows.py -x` (49 passed). Observability/UI verification passed with `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` (5 passed) and `npm --prefix console run build && test -f docs/route-decision-vocabulary.md` (build succeeded and doc exists). The close-out rerun also proved that the ledger route_signals persistence gap from task execution was fixed in the assembled worktree.\n\n## Requirements Advanced\n\n- R039 — Added explicit routing signals, normalized scoring, score/header exposure, ledger persistence, and operator-visible route-decision surfaces that materially strengthen Nebula's routing evidence beyond prompt-length heuristics.\n- R044 — Kept the v4 work narrowly focused on decisioning quality, observability, and operator control without expanding Nebula into broader API parity, SDK work, or hosted authority.\n\n## Requirements Validated\n\nNone.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nTask-plan verification commands referenced legacy test module names (`tests/test_admin.py`, `tests/test_governance.py`) that do not exist in this worktree, so slice verification used the real split modules present locally. During close-out, I also fixed one assembled-worktree defect that task execution left behind: admin ledger reads persisted `route_signals` to the database correctly but dropped them on read because `GovernanceStore._usage_from_model()` did not map the new field.\n\n## Known Limitations\n\nThe routing model is still primarily heuristic: `budget_proximity` is present as a stable signal name but remains null until downstream spend context is threaded in, and the score is not yet calibrated from observed outcomes. R039 therefore advances materially but is not yet fully validated by this slice alone.\n\n## Follow-ups\n\nS02 should reuse the persisted route_signals plus stable `token_complexity` vocabulary for simulation replay instead of inventing a second decision schema. S03 can build true budget-aware signals on top of the existing `budget_proximity` placeholder once spend context is threaded into routing resolution. S05 should revisit whether the current score formula is sufficiently outcome-aware to validate R039 fully.\n\n## Files Created/Modified\n\n- `src/nebula/services/router_service.py` — Extended route decisions with explicit signals, token-based scoring, and policy-aware heuristic routing inputs.\n- `src/nebula/services/policy_service.py` — Threaded tenant policy through routing resolution so signal generation can consider policy constraints.\n- `src/nebula/services/chat_service.py` — Added route score and route signals to completion metadata and usage recording flow.\n- `src/nebula/services/governance_store.py` — Added route_signals persistence and fixed ledger hydration so admin reads now return the stored signal map.\n- `src/nebula/db/models.py` — Added route_signals JSON column to the usage ledger ORM model.\n- `src/nebula/models/governance.py` — Extended governance API schema with route_signals for admin ledger responses.\n- `src/nebula/api/routes/chat.py` — Exposed X-Nebula-Route-Score on chat responses.\n- `migrations/versions/20260326_0006_route_signals.py` — Added Alembic migration for the usage_ledger.route_signals column.\n- `console/src/lib/admin-api.ts` — Extended the console admin API contract with route_signals.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Added an operator-facing Route Decision section to the ledger detail drawer with stable plain-language labels.\n- `console/src/components/ledger/ledger-request-detail.test.tsx` — Locked positive and negative drawer rendering paths with focused Vitest coverage.\n- `docs/route-decision-vocabulary.md` — Documented the stable route-signal and reason-code vocabulary for operators and downstream simulation work.\n- `tests/test_router_signals.py` — Added and updated backend tests covering route signals, route score headers, and ledger persistence.\n",
+      "full_uat_md": "# S01: Adaptive routing model — UAT\n\n**Milestone:** M005\n**Written:** 2026-03-28T02:56:34.813Z\n\n# S01 UAT — Adaptive routing model\n\n## Preconditions\n- Repo dependencies are installed (`make setup` and `npm --prefix console install` already completed in the active worktree).\n- Python tests run via `./.venv/bin/pytest`.\n- Console tests/build run from the existing `console/` workspace.\n- No external premium credentials are required for these checks because the focused backend tests use the mock premium provider.\n\n## Test Case 1 — Heuristic routing emits explicit signal metadata and persists it to the ledger\n1. Run:\n   `./.venv/bin/pytest tests/test_router_signals.py::test_route_signals_persisted_in_ledger tests/test_router_signals.py::test_route_score_header -x`\n2. Expected outcome:\n   - Both tests pass.\n   - The response for a medium-complexity `nebula-auto` request includes `X-Nebula-Route-Target: premium`, `X-Nebula-Route-Reason: token_complexity`, and `X-Nebula-Route-Score: 1.0000`.\n   - The matching `/v1/admin/usage/ledger?request_id=...` record returns a non-null `route_signals` object with `token_count`, `complexity_tier`, `keyword_match`, `model_constraint`, and `budget_proximity` keys.\n\n## Test Case 2 — Signal generation stays interpretable across complexity tiers and policy cues\n1. Run:\n   `./.venv/bin/pytest tests/test_router_signals.py::test_route_decision_carries_signals tests/test_router_signals.py::test_token_count_signal_from_prompt tests/test_router_signals.py::test_budget_proximity_signal tests/test_router_signals.py::test_model_constraint_signal tests/test_router_signals.py::test_score_by_complexity_tier -x`\n2. Expected outcome:\n   - All tests pass.\n   - Default `RouteDecision` objects remain backward-compatible with empty signals and score `0.0`.\n   - Low/medium/high prompts produce ordered scores and expected complexity tiers.\n   - `model_constraint` flips to `true` when policy allowlists are present.\n   - `budget_proximity` exists in the signal map but remains `null` until downstream spend context is added.\n\n## Test Case 3 — Existing backend request, header, and governance flows still work after routing-model changes\n1. Run:\n   `./.venv/bin/pytest tests/test_chat_completions.py tests/test_admin_playground_api.py tests/test_governance_api.py tests/test_governance_runtime_hardening.py tests/test_response_headers.py tests/test_reference_migration.py tests/test_benchmarking.py tests/test_service_flows.py -x`\n2. Expected outcome:\n   - The full focused slice-level backend set passes.\n   - Existing `X-Nebula-*` headers remain intact while adding the new route-score header.\n   - Reference migration and governance flows continue to correlate public requests to admin ledger evidence successfully.\n\n## Test Case 4 — Observability drawer shows labeled route decision evidence only when signals are present\n1. Run:\n   `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`\n2. Expected outcome:\n   - All five Vitest tests pass.\n   - The request-detail drawer renders a `Route Decision` section for entries with `route_signals` and shows labeled rows such as `Token count`, `Complexity tier`, `Keyword match`, and `Model constraint`.\n   - Entries without `route_signals` do not render the `Route Decision` section.\n\n## Test Case 5 — Console remains production-buildable after the new route-decision UI wiring\n1. Run:\n   `npm --prefix console run build && test -f docs/route-decision-vocabulary.md`\n2. Expected outcome:\n   - The Next.js console build succeeds without type or compile errors.\n   - `docs/route-decision-vocabulary.md` exists in the assembled worktree.\n\n## Edge Cases\n- Explicit model overrides (`explicit_local_model`, `explicit_premium_model`) and routing-mode overrides (`policy_local_only`, `policy_premium_only`) should remain signal-free and score `0.0`; this avoids suggesting that a heuristic score drove an override path.\n- A medium-complexity heuristic request may still show `model_constraint: true` under the default tenant policy because the policy carries an allowed premium-model list; UAT should treat that as expected runtime-aligned behavior, not a regression.\n- `budget_proximity` appearing as `null` is expected in S01; it is a stable schema placeholder for downstream budget-aware routing work, not evidence of broken persistence.\n\n",
       "goal": "Nebula has an interpretable routing decision model that uses explicit signals and records clearer route reasons than the current heuristic.",
       "success_criteria": "",
       "proof_level": "",
@@ -541,11 +541,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "",
-      "success_criteria": "",
-      "proof_level": "",
-      "integration_closure": "",
-      "observability_impact": "",
+      "goal": "Let an operator simulate a candidate routing or policy change against recent ledger-backed tenant traffic before saving it, using a narrow non-mutating replay path grounded in S01 route signals and existing policy/runtime logic.",
+      "success_criteria": "- A tenant-scoped simulation service can replay recent usage-ledger records against a candidate `TenantPolicy` without invoking providers or mutating saved policy/ledger state.\n- The admin API exposes a typed simulation request/response contract that returns aggregate baseline vs simulated outcomes, changed-request counts, cost delta, and a bounded sample of changed requests.\n- The policy editor can submit the current unsaved draft for simulation, render the preview results inline, and keep save semantics explicit and separate.\n- Focused backend and console tests prove replay fidelity, tenant/time-window scoping, non-mutation, and preview-before-save UX.",
+      "proof_level": "This slice proves: integration\n- Real runtime required: no\n- Human/UAT required: no",
+      "integration_closure": "- Upstream surfaces consumed: `src/nebula/services/router_service.py`, `src/nebula/services/policy_service.py`, `src/nebula/services/governance_store.py`, `src/nebula/models/governance.py`, `console/src/lib/admin-api.ts`, `console/src/components/policy/policy-form.tsx`\n- New wiring introduced in this slice: a replay-only policy simulation service added to the backend container, a new admin simulation endpoint under the tenant policy surface, and a policy-page preview flow that submits draft policy state without persisting it.\n- What remains before the milestone is truly usable end-to-end: nothing for this slice beyond executing the focused backend/UI verification listed below.",
+      "observability_impact": "- Runtime signals: simulation response metadata must expose tenant id, evaluated record count, applied time window, changed-request count, newly denied count, route-target changes, and estimated premium cost delta so failures are diagnosable without provider calls.\n- Inspection surfaces: `POST /v1/admin/tenants/{tenant_id}/policy/simulate`, backend tests in `tests/test_service_flows.py` and `tests/test_governance_api.py`, and the policy preview panel in `console/src/components/policy/policy-form.tsx` / `console/src/components/policy/policy-page.test.tsx`.\n- Failure visibility: invalid tenant or malformed simulation filters should return explicit admin API errors; empty or unchanged replay windows should still surface zero-count summaries rather than ambiguous blank UI.\n- Redaction constraints: simulation must stay metadata-only and use persisted ledger evidence/signals only — no raw prompts, responses, or credentials are introduced into the contract.",
       "sequence": 0,
       "replan_triggered_at": null
     },
@@ -2075,6 +2075,154 @@
       "observability_impact": "",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S02",
+      "id": "T01",
+      "title": "Added typed policy simulation models and a replay-only service that re-evaluates recent tenant ledger traffic without mutating policy or usage state.",
+      "status": "complete",
+      "one_liner": "Added typed policy simulation models and a replay-only service that re-evaluates recent tenant ledger traffic without mutating policy or usage state.",
+      "narrative": "Added policy simulation DTOs to the governance models, created a replay-only policy simulation service, and wired it into the service container. The service loads recent tenant-scoped ledger rows, reconstructs approximate replay requests from stored route signals and request metadata, and reuses router/policy logic through new non-mutating evaluation seams. Extended RouterService with replay-aware signal-based routing and PolicyService with an exception-free evaluation path that returns denial and projected premium-cost outcomes for simulation while preserving existing runtime resolve behavior. Added focused service tests covering route changes, newly denied premium requests, tenant/window scoping, empty windows, signal-driven replay behavior, and the guarantee that simulation does not persist policy or usage changes.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` three times. The first failure was a changed-request ordering assertion mismatch caused by intentional oldest-first replay after newest-first store fetches; updated the test to match the real chronological sampling contract. The second failure showed that unchanged routing can still appear in the changed sample when projected premium cost changes; updated the assertion to verify cost-delta visibility instead. The final run passed all four simulation-focused tests, confirming typed summary fields, scoping, denial handling, and non-mutation behavior.",
+      "duration": "",
+      "completed_at": "2026-03-28T03:06:19.416Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "Simulation is intentionally approximate because raw prompt text is not stored in the ledger; replay reconstructs request complexity from persisted route signals and token metadata.",
+      "key_files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "src/nebula/services/policy_service.py",
+        "src/nebula/services/router_service.py",
+        "src/nebula/services/governance_store.py",
+        "src/nebula/core/container.py",
+        "tests/test_service_flows.py",
+        ".gsd/milestones/M005/slices/S02/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reused production policy/router semantics through a non-mutating evaluation seam instead of duplicating simulation logic.",
+        "Made replay explicitly signal-driven because ledger rows do not retain raw prompt text, and documented that approximation in the simulation response."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S02\nmilestone: M005\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/policy_simulation_service.py\n  - src/nebula/services/policy_service.py\n  - src/nebula/services/router_service.py\n  - src/nebula/services/governance_store.py\n  - src/nebula/core/container.py\n  - tests/test_service_flows.py\n  - .gsd/milestones/M005/slices/S02/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Reused production policy/router semantics through a non-mutating evaluation seam instead of duplicating simulation logic.\n  - Made replay explicitly signal-driven because ledger rows do not retain raw prompt text, and documented that approximation in the simulation response.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-03-28T03:06:19.417Z\nblocker_discovered: false\n---\n\n# T01: Added typed policy simulation models and a replay-only service that re-evaluates recent tenant ledger traffic without mutating policy or usage state.\n\n**Added typed policy simulation models and a replay-only service that re-evaluates recent tenant ledger traffic without mutating policy or usage state.**\n\n## What Happened\n\nAdded policy simulation DTOs to the governance models, created a replay-only policy simulation service, and wired it into the service container. The service loads recent tenant-scoped ledger rows, reconstructs approximate replay requests from stored route signals and request metadata, and reuses router/policy logic through new non-mutating evaluation seams. Extended RouterService with replay-aware signal-based routing and PolicyService with an exception-free evaluation path that returns denial and projected premium-cost outcomes for simulation while preserving existing runtime resolve behavior. Added focused service tests covering route changes, newly denied premium requests, tenant/window scoping, empty windows, signal-driven replay behavior, and the guarantee that simulation does not persist policy or usage changes.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` three times. The first failure was a changed-request ordering assertion mismatch caused by intentional oldest-first replay after newest-first store fetches; updated the test to match the real chronological sampling contract. The second failure showed that unchanged routing can still appear in the changed sample when projected premium cost changes; updated the assertion to verify cost-delta visibility instead. The final run passed all four simulation-focused tests, confirming typed summary fields, scoping, denial handling, and non-mutation behavior.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` | 1 | ❌ fail | 1000ms |\n| 2 | `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` | 1 | ❌ fail | 1000ms |\n| 3 | `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` | 0 | ✅ pass | 1000ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nSimulation is intentionally approximate because raw prompt text is not stored in the ledger; replay reconstructs request complexity from persisted route signals and token metadata.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `src/nebula/services/policy_service.py`\n- `src/nebula/services/router_service.py`\n- `src/nebula/services/governance_store.py`\n- `src/nebula/core/container.py`\n- `tests/test_service_flows.py`\n- `.gsd/milestones/M005/slices/S02/tasks/T01-SUMMARY.md`\n",
+      "description": "Add simulation request/response models to `src/nebula/models/governance.py`, including window metadata, aggregate outcome counts, and a bounded changed-request sample that echoes baseline vs simulated route/policy outcomes. Create `src/nebula/services/policy_simulation_service.py` as a replay-only service that loads recent `UsageLedgerRecord`s for one tenant, derives replay inputs from persisted route signals/ledger metadata, reuses existing policy and routing semantics where possible, and documents the signal-driven approximation where prompt text is unavailable. Extend the router/policy seams only as needed to support signal-based replay and projected premium-cost evaluation without provider execution, then wire the new service through `src/nebula/core/container.py`. Add focused service tests in `tests/test_service_flows.py` covering route-target changes, newly denied outcomes, tenant/window scoping, empty windows, and the guarantee that simulation does not persist policy or usage changes.",
+      "estimate": "1.5h",
+      "files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "src/nebula/services/router_service.py",
+        "src/nebula/services/policy_service.py",
+        "src/nebula/services/governance_store.py",
+        "src/nebula/core/container.py",
+        "tests/test_service_flows.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_service_flows.py -k simulation -x",
+      "inputs": [
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/router_service.py`",
+        "`src/nebula/services/policy_service.py`",
+        "`src/nebula/services/governance_store.py`",
+        "`src/nebula/core/container.py`",
+        "`tests/test_service_flows.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/policy_simulation_service.py`",
+        "`src/nebula/services/router_service.py`",
+        "`src/nebula/services/policy_service.py`",
+        "`src/nebula/services/governance_store.py`",
+        "`src/nebula/core/container.py`",
+        "`tests/test_service_flows.py`"
+      ],
+      "observability_impact": "- Signals added/changed: typed simulation summary fields for evaluated rows, changed routes, newly denied requests, and cost delta.\n- How a future agent inspects this: run `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x` and inspect the simulation response models.\n- Failure state exposed: replay mismatches, tenant/time-window scoping bugs, and accidental mutation of ledger/policy state become explicit test failures.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S02",
+      "id": "T02",
+      "title": "Expose tenant policy simulation through the admin API",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Add a new admin route such as `POST /v1/admin/tenants/{tenant_id}/policy/simulate` in `src/nebula/api/routes/admin.py`, colocated with existing policy CRUD routes. Reuse the T01 DTOs so the endpoint accepts a candidate `TenantPolicy` plus bounded replay filters and returns the full simulation summary without persisting anything. Keep tenant existence checks, filter validation, and bounded result sizing explicit at the route boundary, and add focused API tests in `tests/test_governance_api.py` that prove tenant scoping, aggregate replay output, newly denied detection, unchanged/empty result handling, and that saved tenant policy remains unchanged after simulation calls.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/api/routes/admin.py",
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "tests/test_governance_api.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py -k simulation -x",
+      "inputs": [
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/policy_simulation_service.py`",
+        "`tests/test_governance_api.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/models/governance.py`",
+        "`tests/test_governance_api.py`"
+      ],
+      "observability_impact": "- Signals added/changed: the admin API becomes the canonical inspection surface for simulation summaries and changed-request samples.\n- How a future agent inspects this: run `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x` and call the endpoint with tenant/window filters.\n- Failure state exposed: 404 tenant errors, validation failures, and replay-service errors are surfaced as explicit API responses instead of silent empty payloads.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S02",
+      "id": "T03",
+      "title": "Add preview-before-save simulation to the policy editor",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Extend `console/src/lib/admin-api.ts` with typed simulation request/response shapes and a client helper for the new admin endpoint. Update `console/src/app/(console)/policy/page.tsx` to own a simulation mutation alongside the existing save mutation, keeping draft preview and persistence separate. In `console/src/components/policy/policy-form.tsx`, add a simulate action that reuses the current draft-to-policy serialization, renders loading/error state, and shows the returned aggregate delta plus a compact changed-request summary without implying that anything was saved. Add/extend `console/src/components/policy/policy-form.test.tsx` and `console/src/components/policy/policy-page.test.tsx` so they prove draft values are sent to simulation, preview results render without saving, save remains explicit, and empty/error states are legible.",
+      "estimate": "1.5h",
+      "files": [
+        "console/src/lib/admin-api.ts",
+        "console/src/app/(console)/policy/page.tsx",
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`console/src/lib/admin-api.ts`",
+        "`console/src/app/(console)/policy/page.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "expected_output": [
+        "`console/src/lib/admin-api.ts`",
+        "`console/src/app/(console)/policy/page.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "observability_impact": "- Signals added/changed: inline preview state for loading, error, zero-result, and changed-outcome summaries.\n- How a future agent inspects this: run the focused Vitest files and inspect the policy-page preview panel behavior.\n- Failure state exposed: simulate-call errors and empty replay windows should render explicit UI feedback instead of looking like a successful save.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -2341,6 +2489,30 @@
       "revisable": "Yes — if implementation shows the chosen decisioning wedge is too broad or insufficiently differentiated",
       "made_by": "collaborative",
       "superseded_by": null
+    },
+    {
+      "seq": 23,
+      "id": "D023",
+      "when_context": "M005/S01",
+      "scope": "observability",
+      "decision": "How adaptive route signals should appear in operator surfaces",
+      "choice": "Render route decision metadata as stable labeled fields in the ledger detail drawer and expose route score as an additive response header while keeping override routes signal-free",
+      "rationale": "S01 established an interpretable routing vocabulary that operators can inspect without reading raw JSON, preserved existing header semantics, and kept non-heuristic override paths free of misleading synthetic signals.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 24,
+      "id": "D024",
+      "when_context": "M005/S01",
+      "scope": "requirement",
+      "decision": "R039",
+      "choice": "Keep R039 active",
+      "rationale": "S01 delivers explicit decision signals, score/header exposure, ledger persistence, UI visibility, and stable vocabulary, but the router still relies on token-count heuristics plus simple policy cues rather than broader outcome-aware adaptive scoring. The slice materially advances R039 without fully validating the requirement.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
     }
   ],
   "verification_evidence": [
@@ -2552,6 +2724,39 @@
       "verdict": "✅ pass",
       "duration_ms": 0,
       "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 20,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k simulation -x",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 1000,
+      "created_at": "2026-03-28T03:06:19.416Z"
+    },
+    {
+      "id": 21,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k simulation -x",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 1000,
+      "created_at": "2026-03-28T03:06:19.416Z"
+    },
+    {
+      "id": 22,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k simulation -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1000,
+      "created_at": "2026-03-28T03:06:19.416Z"
     }
   ]
 }

@@ -10,18 +10,25 @@ from pydantic import ValidationError
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
-from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
+from nebula.models.governance import (
+    ApiKeyRecord,
+    PolicySimulationRequest,
+    TenantPolicy,
+    TenantRecord,
+    UsageLedgerRecord,
+)
 from nebula.models.openai import ChatCompletionRequest, EmbeddingsRequest
+from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
+from nebula.services.auth_service import AuthenticatedTenantContext
+from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import (
     EmbeddingsEmptyResultError,
     EmbeddingsUpstreamError,
     EmbeddingsValidationError,
     OllamaEmbeddingsService,
 )
-from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
-from nebula.services.auth_service import AuthenticatedTenantContext
-from nebula.services.chat_service import ChatService
 from nebula.services.policy_service import PolicyResolution, PolicyService
+from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouteDecision, RouterService
 from tests.support import FakeCacheService, StubProvider
@@ -357,9 +364,51 @@ class RuntimePolicyStore:
     def __init__(self, *, spend_total: float = 0.0) -> None:
         self.spend_total = spend_total
 
-    def tenant_spend_total(self, tenant_id: str) -> float:
+    def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
         return self.spend_total
+
+
+class FakeSimulationGovernanceStore(RuntimePolicyStore):
+    def __init__(self, records: list[UsageLedgerRecord], *, spend_total: float = 0.0) -> None:
+        super().__init__(spend_total=spend_total)
+        self.records = list(records)
+        self.record_usage_calls: list[UsageLedgerRecord] = []
+        self.policy_updates: list[tuple[str, TenantPolicy]] = []
+
+    def list_usage_records(
+        self,
+        *,
+        request_id: str | None = None,
+        tenant_id: str | None = None,
+        terminal_status: str | None = None,
+        route_target: str | None = None,
+        from_timestamp: datetime | None = None,
+        to_timestamp: datetime | None = None,
+        limit: int = 100,
+    ) -> list[UsageLedgerRecord]:
+        rows = list(self.records)
+        if request_id is not None:
+            rows = [row for row in rows if row.request_id == request_id]
+        if tenant_id is not None:
+            rows = [row for row in rows if row.tenant_id == tenant_id]
+        if terminal_status is not None:
+            rows = [row for row in rows if row.terminal_status == terminal_status]
+        if route_target is not None:
+            rows = [row for row in rows if row.final_route_target == route_target]
+        if from_timestamp is not None:
+            rows = [row for row in rows if row.timestamp >= from_timestamp]
+        if to_timestamp is not None:
+            rows = [row for row in rows if row.timestamp <= to_timestamp]
+        rows = sorted(rows, key=lambda row: row.timestamp, reverse=True)
+        return rows[:limit]
+
+    def record_usage(self, record: UsageLedgerRecord) -> None:
+        self.record_usage_calls.append(record)
+
+    def upsert_policy(self, tenant_id: str, policy: TenantPolicy) -> TenantPolicy:
+        self.policy_updates.append((tenant_id, policy))
+        return policy
 
 
 @pytest.mark.asyncio
@@ -393,6 +442,239 @@ async def test_runtime_policy_resolution_enforces_toggles_and_soft_budget_signal
     assert resolution.fallback_enabled is False
     assert resolution.soft_budget_exceeded is True
     assert resolution.policy_outcome == "cache=disabled;fallback=disabled;soft_budget=exceeded"
+
+
+def _ledger_record(
+    *,
+    request_id: str,
+    tenant_id: str = "default",
+    requested_model: str = "nebula-auto",
+    final_route_target: str = "local",
+    terminal_status: str = "completed",
+    timestamp: datetime,
+    prompt_tokens: int = 80,
+    completion_tokens: int = 40,
+    estimated_cost: float | None = 0.0,
+    route_reason: str = "token_complexity",
+    policy_outcome: str = "default",
+    route_signals: dict | None = None,
+) -> UsageLedgerRecord:
+    total_tokens = prompt_tokens + completion_tokens
+    return UsageLedgerRecord(
+        request_id=request_id,
+        tenant_id=tenant_id,
+        requested_model=requested_model,
+        final_route_target=final_route_target,
+        final_provider="mock",
+        fallback_used=False,
+        cache_hit=False,
+        response_model=("llama3.2" if final_route_target == "local" else "openai/gpt-4o-mini"),
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=total_tokens,
+        estimated_cost=estimated_cost,
+        latency_ms=25.0,
+        timestamp=timestamp,
+        terminal_status=terminal_status,  # type: ignore[arg-type]
+        route_reason=route_reason,
+        policy_outcome=policy_outcome,
+        route_signals=route_signals,
+    )
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_replays_recent_ledger_rows_and_reports_changed_routes() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-1",
+            timestamp=now,
+            final_route_target="local",
+            prompt_tokens=80,
+            completion_tokens=40,
+            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+        ),
+        _ledger_record(
+            request_id="req-2",
+            timestamp=now.replace(microsecond=1),
+            final_route_target="local",
+            prompt_tokens=60,
+            completion_tokens=30,
+            route_signals={"token_count": 80, "complexity_tier": "low", "keyword_match": False},
+        ),
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    simulation_service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await simulation_service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(routing_mode_default="premium_only"),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 2
+    assert response.summary.changed_routes == 2
+    assert response.summary.newly_denied == 0
+    assert response.window.returned_rows == 2
+    assert [item.request_id for item in response.changed_requests] == ["req-2", "req-1"]
+    assert all(item.baseline_route_target == "local" for item in response.changed_requests)
+    assert all(item.simulated_route_target == "premium" for item in response.changed_requests)
+    assert store.record_usage_calls == []
+    assert store.policy_updates == []
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_reports_newly_denied_requests_without_mutation() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-premium",
+            timestamp=now,
+            final_route_target="premium",
+            requested_model="openai/gpt-4o-mini",
+            estimated_cost=0.002,
+            prompt_tokens=400,
+            completion_tokens=512,
+            route_signals={"token_count": 400, "complexity_tier": "low", "keyword_match": False},
+        )
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(
+                routing_mode_default="premium_only",
+                allowed_premium_models=["openai/gpt-4o-mini"],
+                max_premium_cost_per_request=0.000001,
+            ),
+            limit=5,
+            changed_sample_limit=5,
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert response.summary.newly_denied == 1
+    assert response.changed_requests[0].baseline_route_target == "premium"
+    assert response.changed_requests[0].simulated_route_target == "denied"
+    assert response.changed_requests[0].simulated_terminal_status == "policy_denied"
+    assert "Request exceeds the tenant premium spend guardrail." in (
+        response.changed_requests[0].simulated_policy_outcome or ""
+    )
+    assert store.record_usage_calls == []
+    assert store.policy_updates == []
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_results() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-in-window",
+            timestamp=now,
+            tenant_id="default",
+            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+        ),
+        _ledger_record(
+            request_id="req-other-tenant",
+            timestamp=now,
+            tenant_id="other",
+            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+        ),
+        _ledger_record(
+            request_id="req-old",
+            timestamp=now.replace(year=now.year - 1),
+            tenant_id="default",
+            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+        ),
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            from_timestamp=now.replace(second=max(0, now.second - 1)),
+            to_timestamp=now.replace(second=min(59, now.second + 1)),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert response.window.returned_rows == 1
+    assert response.changed_requests == []
+
+    empty_response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            from_timestamp=now.replace(year=now.year - 2),
+            to_timestamp=now.replace(year=now.year - 2),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert empty_response.summary.evaluated_rows == 0
+    assert empty_response.summary.changed_routes == 0
+    assert empty_response.summary.newly_denied == 0
+    assert empty_response.window.returned_rows == 0
+    assert empty_response.changed_requests == []
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_uses_signal_replay_for_keyword_complexity_routes() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-keyword",
+            timestamp=now,
+            final_route_target="premium",
+            estimated_cost=0.001,
+            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": True},
+        )
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(candidate_policy=TenantPolicy(), limit=10, changed_sample_limit=10),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert response.summary.changed_routes == 0
+    assert len(response.changed_requests) == 1
+    assert response.changed_requests[0].request_id == "req-keyword"
+    assert response.changed_requests[0].baseline_route_target == "premium"
+    assert response.changed_requests[0].simulated_route_target == "premium"
+    assert response.summary.simulated_premium_cost > 0.0
 
 
 def test_embeddings_request_accepts_string_or_flat_list_only() -> None:
