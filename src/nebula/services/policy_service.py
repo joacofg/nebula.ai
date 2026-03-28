@@ -50,6 +50,7 @@ class PolicyService:
             prompt,
             request,
             routing_mode=policy.routing_mode_default,
+            policy=policy,
         )
         self._enforce_explicit_model_constraints(
             request,

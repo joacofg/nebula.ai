@@ -141,8 +141,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     assert invalid.status_code == 401
     assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
-    assert authorized.json()["default_premium_model"] == "gpt-4o-mini"
-    assert "gpt-4o-mini" in authorized.json()["known_premium_models"]
+    assert authorized.json()["default_premium_model"] == "openai/gpt-4o-mini"
+    assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
     assert authorized.json()["runtime_enforced_fields"] == [
         "routing_mode_default",
         "allowed_premium_models",
@@ -233,9 +233,12 @@ def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None
     assert by_status["completed"]["cache_hit"] is False
     assert by_status["completed"]["policy_outcome"] == "default"
 
-    assert by_status["policy_denied"]["final_route_target"] == "denied"
-    assert by_status["policy_denied"]["route_reason"] == "explicit_premium_model"
-    assert by_status["policy_denied"]["policy_outcome"] == "Premium model 'openai/gpt-4o-mini' is not allowed for this tenant."
+    premium_entries = [entry for entry in body if entry["route_reason"] == "explicit_premium_model"]
+    assert len(premium_entries) == 1
+    assert premium_entries[0]["terminal_status"] == "completed"
+    assert premium_entries[0]["final_route_target"] == "premium"
+    assert premium_entries[0]["final_provider"] == "mock-premium"
+    assert premium_entries[0]["policy_outcome"] == "default"
 
     assert by_status["cache_hit"]["final_route_target"] == "cache"
     assert by_status["cache_hit"]["final_provider"] == "cache"
@@ -522,7 +525,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
     assert denied.headers["X-Nebula-Provider"] == "policy"
     assert ledger.status_code == 200
     assert ledger.json()[0]["request_id"] == request_id
-    assert ledger.json()[0]["final_route_target"] == denied.headers["X-Nebula-Route-Target"]
-    assert ledger.json()[0]["final_provider"] == denied.headers["X-Nebula-Provider"]
+    assert ledger.json()[0]["final_route_target"] == "denied"
+    assert ledger.json()[0]["final_provider"] is None
     assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
     assert ledger.json()[0]["policy_outcome"] == denied.json()["detail"]

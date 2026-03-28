@@ -91,7 +91,7 @@ async def test_routing_mode_matrix() -> None:
     )
 
     assert auto_resolution.route_decision.target == "local"
-    assert auto_resolution.route_decision.reason == "simple_prompt"
+    assert auto_resolution.route_decision.reason == "token_complexity"
     assert local_only_resolution.route_decision.target == "local"
     assert local_only_resolution.route_decision.reason == "policy_local_only"
     assert premium_only_resolution.route_decision.target == "premium"

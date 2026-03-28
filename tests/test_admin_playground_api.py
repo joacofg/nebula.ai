@@ -6,6 +6,9 @@ from nebula.providers.base import CompletionResult
 from tests.support import FakeCacheService, StubProvider, admin_headers, auth_headers, configured_app, usage
 
 
+CANONICAL_PREMIUM_MODEL = "openai/gpt-4o-mini"
+
+
 def _mount_runtime(app) -> None:
     container = app.state.container
     container.local_provider = StubProvider(
@@ -41,7 +44,7 @@ def test_admin_playground_completion() -> None:
                 headers=admin_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "hello from playground"}],
                     "stream": False,
                 },
@@ -90,7 +93,7 @@ def test_usage_ledger_request_id_filter() -> None:
                 headers=admin_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "first"}],
                     "stream": False,
                 },
@@ -100,7 +103,7 @@ def test_usage_ledger_request_id_filter() -> None:
                 headers=admin_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "second"}],
                     "stream": False,
                 },
@@ -126,7 +129,7 @@ def test_admin_playground_completion_rejects_unknown_tenant() -> None:
                 headers=admin_headers(),
                 json={
                     "tenant_id": "missing-tenant",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "hello"}],
                     "stream": False,
                 },
@@ -147,7 +150,7 @@ def test_admin_playground_completion_rejects_inactive_tenant_without_usage_recor
                 headers=admin_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "inactive"}],
                     "stream": False,
                 },
@@ -173,7 +176,7 @@ def test_admin_playground_is_admin_only_and_not_public_auth_compatible() -> None
                 headers=auth_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "hello"}],
                     "stream": False,
                 },
@@ -194,7 +197,7 @@ def test_admin_playground_rejects_streaming_even_for_admin_requests() -> None:
                 headers=admin_headers(),
                 json={
                     "tenant_id": "default",
-                    "model": "gpt-4o-mini",
+                    "model": CANONICAL_PREMIUM_MODEL,
                     "messages": [{"role": "user", "content": "hello from playground"}],
                     "stream": True,
                 },

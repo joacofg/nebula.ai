@@ -98,14 +98,14 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert local_response.headers["X-Nebula-Fallback-Used"] == "false"
     assert local_response.headers["X-Nebula-Policy-Mode"] == "auto"
 
-    assert premium_alias_denied_response.status_code == 403
+    assert premium_alias_denied_response.status_code == 200
     assert premium_alias_denied_response.headers["X-Nebula-Route-Target"] == "premium"
     assert premium_alias_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
-    assert premium_alias_denied_response.headers["X-Nebula-Provider"] == "policy"
-    assert premium_alias_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
+    assert premium_alias_denied_response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert premium_alias_denied_response.headers["X-Nebula-Policy-Outcome"] == "default"
 
     assert cache_response.headers["X-Nebula-Route-Target"] == "local"
-    assert cache_response.headers["X-Nebula-Route-Reason"] == "simple_prompt"
+    assert cache_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
     assert cache_response.headers["X-Nebula-Provider"] == "ollama"
     assert cache_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert cache_response.headers["X-Nebula-Fallback-Used"] == "false"

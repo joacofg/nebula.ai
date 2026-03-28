@@ -183,7 +183,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             requested_model="nebula-auto",
             response_model="openai/gpt-4o-mini",
             route_target="premium",
-            route_reason="complexity_hint",
+            route_reason="token_complexity",
             provider="openai-compatible",
             cache_hit=False,
             fallback_used=False,

@@ -126,7 +126,7 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
         "request_id": request_id,
         "tenant_id": "default",
         "route_target": "local",
-        "route_reason": "simple_prompt",
+        "route_reason": "token_complexity",
         "provider": "ollama",
         "cache_hit": "false",
         "fallback_used": "false",
