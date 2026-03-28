@@ -36,7 +36,7 @@ Expected output:
   - Estimate: 1.5h
   - Files: src/nebula/models/governance.py, src/nebula/services/recommendation_service.py, src/nebula/services/governance_store.py, src/nebula/services/semantic_cache_service.py, src/nebula/core/container.py, tests/test_service_flows.py
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x
-- [ ] **T02: Expose tenant recommendation API and console contracts** — Why: Once the backend derivation seam exists, S04 needs one narrow admin contract and shared frontend typings so Observability and policy surfaces can consume the same tenant-scoped evidence without duplicating heuristics.
+- [x] **T02: Added a tenant-scoped admin recommendations endpoint, shared console contract typings, and focused governance API coverage for bounded cache evidence.** — Why: Once the backend derivation seam exists, S04 needs one narrow admin contract and shared frontend typings so Observability and policy surfaces can consume the same tenant-scoped evidence without duplicating heuristics.
 
 Steps:
 1. Add tenant-scoped admin endpoint wiring in `src/nebula/api/routes/admin.py` for the compact recommendation/cache summary response, including tenant existence checks and admin-only protection.

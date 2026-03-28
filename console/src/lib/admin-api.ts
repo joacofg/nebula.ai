@@ -116,6 +116,48 @@ export type PolicySimulationResponse = {
   changed_requests: PolicySimulationChangedRequest[];
 };
 
+export type RecommendationEvidence = {
+  label: string;
+  value: string;
+};
+
+export type RecommendationCard = {
+  code: string;
+  title: string;
+  priority: number;
+  category: "policy" | "cache" | "info";
+  summary: string;
+  recommended_action: string;
+  evidence: RecommendationEvidence[];
+};
+
+export type CacheInsight = {
+  code: string;
+  title: string;
+  level: "info" | "notice" | "warning";
+  summary: string;
+  evidence: RecommendationEvidence[];
+};
+
+export type CacheControlSummary = {
+  enabled: boolean;
+  similarity_threshold: number;
+  max_entry_age_hours: number;
+  runtime_status: "ready" | "degraded" | "not_ready" | "unknown";
+  runtime_detail: string;
+  estimated_hit_rate: number;
+  avoided_premium_cost_usd: number;
+  insights: CacheInsight[];
+};
+
+export type RecommendationBundle = {
+  tenant_id: string;
+  generated_at: string;
+  window_requests_evaluated: number;
+  recommendations: RecommendationCard[];
+  cache_summary: CacheControlSummary;
+};
+
 export type PlaygroundInput = {
   tenantId: string;
   model: string;
@@ -387,6 +429,13 @@ export function revokeApiKey(adminKey: string, apiKeyId: string) {
 
 export function getTenantPolicy(adminKey: string, tenantId: string) {
   return adminRequest<TenantPolicy>(`${ADMIN_TENANTS_ENDPOINT}/${tenantId}/policy`, { adminKey });
+}
+
+export function getTenantRecommendations(adminKey: string, tenantId: string) {
+  return adminRequest<RecommendationBundle>(
+    `${ADMIN_TENANTS_ENDPOINT}/${tenantId}/recommendations`,
+    { adminKey },
+  );
 }
 
 export function updateTenantPolicy(adminKey: string, tenantId: string, payload: TenantPolicy) {

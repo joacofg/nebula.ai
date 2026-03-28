@@ -17,6 +17,7 @@ from nebula.models.governance import (
     PolicySimulationRequest,
     PolicySimulationResponse,
     PlaygroundResponse,
+    RecommendationBundle,
     TenantCreateRequest,
     TenantPolicy,
     TenantRecord,
@@ -111,6 +112,27 @@ async def upsert_tenant_policy(
     if container.governance_store.get_tenant(tenant_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
     return container.governance_store.upsert_policy(tenant_id, payload)
+
+
+@router.get("/tenants/{tenant_id}/recommendations", response_model=RecommendationBundle)
+async def get_tenant_recommendations(
+    tenant_id: str,
+    container: ServiceContainer = Depends(require_admin),
+) -> RecommendationBundle:
+    tenant = container.governance_store.get_tenant(tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
+    tenant_context = AuthenticatedTenantContext(
+        tenant=tenant,
+        api_key=container.governance_store.ensure_api_key(
+            raw_key=container.settings.bootstrap_api_key,
+            name=container.settings.bootstrap_api_key_name,
+            tenant_id=container.settings.bootstrap_tenant_id,
+            allowed_tenant_ids=[container.settings.bootstrap_tenant_id],
+        ),
+        policy=container.governance_store.get_policy(tenant_id),
+    )
+    return await container.recommendation_service.build_summary(tenant_context=tenant_context)
 
 
 @router.post("/tenants/{tenant_id}/policy/simulate", response_model=PolicySimulationResponse)

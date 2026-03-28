@@ -27,6 +27,153 @@ def _mount_runtime(app, *, local_provider=None, premium_provider=None, cache_ser
     if cache_service is not None:
         container.cache_service = cache_service
         container.chat_service.cache_service = cache_service
+        container.recommendation_service.semantic_cache_service = cache_service
+
+
+def test_admin_tenant_recommendations_endpoint_is_admin_protected() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            unauthorized = client.get("/v1/admin/tenants/default/recommendations")
+            invalid = client.get(
+                "/v1/admin/tenants/default/recommendations",
+                headers=admin_headers(admin_api_key="invalid-admin-key"),
+            )
+
+    assert unauthorized.status_code == 401
+    assert unauthorized.json() == {"detail": "Missing or invalid admin API key."}
+    assert invalid.status_code == 401
+    assert invalid.json() == {"detail": "Missing or invalid admin API key."}
+
+
+def test_admin_tenant_recommendations_returns_404_for_missing_tenant() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            response = client.get(
+                "/v1/admin/tenants/missing/recommendations",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Tenant not found."}
+
+
+def test_admin_tenant_recommendations_are_tenant_scoped_and_bounded() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                cache_service=FakeCacheService(),
+            )
+            client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={
+                    "id": "team-a",
+                    "name": "Team A",
+                    "policy": {
+                        "routing_mode_default": "auto",
+                        "allowed_premium_models": ["openai/gpt-4o-mini"],
+                    },
+                },
+            )
+            client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={
+                    "id": "team-b",
+                    "name": "Team B",
+                    "policy": {
+                        "routing_mode_default": "auto",
+                        "allowed_premium_models": ["openai/gpt-4o-mini"],
+                    },
+                },
+            )
+            team_a_key = client.post(
+                "/v1/admin/api-keys",
+                headers=admin_headers(),
+                json={
+                    "name": "team-a-key",
+                    "tenant_id": "team-a",
+                    "allowed_tenant_ids": ["team-a"],
+                },
+            ).json()["api_key"]
+            team_b_key = client.post(
+                "/v1/admin/api-keys",
+                headers=admin_headers(),
+                json={
+                    "name": "team-b-key",
+                    "tenant_id": "team-b",
+                    "allowed_tenant_ids": ["team-b"],
+                },
+            ).json()["api_key"]
+
+            for index in range(6):
+                client.post(
+                    "/v1/chat/completions",
+                    headers=auth_headers(api_key=team_a_key, tenant_id="team-a"),
+                    json={
+                        "model": "nebula-auto",
+                        "messages": [{"role": "user", "content": f"team a request {index}"}],
+                    },
+                )
+            client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(api_key=team_b_key, tenant_id="team-b"),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "team b request"}],
+                },
+            )
+
+            response = client.get(
+                "/v1/admin/tenants/team-a/recommendations",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["tenant_id"] == "team-a"
+    assert body["window_requests_evaluated"] == 6
+    assert len(body["recommendations"]) <= 3
+    assert len(body["cache_summary"]["insights"]) <= 2
+    assert all(len(item["evidence"]) <= 4 for item in body["recommendations"])
+    assert all(item["label"] and item["value"] for rec in body["recommendations"] for item in rec["evidence"])
+
+
+def test_admin_tenant_recommendations_propagate_degraded_cache_evidence() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                cache_service=FakeCacheService(
+                    health_status_payload={
+                        "status": "degraded",
+                        "detail": "Qdrant probe timed out.",
+                        "required": False,
+                        "enabled": True,
+                    }
+                ),
+            )
+
+            response = client.get(
+                "/v1/admin/tenants/default/recommendations",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["cache_summary"]["runtime_status"] == "degraded"
+    assert body["cache_summary"]["runtime_detail"] == "Qdrant probe timed out."
+    assert body["cache_summary"]["insights"][0]["code"] == "cache_runtime_degraded"
+    assert body["cache_summary"]["insights"][0]["evidence"][0] == {
+        "label": "runtime_status",
+        "value": "degraded",
+    }
+    assert body["recommendations"][0]["code"] == "restore_semantic_cache_runtime"
+    assert body["recommendations"][0]["evidence"][1] == {
+        "label": "cache_runtime_detail",
+        "value": "Qdrant probe timed out.",
+    }
 
 
 def test_authentication_returns_401_and_403_for_missing_invalid_and_unauthorized_credentials() -> None:
