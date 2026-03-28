@@ -15,17 +15,6 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: unmapped
 - Notes: Expected decision inputs include policy mode, model allowlist, provider health, budget state, historical outcome signals, and request complexity signals.
 
-### R041 — Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
-- Class: integration
-- Status: active
-- Description: Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
-- Why it matters: Real cost control needs enforceable behavior, not only operator interpretation after the fact.
-- Source: user
-- Primary owning slice: M005/S03
-- Supporting slices: M005/S01
-- Validation: unmapped
-- Notes: Hard limits should degrade or reroute requests intentionally rather than fail ambiguously whenever possible.
-
 ### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
 - Class: differentiator
 - Status: active
@@ -325,6 +314,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Operators can simulate a candidate routing or policy change against real recent Nebula traffic before applying it through a non-mutating replay path backed by usage-ledger rows, aggregate route/denial/cost deltas, and preview-before-save console feedback. Verified by passing `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x`, `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.
 - Notes: Validated by M005/S02 through a replay-only policy simulation loop that re-evaluates recent tenant ledger traffic against a candidate policy without mutating saved policy or usage state. Evidence: typed simulation DTOs, `POST /v1/admin/tenants/{tenant_id}/policy/simulate`, console preview-before-save UX, and passing focused verification in `tests/test_service_flows.py -k simulation`, `tests/test_governance_api.py -k simulation`, and console policy preview Vitest coverage.
 
+### R041 — Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Class: integration
+- Status: validated
+- Description: Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Why it matters: Real cost control needs enforceable behavior, not only operator interpretation after the fact.
+- Source: user
+- Primary owning slice: M005/S03
+- Supporting slices: M005/S01
+- Validation: Verified by `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "budget or simulation or runtime_policy" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "guardrail or policy_denied or simulation" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`.
+- Notes: Validated by M005/S03 hard budget guardrails: explicit cumulative guardrail fields (`hard_budget_limit_usd`, `hard_budget_enforcement`), centralized PolicyService enforcement shared by runtime and simulation, deterministic downgrade-to-local for compatible auto-routed traffic, exact denial for explicit premium/premium-only requests, and operator-visible budget evidence across admin APIs, ledger detail, and policy docs.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -538,14 +538,14 @@ This file is the explicit capability and coverage contract for the project.
 | R038 | differentiator | validated | M004/S03 | M004/S04 | M004 improved posture cues, freshness interpretation, and trust-boundary wording, then revalidated the assembled hosted story in close-out. |
 | R039 | core-capability | active | M005/S01 | M005/S03 | unmapped |
 | R040 | operability | validated | M005/S02 | M005/S05 | Operators can simulate a candidate routing or policy change against real recent Nebula traffic before applying it through a non-mutating replay path backed by usage-ledger rows, aggregate route/denial/cost deltas, and preview-before-save console feedback. Verified by passing `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x`, `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
-| R041 | integration | active | M005/S03 | M005/S01 | unmapped |
+| R041 | integration | validated | M005/S03 | M005/S01 | Verified by `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "budget or simulation or runtime_policy" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "guardrail or policy_denied or simulation" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`. |
 | R042 | differentiator | active | M005/S04 | M005/S02, M005/S03 | unmapped |
 | R043 | operability | active | M005/S04 | M005/S05 | unmapped |
 | R044 | constraint | active | M005/S05 | M005/S01, M005/S02, M005/S03, M005/S04 | unmapped |
 
 ## Coverage Summary
 
-- Active requirements: 5
-- Mapped to slices: 5
-- Validated: 24 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R040)
+- Active requirements: 4
+- Mapped to slices: 4
+- Validated: 25 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R040, R041)
 - Unmapped active requirements: 0

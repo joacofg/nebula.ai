@@ -18,6 +18,7 @@ from nebula.services.policy_service import PolicyService
 from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from nebula.services.provider_registry import ProviderRegistry
+from nebula.services.recommendation_service import RecommendationService
 from nebula.services.remote_management_service import RemoteManagementService
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
@@ -67,6 +68,11 @@ class ServiceContainer:
         self.cache_service = SemanticCacheService(
             settings=settings,
             embeddings_service=self.embeddings_service,
+        )
+        self.recommendation_service = RecommendationService(
+            governance_store=self.governance_store,
+            policy_simulation_service=self.policy_simulation_service,
+            semantic_cache_service=self.cache_service,
         )
         self.runtime_health_service = RuntimeHealthService(
             settings=settings,

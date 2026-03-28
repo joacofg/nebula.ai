@@ -13,6 +13,7 @@ from nebula.core.config import Settings
 from nebula.models.governance import (
     ApiKeyRecord,
     PolicySimulationRequest,
+    RecommendationBundle,
     TenantPolicy,
     TenantRecord,
     UsageLedgerRecord,
@@ -30,6 +31,7 @@ from nebula.services.embeddings_service import (
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
+from nebula.services.recommendation_service import RecommendationService
 from nebula.services.router_service import RouteDecision, RouterService
 from tests.support import FakeCacheService, StubProvider
 
@@ -377,6 +379,7 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
         self.records = list(records)
         self.record_usage_calls: list[UsageLedgerRecord] = []
         self.policy_updates: list[tuple[str, TenantPolicy]] = []
+        self.list_usage_records_calls: list[dict[str, object]] = []
 
     def list_usage_records(
         self,
@@ -389,6 +392,17 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
         to_timestamp: datetime | None = None,
         limit: int = 100,
     ) -> list[UsageLedgerRecord]:
+        self.list_usage_records_calls.append(
+            {
+                "request_id": request_id,
+                "tenant_id": tenant_id,
+                "terminal_status": terminal_status,
+                "route_target": route_target,
+                "from_timestamp": from_timestamp,
+                "to_timestamp": to_timestamp,
+                "limit": limit,
+            }
+        )
         rows = list(self.records)
         if request_id is not None:
             rows = [row for row in rows if row.request_id == request_id]
@@ -724,40 +738,185 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
 
 
 @pytest.mark.asyncio
-async def test_policy_simulation_uses_signal_replay_for_keyword_complexity_routes() -> None:
-    settings = Settings()
+async def test_recommendation_service_orders_and_bounds_recommendations_without_mutation() -> None:
     now = datetime.now(UTC)
     records = [
         _ledger_record(
-            request_id="req-keyword",
+            request_id="req-premium-1",
             timestamp=now,
             final_route_target="premium",
-            estimated_cost=0.001,
-            route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": True},
-        )
+            estimated_cost=0.020,
+            prompt_tokens=900,
+            completion_tokens=300,
+        ),
+        _ledger_record(
+            request_id="req-premium-2",
+            timestamp=now.replace(microsecond=1),
+            final_route_target="premium",
+            estimated_cost=0.015,
+            prompt_tokens=850,
+            completion_tokens=280,
+        ),
+        _ledger_record(
+            request_id="req-premium-3",
+            timestamp=now.replace(microsecond=2),
+            final_route_target="premium",
+            estimated_cost=0.012,
+            prompt_tokens=820,
+            completion_tokens=260,
+        ),
+        _ledger_record(
+            request_id="req-cache-hit",
+            timestamp=now.replace(microsecond=3),
+            final_route_target="premium",
+            terminal_status="cache_hit",
+            estimated_cost=0.008,
+            route_reason="semantic_cache",
+        ).model_copy(update={"cache_hit": True}),
+        _ledger_record(
+            request_id="req-denied",
+            timestamp=now.replace(microsecond=4),
+            final_route_target="premium",
+            terminal_status="policy_denied",
+            estimated_cost=0.0,
+            policy_outcome="denied=Request exceeds the tenant premium spend guardrail.",
+        ),
     ]
     store = FakeSimulationGovernanceStore(records)
-    service = PolicySimulationService(
+    cache_service = FakeCacheService(
+        health_status_payload={
+            "status": "degraded",
+            "required": False,
+            "detail": "Qdrant unavailable: connection refused",
+            "enabled": False,
+        }
+    )
+    settings = Settings()
+    recommendation_service = RecommendationService(
         governance_store=store,
-        router_service=RouterService(settings),
-        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+        policy_simulation_service=PolicySimulationService(
+            governance_store=store,
+            router_service=RouterService(settings),
+            policy_service=PolicyService(
+                settings,
+                store,
+                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+            ),
+        ),
+        semantic_cache_service=cache_service,
     )
 
-    response = await service.simulate(
-        tenant_context=tenant_context(),
-        payload=PolicySimulationRequest(candidate_policy=TenantPolicy(), limit=10, changed_sample_limit=10),
+    bundle = await recommendation_service.build_summary(
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                semantic_cache_enabled=True,
+                semantic_cache_similarity_threshold=0.82,
+                semantic_cache_max_entry_age_hours=48,
+            ),
+        )
     )
 
-    assert response.summary.evaluated_rows == 1
-    assert response.summary.changed_routes == 0
-    assert len(response.changed_requests) == 1
-    assert response.changed_requests[0].request_id == "req-keyword"
-    assert response.changed_requests[0].baseline_route_target == "premium"
-    assert response.changed_requests[0].simulated_route_target == "premium"
-    assert response.summary.simulated_premium_cost > 0.0
+    assert isinstance(bundle, RecommendationBundle)
+    assert bundle.window_requests_evaluated == 5
+    assert len(bundle.recommendations) == 3
+    assert [item.code for item in bundle.recommendations] == [
+        "restore_semantic_cache_runtime",
+        "review_premium_routing_pressure",
+        "inspect_policy_denials",
+    ]
+    assert bundle.cache_summary.runtime_status == "degraded"
+    assert bundle.cache_summary.similarity_threshold == 0.82
+    assert bundle.cache_summary.max_entry_age_hours == 48
+    assert bundle.cache_summary.avoided_premium_cost_usd == 0.008
+    assert len(bundle.cache_summary.insights) == 2
+    assert store.record_usage_calls == []
+    assert store.policy_updates == []
+    assert store.list_usage_records_calls[-1]["tenant_id"] == "default"
+    assert store.list_usage_records_calls[-1]["limit"] == 200
 
 
-def test_embeddings_request_accepts_string_or_flat_list_only() -> None:
+@pytest.mark.asyncio
+async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runtime_is_healthy() -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-{index}",
+            timestamp=now.replace(microsecond=index),
+            final_route_target="local" if index % 2 == 0 else "premium",
+            estimated_cost=0.003 if index % 2 else 0.0,
+            prompt_tokens=120,
+            completion_tokens=40,
+        )
+        for index in range(6)
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    cache_service = FakeCacheService()
+    settings = Settings()
+    recommendation_service = RecommendationService(
+        governance_store=store,
+        policy_simulation_service=PolicySimulationService(
+            governance_store=store,
+            router_service=RouterService(settings),
+            policy_service=PolicyService(
+                settings,
+                store,
+                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+            ),
+        ),
+        semantic_cache_service=cache_service,
+    )
+
+    bundle = await recommendation_service.build_summary(
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                semantic_cache_enabled=True,
+                semantic_cache_similarity_threshold=0.95,
+                semantic_cache_max_entry_age_hours=24,
+            ),
+        )
+    )
+
+    assert bundle.cache_summary.runtime_status == "ready"
+    assert bundle.cache_summary.estimated_hit_rate == 0
+    assert bundle.recommendations[0].code == "tune_semantic_cache_threshold"
+    assert bundle.recommendations[0].evidence[1].value == "0.95"
+    assert store.record_usage_calls == []
+    assert store.policy_updates == []
+
+
+@pytest.mark.asyncio
+async def test_recommendation_service_returns_no_action_summary_for_quiet_healthy_window() -> None:
+    store = FakeSimulationGovernanceStore([])
+    cache_service = FakeCacheService()
+    settings = Settings()
+    recommendation_service = RecommendationService(
+        governance_store=store,
+        policy_simulation_service=PolicySimulationService(
+            governance_store=store,
+            router_service=RouterService(settings),
+            policy_service=PolicyService(
+                settings,
+                store,
+                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+            ),
+        ),
+        semantic_cache_service=cache_service,
+    )
+
+    bundle = await recommendation_service.build_summary(tenant_context=tenant_context())
+
+    assert bundle.window_requests_evaluated == 0
+    assert [item.code for item in bundle.recommendations] == ["no_action_needed"]
+    assert bundle.cache_summary.runtime_status == "ready"
+    assert bundle.cache_summary.insights[0].code == "cache_runtime_ready"
+    assert store.record_usage_calls == []
+    assert store.policy_updates == []
+
+
     single = EmbeddingsRequest(model="nomic-embed-text", input="hello")
     batch = EmbeddingsRequest(model="nomic-embed-text", input=["first", "second"])
 

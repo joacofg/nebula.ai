@@ -59,11 +59,22 @@ def admin_headers(admin_api_key: str = "nebula-admin-key") -> dict[str, str]:
 
 
 class FakeCacheService:
-    def __init__(self, cached_response: str | None = None) -> None:
+    def __init__(
+        self,
+        cached_response: str | None = None,
+        *,
+        health_status_payload: dict[str, object] | None = None,
+    ) -> None:
         self.cached_response = cached_response
         self.lookup_calls: list[str] = []
         self.stored_entries: list[tuple[str, str, str]] = []
         self.enabled = True
+        self.health_status_payload = health_status_payload or {
+            "status": "ready",
+            "required": False,
+            "detail": "Semantic cache collection is reachable.",
+            "enabled": True,
+        }
 
     async def initialize(self) -> None:
         return None
@@ -77,6 +88,9 @@ class FakeCacheService:
 
     async def close(self) -> None:
         return None
+
+    async def health_status(self) -> dict[str, object]:
+        return self.health_status_payload
 
 
 class StubProvider:

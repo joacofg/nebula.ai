@@ -21,6 +21,8 @@ class TenantPolicy(BaseModel):
     routing_mode_default: RoutingMode = "auto"
     allowed_premium_models: list[str] = Field(default_factory=list)
     semantic_cache_enabled: bool = True
+    semantic_cache_similarity_threshold: float = Field(default=0.9, ge=0, le=1)
+    semantic_cache_max_entry_age_hours: int = Field(default=168, ge=1, le=720)
     fallback_enabled: bool = True
     max_premium_cost_per_request: float | None = Field(default=None, ge=0)
     hard_budget_limit_usd: float | None = Field(default=None, ge=0)
@@ -171,3 +173,45 @@ class PolicySimulationResponse(BaseModel):
     window: PolicySimulationWindow
     summary: PolicySimulationOutcomeCounts
     changed_requests: list[PolicySimulationChangedRequest] = Field(default_factory=list)
+
+
+class RecommendationEvidence(BaseModel):
+    label: str = Field(min_length=1)
+    value: str = Field(min_length=1)
+
+
+class RecommendationCard(BaseModel):
+    code: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    priority: int = Field(ge=1, le=9)
+    category: Literal["policy", "cache", "info"]
+    summary: str = Field(min_length=1, max_length=280)
+    recommended_action: str = Field(min_length=1, max_length=280)
+    evidence: list[RecommendationEvidence] = Field(default_factory=list, max_length=4)
+
+
+class CacheInsight(BaseModel):
+    code: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    level: Literal["info", "notice", "warning"]
+    summary: str = Field(min_length=1, max_length=280)
+    evidence: list[RecommendationEvidence] = Field(default_factory=list, max_length=4)
+
+
+class CacheControlSummary(BaseModel):
+    enabled: bool
+    similarity_threshold: float = Field(ge=0, le=1)
+    max_entry_age_hours: int = Field(ge=1)
+    runtime_status: Literal["ready", "degraded", "not_ready", "unknown"]
+    runtime_detail: str = Field(min_length=1, max_length=280)
+    estimated_hit_rate: float = Field(ge=0, le=1)
+    avoided_premium_cost_usd: float = Field(ge=0)
+    insights: list[CacheInsight] = Field(default_factory=list, max_length=2)
+
+
+class RecommendationBundle(BaseModel):
+    tenant_id: str = Field(min_length=1)
+    generated_at: datetime
+    window_requests_evaluated: int = Field(ge=0, le=200)
+    recommendations: list[RecommendationCard] = Field(default_factory=list, max_length=3)
+    cache_summary: CacheControlSummary

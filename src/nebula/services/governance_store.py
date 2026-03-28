@@ -176,6 +176,8 @@ class GovernanceStore:
             current.routing_mode_default = policy.routing_mode_default
             current.allowed_premium_models_json = policy.allowed_premium_models
             current.semantic_cache_enabled = policy.semantic_cache_enabled
+            current.semantic_cache_similarity_threshold = policy.semantic_cache_similarity_threshold
+            current.semantic_cache_max_entry_age_hours = policy.semantic_cache_max_entry_age_hours
             current.fallback_enabled = policy.fallback_enabled
             current.max_premium_cost_per_request = policy.max_premium_cost_per_request
             current.hard_budget_limit_usd = policy.hard_budget_limit_usd
@@ -426,6 +428,8 @@ class GovernanceStore:
             routing_mode_default=row.routing_mode_default,
             allowed_premium_models=row.allowed_premium_models_json,
             semantic_cache_enabled=row.semantic_cache_enabled,
+            semantic_cache_similarity_threshold=row.semantic_cache_similarity_threshold,
+            semantic_cache_max_entry_age_hours=row.semantic_cache_max_entry_age_hours,
             fallback_enabled=row.fallback_enabled,
             max_premium_cost_per_request=row.max_premium_cost_per_request,
             hard_budget_limit_usd=row.hard_budget_limit_usd,

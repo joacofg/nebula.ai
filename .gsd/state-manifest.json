@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T03:45:30.729Z",
+  "exported_at": "2026-03-28T03:57:37.243Z",
   "milestones": [
     {
       "id": "M001",
@@ -553,16 +553,16 @@
       "milestone_id": "M005",
       "id": "S03",
       "title": "Hard budget guardrails",
-      "status": "pending",
+      "status": "complete",
       "risk": "medium",
       "depends": [
         "S01"
       ],
       "demo": "Tenant policy can enforce hard spend limits with explicit downgrade or denial behavior and explainable recorded outcomes.",
       "created_at": "2026-03-28T02:38:45.198Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-03-28T03:47:29.858Z",
+      "full_summary_md": "---\nid: S03\nparent: M005\nmilestone: M005\nprovides:\n  - Explicit hard cumulative budget policy controls (`hard_budget_limit_usd`, `hard_budget_enforcement`) available across backend, admin APIs, and console contracts.\n  - Shared runtime and simulation hard-budget enforcement that downgrades compatible auto-routed traffic to local when caps are exhausted and denies explicit premium requests when downgrade is not allowed.\n  - Operator-visible budget evidence and stable vocabulary in policy editing, ledger request detail, simulation outputs, and documentation.\nrequires:\n  - slice: S01\n    provides: S01's route-decision vocabulary and ledger evidence pattern that S03 reused for stable policy outcomes and operator-visible explanation surfaces.\naffects:\n  - S04\n  - S05\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/db/models.py\n  - src/nebula/services/governance_store.py\n  - src/nebula/api/routes/admin.py\n  - migrations/versions/20260328_0007_hard_budget_guardrails.py\n  - src/nebula/services/policy_service.py\n  - src/nebula/services/policy_simulation_service.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - docs/route-decision-vocabulary.md\n  - docs/policy-guardrails.md\n  - tests/test_governance_api.py\n  - tests/test_governance_runtime_hardening.py\n  - tests/test_service_flows.py\n  - console/src/components/policy/policy-form.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\nkey_decisions:\n  - Represented hard cumulative budget policy with explicit `hard_budget_limit_usd` and `hard_budget_enforcement` fields instead of mutating `soft_budget_usd`.\n  - Centralized hard-budget enforcement in `PolicyService.evaluate()` and reused that exact path from simulation via `before_timestamp` rather than building a replay-only budget engine.\n  - Allowed downgrade only for compatible auto/default-to-local flows and kept explicit premium or premium-only requests as exact denials when downgrade is impossible or disallowed.\n  - Preserved the raw persisted `policy_outcome` field in request detail for audit continuity, then layered structured budget evidence beside it for operator inspection.\n  - Kept hard-budget documentation and UI copy inside existing routing/decisioning scope rather than expanding into billing or analytics semantics.\npatterns_established:\n  - Add enforcement-oriented policy fields explicitly and carry them through persistence, admin metadata, and console contracts instead of reinterpreting advisory fields in place.\n  - Keep runtime and replay semantics aligned by routing both through the same policy-evaluation path and passing replay-specific context (`before_timestamp`) rather than building a second decision engine.\n  - Expose new control-plane outcomes through stable labeled fields and shared vocabulary on existing observability surfaces before adding any new analytics UI.\nobservability_surfaces:\n  - `/v1/admin/policy/options` now classifies hard-budget controls as runtime-enforced while keeping `soft_budget_usd` advisory-only.\n  - Usage ledger request detail renders labeled hard-budget evidence beside the persisted `policy_outcome`, making downgrade-versus-deny outcomes inspectable without raw JSON spelunking.\n  - Policy simulation responses now reflect the same hard-budget evaluation path used at runtime, including replay-window spend semantics and operator-readable changed-request evidence.\n  - Docs (`docs/route-decision-vocabulary.md`, `docs/policy-guardrails.md`) establish the stable operator vocabulary for hard-budget outcomes.\ndrill_down_paths:\n  - .gsd/milestones/M005/slices/S03/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M005/slices/S03/tasks/T02-SUMMARY.md\n  - .gsd/milestones/M005/slices/S03/tasks/T03-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T03:47:29.859Z\nblocker_discovered: false\n---\n\n# S03: Hard budget guardrails\n\n**Delivered enforceable hard cumulative budget guardrails with shared runtime/simulation semantics, deterministic downgrade-versus-deny behavior, and operator-visible evidence across policy, ledger, and docs.**\n\n## What Happened\n\nS03 turned Nebula's previously advisory budget posture into an enforceable, explainable hard-guardrail loop without widening the product beyond decisioning control-plane scope. The slice first established explicit cumulative hard-budget policy fields across the shared tenant policy contract, SQLAlchemy model, Alembic migration, governance store hydration, admin policy-options metadata, and console typings, preserving `soft_budget_usd` as advisory-only instead of overloading it with runtime meaning. It then centralized enforcement in `PolicyService.evaluate()`, where tenant cumulative spend is compared against the hard cap and resolved deterministically into either a downgrade-to-local outcome for compatible auto-routed/default-local requests or an exact denial for explicit premium and premium-only requests. `PolicySimulationService` now reuses that same path via `before_timestamp`, so replayed simulations inherit the real runtime semantics instead of a separate budget engine. Finally, the operator loop was closed by teaching the policy editor to distinguish runtime-enforced hard guardrails from advisory soft-budget signals, extending ledger request detail with labeled hard-budget evidence next to the persisted `policy_outcome`, and documenting stable budget vocabulary in `docs/route-decision-vocabulary.md` and `docs/policy-guardrails.md`. The assembled result is a narrow but meaningful control-plane capability: hard spend caps now change routing behavior predictably, those outcomes are inspectable after the fact, and downstream recommendation work can build on persisted downgrade-versus-deny evidence instead of inferred spend pressure.\n\n## Verification\n\nAll slice-plan verification checks passed in the assembled worktree: `./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x` (7 passed), `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` (11 passed), `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x` (11 passed), `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x` (8 passed), and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx && test -f docs/policy-guardrails.md` (19 passed plus docs presence). Observability surfaces were explicitly confirmed through policy-options metadata, simulation API responses, and ledger request-detail rendering tests that validate structured hard-budget evidence and advisory/runtime copy separation.\n\n## Requirements Advanced\n\n- R041 — Implemented the explicit policy fields, central enforcement logic, shared simulation semantics, and operator evidence path needed for enforceable hard spend guardrails with graceful downgrade behavior.\n- R044 — Kept the work inside existing decisioning, policy, ledger, and documentation surfaces rather than expanding into billing, analytics, SDK, or hosted-authority scope.\n\n## Requirements Validated\n\n- R041 — Focused backend and console verification passed for policy-options metadata, runtime/service hard-budget enforcement, simulation replay semantics, and operator evidence surfaces via `./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x`, `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nNone.\n\n## Known Limitations\n\nNo dedicated alerting or dashboard aggregation exists yet for hard-budget exhaustion trends; operators inspect per-request evidence and simulation previews, with recommendation-grade guidance deferred to S04.\n\n## Follow-ups\n\nS04 should consume the now-stable hard-budget outcomes and vocabulary when generating recommendations so recommendation logic can treat downgrade-versus-deny evidence as first-class operator guidance instead of inferring spend pressure from soft-budget signals.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py` — Extended tenant policy contract, persistence model, and admin options metadata with explicit hard cumulative budget fields and preserved soft-budget advisory semantics.\n- `src/nebula/db/models.py` — Added hard-budget columns for tenant policy persistence.\n- `src/nebula/services/governance_store.py` — Kept policy write/read hydration and usage ledger mapping aligned with the new guardrail fields.\n- `src/nebula/api/routes/admin.py` — Exposed hard-budget controls through admin policy options metadata as runtime-enforced fields.\n- `migrations/versions/20260328_0007_hard_budget_guardrails.py` — Added Alembic migration for hard-budget guardrail persistence.\n- `src/nebula/services/policy_service.py` — Centralized cumulative hard-budget downgrade-versus-deny evaluation shared by runtime and simulation.\n- `src/nebula/services/policy_simulation_service.py` — Reused the shared policy evaluation path during chronological ledger replay with before_timestamp semantics.\n- `console/src/lib/admin-api.ts` — Mirrored hard-budget contract types and options metadata in the console admin client.\n- `console/src/components/policy/policy-form.tsx` — Explained runtime-enforced hard guardrails versus advisory soft-budget controls in the policy editor.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Rendered structured hard-budget evidence in ledger request detail alongside persisted policy outcome.\n- `docs/route-decision-vocabulary.md` — Documented stable route-decision and policy-guardrail vocabulary for operator-visible budget outcomes.\n- `docs/policy-guardrails.md` — Added dedicated operator documentation for hard cumulative budget guardrails.\n- `tests/test_governance_api.py` — Added focused backend coverage for hard-budget enforcement, simulation replay, and policy options/admin evidence.\n- `tests/test_governance_runtime_hardening.py` — Added focused runtime/service hard-budget tests.\n- `tests/test_service_flows.py` — Extended service-flow coverage for shared budget evaluation and simulation semantics.\n- `console/src/components/policy/policy-form.test.tsx` — Locked policy form/page and ledger request-detail behavior with focused Vitest coverage.\n",
+      "full_uat_md": "# S03: Hard budget guardrails — UAT\n\n**Milestone:** M005\n**Written:** 2026-03-28T03:47:29.859Z\n\n# S03 UAT — Hard budget guardrails\n\n## Preconditions\n- Nebula backend dependencies are available and the Python virtualenv plus console dependencies are installed.\n- A tenant exists with a valid premium-capable policy and an operator can access admin policy editing plus usage ledger detail.\n- The worktree includes the S03 changes introducing `hard_budget_limit_usd` and `hard_budget_enforcement` in policy editing, runtime evaluation, and ledger detail.\n\n## Test Case 1 — Policy editor shows runtime-enforced hard guardrails separately from advisory soft budget\n1. Open the tenant policy editor.\n   - Expected: The form contains explicit hard cumulative budget inputs for the spend limit and enforcement mode.\n2. Inspect the copy around the hard-budget controls.\n   - Expected: The copy describes them as runtime-enforced controls that affect request behavior after the cumulative cap is exhausted.\n3. Inspect the copy around `soft_budget_usd`.\n   - Expected: `soft_budget_usd` remains described as advisory-only or soft-signal guidance, not an enforced cap.\n4. Save a policy with `hard_budget_limit_usd` populated and enforcement set to downgrade-capable behavior.\n   - Expected: The save succeeds and subsequent policy loads show the same hard-budget values without dropping them.\n\n## Test Case 2 — Compatible auto-routed traffic downgrades to local after hard cap exhaustion\n1. Configure a tenant policy with a low `hard_budget_limit_usd` that can be exceeded by recent premium usage and choose the downgrade-capable enforcement mode.\n   - Expected: The policy persists and the tenant remains otherwise eligible for local routing.\n2. Send or replay an auto-routed request whose route is compatible with local execution once the premium budget is exhausted.\n   - Expected: The request is not ambiguously denied; it resolves to a local/downgraded outcome.\n3. Open the corresponding usage-ledger request detail.\n   - Expected: The detail shows a labeled hard-budget outcome explaining that the cumulative cap was exhausted and the request was downgraded to local.\n4. Review the persisted policy outcome field and the structured budget evidence together.\n   - Expected: Audit continuity is preserved through the raw `policy_outcome`, and the labeled evidence makes the downgrade understandable without reading raw JSON.\n\n## Test Case 3 — Explicit premium request is denied when downgrade is impossible or disallowed\n1. Configure or reuse a tenant whose cumulative premium spend already exceeds the hard budget cap.\n   - Expected: The tenant is in a budget-exhausted state for premium requests.\n2. Issue a request that explicitly requires premium behavior (for example an explicit premium route or premium-only request).\n   - Expected: The request is denied rather than silently downgraded.\n3. Inspect the policy outcome and request detail evidence.\n   - Expected: The denial language states that the hard cumulative budget guardrail blocked premium usage and explains why downgrade could not occur.\n4. Confirm soft-budget wording did not trigger the denial path.\n   - Expected: The evidence references hard-budget enforcement, not advisory soft-budget guidance.\n\n## Test Case 4 — Simulation preview matches runtime hard-budget semantics\n1. Open the policy editor and prepare a candidate policy that adds or tightens `hard_budget_limit_usd` / `hard_budget_enforcement`.\n   - Expected: The editor allows previewing the change before save.\n2. Run policy simulation against recent tenant traffic.\n   - Expected: The preview returns changed-request evidence and aggregate deltas without mutating the saved policy.\n3. Inspect a changed request in the simulation output that crosses the hard-budget threshold.\n   - Expected: The sample shows the same downgrade-versus-deny semantics used at runtime, including policy outcome and any premium-cost delta changes.\n4. Save the candidate policy and compare a real subsequent runtime request in the same scenario.\n   - Expected: Runtime behavior matches the simulation preview because both rely on the same `PolicyService.evaluate()` logic.\n\n## Test Case 5 — Replay-window edge case uses prior spend only\n1. Select a historical premium request near the guardrail threshold and run a simulation window that includes it.\n   - Expected: The simulation processes requests chronologically oldest-first.\n2. Inspect the simulated decision for that request.\n   - Expected: The threshold calculation uses cumulative spend before the request (`before_timestamp` semantics), so the request does not count its own ledger row when determining exhaustion.\n3. Compare the changed-request evidence ordering.\n   - Expected: Samples appear in deterministic chronological order, consistent with the shared replay contract.\n\n## Edge Cases\n- Saving a policy that sets hard-budget fields must not erase them on subsequent admin reads or policy-editor reloads.\n- A tenant with only advisory `soft_budget_usd` configured must continue operating without hard enforcement or denial.\n- If a request remains on the same route target during simulation but policy outcome or projected premium cost changes, the request still counts as changed evidence.\n- Operators should be able to understand hard-budget outcomes from labeled fields and docs without inferring semantics from raw strings or billing-specific dashboards.\n\n",
       "goal": "Add hard tenant spend guardrails that enforce cumulative premium budget behavior through explicit downgrade-versus-deny decisions, preserve shared runtime/simulation semantics, and expose explainable budget outcomes to operators without widening Nebula beyond the existing decisioning control-plane scope.",
       "success_criteria": "- Tenant policy adds explicit hard cumulative budget controls without repurposing `soft_budget_usd`, and persistence/admin contracts hydrate those fields end to end.\n- `PolicyService.evaluate()` becomes the single source of truth for hard budget enforcement so runtime requests and simulation replays produce the same downgrade-versus-deny outcomes.\n- Ledger/admin/console surfaces make hard-budget decisions legible through stable policy outcome and budget evidence, while keeping override-route signal discipline from S01 intact.\n- Focused backend and console tests prove downgrade, denial, simulation replay, and operator-visible explanation paths.",
       "proof_level": "- This slice proves: integration\n- Real runtime required: yes\n- Human/UAT required: no",
@@ -586,11 +586,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "",
-      "success_criteria": "",
-      "proof_level": "",
-      "integration_closure": "",
-      "observability_impact": "",
+      "goal": "Deliver grounded operator recommendations and semantic-cache control surfaces by deriving bounded recommendation/cache summaries from ledger-backed evidence, exposing them through a narrow admin contract, and rendering them in existing Observability and policy surfaces without widening Nebula into analytics or cache-management scope.",
+      "success_criteria": "- Operators can load tenant-scoped recommendation-grade guidance grounded in recent ledger, simulation, and hard-budget evidence rather than opaque heuristics.\n- Operators can inspect cache effectiveness and policy/runtime cache constraints per tenant, and tune cache behavior through the existing policy editing path only.\n- Backend, admin API, and console verification prove the new contracts are bounded, deterministic, tenant-scoped, and visible on existing operator surfaces.",
+      "proof_level": "integration",
+      "integration_closure": "Completing this slice composes a new recommendation/cache derivation service into the backend container, exposes one tenant-scoped admin read contract to the console client, renders recommendation and cache evidence on Observability, and extends the policy editor with the minimal cache tuning controls/visibility required for R043. After these tasks, S05 can verify the full v4 decisioning story end to end without inventing new analytics or cache-admin subsystems.",
+      "observability_impact": "The slice adds operator-visible recommendation and cache-summary evidence derived from usage-ledger facts plus runtime cache health, so failures can be diagnosed through tenant-scoped admin responses, Observability panels, policy-form evidence copy, and existing runtime-health diagnostics instead of raw provider/cache internals.",
       "sequence": 0,
       "replan_triggered_at": null
     },
@@ -2439,6 +2439,157 @@
       "observability_impact": "- Signals added/changed: operator-visible labels/copy for hard-budget policy outcomes and budget-related route evidence.\n- How a future agent inspects this: open the Policy page and Observability request drawer or run the focused Vitest suite for those surfaces.\n- Failure state exposed: missing/broken explanation paths show up as absent labels, stale copy, or failed drawer/policy component assertions.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S04",
+      "id": "T01",
+      "title": "Added typed recommendation and cache-summary backend contracts with deterministic read-only service coverage.",
+      "status": "complete",
+      "one_liner": "Added typed recommendation and cache-summary backend contracts with deterministic read-only service coverage.",
+      "narrative": "Extended governance models with bounded recommendation/cache DTOs and two explicit cache-tuning policy knobs, implemented a read-only recommendation service grounded in ledger rows plus semantic-cache runtime health, wired it through the service container, and added focused service tests for deterministic ordering, bounded output, degraded cache visibility, healthy-runtime low-hit guidance, and no-mutation guarantees. Persisted the new policy knobs through the governance store and DB model so downstream API/UI work can rely on the shared contract.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`, which passed with 5 selected tests covering recommendation and cache-summary behavior. Also ran LSP diagnostics on `src/nebula/models/governance.py`, `src/nebula/services/recommendation_service.py`, `src/nebula/core/container.py`, and `tests/test_service_flows.py`; all returned no diagnostics.",
+      "duration": "",
+      "completed_at": "2026-03-28T03:57:37.219Z",
+      "blocker_discovered": false,
+      "deviations": "Updated `src/nebula/db/models.py` and `src/nebula/services/governance_store.py` in addition to the planned files so the new cache-tuning policy knobs persist correctly through the existing tenant policy store.",
+      "known_issues": "No admin API endpoint exposes the recommendation bundle yet; that remains for downstream slice work.",
+      "key_files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/recommendation_service.py",
+        "src/nebula/core/container.py",
+        "src/nebula/services/governance_store.py",
+        "src/nebula/db/models.py",
+        "tests/test_service_flows.py",
+        "tests/support.py"
+      ],
+      "key_decisions": [
+        "Added only two explicit cache-tuning knobs to TenantPolicy: similarity threshold and max entry age hours.",
+        "Kept recommendation generation strictly read-only and grounded in usage ledger rows plus coarse semantic-cache health."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S04\nmilestone: M005\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/recommendation_service.py\n  - src/nebula/core/container.py\n  - src/nebula/services/governance_store.py\n  - src/nebula/db/models.py\n  - tests/test_service_flows.py\n  - tests/support.py\nkey_decisions:\n  - Added only two explicit cache-tuning knobs to TenantPolicy: similarity threshold and max entry age hours.\n  - Kept recommendation generation strictly read-only and grounded in usage ledger rows plus coarse semantic-cache health.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T03:57:37.219Z\nblocker_discovered: false\n---\n\n# T01: Added typed recommendation and cache-summary backend contracts with deterministic read-only service coverage.\n\n**Added typed recommendation and cache-summary backend contracts with deterministic read-only service coverage.**\n\n## What Happened\n\nExtended governance models with bounded recommendation/cache DTOs and two explicit cache-tuning policy knobs, implemented a read-only recommendation service grounded in ledger rows plus semantic-cache runtime health, wired it through the service container, and added focused service tests for deterministic ordering, bounded output, degraded cache visibility, healthy-runtime low-hit guidance, and no-mutation guarantees. Persisted the new policy knobs through the governance store and DB model so downstream API/UI work can rely on the shared contract.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`, which passed with 5 selected tests covering recommendation and cache-summary behavior. Also ran LSP diagnostics on `src/nebula/models/governance.py`, `src/nebula/services/recommendation_service.py`, `src/nebula/core/container.py`, and `tests/test_service_flows.py`; all returned no diagnostics.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x` | 0 | ✅ pass | 560ms |\n| 2 | `lsp diagnostics src/nebula/models/governance.py` | 0 | ✅ pass | 0ms |\n| 3 | `lsp diagnostics src/nebula/services/recommendation_service.py` | 0 | ✅ pass | 0ms |\n| 4 | `lsp diagnostics src/nebula/core/container.py` | 0 | ✅ pass | 0ms |\n| 5 | `lsp diagnostics tests/test_service_flows.py` | 0 | ✅ pass | 0ms |\n\n\n## Deviations\n\nUpdated `src/nebula/db/models.py` and `src/nebula/services/governance_store.py` in addition to the planned files so the new cache-tuning policy knobs persist correctly through the existing tenant policy store.\n\n## Known Issues\n\nNo admin API endpoint exposes the recommendation bundle yet; that remains for downstream slice work.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py`\n- `src/nebula/services/recommendation_service.py`\n- `src/nebula/core/container.py`\n- `src/nebula/services/governance_store.py`\n- `src/nebula/db/models.py`\n- `tests/test_service_flows.py`\n- `tests/support.py`\n",
+      "description": "Why: S04 depends on a narrow, deterministic backend seam that turns existing ledger, simulation, hard-budget, and runtime-cache facts into bounded operator guidance before any API or UI work can stay honest.\n\nSteps:\n1. Extend `src/nebula/models/governance.py` with typed recommendation and cache-summary DTOs plus any minimal tenant policy fields required for cache tuning, keeping the response bounded and operator-readable.\n2. Implement `src/nebula/services/recommendation_service.py` to derive tenant-scoped recommendations and cache insights from `list_usage_records(...)`, hard-budget/policy outcomes, cache-hit history, avoided premium-cost estimates, and runtime cache health without writing policies, usage rows, or cache data.\n3. Wire the new service through `src/nebula/core/container.py` and add focused service tests in `tests/test_service_flows.py` for deterministic recommendation ordering, bounded output, degraded-cache insight behavior, and no-mutation guarantees.\n\nMust-haves:\n- Introduce stable DTOs for recommendation cards and cache insight summaries rather than free-form dicts.\n- Keep recommendation logic ledger-backed and scope-disciplined under R044; do not depend on raw prompt text, opaque scoring, or Qdrant entry inspection.\n- If cache tuning needs more than `semantic_cache_enabled`, add only the smallest explicit policy knobs needed and carry them through the shared model contract here.\n\nVerification:\n- `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`\n- Service tests prove bounded recommendation/cache output, degraded-health visibility, and zero policy/usage mutation side effects.\n\nInputs:\n- `src/nebula/models/governance.py`\n- `src/nebula/services/governance_store.py`\n- `src/nebula/services/semantic_cache_service.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `src/nebula/core/container.py`\n- `tests/test_service_flows.py`\n\nExpected output:\n- `src/nebula/models/governance.py`\n- `src/nebula/services/recommendation_service.py`\n- `src/nebula/core/container.py`\n- `tests/test_service_flows.py`",
+      "estimate": "1.5h",
+      "files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/recommendation_service.py",
+        "src/nebula/services/governance_store.py",
+        "src/nebula/services/semantic_cache_service.py",
+        "src/nebula/core/container.py",
+        "tests/test_service_flows.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x",
+      "inputs": [
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/governance_store.py`",
+        "`src/nebula/services/semantic_cache_service.py`",
+        "`src/nebula/services/policy_simulation_service.py`",
+        "`src/nebula/core/container.py`",
+        "`tests/test_service_flows.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/recommendation_service.py`",
+        "`src/nebula/core/container.py`",
+        "`tests/test_service_flows.py`"
+      ],
+      "observability_impact": "Adds a typed recommendation/cache-summary inspection surface and makes degraded semantic-cache state visible to downstream API/UI consumers.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S04",
+      "id": "T02",
+      "title": "Expose tenant recommendation API and console contracts",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Why: Once the backend derivation seam exists, S04 needs one narrow admin contract and shared frontend typings so Observability and policy surfaces can consume the same tenant-scoped evidence without duplicating heuristics.\n\nSteps:\n1. Add tenant-scoped admin endpoint wiring in `src/nebula/api/routes/admin.py` for the compact recommendation/cache summary response, including tenant existence checks and admin-only protection.\n2. Extend `console/src/lib/admin-api.ts` with the new response types and fetch helper, reusing the shared typed contract instead of ad-hoc UI parsing.\n3. Add focused API tests in `tests/test_governance_api.py` for auth, 404 handling, bounded response structure, tenant scoping, and degraded-cache evidence propagation.\n\nMust-haves:\n- Keep the API surface narrow: one compact read path for tenant recommendations/cache insight unless tests prove a second endpoint is necessary.\n- Preserve admin-only and tenant-scoped semantics with explicit 404 behavior for missing tenants.\n- Ensure the response stays bounded and deterministic enough for UI rendering and future S05 proof work.\n\nVerification:\n- `./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x`\n- API tests prove admin protection, tenant scoping, bounded structure, and degraded-cache evidence behavior.\n\nInputs:\n- `src/nebula/api/routes/admin.py`\n- `src/nebula/models/governance.py`\n- `src/nebula/core/container.py`\n- `console/src/lib/admin-api.ts`\n- `tests/test_governance_api.py`\n- `tests/test_service_flows.py`\n\nExpected output:\n- `src/nebula/api/routes/admin.py`\n- `console/src/lib/admin-api.ts`\n- `tests/test_governance_api.py`",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/api/routes/admin.py",
+        "src/nebula/models/governance.py",
+        "src/nebula/core/container.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_governance_api.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x",
+      "inputs": [
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/core/container.py`",
+        "`console/src/lib/admin-api.ts`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_service_flows.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/api/routes/admin.py`",
+        "`console/src/lib/admin-api.ts`",
+        "`tests/test_governance_api.py`"
+      ],
+      "observability_impact": "Makes tenant-scoped recommendation/cache evidence inspectable through a stable admin API surface that future agents can query directly during failures.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S04",
+      "id": "T03",
+      "title": "Render observability recommendations and cache controls in existing operator surfaces",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Why: S04 is only true when operators can actually see grounded next-best-action guidance and tune cache behavior intentionally through existing product surfaces, not just via backend contracts.\n\nSteps:\n1. Update `console/src/app/(console)/observability/page.tsx` to fetch the new tenant recommendation/cache summary alongside ledger/runtime health and render bounded recommendation cards plus cache-effectiveness context with copy grounded in ledger-backed evidence.\n2. Extend `console/src/components/policy/policy-form.tsx` (and page wiring if needed) so cache tuning remains in the existing policy editor, with any new cache knobs grouped as runtime-enforced controls and evidence-oriented copy that avoids implying autosave or autonomous optimization.\n3. Add/align focused Vitest coverage in `console/src/app/(console)/observability/page.test.tsx`, `console/src/app/(console)/observability/observability-page.test.tsx`, `console/src/components/policy/policy-form.test.tsx`, and `console/src/components/policy/policy-page.test.tsx` for recommendation framing, cache insight visibility, and cache-control save/preview behavior.\n\nMust-haves:\n- Observability copy must explicitly say recommendations are based on recent ledger-backed traffic and supporting runtime context, not black-box optimization.\n- Policy-page work must keep cache tuning in the existing save/preview flow and avoid creating a separate cache-management area.\n- Normalize the existing observability wording drift in tests while preserving the established persisted-evidence framing.\n\nVerification:\n- `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`\n- UI tests prove recommendation cards, cache insight context, and cache-control save/preview semantics render on the intended surfaces.\n\nInputs:\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `console/src/lib/admin-api.ts`\n\nExpected output:\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`",
+      "estimate": "1.5h",
+      "files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "verify": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/lib/admin-api.ts`"
+      ],
+      "expected_output": [
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "observability_impact": "Adds UI-level inspection of recommendation/cache evidence and keeps cache tuning diagnostics inside existing policy/observability flows where operators already investigate routing outcomes.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -2750,6 +2901,18 @@
       "decision": "How hard cumulative budget guardrails should be enforced in M005/S03",
       "choice": "Implement hard cumulative budget guardrails as explicit tenant-policy fields enforced centrally in PolicyService with downgrade-to-local when compatible and exact denial when premium is required, then expose the resulting evidence through existing ledger/simulation/operator surfaces rather than a separate budget engine.",
       "rationale": "The codebase already shares runtime and simulation policy evaluation through PolicyService and already has spend aggregation plus operator evidence paths. Centralizing the new semantics there keeps runtime and simulation aligned, preserves S01's route-vocabulary/override discipline, and advances R041/R044 without widening Nebula into billing, analytics, or new hosted authority surfaces.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 27,
+      "id": "D027",
+      "when_context": "",
+      "scope": "requirement",
+      "decision": "R041",
+      "choice": "validated",
+      "rationale": "M005/S03 added explicit hard cumulative budget policy fields, centralized runtime/simulation enforcement in PolicyService with deterministic downgrade-versus-deny behavior, and exposed operator-readable budget evidence in admin APIs, console request detail, and docs. Focused verification passed in `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`, establishing enforceable hard spend guardrails with graceful downgrade behavior beyond soft budget signals alone.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -3107,6 +3270,61 @@
       "verdict": "✅ pass",
       "duration_ms": 934,
       "created_at": "2026-03-28T03:45:30.708Z"
+    },
+    {
+      "id": 33,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 560,
+      "created_at": "2026-03-28T03:57:37.219Z"
+    },
+    {
+      "id": 34,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "lsp diagnostics src/nebula/models/governance.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T03:57:37.219Z"
+    },
+    {
+      "id": 35,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "lsp diagnostics src/nebula/services/recommendation_service.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T03:57:37.219Z"
+    },
+    {
+      "id": 36,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "lsp diagnostics src/nebula/core/container.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T03:57:37.219Z"
+    },
+    {
+      "id": 37,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M005",
+      "command": "lsp diagnostics tests/test_service_flows.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T03:57:37.219Z"
     }
   ]
 }

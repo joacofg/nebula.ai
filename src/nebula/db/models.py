@@ -34,6 +34,8 @@ class TenantPolicyModel(Base):
     routing_mode_default: Mapped[str] = mapped_column(String(32), nullable=False)
     allowed_premium_models_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     semantic_cache_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    semantic_cache_similarity_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)
+    semantic_cache_max_entry_age_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=168)
     fallback_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     max_premium_cost_per_request: Mapped[float | None] = mapped_column(Float, nullable=True)
     hard_budget_limit_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
