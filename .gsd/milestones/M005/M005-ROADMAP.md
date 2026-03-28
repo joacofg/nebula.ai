@@ -10,4 +10,4 @@ Turn Nebula's existing routing, policy, ledger, and semantic-cache surfaces into
 | S02 | Policy simulation loop | high | S01 | ✅ | An operator can simulate a candidate routing or policy change against recent ledger-backed traffic before saving it. |
 | S03 | Hard budget guardrails | medium | S01 | ✅ | Tenant policy can enforce hard spend limits with explicit downgrade or denial behavior and explainable recorded outcomes. |
 | S04 | Recommendations and cache controls | medium | S02, S03 | ✅ | Operators can see grounded next-best-action guidance and tune semantic-cache behavior with enough visibility to improve results intentionally. |
-| S05 | Integrated v4 proof | low | S02, S03, S04 | ⬜ | The full v4 decisioning story is assembled end to end and stays narrow, interpretable, and convincingly better than the prior heuristic posture. |
+| S05 | Integrated v4 proof | low | S02, S03, S04 | ✅ | The full v4 decisioning story is assembled end to end and stays narrow, interpretable, and convincingly better than the prior heuristic posture. |
