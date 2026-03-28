@@ -204,6 +204,8 @@ describe("policy-form", () => {
           semantic_cache_enabled: true,
           allowed_premium_models: ["openai/gpt-4o-mini"],
           max_premium_cost_per_request: null,
+          hard_budget_limit_usd: null,
+          hard_budget_enforcement: null,
           soft_budget_usd: null,
           prompt_capture_enabled: false,
           response_capture_enabled: false,
@@ -246,11 +248,43 @@ describe("policy-form", () => {
     expect(runtimeSection).toHaveTextContent("Max premium cost per request");
     expect(runtimeSection).toHaveTextContent("Hard cumulative budget limit USD");
     expect(runtimeSection).toHaveTextContent("Hard budget enforcement");
+    expect(runtimeSection).toHaveTextContent("Applies in live request evaluation");
+    expect(runtimeSection).toHaveTextContent(
+      "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
+    );
     expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
 
+    expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
+        "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("disables hard-budget enforcement selection until a hard limit is configured", async () => {
+    renderPolicyForm();
+
+    const enforcementSelect = screen.getByLabelText("Hard budget enforcement");
+    expect(enforcementSelect).toBeDisabled();
+    expect(
+      screen.getByText("Set a hard cumulative budget limit first to activate this enforcement choice."),
+    ).toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Hard cumulative budget limit USD"), "25");
+
+    expect(screen.getByLabelText("Hard budget enforcement")).toBeEnabled();
+    expect(
+      screen.getByText(
+        "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed.",
       ),
     ).toBeInTheDocument();
   });

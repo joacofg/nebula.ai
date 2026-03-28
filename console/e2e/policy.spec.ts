@@ -21,6 +21,8 @@ test("operator can update tenant policy from the console", async ({ page }) => {
     semantic_cache_enabled: true,
     fallback_enabled: true,
     max_premium_cost_per_request: null,
+    hard_budget_limit_usd: null,
+    hard_budget_enforcement: null,
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
@@ -74,12 +76,28 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   const runtimeHeading = page.getByRole("heading", { name: "Runtime-enforced controls" });
   const runtimeSection = runtimeHeading.locator("xpath=ancestor::section[1]");
   await expect(runtimeHeading).toBeVisible();
+  await expect(page.getByText("Applies in live request evaluation")).toBeVisible();
   await expect(
     page.getByText(
-      "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
+      "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
+    ),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
+    ),
+  ).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Soft budget advisory" })).toBeVisible();
+  await expect(
+    page.getByText(
+      "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
     ),
   ).toBeVisible();
   await expect(runtimeSection.getByText("Soft budget USD")).not.toBeVisible();
+  await expect(page.getByLabel("Hard budget enforcement")).toBeDisabled();
+  await expect(
+    page.getByText("Set a hard cumulative budget limit first to activate this enforcement choice."),
+  ).toBeVisible();
   await expect(
     page.getByText(
       "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
@@ -90,6 +108,9 @@ test("operator can update tenant policy from the console", async ({ page }) => {
 
   await page.selectOption("#routing-mode-default", "premium_only");
   await page.getByRole("checkbox", { name: "Fallback enabled" }).uncheck();
+  await page.locator("#hard-budget-limit-usd").fill("25");
+  await expect(page.getByLabel("Hard budget enforcement")).toBeEnabled();
+  await page.selectOption("#hard-budget-enforcement", "deny");
   await page.getByPlaceholder("Add model").fill("openai/gpt-4.5-mini");
   await page.getByRole("button", { name: "Add model" }).click();
   await page.getByRole("button", { name: "Save policy" }).click();
@@ -98,5 +119,7 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await page.getByRole("link", { name: "Policy" }).click();
 
   await expect(page.locator("#routing-mode-default")).toHaveValue("premium_only");
+  await expect(page.locator("#hard-budget-limit-usd")).toHaveValue("25");
+  await expect(page.locator("#hard-budget-enforcement")).toHaveValue("deny");
   await expect(page.getByText("openai/gpt-4.5-mini")).toBeVisible();
 });

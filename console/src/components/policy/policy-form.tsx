@@ -126,6 +126,7 @@ export function PolicyForm({
     [options.runtime_enforced_fields],
   );
   const softSignalFields = useMemo(() => new Set(options.soft_signal_fields), [options.soft_signal_fields]);
+  const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -325,12 +326,22 @@ export function PolicyForm({
       </section>
 
       <section className="panel px-6 py-5">
-        <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
-          Runtime-enforced controls
-        </h3>
-        <p className="mt-2 text-sm text-slate-500">
-          These controls map directly to the backend runtime enforcement contract for Phase 4.
-        </p>
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
+              Runtime-enforced controls
+            </h3>
+            <p className="mt-2 text-sm text-slate-500">
+              These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.
+            </p>
+          </div>
+          <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+            Applies in live request evaluation
+          </span>
+        </div>
+        <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+          When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.
+        </div>
         <div className="mt-4 space-y-5">
           {runtimeEnforcedFields.has("routing_mode_default") ? (
             <div>
@@ -440,6 +451,9 @@ export function PolicyForm({
                   }))
                 }
               />
+              <p className="mt-2 text-sm text-slate-500">
+                Tracks cumulative premium spend for the tenant. Leave blank to disable the hard budget guardrail.
+              </p>
             </div>
           ) : null}
 
@@ -452,6 +466,7 @@ export function PolicyForm({
                 id="hard-budget-enforcement"
                 className="field-input"
                 value={formState.hardBudgetEnforcement}
+                disabled={!hardBudgetConfigured}
                 onChange={(event) =>
                   setFormState((current) => ({
                     ...current,
@@ -461,11 +476,13 @@ export function PolicyForm({
                   }))
                 }
               >
-                <option value="downgrade">Downgrade to local when possible</option>
-                <option value="deny">Deny premium requests when limit is exhausted</option>
+                <option value="downgrade">Downgrade compatible auto-routed traffic to local</option>
+                <option value="deny">Deny premium traffic once the limit is exhausted</option>
               </select>
               <p className="mt-2 text-sm text-slate-500">
-                Applies when cumulative premium spend reaches the hard budget limit.
+                {hardBudgetConfigured
+                  ? "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed."
+                  : "Set a hard cumulative budget limit first to activate this enforcement choice."}
               </p>
             </div>
           ) : null}
@@ -474,10 +491,13 @@ export function PolicyForm({
 
       {softSignalFields.has("soft_budget_usd") ? (
         <section className="panel px-6 py-5">
-          <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Soft budget signal</h3>
+          <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Soft budget advisory</h3>
           <p className="mt-2 text-sm text-slate-500">
-            Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.
+            Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
           </p>
+          <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+            Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.
+          </div>
           <div className="mt-4">
             <label className="field-label" htmlFor="soft-budget-usd">
               Soft budget USD

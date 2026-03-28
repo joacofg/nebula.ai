@@ -109,6 +109,85 @@ describe("ledger-request-detail", () => {
     expect(screen.getAllByText("no")).toHaveLength(2);
   });
 
+  it("renders structured hard-budget downgrade evidence instead of forcing raw policy_outcome inspection", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-budget-downgrade",
+          final_route_target: "local",
+          route_reason: "hard_budget_downgrade",
+          policy_outcome:
+            "hard_budget=exceeded(limit_usd=0.05,spent_usd=0.1,enforcement=downgrade);budget_action=downgraded_to_local",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Budget policy evidence")).toBeInTheDocument();
+    expect(screen.getByText("Premium traffic downgraded to local")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Cumulative premium spend hit the tenant hard budget, so this request stayed allowed by routing to a local model instead of premium.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Budget action")).toBeInTheDocument();
+    expect(screen.getByText("Downgraded to local")).toBeInTheDocument();
+    expect(screen.getByText("Hard budget limit")).toBeInTheDocument();
+    expect(screen.getByText("$0.05")).toBeInTheDocument();
+    expect(screen.getByText("Spent at decision")).toBeInTheDocument();
+    expect(screen.getByText("$0.1")).toBeInTheDocument();
+    expect(screen.getByText("Hard budget enforcement")).toBeInTheDocument();
+    expect(screen.getByText("Downgrade")).toBeInTheDocument();
+  });
+
+  it("renders structured hard-budget denial evidence from persisted ledger policy outcomes", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-budget-denied",
+          final_route_target: "denied",
+          terminal_status: "policy_denied",
+          policy_outcome:
+            "Tenant hard budget limit reached; premium routing is blocked (spent_usd=0.1, limit_usd=0.05).",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Budget policy evidence")).toBeInTheDocument();
+    expect(screen.getByText("Premium request denied by budget guardrail")).toBeInTheDocument();
+    expect(
+      screen.getAllByText(
+        "Tenant hard budget limit reached; premium routing is blocked (spent_usd=0.1, limit_usd=0.05).",
+      ).length,
+    ).toBeGreaterThan(1);
+    expect(screen.getByText("Denial reason")).toBeInTheDocument();
+    expect(screen.getByText("Hard budget limit")).toBeInTheDocument();
+    expect(screen.getByText("Spent at decision")).toBeInTheDocument();
+  });
+
+  it("renders soft-budget advisory evidence as non-blocking operator guidance", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-soft-budget",
+          policy_outcome: "soft_budget=exceeded",
+        }}
+      />,
+    );
+
+    expect(screen.getByText("Budget policy evidence")).toBeInTheDocument();
+    expect(screen.getByText("Soft budget advisory triggered")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Cumulative spend exceeded the advisory soft budget. Routing continued, but the request was tagged for operator visibility.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Soft budget status")).toBeInTheDocument();
+    expect(screen.getByText("Exceeded (advisory only)")).toBeInTheDocument();
+  });
+
   it("does not render Route Decision section when route_signals is null", () => {
     renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, route_signals: null }} />);
 

@@ -33,7 +33,7 @@ Must-haves:
   - Estimate: 2h
   - Files: src/nebula/services/policy_service.py, src/nebula/services/policy_simulation_service.py, src/nebula/services/router_service.py, tests/test_governance_runtime_hardening.py, tests/test_service_flows.py, tests/test_governance_api.py
   - Verify: ./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "budget or simulation or runtime_policy" -x && ./.venv/bin/pytest tests/test_governance_api.py -k "guardrail or policy_denied or simulation" -x
-- [ ] **T03: Expose hard-budget explanations in operator policy and ledger surfaces** — Finish the operator loop by updating the policy UI, simulation copy, and ledger request detail to explain hard cumulative budget behavior in plain language, showing the new controls and recorded outcomes without raw JSON spelunking or scope drift beyond the existing decisioning control plane.
+- [x] **T03: Exposed hard-budget guardrail explanations across the policy editor, ledger request detail, and operator docs while keeping soft budget advisory-only.** — Finish the operator loop by updating the policy UI, simulation copy, and ledger request detail to explain hard cumulative budget behavior in plain language, showing the new controls and recorded outcomes without raw JSON spelunking or scope drift beyond the existing decisioning control plane.
 
 Steps:
 1. Update `console/src/components/policy/policy-form.tsx` and related tests/E2E fixtures so the policy page distinguishes runtime-enforced hard guardrails from advisory soft-budget signals.

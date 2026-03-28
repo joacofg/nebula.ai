@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M005/S03/T02",
+  "timestamp": 1774669078676,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x",
+      "exitCode": 0,
+      "durationMs": 849,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x",
+      "exitCode": 0,
+      "durationMs": 1330,
+      "verdict": "pass"
+    }
+  ]
+}

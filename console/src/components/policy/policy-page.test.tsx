@@ -48,6 +48,8 @@ beforeEach(() => {
     semantic_cache_enabled: true,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: null,
+    hard_budget_limit_usd: null,
+    hard_budget_enforcement: null,
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
@@ -62,6 +64,8 @@ beforeEach(() => {
       "semantic_cache_enabled",
       "fallback_enabled",
       "max_premium_cost_per_request",
+      "hard_budget_limit_usd",
+      "hard_budget_enforcement",
     ],
     soft_signal_fields: ["soft_budget_usd"],
     advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
@@ -86,6 +90,8 @@ beforeEach(() => {
       semantic_cache_enabled: true,
       allowed_premium_models: ["openai/gpt-4o-mini"],
       max_premium_cost_per_request: null,
+      hard_budget_limit_usd: 20,
+      hard_budget_enforcement: "downgrade",
       soft_budget_usd: null,
       prompt_capture_enabled: false,
       response_capture_enabled: false,
@@ -135,12 +141,24 @@ describe("policy-page", () => {
     expect(await screen.findByRole("heading", { name: "Runtime-enforced controls" })).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
+        "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Soft budget signal only. Adds policy outcome metadata when exceeded but does not block routing in Phase 4.",
+        "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Applies in live request evaluation")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Prompt capture enabled")).not.toBeInTheDocument();
@@ -196,6 +214,8 @@ describe("policy-page", () => {
         semantic_cache_enabled: true,
         allowed_premium_models: ["openai/gpt-4o-mini"],
         max_premium_cost_per_request: null,
+        hard_budget_limit_usd: null,
+        hard_budget_enforcement: null,
         soft_budget_usd: null,
         prompt_capture_enabled: false,
         response_capture_enabled: false,
@@ -232,4 +252,3 @@ describe("policy-page", () => {
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
   });
 });
-
