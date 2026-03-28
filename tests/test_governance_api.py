@@ -339,7 +339,268 @@ def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
     assert "embedding" not in body[0]
 
 
-def test_policy_can_block_premium_models_and_fallback() -> None:
+def test_admin_policy_simulation_returns_404_for_missing_tenant() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/admin/tenants/missing/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy().model_dump(mode="json"),
+                    "limit": 5,
+                    "changed_sample_limit": 3,
+                },
+            )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Tenant not found."}
+
+
+def test_admin_policy_simulation_rejects_inverted_time_windows() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy().model_dump(mode="json"),
+                    "from_timestamp": "2026-01-02T00:00:00Z",
+                    "to_timestamp": "2026-01-01T00:00:00Z",
+                },
+            )
+
+    assert response.status_code == 422
+    assert response.json() == {
+        "detail": "from_timestamp must be less than or equal to to_timestamp."
+    }
+
+
+def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    routing_mode_default="auto",
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                ).model_dump(mode="json"),
+            )
+
+            local_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "hello local route"}],
+                },
+            )
+            premium_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "premium route"}],
+                },
+            )
+            ledger = client.get(
+                "/v1/admin/usage/ledger?tenant_id=default&limit=10",
+                headers=admin_headers(),
+            )
+            earliest_timestamp = ledger.json()[-1]["timestamp"]
+
+            simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        routing_mode_default="premium_only",
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                    ).model_dump(mode="json"),
+                    "from_timestamp": earliest_timestamp,
+                    "limit": 10,
+                    "changed_sample_limit": 10,
+                },
+            )
+            persisted_policy = client.get(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+            )
+
+    assert local_response.status_code == 200
+    assert premium_response.status_code == 200
+    assert simulation.status_code == 200
+    body = simulation.json()
+    assert body["tenant_id"] == "default"
+    assert body["summary"]["evaluated_rows"] == 2
+    assert body["summary"]["changed_routes"] == 1
+    assert body["summary"]["newly_denied"] == 0
+    assert len(body["changed_requests"]) == 2
+    local_change = next(
+        item for item in body["changed_requests"] if item["baseline_route_target"] == "local"
+    )
+    premium_cost_change = next(
+        item for item in body["changed_requests"] if item["baseline_route_target"] == "premium"
+    )
+    assert local_change["simulated_route_target"] == "premium"
+    assert premium_cost_change["simulated_route_target"] == "premium"
+    assert premium_cost_change["baseline_policy_outcome"] != premium_cost_change["simulated_policy_outcome"]
+    assert premium_cost_change["simulated_policy_outcome"].startswith("routing_mode=premium_only")
+    assert body["window"]["requested_limit"] == 10
+    assert body["window"]["returned_rows"] == 2
+    assert persisted_policy.status_code == 200
+    assert persisted_policy.json() == TenantPolicy(
+        routing_mode_default="auto",
+        allowed_premium_models=["openai/gpt-4o-mini"],
+    ).model_dump(mode="json")
+
+
+def test_admin_policy_simulation_detects_newly_denied_replays() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+            )
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    routing_mode_default="premium_only",
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    max_premium_cost_per_request=1.0,
+                ).model_dump(mode="json"),
+            )
+            premium_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "max_tokens": 64,
+                    "messages": [{"role": "user", "content": "premium allowed baseline"}],
+                },
+            )
+
+            simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        routing_mode_default="premium_only",
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                        max_premium_cost_per_request=0.000001,
+                    ).model_dump(mode="json"),
+                    "limit": 10,
+                    "changed_sample_limit": 10,
+                },
+            )
+
+    assert premium_response.status_code == 200
+    assert simulation.status_code == 200
+    body = simulation.json()
+    assert body["summary"]["evaluated_rows"] == 1
+    assert body["summary"]["changed_routes"] == 1
+    assert body["summary"]["newly_denied"] == 1
+    assert body["changed_requests"][0]["baseline_terminal_status"] == "completed"
+    assert body["changed_requests"][0]["simulated_terminal_status"] == "policy_denied"
+    assert body["changed_requests"][0]["simulated_policy_outcome"].startswith(
+        "routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail."
+    )
+    assert body["changed_requests"][0]["simulated_route_target"] == "denied"
+
+
+def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+            )
+            baseline = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "steady local request"}],
+                },
+            )
+            unchanged = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        routing_mode_default="auto",
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                    ).model_dump(mode="json"),
+                    "limit": 10,
+                    "changed_sample_limit": 5,
+                },
+            )
+            empty = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy().model_dump(mode="json"),
+                    "from_timestamp": "2099-01-01T00:00:00Z",
+                    "limit": 10,
+                    "changed_sample_limit": 5,
+                },
+            )
+
+    assert baseline.status_code == 200
+    assert unchanged.status_code == 200
+    unchanged_body = unchanged.json()
+    assert unchanged_body["summary"]["evaluated_rows"] == 1
+    assert unchanged_body["summary"]["changed_routes"] == 0
+    assert unchanged_body["summary"]["newly_denied"] == 0
+    assert unchanged_body["changed_requests"] == []
+    assert empty.status_code == 200
+    empty_body = empty.json()
+    assert empty_body["summary"]["evaluated_rows"] == 0
+    assert empty_body["summary"]["changed_routes"] == 0
+    assert empty_body["summary"]["newly_denied"] == 0
+    assert empty_body["window"]["returned_rows"] == 0
+    assert empty_body["changed_requests"] == []
+
+
     with configured_app() as app:
         with TestClient(app) as client:
             _mount_runtime(

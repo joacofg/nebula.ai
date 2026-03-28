@@ -14,6 +14,8 @@ from nebula.models.governance import (
     ApiKeyCreateResponse,
     ApiKeyRecord,
     PolicyOptionsResponse,
+    PolicySimulationRequest,
+    PolicySimulationResponse,
     PlaygroundResponse,
     TenantCreateRequest,
     TenantPolicy,
@@ -23,6 +25,7 @@ from nebula.models.governance import (
 )
 from nebula.models.openai import ChatCompletionRequest
 from nebula.models.deployment import RemoteActionQueueRequest, RemoteActionRecord
+from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.enrollment_service import (
     DeploymentRemoteActionStateError,
     RemoteActionValidationError,
@@ -108,6 +111,43 @@ async def upsert_tenant_policy(
     if container.governance_store.get_tenant(tenant_id) is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
     return container.governance_store.upsert_policy(tenant_id, payload)
+
+
+@router.post("/tenants/{tenant_id}/policy/simulate", response_model=PolicySimulationResponse)
+async def simulate_tenant_policy(
+    tenant_id: str,
+    payload: PolicySimulationRequest,
+    container: ServiceContainer = Depends(require_admin),
+) -> PolicySimulationResponse:
+    tenant = container.governance_store.get_tenant(tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
+    if payload.to_timestamp is not None and payload.from_timestamp is not None:
+        if payload.from_timestamp > payload.to_timestamp:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="from_timestamp must be less than or equal to to_timestamp.",
+            )
+
+    bootstrap_key = container.governance_store.find_api_key(container.settings.bootstrap_api_key)
+    if bootstrap_key is None:
+        bootstrap_api_key = container.governance_store.ensure_api_key(
+            raw_key=container.settings.bootstrap_api_key,
+            name=container.settings.bootstrap_api_key_name,
+            tenant_id=container.settings.bootstrap_tenant_id,
+            allowed_tenant_ids=[container.settings.bootstrap_tenant_id],
+        )
+    else:
+        bootstrap_api_key = bootstrap_key.to_record()
+
+    return await container.policy_simulation_service.simulate(
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant,
+            api_key=bootstrap_api_key,
+            policy=container.governance_store.get_policy(tenant_id),
+        ),
+        payload=payload,
+    )
 
 
 @router.get("/policy/options", response_model=PolicyOptionsResponse)

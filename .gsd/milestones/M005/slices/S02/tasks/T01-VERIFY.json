@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M005/S02/T01",
+  "timestamp": 1774667183027,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k simulation -x",
+      "exitCode": 0,
+      "durationMs": 861,
+      "verdict": "pass"
+    }
+  ]
+}

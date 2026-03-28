@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T03:06:19.436Z",
+  "exported_at": "2026-03-28T03:10:07.931Z",
   "milestones": [
     {
       "id": "M001",
@@ -2142,19 +2142,26 @@
       "milestone_id": "M005",
       "slice_id": "S02",
       "id": "T02",
-      "title": "Expose tenant policy simulation through the admin API",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added an admin policy simulation endpoint that replays tenant ledger traffic against a candidate policy without mutating saved policy state.",
+      "status": "complete",
+      "one_liner": "Added an admin policy simulation endpoint that replays tenant ledger traffic against a candidate policy without mutating saved policy state.",
+      "narrative": "Added POST /v1/admin/tenants/{tenant_id}/policy/simulate beside the existing tenant policy CRUD routes. The endpoint reuses the T01 simulation DTOs, performs explicit 404 tenant checks and inverted-window validation, and delegates to the replay-only PolicySimulationService with a reconstructed tenant context so candidate policies are evaluated without persistence. Added focused governance API tests covering missing-tenant and invalid-window failures, tenant-scoped aggregate replay output, newly denied detection under tighter premium guardrails, unchanged and empty simulation windows, and the guarantee that the saved tenant policy is unchanged after simulation calls.",
+      "verification_result": "Ran ./.venv/bin/pytest tests/test_governance_api.py -k simulation -x. The first two runs failed because the initial assertions assumed the changed-request sample only contained route flips; after reading the T01 replay contract and observed API output, I updated the test expectations to accept policy-outcome deltas for unchanged premium routes. The final run passed all five simulation-focused API tests, verifying explicit 404/422 failures, tenant-scoped summary output, newly denied detection, unchanged and empty windows, and non-mutation of persisted policy.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-03-28T03:10:07.910Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "The route uses status.HTTP_422_UNPROCESSABLE_ENTITY for the custom inverted-window response, which triggers a FastAPI deprecation warning in the test run; behavior is correct, but the status constant can be updated later to the newer alias.",
+      "key_files": [
+        "src/nebula/api/routes/admin.py",
+        "tests/test_governance_api.py",
+        ".gsd/milestones/M005/slices/S02/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reused the existing PolicySimulationRequest bounds and replay service instead of adding route-local filtering logic beyond explicit tenant and time-window validation.",
+        "Kept simulation request samples faithful to T01 semantics, where changed entries can reflect policy-outcome deltas even when the route target stays the same."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S02\nmilestone: M005\nkey_files:\n  - src/nebula/api/routes/admin.py\n  - tests/test_governance_api.py\n  - .gsd/milestones/M005/slices/S02/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Reused the existing PolicySimulationRequest bounds and replay service instead of adding route-local filtering logic beyond explicit tenant and time-window validation.\n  - Kept simulation request samples faithful to T01 semantics, where changed entries can reflect policy-outcome deltas even when the route target stays the same.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-03-28T03:10:07.911Z\nblocker_discovered: false\n---\n\n# T02: Added an admin policy simulation endpoint that replays tenant ledger traffic against a candidate policy without mutating saved policy state.\n\n**Added an admin policy simulation endpoint that replays tenant ledger traffic against a candidate policy without mutating saved policy state.**\n\n## What Happened\n\nAdded POST /v1/admin/tenants/{tenant_id}/policy/simulate beside the existing tenant policy CRUD routes. The endpoint reuses the T01 simulation DTOs, performs explicit 404 tenant checks and inverted-window validation, and delegates to the replay-only PolicySimulationService with a reconstructed tenant context so candidate policies are evaluated without persistence. Added focused governance API tests covering missing-tenant and invalid-window failures, tenant-scoped aggregate replay output, newly denied detection under tighter premium guardrails, unchanged and empty simulation windows, and the guarantee that the saved tenant policy is unchanged after simulation calls.\n\n## Verification\n\nRan ./.venv/bin/pytest tests/test_governance_api.py -k simulation -x. The first two runs failed because the initial assertions assumed the changed-request sample only contained route flips; after reading the T01 replay contract and observed API output, I updated the test expectations to accept policy-outcome deltas for unchanged premium routes. The final run passed all five simulation-focused API tests, verifying explicit 404/422 failures, tenant-scoped summary output, newly denied detection, unchanged and empty windows, and non-mutation of persisted policy.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x` | 1 | ❌ fail | 810ms |\n| 2 | `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x` | 1 | ❌ fail | 760ms |\n| 3 | `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x` | 0 | ✅ pass | 880ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nThe route uses status.HTTP_422_UNPROCESSABLE_ENTITY for the custom inverted-window response, which triggers a FastAPI deprecation warning in the test run; behavior is correct, but the status constant can be updated later to the newer alias.\n\n## Files Created/Modified\n\n- `src/nebula/api/routes/admin.py`\n- `tests/test_governance_api.py`\n- `.gsd/milestones/M005/slices/S02/tasks/T02-SUMMARY.md`\n",
       "description": "Add a new admin route such as `POST /v1/admin/tenants/{tenant_id}/policy/simulate` in `src/nebula/api/routes/admin.py`, colocated with existing policy CRUD routes. Reuse the T01 DTOs so the endpoint accepts a candidate `TenantPolicy` plus bounded replay filters and returns the full simulation summary without persisting anything. Keep tenant existence checks, filter validation, and bounded result sizing explicit at the route boundary, and add focused API tests in `tests/test_governance_api.py` that prove tenant scoping, aggregate replay output, newly denied detection, unchanged/empty result handling, and that saved tenant policy remains unchanged after simulation calls.",
       "estimate": "1h",
       "files": [
@@ -2757,6 +2764,39 @@
       "verdict": "✅ pass",
       "duration_ms": 1000,
       "created_at": "2026-03-28T03:06:19.416Z"
+    },
+    {
+      "id": 23,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k simulation -x",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 810,
+      "created_at": "2026-03-28T03:10:07.910Z"
+    },
+    {
+      "id": 24,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k simulation -x",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 760,
+      "created_at": "2026-03-28T03:10:07.910Z"
+    },
+    {
+      "id": 25,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k simulation -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 880,
+      "created_at": "2026-03-28T03:10:07.910Z"
     }
   ]
 }
