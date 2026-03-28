@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T04:10:50.118Z",
+  "exported_at": "2026-03-28T04:20:05.386Z",
   "milestones": [
     {
       "id": "M001",
@@ -575,7 +575,7 @@
       "milestone_id": "M005",
       "id": "S04",
       "title": "Recommendations and cache controls",
-      "status": "pending",
+      "status": "complete",
       "risk": "medium",
       "depends": [
         "S02",
@@ -583,9 +583,9 @@
       ],
       "demo": "Operators can see grounded next-best-action guidance and tune semantic-cache behavior with enough visibility to improve results intentionally.",
       "created_at": "2026-03-28T02:38:45.198Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-03-28T04:14:55.644Z",
+      "full_summary_md": "---\nid: S04\nparent: M005\nmilestone: M005\nprovides:\n  - Tenant-scoped recommendation and cache-summary contract (`RecommendationBundle`) for use by downstream proof and UI work.\n  - Admin-only recommendations endpoint with deterministic bounded structure and tenant scoping.\n  - Console Observability recommendation cards and cache-effectiveness/runtime context grounded in ledger-backed traffic.\n  - Semantic-cache tuning controls in the existing policy preview/save flow via similarity threshold and max entry age fields.\nrequires:\n  - slice: S02\n    provides: S02’s replay/simulation posture and shared policy-editing save/preview flow, reused to keep recommendation wording and cache tuning grounded in recent ledger-backed traffic rather than ad-hoc UI heuristics.\n  - slice: S03\n    provides: S03’s hard-budget outcomes and runtime policy evidence vocabulary, reused as recommendation inputs and preserved as part of the operator-visible decisioning story.\naffects:\n  - S05\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/recommendation_service.py\n  - src/nebula/api/routes/admin.py\n  - migrations/versions/20260328_0008_cache_policy_controls.py\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/components/policy/policy-form.tsx\n  - console/src/lib/admin-api.ts\n  - console/src/lib/query-keys.ts\n  - tests/test_service_flows.py\n  - tests/test_governance_api.py\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\nkey_decisions:\n  - Validated recommendation feedback as a bounded, typed, tenant-scoped read model (`RecommendationBundle`) instead of endpoint-specific or free-form analytics payloads.\n  - Added only two explicit semantic-cache tuning knobs to tenant policy — similarity threshold and max entry age hours — and kept the rest of cache behavior opaque to operators.\n  - Kept recommendation generation strictly read-only and grounded in usage-ledger rows plus coarse semantic-cache runtime health, not raw prompts, opaque scoring, or cache-entry inspection.\n  - Reused the existing RecommendationBundle DTO as the sole admin recommendations contract instead of adding a second translation layer.\n  - Kept recommendation rendering inside Observability while making cache tuning inspection-only there; edits remain confined to the existing policy save/preview flow.\n  - Backfilled the missing Alembic migration for the new cache policy fields so the assembled API contract matches the persisted schema.\npatterns_established:\n  - Bound operator guidance should ship as a typed, bounded read model backed by persisted evidence plus coarse runtime context, not as free-form analytics payloads.\n  - When adding tunable runtime controls, keep inspection in Observability but keep mutation inside the existing policy preview/save contract rather than spawning a new management surface.\n  - Schema-bearing TenantPolicy changes need persistence, migration, API contract, UI typing, and focused verification updated together or the assembled control-plane story breaks at startup before feature behavior is tested.\nobservability_surfaces:\n  - `GET /v1/admin/tenants/{tenant_id}/recommendations` returns the bounded recommendation/cache summary used by the console and future proof work.\n  - Observability now shows grounded recommendation cards, cache-effectiveness metrics, cache runtime status/detail, and supporting dependency-health context.\n  - The policy editor now renders semantic-cache similarity threshold and max entry age as runtime-enforced controls within the existing preview/save workflow.\ndrill_down_paths:\n  - .gsd/milestones/M005/slices/S04/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M005/slices/S04/tasks/T02-SUMMARY.md\n  - .gsd/milestones/M005/slices/S04/tasks/T03-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T04:14:55.645Z\nblocker_discovered: false\n---\n\n# S04: Recommendations and cache controls\n\n**Delivered tenant-scoped recommendation feedback and semantic-cache tuning controls through a bounded backend read model, a narrow admin contract, and integrated Observability/policy console surfaces.**\n\n## What Happened\n\nS04 turned Nebula’s existing evidence and cache posture into a new operator decisioning layer without widening the product into analytics or autonomous optimization. The backend now exposes stable recommendation and cache-summary DTOs plus two explicit semantic-cache controls on tenant policy. A new `RecommendationService` derives deterministic, tenant-scoped recommendations from recent usage-ledger records, hard-budget and policy outcomes, premium-cost patterns, cache-hit behavior, and semantic-cache health, but it never mutates policy, usage, or cache data. That typed read model is exposed through a single admin-only tenant-scoped endpoint and reused directly by the console contract. On the operator side, Observability now renders bounded next-best-action cards with explicit wording that they are based on recent ledger-backed traffic plus supporting runtime context, alongside cache-effectiveness and degraded-runtime context. Cache tuning remains intentionally narrow: operators can inspect the current threshold and max-entry-age settings in Observability, but editing stays in the existing policy save/preview flow, where the policy form now validates and submits the new runtime-enforced cache controls with explicit preview-before-save semantics. During close-out verification, the assembled worktree also surfaced a missing Alembic migration for the new policy fields; adding that migration ensured the shipped TenantPolicy contract, database schema, and governance API startup behavior now align. Together, the slice delivers grounded recommendation-grade feedback and tunable semantic-cache controls while preserving Nebula’s metadata-boundary discipline and scope constraints.\n\n## Verification\n\nSlice-level verification passed in the assembled worktree: `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x` (5 passed), `./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x` (6 passed), and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` (4 files, 14 tests passed). These cover deterministic recommendation ordering, bounded output, degraded-cache insight propagation, admin protection and tenant scoping, observability recommendation framing, and cache-control preview/save semantics.\n\n## Requirements Advanced\n\n- R042 — Delivered the bounded recommendation-grade feedback loop across backend service, admin contract, and observability rendering, converting recommendation guidance from a planned capability into a shipped operator surface.\n- R043 — Made semantic cache behavior tunable and inspectable per tenant through explicit policy knobs, bounded cache summaries, and console save/preview semantics.\n- R044 — Preserved v4 scope discipline by keeping recommendation feedback metadata-backed, read-only, tenant-scoped, and inside existing admin surfaces rather than widening into analytics, SDK, or hosted-authority work.\n\n## Requirements Validated\n\n- R042 — Recommendation guidance is now exposed as a deterministic tenant-scoped `RecommendationBundle` derived from recent ledger-backed traffic and coarse runtime cache health, surfaced through `GET /v1/admin/tenants/{tenant_id}/recommendations`, and rendered in Observability with explicit non-black-box wording. Verified by the focused backend, API, and Vitest runs listed below.\n- R043 — Semantic cache tuning is now inspectable and editable per tenant through explicit policy fields for similarity threshold and max entry age, a bounded cache summary read model, and the existing policy save/preview flow. Verified by the same focused backend, API, and Vitest runs listed below.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nAdded `migrations/versions/20260328_0008_cache_policy_controls.py` to backfill the new semantic-cache policy fields after API verification exposed a schema mismatch. No slice-plan scope widening beyond that migration hygiene fix was required.\n\n## Known Limitations\n\nRecommendations remain descriptive and bounded to the most recent ledger window and current cache runtime state. The slice intentionally does not add autonomous policy changes, long-horizon analytics, deep cache-entry inspection, or a dedicated cache-management surface.\n\n## Follow-ups\n\nS05 should assemble this new recommendation/cache surface into the full v4 proof, showing how adaptive routing, simulation, hard guardrails, and recommendations fit together without implying autonomous optimization or analytics-platform scope.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py` — Added bounded recommendation/cache DTOs and explicit semantic-cache policy knobs shared across runtime, API, and UI surfaces.\n- `src/nebula/services/recommendation_service.py` — Implemented deterministic, read-only tenant recommendation and cache-summary derivation from ledger-backed evidence plus coarse runtime cache health.\n- `src/nebula/core/container.py` — Wired recommendation service into the application container for admin/API use.\n- `src/nebula/services/governance_store.py` — Persisted the new semantic-cache tuning fields through governance storage and ORM-backed policy loading/saving.\n- `src/nebula/db/models.py` — Added backing ORM columns for semantic-cache tuning controls.\n- `migrations/versions/20260328_0008_cache_policy_controls.py` — Added an idempotent Alembic revision for semantic-cache tuning columns so governance/API startup matches the shipped TenantPolicy contract.\n- `tests/test_service_flows.py` — Added focused backend service coverage for deterministic recommendation ordering, bounded output, degraded-cache insight behavior, and no-mutation guarantees.\n- `tests/test_governance_api.py` — Added admin recommendations endpoint coverage for auth, tenant scoping, 404 behavior, bounded structure, and degraded cache evidence propagation.\n- `console/src/lib/admin-api.ts` — Extended the shared console admin contract with recommendation/cache types and typed tenant policy cache-tuning fields.\n- `console/src/lib/query-keys.ts` — Added a dedicated React Query key for tenant recommendations.\n- `console/src/app/(console)/observability/page.tsx` — Rendered grounded recommendation cards and cache-effectiveness/runtime context in the existing Observability surface.\n- `console/src/components/policy/policy-form.tsx` — Kept cache tuning in the existing policy editor with explicit preview/save semantics and validation for similarity threshold and entry age.\n- `console/src/app/(console)/observability/page.test.tsx` — Locked the observability and policy UX contract with focused Vitest coverage for recommendation framing, cache insight visibility, and cache-control save/preview behavior.\n- `console/src/app/(console)/observability/observability-page.test.tsx` — Locked the observability integrated wording and cache-effectiveness summary behavior with focused UI assertions.\n- `console/src/components/policy/policy-form.test.tsx` — Locked cache-tuning validation and preview/save semantics in the policy editor.\n- `console/src/components/policy/policy-page.test.tsx` — Locked cache-tuning grouping and operator-facing copy on the policy page.\n",
+      "full_uat_md": "# S04: Recommendations and cache controls — UAT\n\n**Milestone:** M005\n**Written:** 2026-03-28T04:14:55.645Z\n\n# S04 UAT — Recommendations and cache controls\n\n## Preconditions\n- Nebula backend dependencies are available and the admin API is reachable.\n- A tenant exists with recent usage-ledger activity, including at least one premium-routed request and one cache-related outcome in the recent window.\n- An admin session is available for the console and admin API.\n- The database has the semantic-cache tuning columns from migration `20260328_0008_cache_policy_controls`.\n\n## Test Case 1 — Tenant-scoped recommendations endpoint returns bounded grounded guidance\n1. Call `GET /v1/admin/tenants/{tenant_id}/recommendations` with a valid admin key for an existing tenant.\n   - Expected: Response status is 200.\n2. Inspect the JSON payload.\n   - Expected: The response contains `tenant_id`, `generated_at`, `window_requests_evaluated`, `recommendations`, and `cache_summary`.\n   - Expected: `recommendations` contains at most 3 cards and each card contains bounded `code`, `title`, `priority`, `category`, `summary`, `recommended_action`, and evidence rows.\n   - Expected: `cache_summary.insights` contains at most 2 entries with runtime/cache evidence only.\n3. Repeat the same request for a missing tenant ID.\n   - Expected: Response status is 404 with `Tenant not found.`\n4. Repeat the request without admin authorization.\n   - Expected: Response is rejected by admin protection.\n\n## Test Case 2 — Degraded cache health stays visible in recommendation evidence\n1. Put the semantic cache dependency into a degraded/not-ready state in a controlled test environment.\n2. Call `GET /v1/admin/tenants/{tenant_id}/recommendations` again.\n   - Expected: `cache_summary.runtime_status` reflects the degraded state and `runtime_detail` explains the issue.\n   - Expected: At least one cache insight or recommendation explicitly surfaces degraded cache runtime instead of hiding recommendation output.\n3. Restore healthy cache runtime and call the endpoint again.\n   - Expected: Runtime status and insight wording update accordingly without changing the endpoint shape.\n\n## Test Case 3 — Observability renders grounded recommendation framing without implying autonomous optimization\n1. Open the console Observability page as an admin and select the tenant used above.\n   - Expected: The page loads persisted request evidence, recommendation summary cards, and cache-effectiveness context for that tenant.\n2. Read the recommendation section header and supporting copy.\n   - Expected: The wording states recommendations are derived from recent ledger-backed traffic plus supporting runtime context.\n   - Expected: The wording explicitly avoids implying black-box optimization or autosave behavior.\n3. Inspect one recommendation card.\n   - Expected: The card shows a bounded title, summary, recommended action, and supporting evidence values only.\n4. Inspect the cache summary panel.\n   - Expected: It shows estimated hit rate, avoided premium cost, runtime status/detail, similarity threshold, and max entry age.\n\n## Test Case 4 — Cache tuning stays in the existing policy preview/save flow\n1. Open the tenant policy page in the console.\n   - Expected: Semantic cache similarity threshold and max entry age appear under runtime-enforced controls, not in a separate cache-management area.\n2. Change similarity threshold and max entry age, then click **Preview impact**.\n   - Expected: The console runs a preview/simulation without saving the policy.\n   - Expected: The UI states that save remains explicit.\n3. Confirm the policy has not yet been persisted (for example by refreshing before saving or checking the last saved values).\n   - Expected: The original saved values remain until **Save policy** is clicked.\n4. Click **Save policy**.\n   - Expected: The updated cache tuning fields persist as part of the tenant policy payload.\n\n## Test Case 5 — Validation and bounded control semantics for cache tuning\n1. In the policy page, set semantic cache similarity threshold to a value below 0 or above 1.\n   - Expected: The form blocks preview/save and shows a validation error explaining the allowed 0–1 range.\n2. Set semantic cache max entry age to a non-integer, 0, or a value above 720.\n   - Expected: The form blocks preview/save and shows a validation error explaining the allowed whole-hour 1–720 range.\n3. Re-enter valid values and preview again.\n   - Expected: Preview succeeds and returns to normal save/preview semantics.\n\n## Edge Cases\n- Tenant has no recent ledger rows.\n  - Expected: Recommendations endpoint still returns a valid bounded shape with `window_requests_evaluated = 0`; Observability shows no immediate recommendation cards rather than failing.\n- Semantic cache is disabled in policy.\n  - Expected: Cache summary and insight wording reflect the disabled state and any recommendation guidance stays descriptive rather than attempting autonomous reconfiguration.\n- Cache runtime is degraded while policy tuning values are valid.\n  - Expected: Observability and the API continue to surface degraded runtime evidence while preserving the ability to inspect and save explicit policy controls.\n\n## Verification Evidence Used In Slice Close-Out\n- `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`\n- `./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x`\n- `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`\n",
       "goal": "Deliver grounded operator recommendations and semantic-cache control surfaces by deriving bounded recommendation/cache summaries from ledger-backed evidence, exposing them through a narrow admin contract, and rendering them in existing Observability and policy surfaces without widening Nebula into analytics or cache-management scope.",
       "success_criteria": "- Operators can load tenant-scoped recommendation-grade guidance grounded in recent ledger, simulation, and hard-budget evidence rather than opaque heuristics.\n- Operators can inspect cache effectiveness and policy/runtime cache constraints per tenant, and tune cache behavior through the existing policy editing path only.\n- Backend, admin API, and console verification prove the new contracts are bounded, deterministic, tenant-scoped, and visible on existing operator surfaces.",
       "proof_level": "integration",
@@ -610,11 +610,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "",
-      "success_criteria": "",
-      "proof_level": "",
-      "integration_closure": "",
-      "observability_impact": "",
+      "goal": "Assemble the shipped v4 decisioning surfaces into one pointer-only integrated proof path that demonstrates simulation, hard guardrails, recommendations, cache controls, and benchmark evidence work together end to end without widening Nebula beyond interpretable, operator-driven decisioning scope.",
+      "success_criteria": "- A new integrated v4 proof document joins the existing canonical routing, simulation, guardrail, recommendation, cache-control, and evaluation sources in a strict operator walkthrough without redefining contracts or inventing new product surfaces.\n- Repository discoverability surfaces point reviewers to the new integrated v4 proof from the main docs map and architecture guide with concise pointer-only wording.\n- Focused verification proves the assembled backend, admin API, and console seams still agree on simulation, guardrails, recommendations, and cache-control framing, and lightweight doc checks prove the integrated proof file exists and is linked from the planned discoverability surfaces.\n- The assembled proof explicitly preserves R044 scope discipline: no new close-out API, no new dashboard surface, no autonomous optimization language, and no hosted-authority expansion.",
+      "proof_level": "final-assembly",
+      "integration_closure": "This slice closes M005 by composing already-shipped S02-S04 behavior into a reviewer-friendly proof path. It consumes the existing admin seams (`POST /v1/admin/tenants/{tenant_id}/policy/simulate`, `GET /v1/admin/tenants/{tenant_id}/recommendations`, `GET /v1/admin/usage/ledger`), the current Policy and Observability console pages, and the benchmark/evaluation documentation, then wires them together through a new integrated doc plus discoverability pointers. Nothing new should remain after this slice beyond milestone validation and close-out.",
+      "observability_impact": "The slice itself is documentation-first, but it must preserve inspection paths for future operators and reviewers: public/admin API seams, policy preview output, recommendation/cache summaries, usage-ledger evidence, and benchmark artifacts remain the diagnostic surfaces that the integrated proof teaches readers to use when claims drift or regress.",
       "sequence": 0,
       "replan_triggered_at": null
     }
@@ -2611,6 +2611,113 @@
       "observability_impact": "Adds UI-level inspection of recommendation/cache evidence and keeps cache tuning diagnostics inside existing policy/observability flows where operators already investigate routing outcomes.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S05",
+      "id": "T01",
+      "title": "Added a pointer-only v4 integrated proof walkthrough that ties together the shipped decisioning seams without expanding Nebula beyond operator-driven scope.",
+      "status": "complete",
+      "one_liner": "Added a pointer-only v4 integrated proof walkthrough that ties together the shipped decisioning seams without expanding Nebula beyond operator-driven scope.",
+      "narrative": "Reviewed the existing integrated-proof docs and the shipped v4 seams across docs, console surfaces, admin routes, recommendation logic, and governance models, then authored docs/v4-integrated-proof.md as the new canonical integrated walkthrough. The document explains what the v4 proof establishes, defines the required proof order, maps each proof step back to its canonical doc or code-backed source, provides a minimal operator walkthrough, and makes scope-drift failure modes explicit. The narrative stays pointer-only and preserves R044 discipline by avoiding any new API, dashboard, billing, SDK, hosted-authority, or autonomous-optimization claims.",
+      "verification_result": "Ran the task verification command to confirm docs/v4-integrated-proof.md exists, contains at least six second-level sections, and includes no TODO/TBD placeholders. Also manually confirmed the document preserves the intended observability proof path by explicitly pointing to policy simulation preview, recommendation/cache summary, usage-ledger inspection, Observability context, and benchmark artifacts as the runtime proof surfaces.",
+      "duration": "",
+      "completed_at": "2026-03-28T04:20:05.363Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "docs/v4-integrated-proof.md",
+        ".gsd/milestones/M005/slices/S05/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Used the existing integrated-proof document pattern and kept the new walkthrough strictly pointer-only, delegating all canonical detail to existing docs and code-backed seams rather than duplicating contracts."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S05\nmilestone: M005\nkey_files:\n  - docs/v4-integrated-proof.md\n  - .gsd/milestones/M005/slices/S05/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Used the existing integrated-proof document pattern and kept the new walkthrough strictly pointer-only, delegating all canonical detail to existing docs and code-backed seams rather than duplicating contracts.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T04:20:05.364Z\nblocker_discovered: false\n---\n\n# T01: Added a pointer-only v4 integrated proof walkthrough that ties together the shipped decisioning seams without expanding Nebula beyond operator-driven scope.\n\n**Added a pointer-only v4 integrated proof walkthrough that ties together the shipped decisioning seams without expanding Nebula beyond operator-driven scope.**\n\n## What Happened\n\nReviewed the existing integrated-proof docs and the shipped v4 seams across docs, console surfaces, admin routes, recommendation logic, and governance models, then authored docs/v4-integrated-proof.md as the new canonical integrated walkthrough. The document explains what the v4 proof establishes, defines the required proof order, maps each proof step back to its canonical doc or code-backed source, provides a minimal operator walkthrough, and makes scope-drift failure modes explicit. The narrative stays pointer-only and preserves R044 discipline by avoiding any new API, dashboard, billing, SDK, hosted-authority, or autonomous-optimization claims.\n\n## Verification\n\nRan the task verification command to confirm docs/v4-integrated-proof.md exists, contains at least six second-level sections, and includes no TODO/TBD placeholders. Also manually confirmed the document preserves the intended observability proof path by explicitly pointing to policy simulation preview, recommendation/cache summary, usage-ledger inspection, Observability context, and benchmark artifacts as the runtime proof surfaces.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `test -f docs/v4-integrated-proof.md && grep -c '^## ' docs/v4-integrated-proof.md | awk '{exit !($1 >= 6)}' && ! grep -q 'TODO\\|TBD' docs/v4-integrated-proof.md` | 0 | ✅ pass | 9ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `docs/v4-integrated-proof.md`\n- `.gsd/milestones/M005/slices/S05/tasks/T01-SUMMARY.md`\n",
+      "description": "Create the new integrated v4 proof document that assembles the already-shipped S02-S04 seams into one strict review path. Follow the established integrated-proof doc pattern used elsewhere in `docs/`, keep canonical details delegated to existing sources, and make R044 scope discipline explicit so the walkthrough proves a narrow operator decisioning story instead of implying new platform scope.\n\nSteps:\n1. Use the existing integrated proof docs as style/structure references and draft a new `docs/v4-integrated-proof.md` that explains what the v4 proof establishes, the required proof order, the minimal operator walkthrough, what it intentionally does not duplicate, and the failure modes the proof makes obvious.\n2. Ground the walkthrough in the shipped v4 seams only: route vocabulary, policy simulation replay, hard budget guardrails, bounded recommendations, semantic-cache tuning, Observability framing, and benchmark/evaluation artifacts; explicitly point back to the canonical docs and code-backed surfaces instead of restating contracts.\n3. Keep the narrative pointer-only and scope-guarded: no new APIs, no new dashboard/page concept, no autonomous optimization language, no billing/analytics/SDK/hosted-authority expansion, and preserve the existing wording that recommendations are grounded, bounded, and operator-driven.",
+      "estimate": "45m",
+      "files": [
+        "docs/v4-integrated-proof.md",
+        "docs/route-decision-vocabulary.md",
+        "docs/policy-guardrails.md",
+        "docs/evaluation.md",
+        "docs/integrated-adoption-proof.md",
+        "docs/embeddings-integrated-adoption-proof.md",
+        "docs/hosted-integrated-adoption-proof.md"
+      ],
+      "verify": "test -f docs/v4-integrated-proof.md && grep -c '^## ' docs/v4-integrated-proof.md | awk '{exit !($1 >= 6)}' && ! grep -q 'TODO\\|TBD' docs/v4-integrated-proof.md",
+      "inputs": [
+        "`docs/integrated-adoption-proof.md`",
+        "`docs/embeddings-integrated-adoption-proof.md`",
+        "`docs/hosted-integrated-adoption-proof.md`",
+        "`docs/route-decision-vocabulary.md`",
+        "`docs/policy-guardrails.md`",
+        "`docs/evaluation.md`",
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/services/recommendation_service.py`",
+        "`src/nebula/models/governance.py`"
+      ],
+      "expected_output": [
+        "`docs/v4-integrated-proof.md`"
+      ],
+      "observability_impact": "This task documents the canonical inspection path future agents should follow when v4 claims drift: simulation preview, recommendations/cache summary, usage-ledger evidence, and benchmark artifacts remain the runtime proof surfaces.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M005",
+      "slice_id": "S05",
+      "id": "T02",
+      "title": "Wire discoverability and lock the integrated proof path with focused verification",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Make the new v4 proof easy to find from existing documentation surfaces and prove the assembled v4 story still holds across backend, API, and console evidence paths. Keep documentation edits pointer-only, then add or update lightweight checks so close-out verification covers both behavior and discoverability.\n\nSteps:\n1. Add concise pointer-only references to `docs/v4-integrated-proof.md` from `README.md` and `docs/architecture.md`, placing the new walkthrough alongside existing integrated-proof entries without duplicating the v4 contract details there.\n2. Add a narrow documentation integrity test or assertion file if needed so discoverability is mechanically checked without snapshotting long markdown prose; otherwise, make the verification commands explicitly check the file and both links.\n3. Re-run the focused backend, admin API, and console tests that already prove simulation, guardrails, recommendations, cache controls, and operator wording, then include the doc existence/link checks in the verification story for this slice.",
+      "estimate": "45m",
+      "files": [
+        "README.md",
+        "docs/architecture.md",
+        "docs/v4-integrated-proof.md",
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation or recommendation or cache or runtime_policy or budget\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation or recommendation or guardrail or policy_options or policy_denied\" -x && npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx && test -f docs/v4-integrated-proof.md && rg -n \"v4-integrated-proof\\.md\" README.md docs/architecture.md",
+      "inputs": [
+        "`docs/v4-integrated-proof.md`",
+        "`README.md`",
+        "`docs/architecture.md`",
+        "`tests/test_service_flows.py`",
+        "`tests/test_governance_api.py`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`"
+      ],
+      "expected_output": [
+        "`README.md`",
+        "`docs/architecture.md`",
+        "`docs/v4-integrated-proof.md`"
+      ],
+      "observability_impact": "Verification for this task explicitly preserves the known diagnostic surfaces: backend/API tests guard simulation and recommendation contracts, console tests guard operator wording, and doc link checks ensure reviewers can still find the assembled proof path.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -2934,6 +3041,30 @@
       "decision": "R041",
       "choice": "validated",
       "rationale": "M005/S03 added explicit hard cumulative budget policy fields, centralized runtime/simulation enforcement in PolicyService with deterministic downgrade-versus-deny behavior, and exposed operator-readable budget evidence in admin APIs, console request detail, and docs. Focused verification passed in `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`, establishing enforceable hard spend guardrails with graceful downgrade behavior beyond soft budget signals alone.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 28,
+      "id": "D028",
+      "when_context": "",
+      "scope": "requirement",
+      "decision": "R042",
+      "choice": "validated",
+      "rationale": "M005/S04 delivered bounded recommendation-grade feedback grounded in recent ledger-backed traffic plus supporting runtime cache health through a typed backend RecommendationBundle, an admin-only tenant-scoped recommendations endpoint, and console observability rendering that shows explicit next-best-action cards without black-box optimization claims. Verification passed in `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 29,
+      "id": "D029",
+      "when_context": "",
+      "scope": "requirement",
+      "decision": "R043",
+      "choice": "validated",
+      "rationale": "M005/S04 made semantic cache behavior tunable and inspectable per tenant by adding explicit policy knobs for `semantic_cache_similarity_threshold` and `semantic_cache_max_entry_age_hours`, persisting them through governance storage and migration, exposing a bounded cache summary with runtime status, estimated hit rate, avoided premium cost, and cache insights, and rendering those controls in the existing policy save/preview flow plus observability context. Verification passed in `./.venv/bin/pytest tests/test_service_flows.py -k \"recommendation or cache\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"recommendation or cache\" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -3445,6 +3576,17 @@
       "verdict": "✅ pass",
       "duration_ms": 2500,
       "created_at": "2026-03-28T04:10:50.097Z"
+    },
+    {
+      "id": 47,
+      "task_id": "T01",
+      "slice_id": "S05",
+      "milestone_id": "M005",
+      "command": "test -f docs/v4-integrated-proof.md && grep -c '^## ' docs/v4-integrated-proof.md | awk '{exit !($1 >= 6)}' && ! grep -q 'TODO\\|TBD' docs/v4-integrated-proof.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 9,
+      "created_at": "2026-03-28T04:20:05.363Z"
     }
   ]
 }

@@ -15,28 +15,6 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: unmapped
 - Notes: Expected decision inputs include policy mode, model allowlist, provider health, budget state, historical outcome signals, and request complexity signals.
 
-### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
-- Class: differentiator
-- Status: active
-- Description: Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
-- Why it matters: Observability that only explains the past leaves too much operator work on the table.
-- Source: inferred
-- Primary owning slice: M005/S04
-- Supporting slices: M005/S02, M005/S03
-- Validation: unmapped
-- Notes: Recommendations should stay grounded in existing metadata and decision logic, not opaque black-box scoring.
-
-### R043 — Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
-- Class: operability
-- Status: active
-- Description: Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
-- Why it matters: Cache value is central to Nebula's savings story, but the current product exposes almost no operator control or learning loop around it.
-- Source: inferred
-- Primary owning slice: M005/S04
-- Supporting slices: M005/S05
-- Validation: unmapped
-- Notes: Threshold visibility, safe invalidation, and hit-quality evidence are stronger fits than a broad cache management subsystem.
-
 ### R044 — v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
 - Class: constraint
 - Status: active
@@ -325,6 +303,28 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Verified by `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "budget or simulation or runtime_policy" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "guardrail or policy_denied or simulation" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`.
 - Notes: Validated by M005/S03 hard budget guardrails: explicit cumulative guardrail fields (`hard_budget_limit_usd`, `hard_budget_enforcement`), centralized PolicyService enforcement shared by runtime and simulation, deterministic downgrade-to-local for compatible auto-routed traffic, exact denial for explicit premium/premium-only requests, and operator-visible budget evidence across admin APIs, ledger detail, and policy docs.
 
+### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Class: differentiator
+- Status: validated
+- Description: Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Why it matters: Observability that only explains the past leaves too much operator work on the table.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S02, M005/S03
+- Validation: M005/S04 added a deterministic RecommendationBundle service grounded in recent usage-ledger rows plus runtime cache health, exposed it through `GET /v1/admin/tenants/{tenant_id}/recommendations`, and rendered bounded next-best-action guidance in Observability with explicit ledger-backed framing. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.
+- Notes: Recommendation feedback remains bounded, tenant-scoped, read-only, and grounded in persisted evidence plus coarse runtime context rather than black-box scoring or autonomous policy mutation.
+
+### R043 — Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Class: operability
+- Status: validated
+- Description: Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Why it matters: Cache value is central to Nebula's savings story, but the current product exposes almost no operator control or learning loop around it.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S05
+- Validation: M005/S04 added explicit tenant policy knobs for semantic-cache similarity threshold and max entry age, persisted them through governance storage and migration, exposed bounded cache-effectiveness/runtime summaries, and rendered tuning in the existing policy preview/save flow plus observability context. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.
+- Notes: Cache control stays inside existing tenant policy semantics and observability context; S04 intentionally avoids a separate cache-management product surface or deep cache-entry inspection.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -539,13 +539,13 @@ This file is the explicit capability and coverage contract for the project.
 | R039 | core-capability | active | M005/S01 | M005/S03 | unmapped |
 | R040 | operability | validated | M005/S02 | M005/S05 | Operators can simulate a candidate routing or policy change against real recent Nebula traffic before applying it through a non-mutating replay path backed by usage-ledger rows, aggregate route/denial/cost deltas, and preview-before-save console feedback. Verified by passing `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x`, `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
 | R041 | integration | validated | M005/S03 | M005/S01 | Verified by `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "budget or simulation or runtime_policy" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "guardrail or policy_denied or simulation" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`. |
-| R042 | differentiator | active | M005/S04 | M005/S02, M005/S03 | unmapped |
-| R043 | operability | active | M005/S04 | M005/S05 | unmapped |
+| R042 | differentiator | validated | M005/S04 | M005/S02, M005/S03 | M005/S04 added a deterministic RecommendationBundle service grounded in recent usage-ledger rows plus runtime cache health, exposed it through `GET /v1/admin/tenants/{tenant_id}/recommendations`, and rendered bounded next-best-action guidance in Observability with explicit ledger-backed framing. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
+| R043 | operability | validated | M005/S04 | M005/S05 | M005/S04 added explicit tenant policy knobs for semantic-cache similarity threshold and max entry age, persisted them through governance storage and migration, exposed bounded cache-effectiveness/runtime summaries, and rendered tuning in the existing policy preview/save flow plus observability context. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
 | R044 | constraint | active | M005/S05 | M005/S01, M005/S02, M005/S03, M005/S04 | unmapped |
 
 ## Coverage Summary
 
-- Active requirements: 4
-- Mapped to slices: 4
-- Validated: 25 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R040, R041)
+- Active requirements: 2
+- Mapped to slices: 2
+- Validated: 27 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R040, R041, R042, R043)
 - Unmapped active requirements: 0
