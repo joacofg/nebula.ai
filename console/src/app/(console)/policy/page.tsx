@@ -8,7 +8,10 @@ import {
   getPolicyOptions,
   getTenantPolicy,
   listTenants,
+  simulateTenantPolicy,
   updateTenantPolicy,
+  type PolicySimulationResponse,
+  type TenantPolicy,
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { PolicyForm } from "@/components/policy/policy-form";
@@ -18,6 +21,7 @@ export default function PolicyPage() {
   const queryClient = useQueryClient();
   const { adminKey } = useAdminSession();
   const [selectedTenantId, setSelectedTenantId] = useState<string>("");
+  const [latestSimulation, setLatestSimulation] = useState<PolicySimulationResponse | null>(null);
 
   const tenantsQuery = useQuery({
     queryKey: queryKeys.tenants,
@@ -31,6 +35,10 @@ export default function PolicyPage() {
     }
   }, [selectedTenantId, tenantsQuery.data]);
 
+  useEffect(() => {
+    setLatestSimulation(null);
+  }, [selectedTenantId]);
+
   const policyQuery = useQuery({
     queryKey: queryKeys.tenantPolicy(selectedTenantId || "unselected"),
     queryFn: () => getTenantPolicy(adminKey ?? "", selectedTenantId),
@@ -43,15 +51,32 @@ export default function PolicyPage() {
     enabled: Boolean(adminKey),
   });
 
-  const mutation = useMutation({
-    mutationFn: async (payload: Awaited<ReturnType<typeof getTenantPolicy>>) => {
+  const saveMutation = useMutation({
+    mutationFn: async (payload: TenantPolicy) => {
       if (!adminKey) {
         throw new Error("Operator session missing.");
       }
       return updateTenantPolicy(adminKey, selectedTenantId, payload);
     },
     onSuccess: async () => {
+      setLatestSimulation(null);
       await queryClient.invalidateQueries({ queryKey: queryKeys.tenantPolicy(selectedTenantId) });
+    },
+  });
+
+  const simulationMutation = useMutation({
+    mutationFn: async (payload: TenantPolicy) => {
+      if (!adminKey) {
+        throw new Error("Operator session missing.");
+      }
+      return simulateTenantPolicy(adminKey, selectedTenantId, {
+        candidate_policy: payload,
+        limit: 50,
+        changed_sample_limit: 5,
+      });
+    },
+    onSuccess: (result) => {
+      setLatestSimulation(result);
     },
   });
 
@@ -79,7 +104,7 @@ export default function PolicyPage() {
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Policy</div>
           <p className="mt-2 text-sm text-slate-600">
-            Load a tenant policy, edit grouped controls, and save explicitly.
+            Load a tenant policy, simulate a candidate change against recent traffic, and save explicitly.
           </p>
         </div>
 
@@ -107,9 +132,19 @@ export default function PolicyPage() {
         tenantName={selectedTenant.name}
         initialPolicy={policyQuery.data}
         options={optionsQuery.data}
-        isSaving={mutation.isPending}
+        isSaving={saveMutation.isPending}
+        isSimulating={simulationMutation.isPending}
+        simulationResult={latestSimulation}
+        simulationError={
+          simulationMutation.isError
+            ? (simulationMutation.error as Error | undefined)?.message ?? "Unable to preview policy changes."
+            : null
+        }
+        onSimulate={async (payload) => {
+          await simulationMutation.mutateAsync(payload);
+        }}
         onSave={async (payload) => {
-          await mutation.mutateAsync(payload);
+          await saveMutation.mutateAsync(payload);
         }}
       />
     </section>

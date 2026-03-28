@@ -62,6 +62,58 @@ export type PolicyOptionsResponse = {
   advisory_fields: string[];
 };
 
+export type PolicySimulationRequest = {
+  candidate_policy: TenantPolicy;
+  from_timestamp?: string | null;
+  to_timestamp?: string | null;
+  limit?: number;
+  changed_sample_limit?: number;
+};
+
+export type PolicySimulationWindow = {
+  requested_from: string | null;
+  requested_to: string | null;
+  evaluated_from: string | null;
+  evaluated_to: string | null;
+  requested_limit: number;
+  changed_sample_limit: number;
+  returned_rows: number;
+};
+
+export type PolicySimulationOutcomeCounts = {
+  evaluated_rows: number;
+  changed_routes: number;
+  newly_denied: number;
+  baseline_premium_cost: number;
+  simulated_premium_cost: number;
+  premium_cost_delta: number;
+};
+
+export type PolicySimulationChangedRequest = {
+  request_id: string;
+  timestamp: string;
+  requested_model: string;
+  baseline_route_target: string;
+  simulated_route_target: string;
+  baseline_terminal_status: string;
+  simulated_terminal_status: string;
+  baseline_policy_outcome: string | null;
+  simulated_policy_outcome: string | null;
+  baseline_route_reason: string | null;
+  simulated_route_reason: string | null;
+  baseline_estimated_cost: number;
+  simulated_estimated_cost: number;
+};
+
+export type PolicySimulationResponse = {
+  tenant_id: string;
+  candidate_policy: TenantPolicy;
+  approximation_notes: string[];
+  window: PolicySimulationWindow;
+  summary: PolicySimulationOutcomeCounts;
+  changed_requests: PolicySimulationChangedRequest[];
+};
+
 export type PlaygroundInput = {
   tenantId: string;
   model: string;
@@ -339,6 +391,18 @@ export function updateTenantPolicy(adminKey: string, tenantId: string, payload: 
   return adminRequest<TenantPolicy>(`${ADMIN_TENANTS_ENDPOINT}/${tenantId}/policy`, {
     adminKey,
     method: "PUT",
+    body: payload,
+  });
+}
+
+export function simulateTenantPolicy(
+  adminKey: string,
+  tenantId: string,
+  payload: PolicySimulationRequest,
+) {
+  return adminRequest<PolicySimulationResponse>(`${ADMIN_TENANTS_ENDPOINT}/${tenantId}/policy/simulate`, {
+    adminKey,
+    method: "POST",
     body: payload,
   });
 }

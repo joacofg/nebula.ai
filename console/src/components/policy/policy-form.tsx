@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { AlertCircle, LoaderCircle, RotateCcw, Save } from "lucide-react";
+import { AlertCircle, ArrowRight, LoaderCircle, RotateCcw, Save, Telescope } from "lucide-react";
 
-import type { PolicyOptionsResponse, TenantPolicy } from "@/lib/admin-api";
+import type {
+  PolicyOptionsResponse,
+  PolicySimulationChangedRequest,
+  PolicySimulationResponse,
+  TenantPolicy,
+} from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import { PolicyAdvancedSection } from "@/components/policy/policy-advanced-section";
 
@@ -12,6 +17,10 @@ type PolicyFormProps = {
   initialPolicy: TenantPolicy;
   options: PolicyOptionsResponse;
   isSaving: boolean;
+  isSimulating: boolean;
+  simulationResult: PolicySimulationResponse | null;
+  simulationError: string | null;
+  onSimulate: (policy: TenantPolicy) => Promise<void>;
   onSave: (policy: TenantPolicy) => Promise<void>;
 };
 
@@ -48,7 +57,51 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
   };
 }
 
-export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSave }: PolicyFormProps) {
+function formatUsd(value: number) {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 4,
+    maximumFractionDigits: 4,
+  }).format(value);
+}
+
+function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
+  const routeChanged = change.baseline_route_target !== change.simulated_route_target;
+  const statusChanged = change.baseline_terminal_status !== change.simulated_terminal_status;
+  const outcomeChanged = change.baseline_policy_outcome !== change.simulated_policy_outcome;
+  const costChanged = change.baseline_estimated_cost !== change.simulated_estimated_cost;
+
+  const highlights: string[] = [];
+  if (routeChanged) {
+    highlights.push(`route ${change.baseline_route_target} → ${change.simulated_route_target}`);
+  }
+  if (statusChanged) {
+    highlights.push(`status ${change.baseline_terminal_status} → ${change.simulated_terminal_status}`);
+  }
+  if (outcomeChanged) {
+    highlights.push(
+      `policy ${(change.baseline_policy_outcome ?? "none")} → ${(change.simulated_policy_outcome ?? "none")}`,
+    );
+  }
+  if (costChanged) {
+    highlights.push(`cost ${formatUsd(change.baseline_estimated_cost)} → ${formatUsd(change.simulated_estimated_cost)}`);
+  }
+
+  return highlights.join(" • ");
+}
+
+export function PolicyForm({
+  tenantName,
+  initialPolicy,
+  options,
+  isSaving,
+  isSimulating,
+  simulationResult,
+  simulationError,
+  onSimulate,
+  onSave,
+}: PolicyFormProps) {
   const [formState, setFormState] = useState<PolicyFormState>(() => toFormState(initialPolicy));
   const [error, setError] = useState<string | null>(null);
 
@@ -80,6 +133,20 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
     });
   }
 
+  async function handleSimulate() {
+    setError(null);
+
+    const nextPolicy = toPolicyPayload(formState, initialPolicy);
+    if (nextPolicy.allowed_premium_models.length === 0) {
+      setError("Select at least one premium model.");
+      return;
+    }
+
+    await onSimulate(nextPolicy).catch(() => {
+      // Surface the simulation mutation error via the dedicated preview panel state.
+    });
+  }
+
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <header className="panel px-6 py-5">
@@ -90,7 +157,7 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
               Policy for {tenantName}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
-              Structured governance controls with explicit save semantics.
+              Structured governance controls with explicit preview and save semantics.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -103,13 +170,22 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
             <button
               type="button"
               className="secondary-button gap-2"
-              disabled={!dirty}
+              disabled={!dirty || isSaving || isSimulating}
               onClick={() => setFormState(toFormState(initialPolicy))}
             >
               <RotateCcw className="h-4 w-4" />
               Reset changes
             </button>
-            <button className="action-button gap-2" disabled={!dirty || isSaving} type="submit">
+            <button
+              type="button"
+              className="secondary-button gap-2"
+              disabled={isSaving || isSimulating}
+              onClick={() => void handleSimulate()}
+            >
+              {isSimulating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Telescope className="h-4 w-4" />}
+              Preview impact
+            </button>
+            <button className="action-button gap-2" disabled={!dirty || isSaving || isSimulating} type="submit">
               {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save policy
             </button>
@@ -122,6 +198,122 @@ export function PolicyForm({ tenantName, initialPolicy, options, isSaving, onSav
           {error}
         </div>
       ) : null}
+
+      <section className="panel px-6 py-5" aria-live="polite">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Preview before save</h3>
+            <p className="mt-2 text-sm text-slate-500">
+              Replay the current draft against recent tenant traffic without persisting the policy.
+            </p>
+          </div>
+          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+            Save remains explicit
+          </span>
+        </div>
+
+        {isSimulating ? (
+          <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+            Simulating draft policy against recent tenant traffic...
+          </div>
+        ) : null}
+
+        {simulationError ? (
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            Preview failed: {simulationError}
+          </div>
+        ) : null}
+
+        {!isSimulating && !simulationError && !simulationResult ? (
+          <div className="mt-4 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+            Run a preview to compare this draft against recent ledger-backed requests before saving.
+          </div>
+        ) : null}
+
+        {simulationResult ? (
+          <div className="mt-4 space-y-4">
+            <div className="grid gap-3 md:grid-cols-4">
+              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Evaluated requests</div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950">
+                  {simulationResult.summary.evaluated_rows}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Changed routes</div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950">
+                  {simulationResult.summary.changed_routes}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Newly denied</div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950">
+                  {simulationResult.summary.newly_denied}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Premium cost delta</div>
+                <div className="mt-2 text-2xl font-semibold text-slate-950">
+                  {formatUsd(simulationResult.summary.premium_cost_delta)}
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
+              Previewed {simulationResult.window.returned_rows} request(s) from the recent replay window. This preview did not save the policy.
+            </div>
+
+            {simulationResult.window.returned_rows === 0 ? (
+              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                No recent traffic matched the replay window, so there was nothing to preview.
+              </div>
+            ) : simulationResult.changed_requests.length === 0 ? (
+              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+                No request outcomes changed in this replay window.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div>
+                  <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                    Changed request sample
+                  </h4>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Compact sample of requests whose route, status, policy outcome, or projected cost changed.
+                  </p>
+                </div>
+                <ul className="space-y-3">
+                  {simulationResult.changed_requests.map((change) => (
+                    <li key={change.request_id} className="rounded-xl border border-border bg-white px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-950">
+                        <span>{change.request_id}</span>
+                        <span className="text-slate-400">•</span>
+                        <span>{change.requested_model}</span>
+                      </div>
+                      <div className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                        <span>{change.baseline_route_target}</span>
+                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span>{change.simulated_route_target}</span>
+                      </div>
+                      <p className="mt-2 text-sm text-slate-600">{renderChangedRequestSummary(change)}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {simulationResult.approximation_notes.length > 0 ? (
+              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-600">
+                <div className="font-medium text-slate-900">Replay notes</div>
+                <ul className="mt-2 list-disc space-y-1 pl-5">
+                  {simulationResult.approximation_notes.map((note) => (
+                    <li key={note}>{note}</li>
+                  ))}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+      </section>
 
       <section className="panel px-6 py-5">
         <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
