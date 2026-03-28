@@ -796,3 +796,176 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
     assert ledger.json()[0]["final_provider"] is None
     assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
     assert ledger.json()[0]["policy_outcome"] == denied.json()["detail"]
+
+
+def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premium_requests() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            baseline = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "max_tokens": 2048,
+                    "messages": [{"role": "user", "content": "baseline premium spend"}],
+                },
+            )
+            baseline_request_id = baseline.headers["X-Request-ID"]
+            baseline_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={baseline_request_id}",
+                headers=admin_headers(),
+            )
+            baseline_cost = baseline_ledger.json()[0]["estimated_cost"]
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    routing_mode_default="auto",
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    hard_budget_limit_usd=max(baseline_cost / 2, 0.0000001),
+                    hard_budget_enforcement="downgrade",
+                ).model_dump(mode="json"),
+            )
+            downgraded = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "analyze this architecture tradeoff"}],
+                },
+            )
+            denied = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "messages": [{"role": "user", "content": "explicit premium after budget exhausted"}],
+                },
+            )
+            denied_request_id = denied.headers["X-Request-ID"]
+            denied_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={denied_request_id}",
+                headers=admin_headers(),
+            )
+
+    assert downgraded.status_code == 200
+    assert baseline.status_code == 200
+    assert baseline_ledger.status_code == 200
+    assert downgraded.json()["model"] == "llama3.2:3b"
+    assert downgraded.headers["X-Nebula-Route-Target"] == "local"
+    assert downgraded.headers["X-Nebula-Route-Reason"] == "hard_budget_downgrade"
+    assert "hard_budget=exceeded" in downgraded.headers["X-Nebula-Policy-Outcome"]
+    assert "budget_action=downgraded_to_local" in downgraded.headers["X-Nebula-Policy-Outcome"]
+
+    assert denied.status_code == 403
+    expected_limit = max(baseline_cost / 2, 0.0000001)
+    expected_spent = f"{baseline_cost:.6f}".rstrip("0").rstrip(".")
+    expected_limit_text = f"{expected_limit:.6f}".rstrip("0").rstrip(".")
+    expected_detail = (
+        "Tenant hard budget limit reached; premium routing is blocked "
+        f"(spent_usd={expected_spent}, limit_usd={expected_limit_text})."
+    )
+    assert denied.json() == {"detail": expected_detail}
+    assert denied.headers["X-Nebula-Route-Target"] == "premium"
+    assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert denied_ledger.status_code == 200
+    assert denied_ledger.json()[0]["final_route_target"] == "denied"
+    assert denied_ledger.json()[0]["policy_outcome"] == denied.json()["detail"]
+
+
+def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            prior_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "openai/gpt-4o-mini",
+                    "max_tokens": 2048,
+                    "messages": [{"role": "user", "content": "prior premium spend for replay window"}],
+                },
+            )
+            prior_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={prior_response.headers['X-Request-ID']}",
+                headers=admin_headers(),
+            )
+            prior_cost = prior_ledger.json()[0]["estimated_cost"]
+            premium_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "analyze premium baseline replay spend architecture"}],
+                },
+            )
+            baseline_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={premium_response.headers['X-Request-ID']}",
+                headers=admin_headers(),
+            )
+            ledger = client.get(
+                "/v1/admin/usage/ledger?tenant_id=default&limit=10",
+                headers=admin_headers(),
+            )
+            baseline_row = next(entry for entry in ledger.json() if entry["request_id"] == premium_response.headers["X-Request-ID"])
+            simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        hard_budget_limit_usd=max(prior_cost / 2, 0.0000001),
+                        hard_budget_enforcement="downgrade",
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                    ).model_dump(mode="json"),
+                    "from_timestamp": baseline_row["timestamp"],
+                    "limit": 10,
+                    "changed_sample_limit": 10,
+                },
+            )
+
+    assert prior_response.status_code == 200
+    assert prior_ledger.status_code == 200
+    assert premium_response.status_code == 200
+    assert baseline_ledger.status_code == 200
+    assert simulation.status_code == 200
+    body = simulation.json()
+    assert body["summary"]["evaluated_rows"] == 1
+    assert body["summary"]["changed_routes"] == 1
+    assert body["changed_requests"][0]["baseline_route_target"] == "premium"
+    assert body["changed_requests"][0]["simulated_route_target"] == "local"
+    assert body["changed_requests"][0]["simulated_route_reason"] == "hard_budget_downgrade"
+    assert "hard_budget=exceeded" in body["changed_requests"][0]["simulated_policy_outcome"]

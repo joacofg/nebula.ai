@@ -363,9 +363,11 @@ async def test_policy_can_disable_cache_and_block_fallback() -> None:
 class RuntimePolicyStore:
     def __init__(self, *, spend_total: float = 0.0) -> None:
         self.spend_total = spend_total
+        self.calls: list[tuple[str, datetime | None]] = []
 
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
+        self.calls.append((tenant_id, before_timestamp))
         return self.spend_total
 
 
@@ -442,6 +444,84 @@ async def test_runtime_policy_resolution_enforces_toggles_and_soft_budget_signal
     assert resolution.fallback_enabled is False
     assert resolution.soft_budget_exceeded is True
     assert resolution.policy_outcome == "cache=disabled;fallback=disabled;soft_budget=exceeded"
+
+
+@pytest.mark.asyncio
+async def test_runtime_policy_resolution_downgrades_hard_budget_exhaustion_to_local() -> None:
+    settings = Settings()
+    policy_service = PolicyService(
+        settings,
+        RuntimePolicyStore(spend_total=9.0),
+        PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+    )
+    request = ChatCompletionRequest(
+        model="nebula-auto",
+        messages=[{"role": "user", "content": "analyze this architecture tradeoff"}],
+    )
+
+    resolution = await policy_service.resolve(
+        prompt="analyze this architecture tradeoff",
+        request=request,
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                hard_budget_limit_usd=5.0,
+                hard_budget_enforcement="downgrade",
+            ),
+        ),
+        router_service=RouterService(settings),
+    )
+
+    assert resolution.route_decision.target == "local"
+    assert resolution.route_decision.reason == "hard_budget_downgrade"
+    assert "hard_budget=exceeded" in resolution.policy_outcome
+    assert "budget_action=downgraded_to_local" in resolution.policy_outcome
+    assert resolution.projected_premium_cost is None
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-budget-window",
+            timestamp=now,
+            final_route_target="premium",
+            requested_model="nebula-auto",
+            estimated_cost=0.002,
+            prompt_tokens=800,
+            completion_tokens=256,
+            route_signals={"token_count": 900, "complexity_tier": "medium", "keyword_match": True},
+        )
+    ]
+    store = FakeSimulationGovernanceStore(records, spend_total=9.0)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(
+                hard_budget_limit_usd=5.0,
+                hard_budget_enforcement="downgrade",
+            ),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert store.calls == [("default", now)]
+    assert response.summary.evaluated_rows == 1
+    assert response.summary.changed_routes == 1
+    assert response.changed_requests[0].baseline_route_target == "premium"
+    assert response.changed_requests[0].simulated_route_target == "local"
+    assert response.changed_requests[0].simulated_route_reason == "hard_budget_downgrade"
+    assert "hard_budget=exceeded" in (response.changed_requests[0].simulated_policy_outcome or "")
 
 
 def _ledger_record(

@@ -18,7 +18,7 @@ from nebula.models.openai import ChatCompletionRequest
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyEvaluation, PolicyService
-from nebula.services.router_service import RouterService
+from nebula.services.router_service import ReplayRouteContext, RouterService
 
 
 @dataclass(slots=True, frozen=True)
@@ -26,6 +26,7 @@ class SimulationReplayInput:
     record: UsageLedgerRecord
     request: ChatCompletionRequest
     baseline_cost: float
+    replay_context: ReplayRouteContext
 
 
 class PolicySimulationService:
@@ -89,6 +90,8 @@ class PolicySimulationService:
                 request=replay_input.request,
                 tenant_context=simulation_context,
                 router_service=self.router_service,
+                replay_context=replay_input.replay_context,
+                before_timestamp=replay_input.record.timestamp,
             )
 
             simulated_target = self._simulation_target(evaluation)
@@ -147,6 +150,11 @@ class PolicySimulationService:
     def _build_replay_input(self, record: UsageLedgerRecord) -> SimulationReplayInput:
         metadata = {"simulation": {"request_id": record.request_id}}
         route_signals = record.route_signals or {}
+        replay_context = ReplayRouteContext(
+            token_count=route_signals.get("token_count"),
+            keyword_match=route_signals.get("keyword_match"),
+            complexity_tier=route_signals.get("complexity_tier"),
+        )
         synthetic_prompt = self._build_prompt_from_signals(route_signals, record)
         max_tokens = record.completion_tokens or None
         request = ChatCompletionRequest(
@@ -159,6 +167,7 @@ class PolicySimulationService:
             record=record,
             request=request,
             baseline_cost=(record.estimated_cost or 0.0) if record.final_route_target == "premium" else 0.0,
+            replay_context=replay_context,
         )
 
     def _build_prompt_from_signals(self, route_signals: dict, record: UsageLedgerRecord) -> str:

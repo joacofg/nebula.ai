@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 from math import ceil
 
 from fastapi import HTTPException, status
@@ -24,6 +25,8 @@ class PolicyEvaluation:
     policy_outcome: str
     soft_budget_exceeded: bool
     projected_premium_cost: float | None
+    hard_budget_exceeded: bool = False
+    tenant_spend_total: float | None = None
     denied: bool = False
     denial_detail: str | None = None
 
@@ -92,6 +95,7 @@ class PolicyService:
         router_service: RouterService,
         prompt: str | None = None,
         replay_context: ReplayRouteContext | None = None,
+        before_timestamp: datetime | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
         if replay_context is not None:
@@ -115,9 +119,14 @@ class PolicyService:
             routing_mode=policy.routing_mode_default,
         )
 
+        tenant_spend_total = self.store.tenant_spend_total(
+            tenant_context.tenant.id,
+            before_timestamp=before_timestamp,
+        )
+
         soft_budget_exceeded = False
         if policy.soft_budget_usd is not None:
-            soft_budget_exceeded = self.store.tenant_spend_total(tenant_context.tenant.id) >= policy.soft_budget_usd
+            soft_budget_exceeded = tenant_spend_total >= policy.soft_budget_usd
 
         projected_premium_cost: float | None = None
         if denial_detail is None and route_decision.target == "premium":
@@ -133,6 +142,21 @@ class PolicyService:
                 ):
                     denial_detail = "Request exceeds the tenant premium spend guardrail."
 
+        hard_budget_exceeded = self._hard_budget_exceeded(
+            tenant_spend_total=tenant_spend_total,
+            hard_budget_limit_usd=policy.hard_budget_limit_usd,
+        )
+        if denial_detail is None and route_decision.target == "premium" and hard_budget_exceeded:
+            route_decision, denial_detail = self._apply_hard_budget_guardrail(
+                request=request,
+                route_decision=route_decision,
+                policy=policy,
+                tenant_spend_total=tenant_spend_total,
+                hard_budget_limit_usd=policy.hard_budget_limit_usd,
+            )
+            if route_decision.target != "premium":
+                projected_premium_cost = None
+
         outcome_parts: list[str] = []
         if policy.routing_mode_default != "auto":
             outcome_parts.append(f"routing_mode={policy.routing_mode_default}")
@@ -142,6 +166,15 @@ class PolicyService:
             outcome_parts.append("fallback=disabled")
         if soft_budget_exceeded:
             outcome_parts.append("soft_budget=exceeded")
+        if hard_budget_exceeded:
+            enforcement = policy.hard_budget_enforcement or "deny"
+            limit = self._format_budget_amount(policy.hard_budget_limit_usd)
+            spent = self._format_budget_amount(tenant_spend_total)
+            outcome_parts.append(
+                f"hard_budget=exceeded(limit_usd={limit},spent_usd={spent},enforcement={enforcement})"
+            )
+            if denial_detail is None and route_decision.reason == "hard_budget_downgrade":
+                outcome_parts.append("budget_action=downgraded_to_local")
         if denial_detail is not None:
             outcome_parts.append(f"denied={denial_detail}")
         if not outcome_parts:
@@ -155,9 +188,77 @@ class PolicyService:
             policy_outcome=";".join(outcome_parts),
             soft_budget_exceeded=soft_budget_exceeded,
             projected_premium_cost=projected_premium_cost,
+            hard_budget_exceeded=hard_budget_exceeded,
+            tenant_spend_total=tenant_spend_total,
             denied=denial_detail is not None,
             denial_detail=denial_detail,
         )
+
+    def _hard_budget_exceeded(
+        self,
+        *,
+        tenant_spend_total: float,
+        hard_budget_limit_usd: float | None,
+    ) -> bool:
+        if hard_budget_limit_usd is None:
+            return False
+        return tenant_spend_total >= hard_budget_limit_usd
+
+    def _apply_hard_budget_guardrail(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        route_decision: RouteDecision,
+        policy,
+        tenant_spend_total: float,
+        hard_budget_limit_usd: float | None,
+    ) -> tuple[RouteDecision, str | None]:
+        detail = self._hard_budget_detail(
+            tenant_spend_total=tenant_spend_total,
+            hard_budget_limit_usd=hard_budget_limit_usd,
+        )
+        enforcement = policy.hard_budget_enforcement or "deny"
+        if enforcement == "downgrade" and self._can_downgrade_to_local(request=request, route_decision=route_decision):
+            return (
+                RouteDecision(
+                    target="local",
+                    reason="hard_budget_downgrade",
+                    signals=dict(route_decision.signals),
+                    score=route_decision.score,
+                ),
+                None,
+            )
+        return route_decision, detail
+
+    def _can_downgrade_to_local(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        route_decision: RouteDecision,
+    ) -> bool:
+        if request.model not in {self.settings.default_model, self.settings.local_model}:
+            return False
+        if route_decision.reason in {"explicit_premium_model", "policy_premium_only"}:
+            return False
+        return True
+
+    def _hard_budget_detail(
+        self,
+        *,
+        tenant_spend_total: float,
+        hard_budget_limit_usd: float | None,
+    ) -> str:
+        spent = self._format_budget_amount(tenant_spend_total)
+        limit = self._format_budget_amount(hard_budget_limit_usd)
+        return (
+            "Tenant hard budget limit reached; premium routing is blocked "
+            f"(spent_usd={spent}, limit_usd={limit})."
+        )
+
+    def _format_budget_amount(self, value: float | None) -> str:
+        if value is None:
+            return "unknown"
+        return f"{value:.6f}".rstrip("0").rstrip(".")
 
     def estimate_usage(self, request: ChatCompletionRequest, response_content: str) -> CompletionUsage:
         prompt_tokens = self._estimate_text_tokens(self._serialize_request_messages(request))

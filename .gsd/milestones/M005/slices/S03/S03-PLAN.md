@@ -18,7 +18,7 @@ Must-haves:
   - Estimate: 1.5h
   - Files: src/nebula/models/governance.py, src/nebula/db/models.py, src/nebula/services/governance_store.py, src/nebula/api/routes/admin.py, migrations/versions/20260328_0007_hard_budget_guardrails.py, console/src/lib/admin-api.ts, tests/test_governance_api.py, console/src/components/policy/policy-form.test.tsx, console/src/components/policy/policy-page.test.tsx, console/e2e/policy.spec.ts
   - Verify: ./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x && npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx
-- [ ] **T02: Centralize hard-budget downgrade and denial semantics in PolicyService** — Implement the real hard-budget behavior in `PolicyService.evaluate()` so runtime requests and simulation replays share one decision path for cumulative spend caps, downgrade-to-local when allowed, deny when premium is required, and persist explainable outcomes that preserve S01's override-route-signal discipline.
+- [x] **T02: Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.** — Implement the real hard-budget behavior in `PolicyService.evaluate()` so runtime requests and simulation replays share one decision path for cumulative spend caps, downgrade-to-local when allowed, deny when premium is required, and persist explainable outcomes that preserve S01's override-route-signal discipline.
 
 Steps:
 1. Add focused runtime/service tests that cover cumulative spend exhaustion, local downgrade eligibility, explicit premium denial, and replay-window spend calculations using `before_timestamp`.

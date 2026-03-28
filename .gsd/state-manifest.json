@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T03:30:14.773Z",
+  "exported_at": "2026-03-28T03:37:52.187Z",
   "milestones": [
     {
       "id": "M001",
@@ -2319,19 +2319,29 @@
       "milestone_id": "M005",
       "slice_id": "S03",
       "id": "T02",
-      "title": "Centralize hard-budget downgrade and denial semantics in PolicyService",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.",
+      "status": "complete",
+      "one_liner": "Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.",
+      "narrative": "Added focused runtime, service, and admin/API coverage for hard cumulative budget exhaustion, then updated PolicyService.evaluate() to compute tenant cumulative spend once, preserve soft-budget advisory behavior, emit stable hard-budget policy_outcome evidence, and choose downgrade or denial deterministically based on request compatibility plus hard_budget_enforcement. Updated PolicySimulationService to pass replay route signals and before_timestamp into the same evaluation path so runtime and simulation now share one budget engine. During verification I corrected test assumptions around stubbed provider ledger cost and replay-window semantics so the new coverage proves the real contract rather than fixture guesses.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x` and confirmed the new hard-budget downgrade, explicit-deny, soft-budget advisory, and replay-window tests passed. Ran `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x` and confirmed runtime ledger and simulation API evidence now show downgrade-versus-deny outcomes with exact operator-readable detail.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-03-28T03:37:52.165Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Adjusted the new API tests to derive hard-budget thresholds from the actual persisted baseline premium cost rather than assuming `max_tokens` would change stubbed provider ledger spend, and updated the replay-window test to include prior spend because the shared `before_timestamp` contract intentionally excludes the replayed row itself.",
+      "known_issues": "None.",
+      "key_files": [
+        "src/nebula/services/policy_service.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "tests/test_governance_runtime_hardening.py",
+        "tests/test_service_flows.py",
+        "tests/test_governance_api.py",
+        ".gsd/milestones/M005/slices/S03/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Enforced cumulative hard-budget outcomes centrally in `PolicyService.evaluate()` and reused that exact path from simulation via `before_timestamp` rather than building a replay-only budget engine.",
+        "Allowed hard-budget downgrade only for auto/default-to-local-compatible requests and kept explicit premium or premium-only paths as exact denials so operator evidence matches the real routing contract."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S03\nmilestone: M005\nkey_files:\n  - src/nebula/services/policy_service.py\n  - src/nebula/services/policy_simulation_service.py\n  - tests/test_governance_runtime_hardening.py\n  - tests/test_service_flows.py\n  - tests/test_governance_api.py\n  - .gsd/milestones/M005/slices/S03/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Enforced cumulative hard-budget outcomes centrally in `PolicyService.evaluate()` and reused that exact path from simulation via `before_timestamp` rather than building a replay-only budget engine.\n  - Allowed hard-budget downgrade only for auto/default-to-local-compatible requests and kept explicit premium or premium-only paths as exact denials so operator evidence matches the real routing contract.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-03-28T03:37:52.166Z\nblocker_discovered: false\n---\n\n# T02: Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.\n\n**Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.**\n\n## What Happened\n\nAdded focused runtime, service, and admin/API coverage for hard cumulative budget exhaustion, then updated PolicyService.evaluate() to compute tenant cumulative spend once, preserve soft-budget advisory behavior, emit stable hard-budget policy_outcome evidence, and choose downgrade or denial deterministically based on request compatibility plus hard_budget_enforcement. Updated PolicySimulationService to pass replay route signals and before_timestamp into the same evaluation path so runtime and simulation now share one budget engine. During verification I corrected test assumptions around stubbed provider ledger cost and replay-window semantics so the new coverage proves the real contract rather than fixture guesses.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x` and confirmed the new hard-budget downgrade, explicit-deny, soft-budget advisory, and replay-window tests passed. Ran `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x` and confirmed runtime ledger and simulation API evidence now show downgrade-versus-deny outcomes with exact operator-readable detail.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x` | 0 | ✅ pass | 570ms |\n| 2 | `./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x` | 0 | ✅ pass | 1080ms |\n\n\n## Deviations\n\nAdjusted the new API tests to derive hard-budget thresholds from the actual persisted baseline premium cost rather than assuming `max_tokens` would change stubbed provider ledger spend, and updated the replay-window test to include prior spend because the shared `before_timestamp` contract intentionally excludes the replayed row itself.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `src/nebula/services/policy_service.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `tests/test_governance_runtime_hardening.py`\n- `tests/test_service_flows.py`\n- `tests/test_governance_api.py`\n- `.gsd/milestones/M005/slices/S03/tasks/T02-SUMMARY.md`\n",
       "description": "Implement the real hard-budget behavior in `PolicyService.evaluate()` so runtime requests and simulation replays share one decision path for cumulative spend caps, downgrade-to-local when allowed, deny when premium is required, and persist explainable outcomes that preserve S01's override-route-signal discipline.\n\nSteps:\n1. Add focused runtime/service tests that cover cumulative spend exhaustion, local downgrade eligibility, explicit premium denial, and replay-window spend calculations using `before_timestamp`.\n2. Update `PolicyService.evaluate()` (and only the minimum adjacent runtime plumbing it truly needs) to compute spend-cap state from `tenant_spend_total`, choose downgrade vs deny deterministically, and emit stable `policy_outcome` / budget evidence.\n3. Confirm simulation replay inherits the exact same semantics through `PolicySimulationService` without introducing a second budget engine.\n\nMust-haves:\n- [ ] Runtime and simulation both rely on `PolicyService.evaluate()` for hard-budget decisions.\n- [ ] When cumulative spend cap is exhausted, auto-routed traffic downgrades to local when compatible instead of failing ambiguously.\n- [ ] Explicit premium or premium-only cases deny with exact operator-readable detail when downgrade is impossible or disallowed.\n- [ ] Soft-budget advisory behavior remains non-blocking and distinct from the new hard guardrails.",
       "estimate": "2h",
       "files": [
@@ -3051,6 +3061,28 @@
       "verdict": "✅ pass",
       "duration_ms": 880,
       "created_at": "2026-03-28T03:30:14.752Z"
+    },
+    {
+      "id": 30,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"budget or simulation or runtime_policy\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 570,
+      "created_at": "2026-03-28T03:37:52.165Z"
+    },
+    {
+      "id": 31,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M005",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"guardrail or policy_denied or simulation\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1080,
+      "created_at": "2026-03-28T03:37:52.165Z"
     }
   ]
 }
