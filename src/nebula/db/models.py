@@ -36,6 +36,8 @@ class TenantPolicyModel(Base):
     semantic_cache_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     fallback_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     max_premium_cost_per_request: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hard_budget_limit_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
+    hard_budget_enforcement: Mapped[str | None] = mapped_column(String(32), nullable=True)
     soft_budget_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     prompt_capture_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     response_capture_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)

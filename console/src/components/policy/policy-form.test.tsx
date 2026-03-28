@@ -14,6 +14,8 @@ const baseSimulationResult: PolicySimulationResponse = {
     semantic_cache_enabled: true,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: 0.5,
+    hard_budget_limit_usd: 10,
+    hard_budget_enforcement: "deny",
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
@@ -71,6 +73,8 @@ function renderPolicyForm({
         semantic_cache_enabled: true,
         allowed_premium_models: ["openai/gpt-4o-mini"],
         max_premium_cost_per_request: null,
+        hard_budget_limit_usd: null,
+        hard_budget_enforcement: null,
         soft_budget_usd: null,
         prompt_capture_enabled: false,
         response_capture_enabled: false,
@@ -85,6 +89,8 @@ function renderPolicyForm({
           "semantic_cache_enabled",
           "fallback_enabled",
           "max_premium_cost_per_request",
+          "hard_budget_limit_usd",
+          "hard_budget_enforcement",
         ],
         soft_signal_fields: ["soft_budget_usd"],
         advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
@@ -238,6 +244,8 @@ describe("policy-form", () => {
     expect(runtimeSection).toHaveTextContent("Semantic cache enabled");
     expect(runtimeSection).toHaveTextContent("Premium model allowlist");
     expect(runtimeSection).toHaveTextContent("Max premium cost per request");
+    expect(runtimeSection).toHaveTextContent("Hard cumulative budget limit USD");
+    expect(runtimeSection).toHaveTextContent("Hard budget enforcement");
     expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
 
     expect(

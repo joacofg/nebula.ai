@@ -8,6 +8,8 @@ export type TenantPolicy = {
   semantic_cache_enabled: boolean;
   fallback_enabled: boolean;
   max_premium_cost_per_request: number | null;
+  hard_budget_limit_usd: number | null;
+  hard_budget_enforcement: "downgrade" | "deny" | null;
   soft_budget_usd: number | null;
   prompt_capture_enabled: boolean;
   response_capture_enabled: boolean;

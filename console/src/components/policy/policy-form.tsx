@@ -30,6 +30,8 @@ type PolicyFormState = {
   semanticCacheEnabled: boolean;
   allowedPremiumModels: string[];
   maxPremiumCostPerRequest: string;
+  hardBudgetLimitUsd: string;
+  hardBudgetEnforcement: NonNullable<TenantPolicy["hard_budget_enforcement"]>;
   softBudgetUsd: string;
 };
 
@@ -40,11 +42,16 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     semanticCacheEnabled: policy.semantic_cache_enabled,
     allowedPremiumModels: policy.allowed_premium_models,
     maxPremiumCostPerRequest: policy.max_premium_cost_per_request?.toString() ?? "",
+    hardBudgetLimitUsd: policy.hard_budget_limit_usd?.toString() ?? "",
+    hardBudgetEnforcement: policy.hard_budget_enforcement ?? "downgrade",
     softBudgetUsd: policy.soft_budget_usd?.toString() ?? "",
   };
 }
 
 function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): TenantPolicy {
+  const hardBudgetLimitUsd =
+    state.hardBudgetLimitUsd.trim() === "" ? null : Number(state.hardBudgetLimitUsd);
+
   return {
     ...initialPolicy,
     routing_mode_default: state.routingModeDefault,
@@ -53,6 +60,8 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
     allowed_premium_models: state.allowedPremiumModels,
     max_premium_cost_per_request:
       state.maxPremiumCostPerRequest.trim() === "" ? null : Number(state.maxPremiumCostPerRequest),
+    hard_budget_limit_usd: hardBudgetLimitUsd,
+    hard_budget_enforcement: hardBudgetLimitUsd === null ? null : state.hardBudgetEnforcement,
     soft_budget_usd: state.softBudgetUsd.trim() === "" ? null : Number(state.softBudgetUsd),
   };
 }
@@ -411,6 +420,53 @@ export function PolicyForm({
                   }))
                 }
               />
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("hard_budget_limit_usd") ? (
+            <div>
+              <label className="field-label" htmlFor="hard-budget-limit-usd">
+                Hard cumulative budget limit USD
+              </label>
+              <input
+                id="hard-budget-limit-usd"
+                className="field-input"
+                inputMode="decimal"
+                value={formState.hardBudgetLimitUsd}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    hardBudgetLimitUsd: event.target.value,
+                  }))
+                }
+              />
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("hard_budget_enforcement") ? (
+            <div>
+              <label className="field-label" htmlFor="hard-budget-enforcement">
+                Hard budget enforcement
+              </label>
+              <select
+                id="hard-budget-enforcement"
+                className="field-input"
+                value={formState.hardBudgetEnforcement}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    hardBudgetEnforcement: event.target.value as NonNullable<
+                      TenantPolicy["hard_budget_enforcement"]
+                    >,
+                  }))
+                }
+              >
+                <option value="downgrade">Downgrade to local when possible</option>
+                <option value="deny">Deny premium requests when limit is exhausted</option>
+              </select>
+              <p className="mt-2 text-sm text-slate-500">
+                Applies when cumulative premium spend reaches the hard budget limit.
+              </p>
             </div>
           ) : null}
         </div>

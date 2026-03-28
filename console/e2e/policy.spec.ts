@@ -47,6 +47,8 @@ test("operator can update tenant policy from the console", async ({ page }) => {
           "semantic_cache_enabled",
           "fallback_enabled",
           "max_premium_cost_per_request",
+          "hard_budget_limit_usd",
+          "hard_budget_enforcement",
         ],
         soft_signal_fields: ["soft_budget_usd"],
         advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],

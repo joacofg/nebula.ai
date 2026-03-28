@@ -2,6 +2,63 @@
 
 This file is the explicit capability and coverage contract for the project.
 
+## Active
+
+### R039 — Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
+- Class: core-capability
+- Status: active
+- Description: Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
+- Why it matters: The current router is credible as a demo, but too shallow to be the center of a v4 control-plane story.
+- Source: user
+- Primary owning slice: M005/S01
+- Supporting slices: M005/S03
+- Validation: unmapped
+- Notes: Expected decision inputs include policy mode, model allowlist, provider health, budget state, historical outcome signals, and request complexity signals.
+
+### R041 — Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Class: integration
+- Status: active
+- Description: Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
+- Why it matters: Real cost control needs enforceable behavior, not only operator interpretation after the fact.
+- Source: user
+- Primary owning slice: M005/S03
+- Supporting slices: M005/S01
+- Validation: unmapped
+- Notes: Hard limits should degrade or reroute requests intentionally rather than fail ambiguously whenever possible.
+
+### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Class: differentiator
+- Status: active
+- Description: Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
+- Why it matters: Observability that only explains the past leaves too much operator work on the table.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S02, M005/S03
+- Validation: unmapped
+- Notes: Recommendations should stay grounded in existing metadata and decision logic, not opaque black-box scoring.
+
+### R043 — Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Class: operability
+- Status: active
+- Description: Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
+- Why it matters: Cache value is central to Nebula's savings story, but the current product exposes almost no operator control or learning loop around it.
+- Source: inferred
+- Primary owning slice: M005/S04
+- Supporting slices: M005/S05
+- Validation: unmapped
+- Notes: Threshold visibility, safe invalidation, and hit-quality evidence are stronger fits than a broad cache management subsystem.
+
+### R044 — v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
+- Class: constraint
+- Status: active
+- Description: v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
+- Why it matters: The strongest v4 wedge is decisioning; losing scope discipline would blur that advantage quickly.
+- Source: user
+- Primary owning slice: M005/S05
+- Supporting slices: M005/S01, M005/S02, M005/S03, M005/S04
+- Validation: unmapped
+- Notes: This is the main v4 anti-sprawl guardrail.
+
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -114,6 +171,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: S01 explicitly names unsupported or deferred adoption-surface claims, including bearer auth, admin Playground equivalence, streaming on Playground, and broader untested OpenAI-style features.
 - Notes: Validated by the unsupported/deferred section in docs/adoption-api-contract.md and the focused tests that define the current boundary.
 
+### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Class: integration
+- Status: validated
+- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
+- Why it matters: Hosted reinforcement is useful only if it strengthens onboarding and fleet understanding without weakening the local-authority trust boundary.
+- Source: user
+- Primary owning slice: M004/S01
+- Supporting slices: M004/S02, M004/S03, M004/S04
+- Validation: M004 validated the hosted reinforcement boundary, fleet-posture UX, integrated trust walkthrough, and close-out refinements while preserving metadata-only exports and local runtime authority.
+- Notes: Validated through `console/src/lib/hosted-contract.ts`, the deployments posture surfaces, `docs/hosted-reinforcement-boundary.md`, `docs/hosted-integrated-adoption-proof.md`, focused Vitest coverage, Playwright walkthroughs, and backend hosted-contract tests.
+
 ### R020 — Nebula exposes a real public `/v1/embeddings` path that a common OpenAI-style embeddings caller can target without broad contract ambiguity.
 - Class: primary-user-loop
 - Status: validated
@@ -168,17 +236,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M003/S01, M003/S02, M003/S03, M003/S04
 - Validation: S05 validated the final narrow embeddings adoption assembly by making `docs/embeddings-integrated-adoption-proof.md` discoverable from `README.md` and `docs/architecture.md` as a pointer-only walkthrough, then rerunning `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_reference_migration.py`, `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_embeddings_api.py`, and `/Users/joaquinfernandezdegamboa/Proj/nebula/.venv/bin/python -m pytest tests/test_governance_api.py -k embeddings` successfully. The assembled proof keeps `docs/embeddings-adoption-contract.md` as the only detailed public contract while tying the public `POST /v1/embeddings` path to `X-Request-ID`/`X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without widening Nebula into parity, SDK, hosted-plane, or unrelated infrastructure work.
 - Notes: Validated by the discoverability links in README.md and docs/architecture.md, the joined proof order in docs/embeddings-integrated-adoption-proof.md, passing focused embeddings pytest coverage, and repo/doc grep checks that keep the contract, migration guide, integrated walkthrough, and requirement evidence aligned.
-
-### R014 — Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Class: integration
-- Status: validated
-- Description: Hosted/control-plane surfaces grow only where they materially improve adoption and operator confidence beyond the current metadata-only support model.
-- Why it matters: Hosted reinforcement is useful only if it strengthens onboarding and fleet understanding without weakening the local-authority trust boundary.
-- Source: user
-- Primary owning slice: M004/S01
-- Supporting slices: M004/S02, M004/S03, M004/S04
-- Validation: M004 validated the hosted reinforcement boundary, fleet-posture UX, integrated trust walkthrough, and close-out refinements while preserving metadata-only exports and local runtime authority.
-- Notes: Validated through `console/src/lib/hosted-contract.ts`, the deployments posture surfaces, `docs/hosted-reinforcement-boundary.md`, `docs/hosted-integrated-adoption-proof.md`, focused Vitest coverage, Playwright walkthroughs, and backend hosted-contract tests.
 
 ### R032 — Hosted console gives a clear fleet posture view across linked deployments without implying hosted authority.
 - Class: operability
@@ -257,73 +314,16 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: M004 improved posture cues, freshness interpretation, and trust-boundary wording, then revalidated the assembled hosted story in close-out.
 - Notes: Validated by integrated proof artifacts and passing close-out verification.
 
-## Active
-
-### R039 — Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
-- Class: core-capability
-- Status: active
-- Description: Nebula chooses routes using explicit decision signals and outcome-aware scoring rather than prompt-length heuristics alone.
-- Why it matters: The current router is credible as a demo, but too shallow to be the center of a v4 control-plane story.
-- Source: user
-- Primary owning slice: M005/S01
-- Supporting slices: M005/S03
-- Validation: unmapped
-- Notes: Expected decision inputs include policy mode, model allowlist, provider health, budget state, historical outcome signals, and request complexity signals.
-
 ### R040 — An operator can simulate a policy or routing change against real recent Nebula traffic before applying it.
 - Class: operability
-- Status: active
+- Status: validated
 - Description: An operator can simulate a policy or routing change against real recent Nebula traffic before applying it.
 - Why it matters: Policy changes are currently explicit but largely blind; v4 should reduce fear and guesswork.
 - Source: user
 - Primary owning slice: M005/S02
 - Supporting slices: M005/S05
-- Validation: unmapped
-- Notes: The simulation should reuse existing ledger evidence rather than introduce a parallel synthetic-only planning surface.
-
-### R041 — Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
-- Class: integration
-- Status: active
-- Description: Tenant policy can enforce hard spend guardrails with graceful downgrade behavior rather than soft budget signals only.
-- Why it matters: Real cost control needs enforceable behavior, not only operator interpretation after the fact.
-- Source: user
-- Primary owning slice: M005/S03
-- Supporting slices: M005/S01
-- Validation: unmapped
-- Notes: Hard limits should degrade or reroute requests intentionally rather than fail ambiguously whenever possible.
-
-### R042 — Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
-- Class: differentiator
-- Status: active
-- Description: Nebula gives operators recommendation-grade feedback about which policy, routing, or cache changes would most improve cost, latency, or reliability.
-- Why it matters: Observability that only explains the past leaves too much operator work on the table.
-- Source: inferred
-- Primary owning slice: M005/S04
-- Supporting slices: M005/S02, M005/S03
-- Validation: unmapped
-- Notes: Recommendations should stay grounded in existing metadata and decision logic, not opaque black-box scoring.
-
-### R043 — Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
-- Class: operability
-- Status: active
-- Description: Semantic cache becomes tunable and inspectable enough that operators can improve hit quality and understand cache tradeoffs per tenant.
-- Why it matters: Cache value is central to Nebula's savings story, but the current product exposes almost no operator control or learning loop around it.
-- Source: inferred
-- Primary owning slice: M005/S04
-- Supporting slices: M005/S05
-- Validation: unmapped
-- Notes: Threshold visibility, safe invalidation, and hit-quality evidence are stronger fits than a broad cache management subsystem.
-
-### R044 — v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
-- Class: constraint
-- Status: active
-- Description: v4 improves decision quality and operator control without turning into broad API parity, SDK sprawl, new hosted authority, or unrelated app-platform work.
-- Why it matters: The strongest v4 wedge is decisioning; losing scope discipline would blur that advantage quickly.
-- Source: user
-- Primary owning slice: M005/S05
-- Supporting slices: M005/S01, M005/S02, M005/S03, M005/S04
-- Validation: unmapped
-- Notes: This is the main v4 anti-sprawl guardrail.
+- Validation: Operators can simulate a candidate routing or policy change against real recent Nebula traffic before applying it through a non-mutating replay path backed by usage-ledger rows, aggregate route/denial/cost deltas, and preview-before-save console feedback. Verified by passing `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x`, `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.
+- Notes: Validated by M005/S02 through a replay-only policy simulation loop that re-evaluates recent tenant ledger traffic against a candidate policy without mutating saved policy or usage state. Evidence: typed simulation DTOs, `POST /v1/admin/tenants/{tenant_id}/policy/simulate`, console preview-before-save UX, and passing focused verification in `tests/test_service_flows.py -k simulation`, `tests/test_governance_api.py -k simulation`, and console policy preview Vitest coverage.
 
 ## Deferred
 
@@ -537,7 +537,7 @@ This file is the explicit capability and coverage contract for the project.
 | R037 | quality-attribute | validated | M004/S03 | M004/S04 | M004 delivered a canonical hosted integrated walkthrough plus browser verification that follows the public trust-boundary page into the authenticated hosted deployments posture flow. |
 | R038 | differentiator | validated | M004/S03 | M004/S04 | M004 improved posture cues, freshness interpretation, and trust-boundary wording, then revalidated the assembled hosted story in close-out. |
 | R039 | core-capability | active | M005/S01 | M005/S03 | unmapped |
-| R040 | operability | active | M005/S02 | M005/S05 | unmapped |
+| R040 | operability | validated | M005/S02 | M005/S05 | Operators can simulate a candidate routing or policy change against real recent Nebula traffic before applying it through a non-mutating replay path backed by usage-ledger rows, aggregate route/denial/cost deltas, and preview-before-save console feedback. Verified by passing `./.venv/bin/pytest tests/test_service_flows.py -k simulation -x`, `./.venv/bin/pytest tests/test_governance_api.py -k simulation -x`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
 | R041 | integration | active | M005/S03 | M005/S01 | unmapped |
 | R042 | differentiator | active | M005/S04 | M005/S02, M005/S03 | unmapped |
 | R043 | operability | active | M005/S04 | M005/S05 | unmapped |
@@ -545,7 +545,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 6
-- Mapped to slices: 6
-- Validated: 23 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038)
+- Active requirements: 5
+- Mapped to slices: 5
+- Validated: 24 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R040)
 - Unmapped active requirements: 0

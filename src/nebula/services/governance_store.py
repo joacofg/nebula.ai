@@ -178,6 +178,8 @@ class GovernanceStore:
             current.semantic_cache_enabled = policy.semantic_cache_enabled
             current.fallback_enabled = policy.fallback_enabled
             current.max_premium_cost_per_request = policy.max_premium_cost_per_request
+            current.hard_budget_limit_usd = policy.hard_budget_limit_usd
+            current.hard_budget_enforcement = policy.hard_budget_enforcement
             current.soft_budget_usd = policy.soft_budget_usd
             current.prompt_capture_enabled = policy.prompt_capture_enabled
             current.response_capture_enabled = policy.response_capture_enabled
@@ -426,6 +428,8 @@ class GovernanceStore:
             semantic_cache_enabled=row.semantic_cache_enabled,
             fallback_enabled=row.fallback_enabled,
             max_premium_cost_per_request=row.max_premium_cost_per_request,
+            hard_budget_limit_usd=row.hard_budget_limit_usd,
+            hard_budget_enforcement=row.hard_budget_enforcement,
             soft_budget_usd=row.soft_budget_usd,
             prompt_capture_enabled=row.prompt_capture_enabled,
             response_capture_enabled=row.response_capture_enabled,

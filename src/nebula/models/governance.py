@@ -23,6 +23,8 @@ class TenantPolicy(BaseModel):
     semantic_cache_enabled: bool = True
     fallback_enabled: bool = True
     max_premium_cost_per_request: float | None = Field(default=None, ge=0)
+    hard_budget_limit_usd: float | None = Field(default=None, ge=0)
+    hard_budget_enforcement: Literal["downgrade", "deny"] | None = None
     soft_budget_usd: float | None = Field(default=None, ge=0)
     prompt_capture_enabled: bool = False
     response_capture_enabled: bool = False

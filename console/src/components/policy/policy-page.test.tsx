@@ -72,6 +72,8 @@ beforeEach(() => {
     semantic_cache_enabled: true,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     max_premium_cost_per_request: null,
+    hard_budget_limit_usd: 20,
+    hard_budget_enforcement: "downgrade",
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
@@ -230,3 +232,4 @@ describe("policy-page", () => {
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
   });
 });
+

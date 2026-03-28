@@ -149,6 +149,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
         "semantic_cache_enabled",
         "fallback_enabled",
         "max_premium_cost_per_request",
+        "hard_budget_limit_usd",
+        "hard_budget_enforcement",
     ]
     assert authorized.json()["soft_signal_fields"] == ["soft_budget_usd"]
     assert authorized.json()["advisory_fields"] == [
@@ -406,6 +408,8 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 json=TenantPolicy(
                     routing_mode_default="auto",
                     allowed_premium_models=["openai/gpt-4o-mini"],
+                    hard_budget_limit_usd=12.5,
+                    hard_budget_enforcement="deny",
                 ).model_dump(mode="json"),
             )
 
@@ -474,6 +478,8 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert persisted_policy.json() == TenantPolicy(
         routing_mode_default="auto",
         allowed_premium_models=["openai/gpt-4o-mini"],
+        hard_budget_limit_usd=12.5,
+        hard_budget_enforcement="deny",
     ).model_dump(mode="json")
 
 
