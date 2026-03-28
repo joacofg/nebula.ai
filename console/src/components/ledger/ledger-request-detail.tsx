@@ -1,5 +1,7 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
+type RouteSignals = Record<string, unknown>;
+
 type LedgerRequestDetailProps = {
   entry: UsageLedgerRecord | null;
 };
@@ -20,10 +22,39 @@ function formatTimestamp(value: string) {
   return timestamp.toLocaleString();
 }
 
+function asRouteSignals(value: UsageLedgerRecord["route_signals"]): RouteSignals | null {
+  return value && typeof value === "object" ? value : null;
+}
+
+function signalValue(signals: RouteSignals | null, key: string) {
+  return signals?.[key];
+}
+
+function formatBooleanSignal(value: unknown) {
+  return value ? "yes" : "no";
+}
+
+function formatBudgetProximity(value: unknown) {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(numericValue)) {
+    return null;
+  }
+  return `${Math.round(numericValue * 100)}%`;
+}
+
 export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
   if (!entry) {
     return <div className="panel px-6 py-5 text-sm text-slate-500">Select a ledger row to inspect request detail.</div>;
   }
+
+  const routeSignals = asRouteSignals(entry.route_signals);
+  const tokenCount = signalValue(routeSignals, "token_count");
+  const complexityTier = signalValue(routeSignals, "complexity_tier");
+  const keywordMatch = signalValue(routeSignals, "keyword_match");
+  const modelConstraint = signalValue(routeSignals, "model_constraint");
+  const budgetProximity = signalValue(routeSignals, "budget_proximity");
+  const budgetProximityLabel =
+    budgetProximity === null || budgetProximity === undefined ? null : formatBudgetProximity(budgetProximity);
 
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -52,6 +83,26 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
         <DetailRow label="Completion tokens" value={String(entry.completion_tokens)} />
         <DetailRow label="Total tokens" value={String(entry.total_tokens)} />
       </dl>
+      {routeSignals ? (
+        <section className="space-y-3">
+          <h4 className="text-sm font-semibold text-slate-950">Route Decision</h4>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            {tokenCount !== undefined ? <DetailRow label="Token count" value={String(tokenCount)} /> : null}
+            {complexityTier !== undefined ? (
+              <DetailRow label="Complexity tier" value={String(complexityTier)} />
+            ) : null}
+            {keywordMatch !== undefined ? (
+              <DetailRow label="Keyword match" value={formatBooleanSignal(keywordMatch)} />
+            ) : null}
+            {modelConstraint !== undefined ? (
+              <DetailRow label="Model constraint" value={formatBooleanSignal(modelConstraint)} />
+            ) : null}
+            {budgetProximityLabel ? (
+              <DetailRow label="Budget proximity" value={budgetProximityLabel} />
+            ) : null}
+          </dl>
+        </section>
+      ) : null}
     </section>
   );
 }

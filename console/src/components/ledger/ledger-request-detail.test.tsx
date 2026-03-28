@@ -2,37 +2,37 @@ import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LedgerRequestDetail } from "@/components/ledger/ledger-request-detail";
+import type { UsageLedgerRecord } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
+
+const mockEntry: UsageLedgerRecord = {
+  request_id: "req-embed-001",
+  tenant_id: "tenant-embeddings",
+  requested_model: "text-embedding-3-small",
+  final_route_target: "embeddings",
+  final_provider: "openai-compatible",
+  fallback_used: true,
+  cache_hit: false,
+  response_model: "text-embedding-3-small",
+  prompt_tokens: 24,
+  completion_tokens: 0,
+  total_tokens: 24,
+  estimated_cost: 0.0005,
+  latency_ms: 82,
+  timestamp: "2026-03-17T01:02:03Z",
+  terminal_status: "completed",
+  route_reason: "embeddings_request",
+  policy_outcome: "allowed",
+  route_signals: null,
+};
 
 describe("ledger-request-detail", () => {
   it("renders the persisted explanation fields for a selected embeddings request", () => {
-    renderWithProviders(
-      <LedgerRequestDetail
-        entry={{
-          request_id: "req-embed-001",
-          tenant_id: "tenant-embeddings",
-          requested_model: "text-embedding-3-small",
-          final_route_target: "embeddings",
-          final_provider: "openai-compatible",
-          fallback_used: true,
-          cache_hit: false,
-          response_model: "text-embedding-3-small",
-          prompt_tokens: 24,
-          completion_tokens: 0,
-          total_tokens: 24,
-          estimated_cost: 0.0005,
-          latency_ms: 82,
-          timestamp: "2026-03-17T01:02:03Z",
-          terminal_status: "completed",
-          route_reason: "embeddings_request",
-          policy_outcome: "allowed",
-        }}
-      />,
-    );
+    renderWithProviders(<LedgerRequestDetail entry={mockEntry} />);
 
     expect(screen.getByText("Request detail")).toBeInTheDocument();
     expect(screen.getByText("Request ID")).toBeInTheDocument();
-    expect(screen.getByText("req-embed-001")).toBeInTheDocument();
+    expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();
     expect(screen.getByText("tenant-embeddings")).toBeInTheDocument();
     expect(screen.getByText("Route target")).toBeInTheDocument();
@@ -65,21 +65,16 @@ describe("ledger-request-detail", () => {
     renderWithProviders(
       <LedgerRequestDetail
         entry={{
+          ...mockEntry,
           request_id: "req-embed-002",
-          tenant_id: "tenant-embeddings",
-          requested_model: "text-embedding-3-small",
-          final_route_target: "embeddings",
           final_provider: null,
           fallback_used: false,
           cache_hit: true,
           response_model: null,
           prompt_tokens: 12,
-          completion_tokens: 0,
           total_tokens: 12,
           estimated_cost: null,
           latency_ms: null,
-          timestamp: "2026-03-17T01:02:03Z",
-          terminal_status: "completed",
           route_reason: null,
           policy_outcome: null,
         }}
@@ -88,5 +83,35 @@ describe("ledger-request-detail", () => {
 
     expect(screen.getByText("Response model")).toBeInTheDocument();
     expect(screen.getAllByText("N/A")).toHaveLength(4);
+  });
+
+  it("renders Route Decision section when route_signals is present", () => {
+    const entryWithSignals: UsageLedgerRecord = {
+      ...mockEntry,
+      route_signals: {
+        token_count: 842,
+        complexity_tier: "medium",
+        keyword_match: false,
+        model_constraint: false,
+        budget_proximity: null,
+      },
+    };
+
+    renderWithProviders(<LedgerRequestDetail entry={entryWithSignals} />);
+
+    expect(screen.getByText("Route Decision")).toBeInTheDocument();
+    expect(screen.getByText("Token count")).toBeInTheDocument();
+    expect(screen.getByText("842")).toBeInTheDocument();
+    expect(screen.getByText("Complexity tier")).toBeInTheDocument();
+    expect(screen.getByText("medium")).toBeInTheDocument();
+    expect(screen.getByText("Keyword match")).toBeInTheDocument();
+    expect(screen.getByText("Model constraint")).toBeInTheDocument();
+    expect(screen.getAllByText("no")).toHaveLength(2);
+  });
+
+  it("does not render Route Decision section when route_signals is null", () => {
+    renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, route_signals: null }} />);
+
+    expect(screen.queryByText("Route Decision")).not.toBeInTheDocument();
   });
 });

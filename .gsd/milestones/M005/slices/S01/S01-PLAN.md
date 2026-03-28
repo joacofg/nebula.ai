@@ -10,6 +10,6 @@
 - [x] **T02: Added route-score header and route-signals schema wiring across the backend ledger path and admin contract, with remaining route_signals persistence follow-up documented.** — 
   - Files: src/nebula/db/models.py, src/nebula/models/governance.py, src/nebula/services/governance_store.py, src/nebula/services/chat_service.py, src/nebula/api/routes/chat.py, migrations/versions/20260326_0006_route_signals.py
   - Verify: `pytest tests/test_router_signals.py::test_route_signals_persisted_in_ledger tests/test_router_signals.py::test_route_score_header -x`
-- [ ] **T03: Observability drawer extension and route-decision vocabulary doc** — 
+- [x] **T03: Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.** — 
   - Files: console/src/lib/admin-api.ts, console/src/components/ledger/ledger-request-detail.tsx, console/src/components/ledger/ledger-request-detail.test.tsx, docs/route-decision-vocabulary.md
   - Verify: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx && test -f docs/route-decision-vocabulary.md`

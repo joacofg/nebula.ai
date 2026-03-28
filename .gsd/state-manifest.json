@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-03-28T02:50:17.034Z",
+  "exported_at": "2026-03-28T02:53:50.715Z",
   "milestones": [
     {
       "id": "M001",
@@ -2040,19 +2040,27 @@
       "milestone_id": "M005",
       "slice_id": "S01",
       "id": "T03",
-      "title": "Observability drawer extension and route-decision vocabulary doc",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.",
+      "status": "complete",
+      "one_liner": "Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.",
+      "narrative": "Extended the console admin usage-ledger contract with `route_signals`, added a conditional \"Route Decision\" section to the request-detail drawer that maps known signal keys to plain-language labels, and kept the section absent when no signals are present. Added focused Vitest coverage for both the positive and negative render paths and wrote `docs/route-decision-vocabulary.md` to document the signal keys, score semantics, and stable reason-code vocabulary confirmed from the router implementation. During verification, I fixed a JSX corruption introduced during editing, corrected the boolean signal label helper to return `yes`/`no` as intended, and adjusted one existing test assertion to match the component’s real structure where the request ID is intentionally shown both in the header and in the details grid.",
+      "verification_result": "Verified the drawer behavior with `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`, which passed with all five tests green, including the new Route Decision coverage. Verified the documentation artifact exists with `test -f docs/route-decision-vocabulary.md`. Also ran `npm --prefix console run build`, which completed successfully and confirmed the console compiles cleanly after the type and UI changes.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-03-28T02:53:50.699Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "The existing drawer renders the request ID twice—once in the header and once in the detail grid—so I updated the pre-existing assertion to use `getAllByText(...).toHaveLength(2)` instead of a singular text lookup. No slice-level replan was needed.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/lib/admin-api.ts",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "docs/route-decision-vocabulary.md",
+        ".gsd/milestones/M005/slices/S01/tasks/T03-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Rendered route_signals through explicit plain-language DetailRow mappings instead of exposing raw JSON blobs so operator inspection stays stable as the backend vocabulary evolves."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S01\nmilestone: M005\nkey_files:\n  - console/src/lib/admin-api.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - docs/route-decision-vocabulary.md\n  - .gsd/milestones/M005/slices/S01/tasks/T03-SUMMARY.md\nkey_decisions:\n  - Rendered route_signals through explicit plain-language DetailRow mappings instead of exposing raw JSON blobs so operator inspection stays stable as the backend vocabulary evolves.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-03-28T02:53:50.700Z\nblocker_discovered: false\n---\n\n# T03: Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.\n\n**Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.**\n\n## What Happened\n\nExtended the console admin usage-ledger contract with `route_signals`, added a conditional \"Route Decision\" section to the request-detail drawer that maps known signal keys to plain-language labels, and kept the section absent when no signals are present. Added focused Vitest coverage for both the positive and negative render paths and wrote `docs/route-decision-vocabulary.md` to document the signal keys, score semantics, and stable reason-code vocabulary confirmed from the router implementation. During verification, I fixed a JSX corruption introduced during editing, corrected the boolean signal label helper to return `yes`/`no` as intended, and adjusted one existing test assertion to match the component’s real structure where the request ID is intentionally shown both in the header and in the details grid.\n\n## Verification\n\nVerified the drawer behavior with `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`, which passed with all five tests green, including the new Route Decision coverage. Verified the documentation artifact exists with `test -f docs/route-decision-vocabulary.md`. Also ran `npm --prefix console run build`, which completed successfully and confirmed the console compiles cleanly after the type and UI changes.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 1 | ❌ fail | 763ms |\n| 2 | `npm --prefix console run build` | 1 | ❌ fail | 0ms |\n| 3 | `grep -n \"route_signals\" console/src/lib/admin-api.ts && grep -n \"Route Decision\" console/src/components/ledger/ledger-request-detail.tsx && grep -n \"Token count\" console/src/components/ledger/ledger-request-detail.tsx && test -f docs/route-decision-vocabulary.md && grep -n \"token_complexity\" docs/route-decision-vocabulary.md && grep -n \"budget_proximity\" docs/route-decision-vocabulary.md && grep -n \"complexity_tier\" docs/route-decision-vocabulary.md && wc -l docs/route-decision-vocabulary.md` | 1 | ❌ fail | 0ms |\n| 4 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 1 | ❌ fail | 648ms |\n| 5 | `npm --prefix console run build` | 0 | ✅ pass | 0ms |\n| 6 | `grep -n \"route_signals\" console/src/lib/admin-api.ts && grep -n \"Route Decision\" console/src/components/ledger/ledger-request-detail.tsx && grep -n \"Token count\" console/src/components/ledger/ledger-request-detail.tsx && test -f docs/route-decision-vocabulary.md && grep -n \"token_complexity\" docs/route-decision-vocabulary.md && grep -n \"budget_proximity\" docs/route-decision-vocabulary.md && grep -n \"complexity_tier\" docs/route-decision-vocabulary.md && wc -l docs/route-decision-vocabulary.md` | 0 | ✅ pass | 0ms |\n| 7 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 0 | ✅ pass | 600ms |\n| 8 | `test -f docs/route-decision-vocabulary.md` | 0 | ✅ pass | 0ms |\n\n\n## Deviations\n\nThe existing drawer renders the request ID twice—once in the header and once in the detail grid—so I updated the pre-existing assertion to use `getAllByText(...).toHaveLength(2)` instead of a singular text lookup. No slice-level replan was needed.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/lib/admin-api.ts`\n- `console/src/components/ledger/ledger-request-detail.tsx`\n- `console/src/components/ledger/ledger-request-detail.test.tsx`\n- `docs/route-decision-vocabulary.md`\n- `.gsd/milestones/M005/slices/S01/tasks/T03-SUMMARY.md`\n",
       "description": "",
       "estimate": "",
       "files": [
@@ -2456,6 +2464,94 @@
       "verdict": "❌ fail",
       "duration_ms": 900,
       "created_at": "2026-03-28T02:50:17.015Z"
+    },
+    {
+      "id": 12,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 763,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 13,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run build",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 14,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "grep -n \"route_signals\" console/src/lib/admin-api.ts && grep -n \"Route Decision\" console/src/components/ledger/ledger-request-detail.tsx && grep -n \"Token count\" console/src/components/ledger/ledger-request-detail.tsx && test -f docs/route-decision-vocabulary.md && grep -n \"token_complexity\" docs/route-decision-vocabulary.md && grep -n \"budget_proximity\" docs/route-decision-vocabulary.md && grep -n \"complexity_tier\" docs/route-decision-vocabulary.md && wc -l docs/route-decision-vocabulary.md",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 15,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 648,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 16,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run build",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 17,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "grep -n \"route_signals\" console/src/lib/admin-api.ts && grep -n \"Route Decision\" console/src/components/ledger/ledger-request-detail.tsx && grep -n \"Token count\" console/src/components/ledger/ledger-request-detail.tsx && test -f docs/route-decision-vocabulary.md && grep -n \"token_complexity\" docs/route-decision-vocabulary.md && grep -n \"budget_proximity\" docs/route-decision-vocabulary.md && grep -n \"complexity_tier\" docs/route-decision-vocabulary.md && wc -l docs/route-decision-vocabulary.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 18,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 600,
+      "created_at": "2026-03-28T02:53:50.699Z"
+    },
+    {
+      "id": 19,
+      "task_id": "T03",
+      "slice_id": "S01",
+      "milestone_id": "M005",
+      "command": "test -f docs/route-decision-vocabulary.md",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-03-28T02:53:50.699Z"
     }
   ]
 }
