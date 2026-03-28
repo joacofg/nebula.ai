@@ -162,3 +162,4 @@ class UsageLedgerModel(Base):
     terminal_status: Mapped[str] = mapped_column(String(64), nullable=False)
     route_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
     policy_outcome: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    route_signals: Mapped[dict | None] = mapped_column(JSON, nullable=True)

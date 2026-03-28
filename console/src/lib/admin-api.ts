@@ -125,6 +125,7 @@ export type UsageLedgerRecord = {
   terminal_status: string;
   route_reason: string | null;
   policy_outcome: string | null;
+  route_signals: Record<string, unknown> | null;
 };
 
 export type UsageLedgerFilters = {

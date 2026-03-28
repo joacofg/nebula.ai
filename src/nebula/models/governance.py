@@ -103,6 +103,7 @@ class UsageLedgerRecord(BaseModel):
     terminal_status: TerminalStatus
     route_reason: str | None = None
     policy_outcome: str | None = None
+    route_signals: dict[str, Any] | None = None
 
 
 class AdminSessionStatus(BaseModel):

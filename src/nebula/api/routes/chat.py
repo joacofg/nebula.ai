@@ -54,6 +54,7 @@ def _nebula_headers(metadata) -> dict[str, str]:
         "X-Nebula-Route-Target": metadata.route_target,
         "X-Nebula-Route-Reason": metadata.route_reason,
         "X-Nebula-Provider": metadata.provider,
+        "X-Nebula-Route-Score": f"{metadata.route_score:.4f}",
         "X-Nebula-Cache-Hit": str(metadata.cache_hit).lower(),
         "X-Nebula-Fallback-Used": str(metadata.fallback_used).lower(),
         "X-Nebula-Policy-Mode": metadata.policy_mode,

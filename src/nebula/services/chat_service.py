@@ -49,6 +49,8 @@ class CompletionMetadata:
     fallback_used: bool
     policy_mode: str
     policy_outcome: str
+    route_signals: dict[str, Any] | None = None
+    route_score: float = 0.0
 
 
 @dataclass(slots=True)
@@ -869,6 +871,7 @@ class ChatService:
                 terminal_status=terminal_status,
                 route_reason=metadata.route_reason,
                 policy_outcome=metadata.policy_outcome,
+                route_signals=metadata.route_signals,
             )
         )
 
@@ -892,6 +895,8 @@ class ChatService:
             fallback_used=fallback_used,
             policy_mode=policy_resolution.policy_mode,
             policy_outcome=policy_resolution.policy_outcome,
+            route_signals=policy_resolution.route_decision.signals or None,
+            route_score=policy_resolution.route_decision.score,
         )
 
     def _error_headers(

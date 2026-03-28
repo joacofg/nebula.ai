@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import pytest
+from fastapi.testclient import TestClient
 
 from nebula.core.config import Settings
 from nebula.models.governance import TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
 from nebula.services.router_service import RouteDecision, RouterService
+from tests.support import admin_headers, auth_headers, configured_app
 
 
 def _request(model: str = "nebula-auto", prompt: str = "hello") -> ChatCompletionRequest:
@@ -83,3 +85,53 @@ async def test_score_by_complexity_tier() -> None:
     assert low.target == "local"
     assert medium.target == "premium"
     assert high.target == "premium"
+
+
+def test_route_signals_persisted_in_ledger() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "a" * 2400}],
+                },
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    assert ledger.status_code == 200
+    body = ledger.json()
+    assert len(body) == 1
+    assert body[0]["request_id"] == request_id
+    assert body[0]["route_reason"] == "token_complexity"
+    assert body[0]["route_signals"] == {
+        "budget_proximity": None,
+        "complexity_tier": "medium",
+        "keyword_match": False,
+        "model_constraint": False,
+        "token_count": 600,
+    }
+
+
+def test_route_score_header() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "a" * 2400}],
+                },
+            )
+
+    assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert response.headers["X-Nebula-Route-Score"] == "0.6000"

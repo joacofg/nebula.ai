@@ -43,6 +43,7 @@ def test_chat_completions_returns_openai_like_payload() -> None:
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "local"
     assert response.headers["X-Nebula-Provider"] == "ollama"
+    assert float(response.headers["X-Nebula-Route-Score"]) > 0.0
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert response.headers["X-Nebula-Policy-Mode"] == "auto"
@@ -87,6 +88,7 @@ def test_chat_completions_streams_sse() -> None:
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "local"
     assert response.headers["X-Nebula-Provider"] == "ollama"
+    assert float(response.headers["X-Nebula-Route-Score"]) > 0.0
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert response.headers["X-Nebula-Policy-Outcome"] == "default"

@@ -290,6 +290,7 @@ class GovernanceStore:
                     terminal_status=record.terminal_status,
                     route_reason=record.route_reason,
                     policy_outcome=record.policy_outcome,
+                    route_signals=record.route_signals,
                 )
             )
             session.commit()

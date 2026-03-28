@@ -66,6 +66,7 @@ def test_admin_playground_completion() -> None:
     assert response.headers["X-Nebula-Route-Target"] == "premium"
     assert response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert response.headers["X-Nebula-Route-Score"] == "0.0000"
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert response.headers["X-Nebula-Policy-Mode"] == "auto"
@@ -79,6 +80,7 @@ def test_admin_playground_completion() -> None:
     assert ledger_body[0]["fallback_used"] is False
     assert ledger_body[0]["cache_hit"] is False
     assert ledger_body[0]["route_reason"] == response.headers["X-Nebula-Route-Reason"]
+    assert ledger_body[0]["route_signals"] is None
     assert ledger_body[0]["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
     assert ledger_body[0]["terminal_status"] == "completed"
     assert response.headers["X-Nebula-Route-Target"] != "local"
