@@ -4,6 +4,7 @@ from nebula.providers.base import CompletionResult
 from tests.support import (
     FakeCacheService,
     StubProvider,
+    admin_headers,
     auth_headers,
     configured_app,
     provider_error,
@@ -221,7 +222,7 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
         fallback_blocked_response.headers["X-Nebula-Route-Reason"]
         == "local_provider_error_fallback_blocked"
     )
-    assert fallback_blocked_response.headers["X-Nebula-Route-Score"] == "0.1700"
+    assert fallback_blocked_response.headers["X-Nebula-Route-Score"] == "0.1080"
     assert fallback_blocked_response.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert fallback_blocked_response.headers["X-Nebula-Policy-Outcome"] != ""
 
@@ -245,10 +246,10 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
             "budget_penalty": 0.0,
             "keyword_bonus": 0.0,
             "policy_bonus": 0.1,
-            "token_score": 0.07,
-            "total_score": 0.17,
+            "token_score": 0.008,
+            "total_score": 0.108,
         },
-        "token_count": 35,
+        "token_count": 4,
     }
 
 

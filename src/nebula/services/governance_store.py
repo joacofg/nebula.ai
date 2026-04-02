@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+from collections import Counter
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from threading import RLock
 from uuid import uuid4
 
@@ -14,6 +15,8 @@ from nebula.core.config import Settings
 from nebula.db.models import ApiKeyModel, TenantModel, TenantPolicyModel, UsageLedgerModel
 from nebula.models.governance import (
     ApiKeyRecord,
+    CalibrationEvidenceSummary,
+    CalibrationReasonCount,
     TenantPolicy,
     TenantRecord,
     UsageLedgerRecord,
@@ -46,6 +49,18 @@ class StoredApiKey:
 
 
 class GovernanceStore:
+    CALIBRATION_THIN_REQUEST_THRESHOLD = 5
+    CALIBRATION_STALENESS_THRESHOLD_HOURS = 24
+    _CALIBRATION_EXCLUDED_ROUTE_REASONS = {
+        "explicit_local_model": "explicit_model_override",
+        "explicit_premium_model": "explicit_model_override",
+        "policy_local_only": "policy_forced_routing",
+        "policy_premium_only": "policy_forced_routing",
+    }
+    _CALIBRATION_GATED_ROUTE_REASONS = {
+        "calibrated_routing_disabled": "calibrated_routing_disabled",
+    }
+
     def __init__(self, settings: Settings, session_factory: sessionmaker[Session]) -> None:
         self.settings = settings
         self.session_factory = session_factory
@@ -329,6 +344,74 @@ class GovernanceStore:
             rows = session.scalars(stmt.order_by(UsageLedgerModel.timestamp.desc()).limit(limit)).all()
             return [self._usage_from_model(row) for row in rows]
 
+    def summarize_calibration_evidence(
+        self,
+        *,
+        tenant_id: str,
+        from_timestamp: datetime | None = None,
+        to_timestamp: datetime | None = None,
+        limit: int = 200,
+        now: datetime | None = None,
+    ) -> CalibrationEvidenceSummary:
+        records = self.list_usage_records(
+            tenant_id=tenant_id,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+            limit=limit,
+        )
+        current_time = now or self._now()
+        latest_any_request_at = records[0].timestamp if records else None
+        eligible_records: list[UsageLedgerRecord] = []
+        sufficient_records: list[UsageLedgerRecord] = []
+        excluded_counter: Counter[str] = Counter()
+        gated_counter: Counter[str] = Counter()
+        degraded_counter: Counter[str] = Counter()
+
+        for record in records:
+            excluded_reason = self._calibration_excluded_reason(record)
+            if excluded_reason is not None:
+                excluded_counter[excluded_reason] += 1
+                continue
+
+            gated_reason = self._calibration_gated_reason(record)
+            if gated_reason is not None:
+                gated_counter[gated_reason] += 1
+                continue
+
+            eligible_records.append(record)
+            degraded_reason = self._calibration_degraded_reason(record)
+            if degraded_reason is not None:
+                degraded_counter[degraded_reason] += 1
+            else:
+                sufficient_records.append(record)
+
+        latest_eligible_request_at = eligible_records[0].timestamp if eligible_records else None
+        state, state_reason = self._calibration_state(
+            current_time=current_time,
+            latest_eligible_request_at=latest_eligible_request_at,
+            sufficient_request_count=len(sufficient_records),
+        )
+
+        return CalibrationEvidenceSummary(
+            tenant_id=tenant_id,
+            scope="tenant_window" if from_timestamp is not None or to_timestamp is not None else "tenant",
+            state=state,
+            state_reason=state_reason,
+            generated_at=current_time,
+            latest_eligible_request_at=latest_eligible_request_at,
+            latest_any_request_at=latest_any_request_at,
+            eligible_request_count=len(eligible_records),
+            sufficient_request_count=len(sufficient_records),
+            thin_request_threshold=self.CALIBRATION_THIN_REQUEST_THRESHOLD,
+            staleness_threshold_hours=self.CALIBRATION_STALENESS_THRESHOLD_HOURS,
+            excluded_request_count=sum(excluded_counter.values()),
+            gated_request_count=sum(gated_counter.values()),
+            degraded_request_count=sum(degraded_counter.values()),
+            excluded_reasons=self._reason_counts(excluded_counter),
+            gated_reasons=self._reason_counts(gated_counter),
+            degraded_reasons=self._reason_counts(degraded_counter),
+        )
+
     def tenant_spend_total(
         self,
         tenant_id: str,
@@ -449,3 +532,47 @@ class GovernanceStore:
 
     def _session(self) -> Session:
         return self.session_factory()
+
+    def _calibration_excluded_reason(self, record: UsageLedgerRecord) -> str | None:
+        return self._CALIBRATION_EXCLUDED_ROUTE_REASONS.get(record.route_reason or "")
+
+    def _calibration_gated_reason(self, record: UsageLedgerRecord) -> str | None:
+        return self._CALIBRATION_GATED_ROUTE_REASONS.get(record.route_reason or "")
+
+    def _calibration_degraded_reason(self, record: UsageLedgerRecord) -> str | None:
+        if not record.route_signals:
+            return "missing_route_signals"
+        route_mode = record.route_signals.get("route_mode")
+        if route_mode == "degraded":
+            return "degraded_replay_signals"
+        if route_mode != "calibrated":
+            return "missing_route_signals"
+        return None
+
+    def _calibration_state(
+        self,
+        *,
+        current_time: datetime,
+        latest_eligible_request_at: datetime | None,
+        sufficient_request_count: int,
+    ) -> tuple[str, str]:
+        if sufficient_request_count == 0:
+            return "thin", "No eligible calibrated routing evidence is available yet."
+        if sufficient_request_count < self.CALIBRATION_THIN_REQUEST_THRESHOLD:
+            return (
+                "thin",
+                "Eligible calibrated routing evidence is still below the tenant sufficiency threshold.",
+            )
+        assert latest_eligible_request_at is not None
+        if current_time - latest_eligible_request_at > timedelta(hours=self.CALIBRATION_STALENESS_THRESHOLD_HOURS):
+            return (
+                "stale",
+                "Eligible calibrated routing evidence is older than the tenant staleness threshold.",
+            )
+        return "sufficient", "Eligible calibrated routing evidence meets the tenant sufficiency threshold."
+
+    def _reason_counts(self, counter: Counter[str]) -> list[CalibrationReasonCount]:
+        return [
+            CalibrationReasonCount(reason=reason, count=count)
+            for reason, count in sorted(counter.items())
+        ]

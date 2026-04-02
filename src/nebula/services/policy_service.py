@@ -75,7 +75,10 @@ class PolicyService:
                 tenant_id=tenant_context.tenant.id,
                 route_target=evaluation.route_decision.target,
                 route_reason=evaluation.route_decision.reason,
+                route_score=evaluation.route_decision.score,
+                route_signals=evaluation.route_decision.signals,
                 policy_mode=evaluation.policy_mode,
+                policy_outcome=evaluation.policy_outcome,
                 detail=evaluation.denial_detail,
             )
 
@@ -365,22 +368,30 @@ class PolicyService:
         tenant_id: str | None,
         route_target: str,
         route_reason: str,
+        route_score: float,
+        route_signals: dict[str, object],
         policy_mode: RoutingMode,
+        policy_outcome: str,
         detail: str,
     ) -> None:
+        headers = {
+            "X-Nebula-Tenant-ID": tenant_id or "",
+            "X-Nebula-Route-Target": route_target,
+            "X-Nebula-Route-Reason": route_reason,
+            "X-Nebula-Provider": "policy",
+            "X-Nebula-Route-Score": f"{route_score:.4f}",
+            "X-Nebula-Cache-Hit": "false",
+            "X-Nebula-Fallback-Used": "false",
+            "X-Nebula-Policy-Mode": policy_mode,
+            "X-Nebula-Policy-Outcome": policy_outcome,
+        }
+        route_mode = route_signals.get("route_mode")
+        if route_mode is not None:
+            headers["X-Nebula-Route-Mode"] = str(route_mode)
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail=detail,
-            headers={
-                "X-Nebula-Tenant-ID": tenant_id or "",
-                "X-Nebula-Route-Target": route_target,
-                "X-Nebula-Route-Reason": route_reason,
-                "X-Nebula-Provider": "policy",
-                "X-Nebula-Cache-Hit": "false",
-                "X-Nebula-Fallback-Used": "false",
-                "X-Nebula-Policy-Mode": policy_mode,
-                "X-Nebula-Policy-Outcome": detail,
-            },
+            headers=headers,
         )
 
     def _serialize_request_messages(self, request: ChatCompletionRequest) -> str:

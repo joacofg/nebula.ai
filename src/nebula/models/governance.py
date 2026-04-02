@@ -15,6 +15,17 @@ TerminalStatus = Literal[
     "policy_denied",
     "provider_error",
 ]
+CalibrationEvidenceState = Literal["sufficient", "thin", "stale"]
+CalibrationEvidenceScope = Literal["tenant", "tenant_window"]
+CalibrationDegradedReason = Literal[
+    "missing_route_signals",
+    "degraded_replay_signals",
+]
+CalibrationExcludedReason = Literal[
+    "explicit_model_override",
+    "policy_forced_routing",
+]
+CalibrationGatedReason = Literal["calibrated_routing_disabled"]
 
 
 class TenantPolicy(BaseModel):
@@ -109,6 +120,31 @@ class UsageLedgerRecord(BaseModel):
     route_reason: str | None = None
     policy_outcome: str | None = None
     route_signals: dict[str, Any] | None = None
+
+
+class CalibrationReasonCount(BaseModel):
+    reason: str = Field(min_length=1)
+    count: int = Field(ge=0)
+
+
+class CalibrationEvidenceSummary(BaseModel):
+    tenant_id: str = Field(min_length=1)
+    scope: CalibrationEvidenceScope = "tenant"
+    state: CalibrationEvidenceState
+    state_reason: str = Field(min_length=1, max_length=280)
+    generated_at: datetime
+    latest_eligible_request_at: datetime | None = None
+    latest_any_request_at: datetime | None = None
+    eligible_request_count: int = Field(ge=0)
+    sufficient_request_count: int = Field(ge=0)
+    thin_request_threshold: int = Field(default=5, ge=1)
+    staleness_threshold_hours: int = Field(default=24, ge=1)
+    excluded_request_count: int = Field(ge=0)
+    gated_request_count: int = Field(ge=0)
+    degraded_request_count: int = Field(ge=0)
+    excluded_reasons: list[CalibrationReasonCount] = Field(default_factory=list, max_length=4)
+    gated_reasons: list[CalibrationReasonCount] = Field(default_factory=list, max_length=2)
+    degraded_reasons: list[CalibrationReasonCount] = Field(default_factory=list, max_length=4)
 
 
 class AdminSessionStatus(BaseModel):

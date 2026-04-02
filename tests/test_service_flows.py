@@ -12,6 +12,7 @@ from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
 from nebula.models.governance import (
     ApiKeyRecord,
+    CalibrationEvidenceSummary,
     PolicySimulationRequest,
     RecommendationBundle,
     TenantPolicy,
@@ -411,6 +412,7 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
         self.record_usage_calls: list[UsageLedgerRecord] = []
         self.policy_updates: list[tuple[str, TenantPolicy]] = []
         self.list_usage_records_calls: list[dict[str, object]] = []
+        self.calibration_summary_calls: list[dict[str, object]] = []
 
     def list_usage_records(
         self,
@@ -449,6 +451,77 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
             rows = [row for row in rows if row.timestamp <= to_timestamp]
         rows = sorted(rows, key=lambda row: row.timestamp, reverse=True)
         return rows[:limit]
+
+    def summarize_calibration_evidence(
+        self,
+        *,
+        tenant_id: str,
+        from_timestamp: datetime | None = None,
+        to_timestamp: datetime | None = None,
+        limit: int = 200,
+        now: datetime | None = None,
+    ) -> CalibrationEvidenceSummary:
+        self.calibration_summary_calls.append(
+            {
+                "tenant_id": tenant_id,
+                "from_timestamp": from_timestamp,
+                "to_timestamp": to_timestamp,
+                "limit": limit,
+                "now": now,
+            }
+        )
+        current_time = now or datetime.now(UTC)
+        rows = self.list_usage_records(
+            tenant_id=tenant_id,
+            from_timestamp=from_timestamp,
+            to_timestamp=to_timestamp,
+            limit=limit,
+        )
+        latest_any_request_at = rows[0].timestamp if rows else None
+        excluded_rows = [
+            row for row in rows if row.route_reason in {"explicit_local_model", "explicit_premium_model", "policy_local_only", "policy_premium_only"}
+        ]
+        gated_rows = [row for row in rows if row.route_reason == "calibrated_routing_disabled"]
+        eligible_rows = [row for row in rows if row not in excluded_rows and row not in gated_rows]
+        sufficient_rows = [
+            row
+            for row in eligible_rows
+            if row.route_signals and row.route_signals.get("route_mode") == "calibrated"
+        ]
+        degraded_rows = [row for row in eligible_rows if row not in sufficient_rows]
+        latest_eligible_request_at = eligible_rows[0].timestamp if eligible_rows else None
+        if len(sufficient_rows) >= 5 and latest_eligible_request_at is not None and (current_time - latest_eligible_request_at).total_seconds() <= 24 * 3600:
+            state = "sufficient"
+            reason = "Eligible calibrated routing evidence meets the tenant sufficiency threshold."
+        elif len(sufficient_rows) >= 5:
+            state = "stale"
+            reason = "Eligible calibrated routing evidence is older than the tenant staleness threshold."
+        else:
+            state = "thin"
+            reason = (
+                "No eligible calibrated routing evidence is available yet."
+                if len(sufficient_rows) == 0
+                else "Eligible calibrated routing evidence is still below the tenant sufficiency threshold."
+            )
+        return CalibrationEvidenceSummary(
+            tenant_id=tenant_id,
+            scope="tenant_window" if from_timestamp is not None or to_timestamp is not None else "tenant",
+            state=state,
+            state_reason=reason,
+            generated_at=current_time,
+            latest_eligible_request_at=latest_eligible_request_at,
+            latest_any_request_at=latest_any_request_at,
+            eligible_request_count=len(eligible_rows),
+            sufficient_request_count=len(sufficient_rows),
+            thin_request_threshold=5,
+            staleness_threshold_hours=24,
+            excluded_request_count=len(excluded_rows),
+            gated_request_count=len(gated_rows),
+            degraded_request_count=len(degraded_rows),
+            excluded_reasons=[],
+            gated_reasons=[],
+            degraded_reasons=[],
+        )
 
     def record_usage(self, record: UsageLedgerRecord) -> None:
         self.record_usage_calls.append(record)
@@ -571,6 +644,113 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
     assert response.changed_requests[0].simulated_route_target == "local"
     assert response.changed_requests[0].simulated_route_reason == "hard_budget_downgrade"
     assert "hard_budget=exceeded" in (response.changed_requests[0].simulated_policy_outcome or "")
+
+
+@pytest.mark.asyncio
+async def test_governance_store_calibration_summary_reports_sufficient_evidence() -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-sufficient-{index}",
+            timestamp=now.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 600, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+    store = FakeSimulationGovernanceStore(records)
+
+    summary = store.summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "sufficient"
+    assert summary.scope == "tenant"
+    assert summary.eligible_request_count == 5
+    assert summary.sufficient_request_count == 5
+    assert summary.degraded_request_count == 0
+    assert summary.gated_request_count == 0
+    assert summary.excluded_request_count == 0
+    assert summary.latest_eligible_request_at == max(record.timestamp for record in records)
+
+
+@pytest.mark.asyncio
+async def test_governance_store_calibration_summary_reports_thin_evidence_and_excludes_overrides() -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-calibrated-1",
+            timestamp=now.replace(microsecond=1),
+            route_signals={"route_mode": "calibrated", "token_count": 400, "complexity_tier": "low", "keyword_match": False},
+        ),
+        _ledger_record(
+            request_id="req-calibrated-2",
+            timestamp=now.replace(microsecond=2),
+            route_signals={"route_mode": "calibrated", "token_count": 520, "complexity_tier": "medium", "keyword_match": True},
+        ),
+        _ledger_record(
+            request_id="req-explicit",
+            timestamp=now.replace(microsecond=3),
+            route_reason="explicit_premium_model",
+            route_signals=None,
+        ),
+        _ledger_record(
+            request_id="req-policy-forced",
+            timestamp=now.replace(microsecond=4),
+            route_reason="policy_local_only",
+            route_signals=None,
+        ),
+    ]
+    store = FakeSimulationGovernanceStore(records)
+
+    summary = store.summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "thin"
+    assert summary.sufficient_request_count == 2
+    assert summary.eligible_request_count == 2
+    assert summary.excluded_request_count == 2
+    assert summary.gated_request_count == 0
+    assert summary.degraded_request_count == 0
+
+
+@pytest.mark.asyncio
+async def test_governance_store_calibration_summary_reports_stale_and_distinguishes_gated_from_degraded() -> None:
+    now = datetime.now(UTC)
+    stale_base = now.replace(day=max(1, now.day - 2))
+    records = [
+        _ledger_record(
+            request_id=f"req-stale-{index}",
+            timestamp=stale_base.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 700, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+    records.extend(
+        [
+            _ledger_record(
+                request_id="req-gated",
+                timestamp=now.replace(microsecond=11),
+                route_reason="calibrated_routing_disabled",
+                route_signals=None,
+            ),
+            _ledger_record(
+                request_id="req-degraded-mode",
+                timestamp=stale_base.replace(microsecond=12),
+                route_signals={"route_mode": "degraded", "token_count": 900, "complexity_tier": "medium", "keyword_match": True},
+            ),
+            _ledger_record(
+                request_id="req-missing-signals",
+                timestamp=stale_base.replace(microsecond=13),
+                route_signals=None,
+            ),
+        ]
+    )
+    store = FakeSimulationGovernanceStore(records)
+
+    summary = store.summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "stale"
+    assert summary.sufficient_request_count == 5
+    assert summary.eligible_request_count == 7
+    assert summary.gated_request_count == 1
+    assert summary.degraded_request_count == 2
 
 
 def _ledger_record(

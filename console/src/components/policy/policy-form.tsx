@@ -41,6 +41,7 @@ type PolicyFormState = {
 function toFormState(policy: TenantPolicy): PolicyFormState {
   return {
     routingModeDefault: policy.routing_mode_default,
+    calibratedRoutingEnabled: policy.calibrated_routing_enabled,
     fallbackEnabled: policy.fallback_enabled,
     semanticCacheEnabled: policy.semantic_cache_enabled,
     semanticCacheSimilarityThreshold: policy.semantic_cache_similarity_threshold.toString(),
