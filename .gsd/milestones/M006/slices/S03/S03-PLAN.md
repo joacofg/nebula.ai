@@ -14,7 +14,7 @@ Steps:
   - Estimate: 1h
   - Files: src/nebula/models/governance.py, src/nebula/services/policy_simulation_service.py, console/src/lib/admin-api.ts, tests/test_service_flows.py
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "simulation" -x
-- [ ] **T02: Prove runtime and replay parity across calibrated, degraded, and gated paths** — Lock the S03 requirement at the backend boundary with focused parity tests. Use real runtime requests plus replay over the same tenant traffic class so parity is proven from shipped behavior, not assumed from shared architecture.
+- [x] **T02: Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.** — Lock the S03 requirement at the backend boundary with focused parity tests. Use real runtime requests plus replay over the same tenant traffic class so parity is proven from shipped behavior, not assumed from shared architecture.
 
 Steps:
 1. Extend `tests/test_governance_api.py` to assert that simulation changed-request entries expose the same route reason, route mode, calibrated/degraded flags, and route score semantics as the live request that produced the ledger row.

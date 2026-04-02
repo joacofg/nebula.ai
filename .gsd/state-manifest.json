@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:46:43.672Z",
+  "exported_at": "2026-04-02T03:52:26.679Z",
   "milestones": [
     {
       "id": "M001",
@@ -3310,19 +3310,25 @@
       "milestone_id": "M006",
       "slice_id": "S03",
       "id": "T02",
-      "title": "Prove runtime and replay parity across calibrated, degraded, and gated paths",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.",
+      "status": "complete",
+      "one_liner": "Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.",
+      "narrative": "Extended tests/test_governance_api.py so simulation changed-request samples are now proven against real chat-completions headers and request-scoped usage-ledger rows. The calibrated path now asserts route target, route reason, route mode, calibrated/degraded booleans, and route score parity from runtime through persistence into replay. The gated path now proves the same correlation while preserving explicit null route-mode semantics when calibrated routing is disabled. I also kept tests/test_service_flows.py aligned to the actual changed-request contract after confirming that a synthetic unchanged ledger stub should not be sampled as a changed degraded row.",
+      "verification_result": "Ran the task-plan verification command. `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` passed, `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` passed, and the combined rerun passed as well.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T03:52:26.657Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        ".gsd/milestones/M006/slices/S03/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Prove degraded replay behavior at the admin boundary from a real runtime request plus ledger correlation instead of inventing degraded parity from a synthetic unchanged ledger stub."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S03\nmilestone: M006\nkey_files:\n  - tests/test_governance_api.py\n  - tests/test_service_flows.py\n  - .gsd/milestones/M006/slices/S03/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Prove degraded replay behavior at the admin boundary from a real runtime request plus ledger correlation instead of inventing degraded parity from a synthetic unchanged ledger stub.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:52:26.658Z\nblocker_discovered: false\n---\n\n# T02: Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.\n\n**Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.**\n\n## What Happened\n\nExtended tests/test_governance_api.py so simulation changed-request samples are now proven against real chat-completions headers and request-scoped usage-ledger rows. The calibrated path now asserts route target, route reason, route mode, calibrated/degraded booleans, and route score parity from runtime through persistence into replay. The gated path now proves the same correlation while preserving explicit null route-mode semantics when calibrated routing is disabled. I also kept tests/test_service_flows.py aligned to the actual changed-request contract after confirming that a synthetic unchanged ledger stub should not be sampled as a changed degraded row.\n\n## Verification\n\nRan the task-plan verification command. `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` passed, `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` passed, and the combined rerun passed as well.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` | 0 | ✅ pass | 600ms |\n| 2 | `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` | 0 | ✅ pass | 630ms |\n| 3 | `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` | 0 | ✅ pass | 4500ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `tests/test_governance_api.py`\n- `tests/test_service_flows.py`\n- `.gsd/milestones/M006/slices/S03/tasks/T02-SUMMARY.md`\n",
       "description": "Lock the S03 requirement at the backend boundary with focused parity tests. Use real runtime requests plus replay over the same tenant traffic class so parity is proven from shipped behavior, not assumed from shared architecture.\n\nSteps:\n1. Extend `tests/test_governance_api.py` to assert that simulation changed-request entries expose the same route reason, route mode, calibrated/degraded flags, and route score semantics as the live request that produced the ledger row.\n2. Cover three concrete scenarios: a calibrated live request that stays calibrated in replay, a degraded replay case where missing or partial persisted signals produce `route_mode=\"degraded\"`, and a calibrated-routing-disabled gate where runtime and replay both expose `calibrated_routing_disabled` with null route mode.\n3. Reuse the existing oldest-first replay ordering and current admin endpoint; do not add a new endpoint or widen persistence.\n4. Keep assertions aligned to the current contract by pairing runtime headers and ledger rows with simulation response fields rather than asserting on copy alone.",
       "estimate": "1h",
       "files": [
@@ -4622,6 +4628,39 @@
       "verdict": "✅ pass",
       "duration_ms": 600,
       "created_at": "2026-04-02T03:46:43.647Z"
+    },
+    {
+      "id": 74,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 600,
+      "created_at": "2026-04-02T03:52:26.658Z"
+    },
+    {
+      "id": 75,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 630,
+      "created_at": "2026-04-02T03:52:26.658Z"
+    },
+    {
+      "id": 76,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 4500,
+      "created_at": "2026-04-02T03:52:26.658Z"
     }
   ]
 }
