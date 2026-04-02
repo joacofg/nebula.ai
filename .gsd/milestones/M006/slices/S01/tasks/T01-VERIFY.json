@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M006/S01/T01",
+  "timestamp": 1775098092720,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_router_signals.py -x",
+      "exitCode": 0,
+      "durationMs": 990,
+      "verdict": "pass"
+    }
+  ]
+}

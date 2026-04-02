@@ -13,7 +13,7 @@ Steps:
   - Estimate: 90m
   - Files: src/nebula/services/router_service.py, tests/test_router_signals.py, docs/route-decision-vocabulary.md
   - Verify: ./.venv/bin/pytest tests/test_router_signals.py -x
-- [ ] **T02: Wire calibrated routing through policy resolution and runtime evidence** — Make policy evaluation and runtime propagation consume the new router contract without drifting. Preserve hard-budget downgrade/deny behavior over calibrated route decisions, keep replay reconstruction compatible with the stable subset of persisted signals, and prove that request headers plus usage-ledger rows carry the same calibrated story for a real request.
+- [x] **T02: Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.** — Make policy evaluation and runtime propagation consume the new router contract without drifting. Preserve hard-budget downgrade/deny behavior over calibrated route decisions, keep replay reconstruction compatible with the stable subset of persisted signals, and prove that request headers plus usage-ledger rows carry the same calibrated story for a real request.
 
 Steps:
 1. Update `src/nebula/services/policy_service.py` and any small supporting code in `src/nebula/services/chat_service.py` or `src/nebula/api/routes/chat.py` so calibrated route reasons, scores, and signal payloads propagate unchanged through policy resolution, downgrade/fallback paths, headers, and ledger writes.

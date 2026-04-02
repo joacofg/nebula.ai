@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T02:48:04.990Z",
+  "exported_at": "2026-04-02T02:54:43.135Z",
   "milestones": [
     {
       "id": "M001",
@@ -2961,19 +2961,30 @@
       "milestone_id": "M006",
       "slice_id": "S01",
       "id": "T02",
-      "title": "Wire calibrated routing through policy resolution and runtime evidence",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.",
+      "status": "complete",
+      "one_liner": "Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.",
+      "narrative": "Extended policy resolution so hard-budget context survives as structured runtime state, preserved calibrated route score and signals through fallback-blocked error handling and ledger writes, and added additive route-mode response headers only when routed requests actually carry calibrated/degraded signals. Strengthened focused backend tests to prove hard-budget downgrades, real-request ledger correlation, and fallback-blocked paths all expose the same calibrated routing story across headers and persisted usage evidence.",
+      "verification_result": "Ran LSP diagnostics on the touched runtime files and fixed the missing typing imports in chat_service.py. Ran a stronger focused pytest selection covering governance runtime, service flows, and response headers, then ran the task-plan pytest command exactly as written. Both commands passed; the summary notes that the literal task-plan command under-selected and skipped the touched response-header file because of pytest argument ordering.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T02:54:43.112Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Executed the task-plan pytest command exactly as written, but its `-k` placement only selected tests before `tests/test_response_headers.py`, so I added a stronger focused pytest run to verify the touched header contract as intended.",
+      "known_issues": "None.",
+      "key_files": [
+        "src/nebula/services/policy_service.py",
+        "src/nebula/services/chat_service.py",
+        "src/nebula/api/routes/chat.py",
+        "tests/test_governance_runtime_hardening.py",
+        "tests/test_service_flows.py",
+        "tests/test_response_headers.py",
+        ".gsd/milestones/M006/slices/S01/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Exposed `X-Nebula-Route-Mode` only when route signals exist so explicit override routes do not falsely claim calibrated routing.",
+        "Preserved the original calibrated route score and signal payload across fallback-blocked/provider-error evidence so response headers and usage-ledger rows stay correlated."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S01\nmilestone: M006\nkey_files:\n  - src/nebula/services/policy_service.py\n  - src/nebula/services/chat_service.py\n  - src/nebula/api/routes/chat.py\n  - tests/test_governance_runtime_hardening.py\n  - tests/test_service_flows.py\n  - tests/test_response_headers.py\n  - .gsd/milestones/M006/slices/S01/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Exposed `X-Nebula-Route-Mode` only when route signals exist so explicit override routes do not falsely claim calibrated routing.\n  - Preserved the original calibrated route score and signal payload across fallback-blocked/provider-error evidence so response headers and usage-ledger rows stay correlated.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T02:54:43.114Z\nblocker_discovered: false\n---\n\n# T02: Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.\n\n**Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.**\n\n## What Happened\n\nExtended policy resolution so hard-budget context survives as structured runtime state, preserved calibrated route score and signals through fallback-blocked error handling and ledger writes, and added additive route-mode response headers only when routed requests actually carry calibrated/degraded signals. Strengthened focused backend tests to prove hard-budget downgrades, real-request ledger correlation, and fallback-blocked paths all expose the same calibrated routing story across headers and persisted usage evidence.\n\n## Verification\n\nRan LSP diagnostics on the touched runtime files and fixed the missing typing imports in chat_service.py. Ran a stronger focused pytest selection covering governance runtime, service flows, and response headers, then ran the task-plan pytest command exactly as written. Both commands passed; the summary notes that the literal task-plan command under-selected and skipped the touched response-header file because of pytest argument ordering.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `lsp diagnostics src/nebula/services/policy_service.py` | 0 | ✅ pass | 0ms |\n| 2 | `lsp diagnostics src/nebula/services/chat_service.py` | 0 | ✅ pass | 0ms |\n| 3 | `lsp diagnostics src/nebula/api/routes/chat.py` | 0 | ✅ pass | 0ms |\n| 4 | `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py tests/test_response_headers.py -k \"simulation or runtime_policy or response_headers or denied or fallback or hard_budget\" -x` | 0 | ✅ pass | 3600ms |\n| 5 | `./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"simulation or runtime_policy\" tests/test_response_headers.py -x` | 0 | ✅ pass | 4000ms |\n\n\n## Deviations\n\nExecuted the task-plan pytest command exactly as written, but its `-k` placement only selected tests before `tests/test_response_headers.py`, so I added a stronger focused pytest run to verify the touched header contract as intended.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `src/nebula/services/policy_service.py`\n- `src/nebula/services/chat_service.py`\n- `src/nebula/api/routes/chat.py`\n- `tests/test_governance_runtime_hardening.py`\n- `tests/test_service_flows.py`\n- `tests/test_response_headers.py`\n- `.gsd/milestones/M006/slices/S01/tasks/T02-SUMMARY.md`\n",
       "description": "Make policy evaluation and runtime propagation consume the new router contract without drifting. Preserve hard-budget downgrade/deny behavior over calibrated route decisions, keep replay reconstruction compatible with the stable subset of persisted signals, and prove that request headers plus usage-ledger rows carry the same calibrated story for a real request.\n\nSteps:\n1. Update `src/nebula/services/policy_service.py` and any small supporting code in `src/nebula/services/chat_service.py` or `src/nebula/api/routes/chat.py` so calibrated route reasons, scores, and signal payloads propagate unchanged through policy resolution, downgrade/fallback paths, headers, and ledger writes.\n2. Extend focused backend tests in `tests/test_governance_runtime_hardening.py`, `tests/test_service_flows.py`, and `tests/test_response_headers.py` so they assert runtime/replay compatibility, hard-budget interaction, and outward header/ledger evidence for calibrated versus degraded routing.\n3. Run Python diagnostics after edits and keep any contract-sensitive expectations aligned across runtime, replay, and persisted metadata.",
       "estimate": "90m",
       "files": [
@@ -4060,6 +4071,61 @@
       "verdict": "✅ pass",
       "duration_ms": 950,
       "created_at": "2026-04-02T02:48:04.970Z"
+    },
+    {
+      "id": 54,
+      "task_id": "T02",
+      "slice_id": "S01",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/services/policy_service.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T02:54:43.113Z"
+    },
+    {
+      "id": 55,
+      "task_id": "T02",
+      "slice_id": "S01",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/services/chat_service.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T02:54:43.113Z"
+    },
+    {
+      "id": 56,
+      "task_id": "T02",
+      "slice_id": "S01",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/api/routes/chat.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T02:54:43.113Z"
+    },
+    {
+      "id": 57,
+      "task_id": "T02",
+      "slice_id": "S01",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py tests/test_response_headers.py -k \"simulation or runtime_policy or response_headers or denied or fallback or hard_budget\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 3600,
+      "created_at": "2026-04-02T02:54:43.113Z"
+    },
+    {
+      "id": 58,
+      "task_id": "T02",
+      "slice_id": "S01",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k \"simulation or runtime_policy\" tests/test_response_headers.py -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 4000,
+      "created_at": "2026-04-02T02:54:43.113Z"
     }
   ]
 }

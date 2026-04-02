@@ -93,6 +93,8 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert local_response.headers["X-Nebula-Route-Target"] == "local"
     assert local_response.headers["X-Nebula-Route-Reason"] == "explicit_local_model"
     assert local_response.headers["X-Nebula-Provider"] == "ollama"
+    assert local_response.headers["X-Nebula-Route-Score"] == "0.0000"
+    assert "X-Nebula-Route-Mode" not in local_response.headers
     assert local_response.headers["X-Nebula-Tenant-ID"] == "default"
     assert local_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert local_response.headers["X-Nebula-Fallback-Used"] == "false"
@@ -102,17 +104,23 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert premium_alias_denied_response.headers["X-Nebula-Route-Target"] == "premium"
     assert premium_alias_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert premium_alias_denied_response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert premium_alias_denied_response.headers["X-Nebula-Route-Score"] == "0.0000"
+    assert "X-Nebula-Route-Mode" not in premium_alias_denied_response.headers
     assert premium_alias_denied_response.headers["X-Nebula-Policy-Outcome"] == "default"
 
     assert cache_response.headers["X-Nebula-Route-Target"] == "local"
     assert cache_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
     assert cache_response.headers["X-Nebula-Provider"] == "ollama"
+    assert cache_response.headers["X-Nebula-Route-Score"] == "0.1060"
+    assert cache_response.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert cache_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert cache_response.headers["X-Nebula-Fallback-Used"] == "false"
 
     assert cache_hit_response.headers["X-Nebula-Route-Target"] == "cache"
     assert cache_hit_response.headers["X-Nebula-Route-Reason"] == "cache_hit"
     assert cache_hit_response.headers["X-Nebula-Provider"] == "cache"
+    assert cache_hit_response.headers["X-Nebula-Route-Score"] == "0.1080"
+    assert cache_hit_response.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert cache_hit_response.headers["X-Nebula-Cache-Hit"] == "true"
     assert cache_hit_response.headers["X-Nebula-Fallback-Used"] == "false"
 
@@ -120,6 +128,8 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert fallback_response.headers["X-Nebula-Route-Target"] == "premium"
     assert fallback_response.headers["X-Nebula-Route-Reason"] == "local_provider_error_fallback"
     assert fallback_response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert fallback_response.headers["X-Nebula-Route-Score"] == "0.1080"
+    assert fallback_response.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert fallback_response.headers["X-Nebula-Cache-Hit"] == "false"
     assert fallback_response.headers["X-Nebula-Fallback-Used"] == "true"
 
@@ -179,17 +189,27 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
                 },
             )
 
+            fallback_blocked_request_id = fallback_blocked_response.headers["X-Request-ID"]
+            fallback_blocked_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={fallback_blocked_request_id}",
+                headers=admin_headers(),
+            )
+
     assert premium_denied_response.status_code == 403
     assert premium_denied_response.json() == {
         "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
     }
     assert premium_denied_response.headers["X-Nebula-Route-Target"] == "premium"
     assert premium_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert premium_denied_response.headers["X-Nebula-Route-Score"] == "0.0000"
+    assert "X-Nebula-Route-Mode" not in premium_denied_response.headers
     assert premium_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
 
     assert explicit_local_denied_response.status_code == 403
     assert explicit_local_denied_response.headers["X-Nebula-Route-Target"] == "local"
     assert explicit_local_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_local_model"
+    assert explicit_local_denied_response.headers["X-Nebula-Route-Score"] == "0.0000"
+    assert "X-Nebula-Route-Mode" not in explicit_local_denied_response.headers
     assert explicit_local_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
 
     assert fallback_blocked_response.status_code == 502
@@ -201,7 +221,35 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
         fallback_blocked_response.headers["X-Nebula-Route-Reason"]
         == "local_provider_error_fallback_blocked"
     )
+    assert fallback_blocked_response.headers["X-Nebula-Route-Score"] == "0.1700"
+    assert fallback_blocked_response.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert fallback_blocked_response.headers["X-Nebula-Policy-Outcome"] != ""
+
+    assert fallback_blocked_ledger.status_code == 200
+    ledger_body = fallback_blocked_ledger.json()
+    assert len(ledger_body) == 1
+    assert ledger_body[0]["request_id"] == fallback_blocked_request_id
+    assert ledger_body[0]["final_route_target"] == "local"
+    assert ledger_body[0]["route_reason"] == "local_provider_error_fallback_blocked"
+    assert ledger_body[0]["terminal_status"] == "provider_error"
+    assert ledger_body[0]["route_signals"] == {
+        "budget_proximity": None,
+        "calibrated_routing": True,
+        "complexity_tier": "low",
+        "degraded_routing": False,
+        "keyword_match": False,
+        "model_constraint": True,
+        "replay": False,
+        "route_mode": "calibrated",
+        "score_components": {
+            "budget_penalty": 0.0,
+            "keyword_bonus": 0.0,
+            "policy_bonus": 0.1,
+            "token_score": 0.07,
+            "total_score": 0.17,
+        },
+        "token_count": 35,
+    }
 
 
 def test_validation_failures_do_not_emit_nebula_route_headers() -> None:

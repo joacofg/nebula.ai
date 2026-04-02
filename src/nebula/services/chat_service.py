@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter, time
-from typing import AsyncIterator, Literal
+from typing import Any, AsyncIterator, Literal
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -819,6 +819,7 @@ class ChatService:
                         terminal_status="policy_denied",
                         route_reason=headers.get("X-Nebula-Route-Reason"),
                         policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
+                        route_signals=None,
                     )
                 )
             raise
@@ -909,16 +910,21 @@ class ChatService:
         fallback_used: bool,
         policy_resolution: PolicyResolution,
     ) -> dict[str, str]:
-        return {
+        headers = {
             "X-Nebula-Tenant-ID": tenant_id,
             "X-Nebula-Route-Target": route_target,
             "X-Nebula-Route-Reason": route_reason,
             "X-Nebula-Provider": provider,
+            "X-Nebula-Route-Score": f"{policy_resolution.route_decision.score:.4f}",
             "X-Nebula-Cache-Hit": "false",
             "X-Nebula-Fallback-Used": str(fallback_used).lower(),
             "X-Nebula-Policy-Mode": policy_resolution.policy_mode,
             "X-Nebula-Policy-Outcome": policy_resolution.policy_outcome,
         }
+        route_mode = policy_resolution.route_decision.signals.get("route_mode")
+        if route_mode is not None:
+            headers["X-Nebula-Route-Mode"] = str(route_mode)
+        return headers
 
     def _extract_model_from_sse(self, payload: bytes) -> str | None:
         decoded = self._decode_sse(payload)

@@ -40,6 +40,8 @@ class PolicyResolution:
     policy_outcome: str
     soft_budget_exceeded: bool
     projected_premium_cost: float | None
+    hard_budget_exceeded: bool = False
+    tenant_spend_total: float | None = None
 
 
 class PolicyService:
@@ -85,6 +87,8 @@ class PolicyService:
             policy_outcome=evaluation.policy_outcome,
             soft_budget_exceeded=evaluation.soft_budget_exceeded,
             projected_premium_cost=evaluation.projected_premium_cost,
+            hard_budget_exceeded=evaluation.hard_budget_exceeded,
+            tenant_spend_total=evaluation.tenant_spend_total,
         )
 
     async def evaluate(

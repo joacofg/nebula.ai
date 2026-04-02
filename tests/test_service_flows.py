@@ -194,6 +194,39 @@ def build_service(
 
 
 @pytest.mark.asyncio
+async def test_create_completion_persists_calibrated_route_evidence_for_real_request() -> None:
+    service, cache_service, local_provider, premium_provider, store = build_service()
+    request = ChatCompletionRequest(
+        model="nebula-auto",
+        messages=[{"role": "user", "content": "Please review this architecture tradeoff."}],
+    )
+
+    envelope = await service.create_completion_with_metadata(
+        request,
+        tenant_context=tenant_context(),
+        request_id="req-calibrated-evidence",
+    )
+
+    assert envelope.metadata.route_target == "premium"
+    assert envelope.metadata.route_reason == "token_complexity"
+    assert envelope.metadata.route_signals is not None
+    assert envelope.metadata.route_signals["route_mode"] == "calibrated"
+    assert envelope.metadata.route_signals["score_components"]["total_score"] == envelope.metadata.route_score
+    assert premium_provider.completion_result is not None
+    assert cache_service.stored_entries == [
+        (
+            "Please review this architecture tradeoff.",
+            "premium response",
+            service.settings.premium_model,
+        )
+    ]
+    assert store.records[-1].request_id == "req-calibrated-evidence"
+    assert store.records[-1].final_route_target == "premium"
+    assert store.records[-1].route_reason == "token_complexity"
+    assert store.records[-1].route_signals == envelope.metadata.route_signals
+
+
+@pytest.mark.asyncio
 async def test_create_completion_routes_complex_prompts_to_premium_provider() -> None:
     service, cache_service, local_provider, premium_provider, store = build_service()
     request = ChatCompletionRequest(
@@ -220,8 +253,6 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
     assert store.records[-1].final_route_target == "premium"
 
 
-@pytest.mark.asyncio
-async def test_create_completion_falls_back_to_premium_when_local_provider_fails() -> None:
     settings = Settings()
     local_provider = StubProvider(
         "ollama",
@@ -489,6 +520,10 @@ async def test_runtime_policy_resolution_downgrades_hard_budget_exhaustion_to_lo
 
     assert resolution.route_decision.target == "local"
     assert resolution.route_decision.reason == "hard_budget_downgrade"
+    assert resolution.route_decision.signals["route_mode"] == "calibrated"
+    assert resolution.route_decision.signals["score_components"]["total_score"] == resolution.route_decision.score
+    assert resolution.hard_budget_exceeded is True
+    assert resolution.tenant_spend_total == 9.0
     assert "hard_budget=exceeded" in resolution.policy_outcome
     assert "budget_action=downgraded_to_local" in resolution.policy_outcome
     assert resolution.projected_premium_cost is None

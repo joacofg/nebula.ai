@@ -201,6 +201,10 @@ async def test_hard_budget_downgrades_auto_routed_premium_requests_to_local() ->
 
     assert resolution.route_decision.target == "local"
     assert resolution.route_decision.reason == "hard_budget_downgrade"
+    assert resolution.route_decision.signals["route_mode"] == "calibrated"
+    assert resolution.route_decision.signals["score_components"]["total_score"] == resolution.route_decision.score
+    assert resolution.hard_budget_exceeded is True
+    assert resolution.tenant_spend_total == 12.0
     assert "hard_budget=exceeded" in resolution.policy_outcome
     assert "budget_action=downgraded_to_local" in resolution.policy_outcome
     assert resolution.projected_premium_cost is None

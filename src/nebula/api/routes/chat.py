@@ -49,7 +49,7 @@ async def create_chat_completion(
 
 
 def _nebula_headers(metadata) -> dict[str, str]:
-    return {
+    headers = {
         "X-Nebula-Tenant-ID": metadata.tenant_id,
         "X-Nebula-Route-Target": metadata.route_target,
         "X-Nebula-Route-Reason": metadata.route_reason,
@@ -60,3 +60,8 @@ def _nebula_headers(metadata) -> dict[str, str]:
         "X-Nebula-Policy-Mode": metadata.policy_mode,
         "X-Nebula-Policy-Outcome": metadata.policy_outcome,
     }
+    if metadata.route_signals:
+        route_mode = metadata.route_signals.get("route_mode")
+        if route_mode is not None:
+            headers["X-Nebula-Route-Mode"] = str(route_mode)
+    return headers
