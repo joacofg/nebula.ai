@@ -182,6 +182,7 @@ async def get_policy_options(
         default_premium_model=container.settings.premium_model,
         runtime_enforced_fields=[
             "routing_mode_default",
+            "calibrated_routing_enabled",
             "allowed_premium_models",
             "semantic_cache_enabled",
             "fallback_enabled",

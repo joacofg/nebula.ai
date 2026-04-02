@@ -117,6 +117,16 @@ class PolicyService:
                 policy=policy,
             )
 
+        calibrated_routing_gated = False
+        if self._calibrated_routing_disabled(policy=policy, route_decision=route_decision):
+            route_decision = RouteDecision(
+                target="local",
+                reason="calibrated_routing_disabled",
+                signals={},
+                score=0.0,
+            )
+            calibrated_routing_gated = True
+
         denial_detail = self._explicit_model_conflict_detail(
             request=request,
             route_decision=route_decision,
@@ -164,6 +174,8 @@ class PolicyService:
         outcome_parts: list[str] = []
         if policy.routing_mode_default != "auto":
             outcome_parts.append(f"routing_mode={policy.routing_mode_default}")
+        if calibrated_routing_gated:
+            outcome_parts.append("calibrated_routing=disabled")
         if not policy.semantic_cache_enabled:
             outcome_parts.append("cache=disabled")
         if not policy.fallback_enabled:
@@ -197,6 +209,16 @@ class PolicyService:
             denied=denial_detail is not None,
             denial_detail=denial_detail,
         )
+
+    def _calibrated_routing_disabled(
+        self,
+        *,
+        policy,
+        route_decision: RouteDecision,
+    ) -> bool:
+        if policy.calibrated_routing_enabled:
+            return False
+        return route_decision.reason == "token_complexity"
 
     def _hard_budget_exceeded(
         self,

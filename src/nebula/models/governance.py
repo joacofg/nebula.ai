@@ -19,6 +19,7 @@ TerminalStatus = Literal[
 
 class TenantPolicy(BaseModel):
     routing_mode_default: RoutingMode = "auto"
+    calibrated_routing_enabled: bool = True
     allowed_premium_models: list[str] = Field(default_factory=list)
     semantic_cache_enabled: bool = True
     semantic_cache_similarity_threshold: float = Field(default=0.9, ge=0, le=1)

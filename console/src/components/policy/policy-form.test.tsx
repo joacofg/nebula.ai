@@ -71,6 +71,7 @@ function renderPolicyForm({
       tenantName="Default Workspace"
       initialPolicy={{
         routing_mode_default: "auto",
+        calibrated_routing_enabled: true,
         fallback_enabled: true,
         semantic_cache_enabled: true,
         semantic_cache_similarity_threshold: 0.9,
@@ -89,6 +90,7 @@ function renderPolicyForm({
         default_premium_model: "openai/gpt-4o-mini",
         runtime_enforced_fields: [
           "routing_mode_default",
+          "calibrated_routing_enabled",
           "allowed_premium_models",
           "semantic_cache_enabled",
           "semantic_cache_similarity_threshold",
@@ -139,6 +141,7 @@ describe("policy-form", () => {
       expect(onSave).toHaveBeenCalledWith(
         expect.objectContaining({
           routing_mode_default: "premium_only",
+          calibrated_routing_enabled: true,
           fallback_enabled: false,
           semantic_cache_similarity_threshold: 0.82,
           semantic_cache_max_entry_age_hours: 48,
@@ -215,6 +218,7 @@ describe("policy-form", () => {
         tenantName="Default Workspace"
         initialPolicy={{
           routing_mode_default: "auto",
+          calibrated_routing_enabled: true,
           fallback_enabled: true,
           semantic_cache_enabled: true,
           semantic_cache_similarity_threshold: 0.9,
@@ -261,6 +265,7 @@ describe("policy-form", () => {
     const runtimeSection = screen.getByRole("heading", { name: "Runtime-enforced controls" }).closest("section");
     expect(runtimeSection).not.toBeNull();
     expect(runtimeSection).toHaveTextContent("Routing mode");
+    expect(runtimeSection).toHaveTextContent("Calibrated routing enabled");
     expect(runtimeSection).toHaveTextContent("Fallback enabled");
     expect(runtimeSection).toHaveTextContent("Semantic cache enabled");
     expect(runtimeSection).toHaveTextContent("Semantic cache similarity threshold");
@@ -333,3 +338,4 @@ describe("policy-form", () => {
     ).toBeInTheDocument();
   });
 });
+;

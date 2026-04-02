@@ -22,7 +22,7 @@ Steps:
   - Estimate: 90m
   - Files: src/nebula/services/policy_service.py, src/nebula/services/chat_service.py, src/nebula/api/routes/chat.py, tests/test_governance_runtime_hardening.py, tests/test_service_flows.py, tests/test_response_headers.py
   - Verify: ./.venv/bin/pytest tests/test_governance_runtime_hardening.py tests/test_service_flows.py -k "simulation or runtime_policy" tests/test_response_headers.py -x
-- [ ] **T03: Add the bounded tenant calibrated-routing rollout control** — Ship the small tenant-scoped control from D032/D033 as a rollout and safety valve, but keep it narrow: an explicit calibrated-routing enable/disable control, not a tuning surface. Persist it through governance models and admin APIs, keep simulation/runtime semantics aligned, and prove the new field works without widening console scope in this slice.
+- [x] **T03: Added the bounded tenant calibrated-routing rollout control across governance persistence, admin APIs, runtime/simulation evaluation, and the policy editor.** — Ship the small tenant-scoped control from D032/D033 as a rollout and safety valve, but keep it narrow: an explicit calibrated-routing enable/disable control, not a tuning surface. Persist it through governance models and admin APIs, keep simulation/runtime semantics aligned, and prove the new field works without widening console scope in this slice.
 
 Steps:
 1. Add a single bounded calibrated-routing control field to `TenantPolicy` plus its persistence path in `src/nebula/db/models.py`, `src/nebula/services/governance_store.py`, and a new Alembic revision under `migrations/versions/`.

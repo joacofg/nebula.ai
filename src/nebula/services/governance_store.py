@@ -174,6 +174,7 @@ class GovernanceStore:
                 current = TenantPolicyModel(tenant_id=tenant_id, updated_at=self._now())
                 session.add(current)
             current.routing_mode_default = policy.routing_mode_default
+            current.calibrated_routing_enabled = policy.calibrated_routing_enabled
             current.allowed_premium_models_json = policy.allowed_premium_models
             current.semantic_cache_enabled = policy.semantic_cache_enabled
             current.semantic_cache_similarity_threshold = policy.semantic_cache_similarity_threshold
@@ -426,6 +427,7 @@ class GovernanceStore:
     def _policy_from_model(self, row: TenantPolicyModel) -> TenantPolicy:
         return TenantPolicy(
             routing_mode_default=row.routing_mode_default,
+            calibrated_routing_enabled=row.calibrated_routing_enabled,
             allowed_premium_models=row.allowed_premium_models_json,
             semantic_cache_enabled=row.semantic_cache_enabled,
             semantic_cache_similarity_threshold=row.semantic_cache_similarity_threshold,

@@ -92,6 +92,7 @@ beforeEach(() => {
     tenant_id: "tenant-a",
     candidate_policy: {
       routing_mode_default: "premium_only",
+      calibrated_routing_enabled: false,
       fallback_enabled: true,
       semantic_cache_enabled: true,
       semantic_cache_similarity_threshold: 0.82,

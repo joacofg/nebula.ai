@@ -32,6 +32,7 @@ class TenantPolicyModel(Base):
         primary_key=True,
     )
     routing_mode_default: Mapped[str] = mapped_column(String(32), nullable=False)
+    calibrated_routing_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     allowed_premium_models_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     semantic_cache_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     semantic_cache_similarity_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)

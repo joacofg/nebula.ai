@@ -26,6 +26,7 @@ type PolicyFormProps = {
 
 type PolicyFormState = {
   routingModeDefault: TenantPolicy["routing_mode_default"];
+  calibratedRoutingEnabled: boolean;
   fallbackEnabled: boolean;
   semanticCacheEnabled: boolean;
   semanticCacheSimilarityThreshold: string;
@@ -59,6 +60,7 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
   return {
     ...initialPolicy,
     routing_mode_default: state.routingModeDefault,
+    calibrated_routing_enabled: state.calibratedRoutingEnabled,
     fallback_enabled: state.fallbackEnabled,
     semantic_cache_enabled: state.semanticCacheEnabled,
     semantic_cache_similarity_threshold: Number(state.semanticCacheSimilarityThreshold),
@@ -392,6 +394,27 @@ export function PolicyForm({
             </div>
           ) : null}
 
+          {runtimeEnforcedFields.has("calibrated_routing_enabled") ? (
+            <div className="space-y-2 rounded-2xl border border-border bg-slate-50 px-4 py-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-slate-800">
+                <input
+                  type="checkbox"
+                  checked={formState.calibratedRoutingEnabled}
+                  onChange={(event) =>
+                    setFormState((current) => ({
+                      ...current,
+                      calibratedRoutingEnabled: event.target.checked,
+                    }))
+                  }
+                />
+                Calibrated routing enabled
+              </label>
+              <p className="text-sm text-slate-500">
+                Tenant-scoped rollout valve for token-complexity auto routing. Turning this off keeps explicit model overrides and policy-forced routing intact while forcing auto-routed requests onto the local path.
+              </p>
+            </div>
+          ) : null}
+
           {runtimeEnforcedFields.has("fallback_enabled") ? (
             <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
               <input
@@ -594,3 +617,4 @@ export function PolicyForm({
     </form>
   );
 }
+

@@ -4,6 +4,7 @@ export type RoutingMode = "auto" | "local_only" | "premium_only";
 
 export type TenantPolicy = {
   routing_mode_default: RoutingMode;
+  calibrated_routing_enabled: boolean;
   allowed_premium_models: string[];
   semantic_cache_enabled: boolean;
   semantic_cache_similarity_threshold: number;

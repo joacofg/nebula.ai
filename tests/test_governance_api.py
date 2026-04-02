@@ -250,6 +250,7 @@ def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
     assert create_key.json()["api_key"].startswith("nbk_")
     assert policy.json()["routing_mode_default"] == "premium_only"
     assert update_policy.status_code == 200
+    assert update_policy.json()["calibrated_routing_enabled"] is False
     assert update_policy.json()["semantic_cache_enabled"] is False
     assert listed_keys.status_code == 200
     assert listed_keys.json()[0]["tenant_id"] == "team-a"
@@ -292,6 +293,7 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
     assert "openai/gpt-4o-mini" in authorized.json()["known_premium_models"]
     assert authorized.json()["runtime_enforced_fields"] == [
         "routing_mode_default",
+        "calibrated_routing_enabled",
         "allowed_premium_models",
         "semantic_cache_enabled",
         "fallback_enabled",
@@ -690,6 +692,109 @@ def test_admin_policy_simulation_detects_newly_denied_replays() -> None:
         "routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail."
     )
     assert body["changed_requests"][0]["simulated_route_target"] == "denied"
+
+
+def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_replay() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+                premium_provider=StubProvider(
+                    "mock-premium",
+                    completion_result=CompletionResult(
+                        content="premium response",
+                        model="openai/gpt-4o-mini",
+                        provider="mock-premium",
+                        usage=usage(10, 5),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            baseline = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "analyze this architecture tradeoff"}],
+                },
+            )
+            request_id = baseline.headers["X-Request-ID"]
+            baseline_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+            simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        routing_mode_default="auto",
+                        calibrated_routing_enabled=False,
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                    ).model_dump(mode="json"),
+                    "limit": 10,
+                    "changed_sample_limit": 10,
+                },
+            )
+            updated_policy = client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    routing_mode_default="auto",
+                    calibrated_routing_enabled=False,
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                ).model_dump(mode="json"),
+            )
+            gated = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "analyze this architecture tradeoff"}],
+                },
+            )
+            gated_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={gated.headers['X-Request-ID']}",
+                headers=admin_headers(),
+            )
+
+    assert baseline.status_code == 200
+    assert baseline.headers["X-Nebula-Route-Target"] == "premium"
+    assert baseline.headers["X-Nebula-Route-Mode"] == "calibrated"
+    assert baseline_ledger.status_code == 200
+    assert baseline_ledger.json()[0]["route_signals"]["route_mode"] == "calibrated"
+
+    assert simulation.status_code == 200
+    body = simulation.json()
+    assert body["candidate_policy"]["calibrated_routing_enabled"] is False
+    assert body["summary"]["changed_routes"] == 1
+    assert body["changed_requests"][0]["baseline_route_target"] == "premium"
+    assert body["changed_requests"][0]["simulated_route_target"] == "local"
+    assert body["changed_requests"][0]["simulated_route_reason"] == "calibrated_routing_disabled"
+    assert body["changed_requests"][0]["simulated_policy_outcome"] == "calibrated_routing=disabled"
+
+    assert updated_policy.status_code == 200
+    assert updated_policy.json()["calibrated_routing_enabled"] is False
+
+    assert gated.status_code == 200
+    assert gated.headers["X-Nebula-Route-Target"] == "local"
+    assert gated.headers["X-Nebula-Route-Reason"] == "calibrated_routing_disabled"
+    assert gated.headers.get("X-Nebula-Route-Mode") is None
+    assert gated.headers["X-Nebula-Policy-Outcome"] == "calibrated_routing=disabled"
+    assert gated_ledger.status_code == 200
+    assert gated_ledger.json()[0]["final_route_target"] == "local"
+    assert gated_ledger.json()[0]["route_reason"] == "calibrated_routing_disabled"
+    assert gated_ledger.json()[0]["policy_outcome"] == "calibrated_routing=disabled"
+    assert gated_ledger.json()[0]["route_signals"] is None
 
 
 def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
