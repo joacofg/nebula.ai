@@ -578,6 +578,14 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                     "messages": [{"role": "user", "content": "premium route"}],
                 },
             )
+            degraded_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "degraded replay evidence"}],
+                },
+            )
             ledger = client.get(
                 "/v1/admin/usage/ledger?tenant_id=default&limit=10",
                 headers=admin_headers(),
@@ -604,12 +612,26 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
 
     assert local_response.status_code == 200
     assert premium_response.status_code == 200
+    assert degraded_response.status_code == 200
     assert simulation.status_code == 200
     body = simulation.json()
     assert body["tenant_id"] == "default"
     assert body["summary"]["evaluated_rows"] == 2
     assert body["summary"]["changed_routes"] == 1
     assert body["summary"]["newly_denied"] == 0
+    assert body["calibration_summary"]["tenant_id"] == "default"
+    assert body["calibration_summary"]["scope"] == "tenant_window"
+    assert body["calibration_summary"]["state"] == "thin"
+    assert body["calibration_summary"]["eligible_request_count"] == 2
+    assert body["calibration_summary"]["sufficient_request_count"] == 1
+    assert body["calibration_summary"]["excluded_request_count"] == 1
+    assert body["calibration_summary"]["degraded_request_count"] == 1
+    assert body["calibration_summary"]["excluded_reasons"] == [
+        {"reason": "explicit_model_override", "count": 1}
+    ]
+    assert body["calibration_summary"]["degraded_reasons"] == [
+        {"reason": "missing_route_signals", "count": 1}
+    ]
     assert len(body["changed_requests"]) == 2
     local_change = next(
         item for item in body["changed_requests"] if item["baseline_route_target"] == "local"

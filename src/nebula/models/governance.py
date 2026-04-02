@@ -209,6 +209,7 @@ class PolicySimulationResponse(BaseModel):
     approximation_notes: list[str] = Field(default_factory=list)
     window: PolicySimulationWindow
     summary: PolicySimulationOutcomeCounts
+    calibration_summary: CalibrationEvidenceSummary
     changed_requests: list[PolicySimulationChangedRequest] = Field(default_factory=list)
 
 

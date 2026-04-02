@@ -503,6 +503,14 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
                 if len(sufficient_rows) == 0
                 else "Eligible calibrated routing evidence is still below the tenant sufficiency threshold."
             )
+        degraded_reason_counts: dict[str, int] = {}
+        for row in degraded_rows:
+            reason_key = (
+                "degraded_replay_signals"
+                if row.route_signals and row.route_signals.get("route_mode") == "degraded"
+                else "missing_route_signals"
+            )
+            degraded_reason_counts[reason_key] = degraded_reason_counts.get(reason_key, 0) + 1
         return CalibrationEvidenceSummary(
             tenant_id=tenant_id,
             scope="tenant_window" if from_timestamp is not None or to_timestamp is not None else "tenant",
@@ -518,9 +526,16 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
             excluded_request_count=len(excluded_rows),
             gated_request_count=len(gated_rows),
             degraded_request_count=len(degraded_rows),
-            excluded_reasons=[],
-            gated_reasons=[],
-            degraded_reasons=[],
+            excluded_reasons=[
+                {"reason": "explicit_model_override", "count": len(excluded_rows)}
+            ] if excluded_rows else [],
+            gated_reasons=[
+                {"reason": "calibrated_routing_disabled", "count": len(gated_rows)}
+            ] if gated_rows else [],
+            degraded_reasons=[
+                {"reason": reason_key, "count": count}
+                for reason_key, count in sorted(degraded_reason_counts.items())
+            ],
         )
 
     def record_usage(self, record: UsageLedgerRecord) -> None:
@@ -751,6 +766,61 @@ async def test_governance_store_calibration_summary_reports_stale_and_distinguis
     assert summary.eligible_request_count == 7
     assert summary.gated_request_count == 1
     assert summary.degraded_request_count == 2
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_exposes_window_calibration_summary_with_gated_and_degraded_counts() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-calibrated-{index}",
+            timestamp=now.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 700, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(4)
+    ]
+    records.extend(
+        [
+            _ledger_record(
+                request_id="req-gated",
+                timestamp=now.replace(microsecond=10),
+                route_reason="calibrated_routing_disabled",
+                route_signals=None,
+            ),
+            _ledger_record(
+                request_id="req-degraded",
+                timestamp=now.replace(microsecond=11),
+                route_signals={"route_mode": "degraded", "token_count": 650, "complexity_tier": "medium", "keyword_match": True},
+            ),
+        ]
+    )
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert response.calibration_summary.scope == "tenant"
+    assert response.calibration_summary.state == "thin"
+    assert response.calibration_summary.sufficient_request_count == 4
+    assert response.calibration_summary.eligible_request_count == 5
+    assert response.calibration_summary.gated_request_count == 1
+    assert response.calibration_summary.degraded_request_count == 1
+    assert response.calibration_summary.gated_reasons[0].reason == "calibrated_routing_disabled"
+    assert response.calibration_summary.gated_reasons[0].count == 1
+    assert response.calibration_summary.degraded_reasons[0].reason == "degraded_replay_signals"
+    assert response.calibration_summary.degraded_reasons[0].count == 1
 
 
 def _ledger_record(

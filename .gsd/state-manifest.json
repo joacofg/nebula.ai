@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:21:48.929Z",
+  "exported_at": "2026-04-02T03:27:47.596Z",
   "milestones": [
     {
       "id": "M001",
@@ -3146,19 +3146,28 @@
       "milestone_id": "M006",
       "slice_id": "S02",
       "id": "T02",
-      "title": "Thread calibration evidence through admin policy simulation",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.",
+      "status": "complete",
+      "one_liner": "Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.",
+      "narrative": "Extended the policy simulation response model to include the shared CalibrationEvidenceSummary contract, then updated PolicySimulationService to derive that summary directly from GovernanceStore for the same tenant/window replay request instead of inventing replay-only classification logic. Mirrored the contract in console admin API types so downstream UI code can consume one bounded summary shape. Added focused service and admin API tests proving replay responses preserve oldest-first deterministic sampling, report thin window state correctly, and distinguish rollout-disabled calibration evidence from degraded or missing replay signals.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` successfully after aligning the fake simulation store helper with the real summary contract. Re-ran `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` after tightening endpoint assertions and it passed. LSP diagnostics were clean for the touched Python files.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T03:27:47.568Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "`tests/test_governance_api.py` still has a pre-existing duplicate test definition warning unrelated to this task’s changes.",
+      "key_files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_service_flows.py",
+        "tests/test_governance_api.py",
+        ".gsd/milestones/M006/slices/S02/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reused GovernanceStore.summarize_calibration_evidence() directly in policy simulation so replay and runtime admin surfaces share one calibration vocabulary."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S02\nmilestone: M006\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/policy_simulation_service.py\n  - console/src/lib/admin-api.ts\n  - tests/test_service_flows.py\n  - tests/test_governance_api.py\n  - .gsd/milestones/M006/slices/S02/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Reused GovernanceStore.summarize_calibration_evidence() directly in policy simulation so replay and runtime admin surfaces share one calibration vocabulary.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:27:47.569Z\nblocker_discovered: false\n---\n\n# T02: Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.\n\n**Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.**\n\n## What Happened\n\nExtended the policy simulation response model to include the shared CalibrationEvidenceSummary contract, then updated PolicySimulationService to derive that summary directly from GovernanceStore for the same tenant/window replay request instead of inventing replay-only classification logic. Mirrored the contract in console admin API types so downstream UI code can consume one bounded summary shape. Added focused service and admin API tests proving replay responses preserve oldest-first deterministic sampling, report thin window state correctly, and distinguish rollout-disabled calibration evidence from degraded or missing replay signals.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` successfully after aligning the fake simulation store helper with the real summary contract. Re-ran `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` after tightening endpoint assertions and it passed. LSP diagnostics were clean for the touched Python files.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` | 0 | ✅ pass | 7900ms |\n| 2 | `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` | 0 | ✅ pass | 3200ms |\n| 3 | `lsp diagnostics src/nebula/models/governance.py` | 0 | ✅ pass | 0ms |\n| 4 | `lsp diagnostics src/nebula/services/policy_simulation_service.py` | 0 | ✅ pass | 0ms |\n| 5 | `lsp diagnostics tests/test_service_flows.py` | 0 | ✅ pass | 0ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\n`tests/test_governance_api.py` still has a pre-existing duplicate test definition warning unrelated to this task’s changes.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `console/src/lib/admin-api.ts`\n- `tests/test_service_flows.py`\n- `tests/test_governance_api.py`\n- `.gsd/milestones/M006/slices/S02/tasks/T02-SUMMARY.md`\n",
       "description": "Reuse the new summary contract in the replay path so policy simulation describes calibration evidence with the same ledger-backed semantics as runtime-facing admin data.\n\nSteps:\n1. Extend `src/nebula/services/policy_simulation_service.py` and `src/nebula/api/routes/admin.py` so simulation responses include or reference the shared calibration summary/evidence state for the replay window instead of inventing separate replay-only logic.\n2. Mirror the backend contract in `console/src/lib/admin-api.ts` so the console can consume the same summary shape without ad hoc typing.\n3. Add focused backend API coverage in `tests/test_governance_api.py` and service-level coverage in `tests/test_service_flows.py` proving simulation reports the same sufficient/thin/stale semantics, preserves oldest-first replay determinism, and surfaces rollout-disabled calibration evidence distinctly from missing-data degradation.\n4. Keep the admin surface narrow: extend existing simulation/admin payloads only as needed, and avoid creating a broad new API family or analytics endpoint unless the shared contract cannot fit the current seams.",
       "estimate": "1h",
       "files": [
@@ -4375,6 +4384,61 @@
       "verdict": "✅ pass",
       "duration_ms": 0,
       "created_at": "2026-04-02T03:21:48.906Z"
+    },
+    {
+      "id": 65,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 7900,
+      "created_at": "2026-04-02T03:27:47.568Z"
+    },
+    {
+      "id": 66,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 3200,
+      "created_at": "2026-04-02T03:27:47.568Z"
+    },
+    {
+      "id": 67,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/models/governance.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T03:27:47.568Z"
+    },
+    {
+      "id": 68,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/services/policy_simulation_service.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T03:27:47.568Z"
+    },
+    {
+      "id": 69,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics tests/test_service_flows.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T03:27:47.568Z"
     }
   ]
 }

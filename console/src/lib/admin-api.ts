@@ -110,12 +110,38 @@ export type PolicySimulationChangedRequest = {
   simulated_estimated_cost: number;
 };
 
+export type CalibrationReasonCount = {
+  reason: string;
+  count: number;
+};
+
+export type CalibrationEvidenceSummary = {
+  tenant_id: string;
+  scope: "tenant" | "tenant_window";
+  state: "sufficient" | "thin" | "stale";
+  state_reason: string;
+  generated_at: string;
+  latest_eligible_request_at: string | null;
+  latest_any_request_at: string | null;
+  eligible_request_count: number;
+  sufficient_request_count: number;
+  thin_request_threshold: number;
+  staleness_threshold_hours: number;
+  excluded_request_count: number;
+  gated_request_count: number;
+  degraded_request_count: number;
+  excluded_reasons: CalibrationReasonCount[];
+  gated_reasons: CalibrationReasonCount[];
+  degraded_reasons: CalibrationReasonCount[];
+};
+
 export type PolicySimulationResponse = {
   tenant_id: string;
   candidate_policy: TenantPolicy;
   approximation_notes: string[];
   window: PolicySimulationWindow;
   summary: PolicySimulationOutcomeCounts;
+  calibration_summary: CalibrationEvidenceSummary;
   changed_requests: PolicySimulationChangedRequest[];
 };
 

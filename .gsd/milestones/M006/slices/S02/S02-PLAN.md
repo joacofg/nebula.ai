@@ -14,7 +14,7 @@ Steps:
   - Estimate: 1h
   - Files: src/nebula/models/governance.py, src/nebula/services/governance_store.py, tests/test_service_flows.py
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or simulation" -x
-- [ ] **T02: Thread calibration evidence through admin policy simulation** — Reuse the new summary contract in the replay path so policy simulation describes calibration evidence with the same ledger-backed semantics as runtime-facing admin data.
+- [x] **T02: Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.** — Reuse the new summary contract in the replay path so policy simulation describes calibration evidence with the same ledger-backed semantics as runtime-facing admin data.
 
 Steps:
 1. Extend `src/nebula/services/policy_simulation_service.py` and `src/nebula/api/routes/admin.py` so simulation responses include or reference the shared calibration summary/evidence state for the replay window instead of inventing separate replay-only logic.

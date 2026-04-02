@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import UTC, datetime
-
-from fastapi import HTTPException
 
 from nebula.models.governance import (
     PolicySimulationChangedRequest,
@@ -11,7 +8,6 @@ from nebula.models.governance import (
     PolicySimulationRequest,
     PolicySimulationResponse,
     PolicySimulationWindow,
-    TenantPolicy,
     UsageLedgerRecord,
 )
 from nebula.models.openai import ChatCompletionRequest
@@ -127,6 +123,12 @@ class PolicySimulationService:
 
         sampled_changed = changed[: payload.changed_sample_limit]
         window = self._build_window(payload, records)
+        calibration_summary = self.governance_store.summarize_calibration_evidence(
+            tenant_id=tenant_context.tenant.id,
+            from_timestamp=payload.from_timestamp,
+            to_timestamp=payload.to_timestamp,
+            limit=payload.limit,
+        )
         return PolicySimulationResponse(
             tenant_id=tenant_context.tenant.id,
             candidate_policy=payload.candidate_policy,
@@ -144,6 +146,7 @@ class PolicySimulationService:
                 simulated_premium_cost=round(simulated_premium_cost_total, 8),
                 premium_cost_delta=round(simulated_premium_cost_total - baseline_premium_cost_total, 8),
             ),
+            calibration_summary=calibration_summary,
             changed_requests=sampled_changed,
         )
 
