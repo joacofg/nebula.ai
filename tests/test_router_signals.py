@@ -6,7 +6,7 @@ from fastapi.testclient import TestClient
 from nebula.core.config import Settings
 from nebula.models.governance import TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
-from nebula.services.router_service import RouteDecision, RouterService
+from nebula.services.router_service import ReplayRouteContext, RouteDecision, RouterService
 from tests.support import admin_headers, auth_headers, configured_app
 
 
@@ -26,7 +26,7 @@ async def test_route_decision_carries_signals() -> None:
 
 
 @pytest.mark.asyncio
-async def test_token_count_signal_from_prompt() -> None:
+async def test_live_routing_signals_include_calibrated_breakdown() -> None:
     router = RouterService(Settings())
 
     decision = await router.choose_target_with_reason(
@@ -40,24 +40,40 @@ async def test_token_count_signal_from_prompt() -> None:
     assert decision.signals["budget_proximity"] is None
     assert decision.signals["model_constraint"] is False
     assert decision.signals["keyword_match"] is False
+    assert decision.signals["route_mode"] == "calibrated"
+    assert decision.signals["calibrated_routing"] is True
+    assert decision.signals["degraded_routing"] is False
+    assert decision.signals["replay"] is False
+    assert decision.signals["score_components"] == {
+        "token_score": 0.06,
+        "keyword_bonus": 0.0,
+        "policy_bonus": 0.0,
+        "budget_penalty": 0.0,
+        "total_score": 0.06,
+    }
+    assert decision.score == 0.06
 
 
 @pytest.mark.asyncio
-async def test_budget_proximity_signal() -> None:
+async def test_keyword_bonus_can_raise_low_token_prompt_to_premium() -> None:
     router = RouterService(Settings())
 
     decision = await router.choose_target_with_reason(
-        "simple prompt",
-        _request(prompt="simple prompt"),
-        policy=TenantPolicy(soft_budget_usd=5.0),
+        "analyze architecture tradeoffs",
+        _request(prompt="analyze architecture tradeoffs"),
     )
 
-    assert "budget_proximity" in decision.signals
-    assert decision.signals["budget_proximity"] is None
+    assert decision.target == "premium"
+    assert decision.reason == "token_complexity"
+    assert decision.signals["complexity_tier"] == "low"
+    assert decision.signals["keyword_match"] is True
+    assert decision.signals["route_mode"] == "calibrated"
+    assert decision.signals["score_components"]["keyword_bonus"] == 0.2
+    assert decision.score == decision.signals["score_components"]["total_score"]
 
 
 @pytest.mark.asyncio
-async def test_model_constraint_signal() -> None:
+async def test_model_constraint_signal_and_policy_bonus() -> None:
     router = RouterService(Settings())
 
     decision = await router.choose_target_with_reason(
@@ -67,6 +83,7 @@ async def test_model_constraint_signal() -> None:
     )
 
     assert decision.signals["model_constraint"] is True
+    assert decision.signals["score_components"]["policy_bonus"] == 0.1
     assert decision.score > 0.0
 
 
@@ -85,6 +102,61 @@ async def test_score_by_complexity_tier() -> None:
     assert low.target == "local"
     assert medium.target == "premium"
     assert high.target == "premium"
+
+
+@pytest.mark.asyncio
+async def test_replay_uses_persisted_signals_without_degradation() -> None:
+    router = RouterService(Settings())
+    request = _request(prompt="tiny prompt")
+
+    decision = await router.choose_target_for_replay(
+        request,
+        ReplayRouteContext(token_count=120, keyword_match=False, complexity_tier="low"),
+    )
+
+    assert decision.target == "local"
+    assert decision.signals["token_count"] == 120
+    assert decision.signals["keyword_match"] is False
+    assert decision.signals["complexity_tier"] == "low"
+    assert decision.signals["route_mode"] == "calibrated"
+    assert decision.signals["calibrated_routing"] is True
+    assert decision.signals["degraded_routing"] is False
+    assert decision.signals["replay"] is True
+    assert decision.signals["score_components"] == {
+        "token_score": 0.24,
+        "keyword_bonus": 0.0,
+        "policy_bonus": 0.0,
+        "budget_penalty": 0.0,
+        "total_score": 0.24,
+    }
+
+
+@pytest.mark.asyncio
+async def test_replay_marks_degraded_when_signals_are_missing() -> None:
+    router = RouterService(Settings())
+    request = _request(prompt="debug the system")
+
+    decision = await router.choose_target_for_replay(
+        request,
+        ReplayRouteContext(token_count=50),
+    )
+
+    assert decision.target == "premium"
+    assert decision.reason == "token_complexity"
+    assert decision.signals["token_count"] == 50
+    assert decision.signals["complexity_tier"] == "low"
+    assert decision.signals["keyword_match"] is True
+    assert decision.signals["route_mode"] == "degraded"
+    assert decision.signals["calibrated_routing"] is False
+    assert decision.signals["degraded_routing"] is True
+    assert decision.signals["replay"] is True
+    assert decision.signals["score_components"] == {
+        "token_score": 0.1,
+        "keyword_bonus": 0.2,
+        "policy_bonus": 0.0,
+        "budget_penalty": 0.0,
+        "total_score": 0.3,
+    }
 
 
 def test_route_signals_persisted_in_ledger() -> None:
@@ -112,9 +184,20 @@ def test_route_signals_persisted_in_ledger() -> None:
     assert body[0]["route_reason"] == "token_complexity"
     assert body[0]["route_signals"] == {
         "budget_proximity": None,
+        "calibrated_routing": True,
         "complexity_tier": "medium",
+        "degraded_routing": False,
         "keyword_match": False,
         "model_constraint": True,
+        "replay": False,
+        "route_mode": "calibrated",
+        "score_components": {
+            "budget_penalty": 0.0,
+            "keyword_bonus": 0.0,
+            "policy_bonus": 0.1,
+            "token_score": 1.0,
+            "total_score": 1.0,
+        },
         "token_count": 600,
     }
 
