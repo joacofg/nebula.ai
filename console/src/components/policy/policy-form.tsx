@@ -84,6 +84,42 @@ function formatUsd(value: number) {
   }).format(value);
 }
 
+function formatRouteScore(score: number | null) {
+  return score === null ? null : score.toFixed(2);
+}
+
+function formatRoutingState(
+  routeMode: string | null,
+  calibratedRouting: boolean | null,
+  degradedRouting: boolean | null,
+  routeScore: number | null,
+  routeReason: string | null,
+) {
+  if (routeMode === null && routeReason === "calibrated_routing_disabled") {
+    return "rollout disabled";
+  }
+
+  const markers: string[] = [];
+  if (calibratedRouting === true) {
+    markers.push("calibrated");
+  }
+  if (degradedRouting === true) {
+    markers.push("degraded");
+  }
+
+  const routeScoreLabel = formatRouteScore(routeScore);
+  const detailParts = markers.join(" / ");
+  const detail = [detailParts, routeScoreLabel === null ? null : `score ${routeScoreLabel}`]
+    .filter((value): value is string => Boolean(value))
+    .join(", ");
+
+  if (routeMode === null) {
+    return detail.length > 0 ? `unscored (${detail})` : "unscored";
+  }
+
+  return detail.length > 0 ? `${routeMode} (${detail})` : routeMode;
+}
+
 function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
   const routeChanged = change.baseline_route_target !== change.simulated_route_target;
   const statusChanged = change.baseline_terminal_status !== change.simulated_terminal_status;
@@ -107,6 +143,22 @@ function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
   }
 
   return highlights.join(" • ");
+}
+
+function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
+  return `routing parity: ${formatRoutingState(
+    change.baseline_route_mode,
+    change.baseline_calibrated_routing,
+    change.baseline_degraded_routing,
+    change.baseline_route_score,
+    change.baseline_route_reason,
+  )} → ${formatRoutingState(
+    change.simulated_route_mode,
+    change.simulated_calibrated_routing,
+    change.simulated_degraded_routing,
+    change.simulated_route_score,
+    change.simulated_route_reason,
+  )}`;
 }
 
 export function PolicyForm({
@@ -332,6 +384,7 @@ export function PolicyForm({
                         <span>{change.simulated_route_target}</span>
                       </div>
                       <p className="mt-2 text-sm text-slate-600">{renderChangedRequestSummary(change)}</p>
+                      <p className="mt-1 text-xs text-slate-500">{renderChangedRequestParity(change)}</p>
                     </li>
                   ))}
                 </ul>

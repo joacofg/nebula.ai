@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:52:26.679Z",
+  "exported_at": "2026-04-02T03:55:21.259Z",
   "milestones": [
     {
       "id": "M001",
@@ -3356,19 +3356,25 @@
       "milestone_id": "M006",
       "slice_id": "S03",
       "id": "T03",
-      "title": "Render compact routing parity cues in the existing policy preview",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.",
+      "status": "complete",
+      "one_liner": "Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.",
+      "narrative": "Updated console/src/components/policy/policy-form.tsx so each changed-request sample in the existing policy preview now renders a bounded routing parity line. The line compares baseline and simulated route mode semantics using the established vocabulary, includes calibrated/degraded markers and route score when present, and renders null-mode calibrated-routing-disabled rows as an intentional rollout-disabled state instead of missing data. Extended console/src/components/policy/policy-page.test.tsx to lock both calibrated-to-degraded and degraded-to-rollout-disabled preview rendering without widening the UI into a new routing dashboard.",
+      "verification_result": "Ran the focused task-plan verification command `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`, and the policy preview Vitest suite passed with the new routing parity assertions.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T03:55:21.230Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        ".gsd/milestones/M006/slices/S03/tasks/T03-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Kept routing parity rendering local to the existing changed-request card and reused rollout-disabled vocabulary instead of widening the preview into a new routing-inspection surface."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S03\nmilestone: M006\nkey_files:\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/milestones/M006/slices/S03/tasks/T03-SUMMARY.md\nkey_decisions:\n  - Kept routing parity rendering local to the existing changed-request card and reused rollout-disabled vocabulary instead of widening the preview into a new routing-inspection surface.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:55:21.231Z\nblocker_discovered: false\n---\n\n# T03: Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.\n\n**Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.**\n\n## What Happened\n\nUpdated console/src/components/policy/policy-form.tsx so each changed-request sample in the existing policy preview now renders a bounded routing parity line. The line compares baseline and simulated route mode semantics using the established vocabulary, includes calibrated/degraded markers and route score when present, and renders null-mode calibrated-routing-disabled rows as an intentional rollout-disabled state instead of missing data. Extended console/src/components/policy/policy-page.test.tsx to lock both calibrated-to-degraded and degraded-to-rollout-disabled preview rendering without widening the UI into a new routing dashboard.\n\n## Verification\n\nRan the focused task-plan verification command `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`, and the policy preview Vitest suite passed with the new routing parity assertions.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1050ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `.gsd/milestones/M006/slices/S03/tasks/T03-SUMMARY.md`\n",
       "description": "Expose the new parity fields in the existing policy preview UI without widening it into a routing dashboard. Executors should keep the rendering compact and operator-readable so S03 stays bounded and S04 can build richer inspection later.\n\nSteps:\n1. Update `console/src/components/policy/policy-form.tsx` to render a concise parity line in each changed-request card using the new baseline/simulated route mode, calibrated/degraded markers, and route score fields when present.\n2. Preserve explicit gated semantics: when route mode is null because calibrated routing is disabled, render the absence as an intentional gated state tied to the existing `calibrated_routing_disabled` reason rather than as missing data.\n3. Keep the existing changed-request sample compact and reuse the established route vocabulary; do not add new sections, charts, or analytics framing.\n4. Extend `console/src/components/policy/policy-page.test.tsx` to lock the parity rendering so future slices cannot regress the bounded preview contract.",
       "estimate": "45m",
       "files": [
@@ -4661,6 +4667,17 @@
       "verdict": "✅ pass",
       "duration_ms": 4500,
       "created_at": "2026-04-02T03:52:26.658Z"
+    },
+    {
+      "id": 77,
+      "task_id": "T03",
+      "slice_id": "S03",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1050,
+      "created_at": "2026-04-02T03:55:21.230Z"
     }
   ]
 }

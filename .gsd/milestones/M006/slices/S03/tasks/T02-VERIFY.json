@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M006/S03/T02",
+  "timestamp": 1775101973576,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "exitCode": 0,
+      "durationMs": 860,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exitCode": 0,
+      "durationMs": 938,
+      "verdict": "pass"
+    }
+  ]
+}

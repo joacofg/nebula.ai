@@ -113,10 +113,10 @@ beforeEach(() => {
       evaluated_to: "2026-03-28T00:00:00Z",
       requested_limit: 50,
       changed_sample_limit: 5,
-      returned_rows: 1,
+      returned_rows: 2,
     },
     summary: {
-      evaluated_rows: 1,
+      evaluated_rows: 2,
       changed_routes: 1,
       newly_denied: 0,
       baseline_premium_cost: 0,
@@ -134,10 +134,41 @@ beforeEach(() => {
         simulated_terminal_status: "completed",
         baseline_policy_outcome: "default",
         simulated_policy_outcome: "routing_mode=premium_only",
-        baseline_route_reason: "auto_local",
-        simulated_route_reason: "explicit_premium_model",
+        baseline_route_reason: "token_complexity",
+        simulated_route_reason: "token_complexity",
+        baseline_route_mode: "calibrated",
+        simulated_route_mode: "degraded",
+        baseline_calibrated_routing: true,
+        simulated_calibrated_routing: false,
+        baseline_degraded_routing: false,
+        simulated_degraded_routing: true,
+        baseline_route_score: 0.74,
+        simulated_route_score: 0.31,
         baseline_estimated_cost: 0,
         simulated_estimated_cost: 0.01,
+      },
+      {
+        request_id: "req-2",
+        timestamp: "2026-03-27T13:00:00Z",
+        requested_model: "nebula-auto",
+        baseline_route_target: "local",
+        simulated_route_target: "local",
+        baseline_terminal_status: "completed",
+        simulated_terminal_status: "completed",
+        baseline_policy_outcome: "default",
+        simulated_policy_outcome: "default",
+        baseline_route_reason: "token_complexity",
+        simulated_route_reason: "calibrated_routing_disabled",
+        baseline_route_mode: "degraded",
+        simulated_route_mode: null,
+        baseline_calibrated_routing: false,
+        simulated_calibrated_routing: null,
+        baseline_degraded_routing: true,
+        simulated_degraded_routing: null,
+        baseline_route_score: 0.28,
+        simulated_route_score: null,
+        baseline_estimated_cost: 0,
+        simulated_estimated_cost: 0,
       },
     ],
   });
@@ -222,6 +253,14 @@ describe("policy-page", () => {
     expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
     expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
     expect(screen.getByText("Save remains explicit")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "routing parity: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("routing parity: degraded (degraded, score 0.28) → rollout disabled"),
+    ).toBeInTheDocument();
   });
 
   it("shows preview errors from the simulation mutation", async () => {

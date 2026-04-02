@@ -24,7 +24,7 @@ Steps:
   - Estimate: 1h
   - Files: tests/test_governance_api.py, tests/test_service_flows.py, src/nebula/services/policy_simulation_service.py
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "simulation" -x && ./.venv/bin/pytest tests/test_governance_api.py -k "simulation and calibrated" -x
-- [ ] **T03: Render compact routing parity cues in the existing policy preview** — Expose the new parity fields in the existing policy preview UI without widening it into a routing dashboard. Executors should keep the rendering compact and operator-readable so S03 stays bounded and S04 can build richer inspection later.
+- [x] **T03: Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.** — Expose the new parity fields in the existing policy preview UI without widening it into a routing dashboard. Executors should keep the rendering compact and operator-readable so S03 stays bounded and S04 can build richer inspection later.
 
 Steps:
 1. Update `console/src/components/policy/policy-form.tsx` to render a concise parity line in each changed-request card using the new baseline/simulated route mode, calibrated/degraded markers, and route score fields when present.
