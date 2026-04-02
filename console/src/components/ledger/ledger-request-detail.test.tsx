@@ -105,28 +105,143 @@ describe("ledger-request-detail", () => {
     expect(screen.getAllByText("N/A")).toHaveLength(4);
   });
 
-  it("renders Route Decision section when route_signals is present", () => {
+  it("renders calibrated routing inspection with additive score components", () => {
     const entryWithSignals: UsageLedgerRecord = {
       ...mockEntry,
+      route_reason: "token_complexity",
       route_signals: {
         token_count: 842,
         complexity_tier: "medium",
-        keyword_match: false,
-        model_constraint: false,
+        keyword_match: true,
+        model_constraint: true,
         budget_proximity: null,
+        route_mode: "calibrated",
+        calibrated_routing: true,
+        degraded_routing: false,
+        score_components: {
+          token_score: 1,
+          keyword_bonus: 0.2,
+          policy_bonus: 0.1,
+          budget_penalty: 0,
+          total_score: 1,
+        },
       },
     };
 
     renderWithProviders(<LedgerRequestDetail entry={entryWithSignals} />);
 
-    expect(screen.getByText("Route Decision")).toBeInTheDocument();
+    expect(screen.getByText("Routing inspection")).toBeInTheDocument();
+    expect(screen.getAllByText("calibrated (calibrated, score 1.00)")).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "Routing used the full calibrated signal set recorded for this request, including the additive score breakdown when present.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Route mode")).toBeInTheDocument();
+    expect(screen.getByText("calibrated")).toBeInTheDocument();
+    expect(screen.getByText("Route score")).toBeInTheDocument();
+    expect(screen.getAllByText("1.00").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getByText("Token score")).toBeInTheDocument();
+    expect(screen.getByText("Keyword bonus")).toBeInTheDocument();
+    expect(screen.getByText("Policy bonus")).toBeInTheDocument();
+    expect(screen.getByText("Budget penalty")).toBeInTheDocument();
+    expect(screen.getByText("Route signals")).toBeInTheDocument();
     expect(screen.getByText("Token count")).toBeInTheDocument();
     expect(screen.getByText("842")).toBeInTheDocument();
     expect(screen.getByText("Complexity tier")).toBeInTheDocument();
     expect(screen.getByText("medium")).toBeInTheDocument();
-    expect(screen.getByText("Keyword match")).toBeInTheDocument();
-    expect(screen.getByText("Model constraint")).toBeInTheDocument();
-    expect(screen.getAllByText("no")).toHaveLength(2);
+  });
+
+  it("renders degraded routing inspection when replay-critical signals were incomplete", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-degraded",
+          route_reason: "token_complexity",
+          route_signals: {
+            token_count: 300,
+            complexity_tier: "low",
+            keyword_match: false,
+            model_constraint: false,
+            route_mode: "degraded",
+            calibrated_routing: false,
+            degraded_routing: true,
+            score_components: {
+              token_score: 0.6,
+              keyword_bonus: 0,
+              policy_bonus: 0,
+              budget_penalty: 0,
+              total_score: 0.6,
+            },
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText("degraded (degraded, score 0.60)")).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "Routing fell back to degraded scoring because replay-critical calibrated inputs were incomplete for this persisted row.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Route mode")).toBeInTheDocument();
+    expect(screen.getByText("degraded")).toBeInTheDocument();
+    expect(screen.getByText("Route score")).toBeInTheDocument();
+    expect(screen.getAllByText("0.60").length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("keeps rollout-disabled null-mode rows explicit instead of treating them as missing data", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-rollout-disabled",
+          route_reason: "calibrated_routing_disabled",
+          route_signals: {
+            token_count: 144,
+            complexity_tier: "low",
+            keyword_match: false,
+            model_constraint: false,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText("rollout disabled")).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "Calibrated routing was intentionally disabled for this request, so the row stays explicit about rollout state instead of looking like missing routing data.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Route mode")).not.toBeInTheDocument();
+    expect(screen.queryByText("Route score")).not.toBeInTheDocument();
+  });
+
+  it("renders unscored inspection when signals are partial but no calibrated score participated", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-unscored",
+          route_reason: "explicit_premium_model",
+          route_signals: {
+            token_count: 61,
+            complexity_tier: "low",
+            keyword_match: false,
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getAllByText("unscored")).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "This row did not carry a calibrated score path. That is explicit request-level state, not a generic analytics gap.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Route mode")).not.toBeInTheDocument();
+    expect(screen.queryByText("Route score")).not.toBeInTheDocument();
   });
 
   it("renders tenant calibration evidence as supporting request context when present", () => {
@@ -274,9 +389,10 @@ describe("ledger-request-detail", () => {
     expect(screen.queryByText("Calibration evidence")).not.toBeInTheDocument();
   });
 
-  it("does not render Route Decision section when route_signals is null", () => {
+  it("does not render routing sections when route_signals is null", () => {
     renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, route_signals: null }} />);
 
-    expect(screen.queryByText("Route Decision")).not.toBeInTheDocument();
+    expect(screen.queryByText("Routing inspection")).not.toBeInTheDocument();
+    expect(screen.queryByText("Route signals")).not.toBeInTheDocument();
   });
 });

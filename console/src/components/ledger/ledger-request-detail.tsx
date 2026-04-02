@@ -20,6 +20,12 @@ type CalibrationExplanation = {
   fields: Array<{ label: string; value: string }>;
 };
 
+type RoutingInspection = {
+  summary: string;
+  detail: string;
+  fields: Array<{ label: string; value: string }>;
+};
+
 function boolLabel(value: boolean) {
   return value ? "Yes" : "No";
 }
@@ -54,6 +60,14 @@ function formatBudgetProximity(value: unknown) {
     return null;
   }
   return `${Math.round(numericValue * 100)}%`;
+}
+
+function formatScore(value: unknown) {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  if (Number.isNaN(numericValue)) {
+    return null;
+  }
+  return numericValue.toFixed(2);
 }
 
 function titleCaseToken(value: string) {
@@ -219,6 +233,117 @@ function extractBudgetExplanation(policyOutcome: string | null | undefined): Bud
   };
 }
 
+function formatRoutingState(
+  routeMode: string | null,
+  calibratedRouting: boolean | null,
+  degradedRouting: boolean | null,
+  routeScore: number | null,
+  routeReason: string | null,
+) {
+  if (routeMode === null && routeReason === "calibrated_routing_disabled") {
+    return "rollout disabled";
+  }
+
+  const markers: string[] = [];
+  if (calibratedRouting === true) {
+    markers.push("calibrated");
+  }
+  if (degradedRouting === true) {
+    markers.push("degraded");
+  }
+
+  const routeScoreLabel = routeScore === null ? null : routeScore.toFixed(2);
+  const detailParts = markers.join(" / ");
+  const detail = [detailParts, routeScoreLabel === null ? null : `score ${routeScoreLabel}`]
+    .filter((value): value is string => Boolean(value))
+    .join(", ");
+
+  if (routeMode === null) {
+    return detail.length > 0 ? `unscored (${detail})` : "unscored";
+  }
+
+  return detail.length > 0 ? `${routeMode} (${detail})` : routeMode;
+}
+
+function buildRoutingInspection(
+  routeSignals: RouteSignals | null,
+  routeReason: string | null,
+): RoutingInspection | null {
+  if (!routeSignals) {
+    return null;
+  }
+
+  const routeModeRaw = signalValue(routeSignals, "route_mode");
+  const routeMode = typeof routeModeRaw === "string" ? routeModeRaw : null;
+
+  const calibratedRoutingRaw = signalValue(routeSignals, "calibrated_routing");
+  const calibratedRouting = typeof calibratedRoutingRaw === "boolean" ? calibratedRoutingRaw : null;
+
+  const degradedRoutingRaw = signalValue(routeSignals, "degraded_routing");
+  const degradedRouting = typeof degradedRoutingRaw === "boolean" ? degradedRoutingRaw : null;
+
+  const scoreComponentsValue = signalValue(routeSignals, "score_components");
+  const scoreComponents =
+    scoreComponentsValue && typeof scoreComponentsValue === "object"
+      ? (scoreComponentsValue as Record<string, unknown>)
+      : null;
+
+  const componentTotal = scoreComponents ? formatScore(scoreComponents.total_score) : null;
+  const directRouteScore = formatScore(signalValue(routeSignals, "route_score"));
+  const routeScore = componentTotal ?? directRouteScore;
+
+  const summary = formatRoutingState(
+    routeMode,
+    calibratedRouting,
+    degradedRouting,
+    routeScore === null ? null : Number(routeScore),
+    routeReason,
+  );
+
+  let detail =
+    "This request detail shows the persisted routing state for the selected ledger row only.";
+  if (summary === "rollout disabled") {
+    detail =
+      "Calibrated routing was intentionally disabled for this request, so the row stays explicit about rollout state instead of looking like missing routing data.";
+  } else if (summary.startsWith("degraded")) {
+    detail =
+      "Routing fell back to degraded scoring because replay-critical calibrated inputs were incomplete for this persisted row.";
+  } else if (summary.startsWith("calibrated")) {
+    detail =
+      "Routing used the full calibrated signal set recorded for this request, including the additive score breakdown when present.";
+  } else if (summary.startsWith("unscored")) {
+    detail =
+      "This row did not carry a calibrated score path. That is explicit request-level state, not a generic analytics gap.";
+  }
+
+  const fields: Array<{ label: string; value: string }> = [
+    { label: "Routing state", value: summary },
+  ];
+
+  if (routeMode !== null) {
+    fields.push({ label: "Route mode", value: routeMode });
+  }
+
+  if (routeScore !== null) {
+    fields.push({ label: "Route score", value: routeScore });
+  }
+
+  if (scoreComponents) {
+    const componentEntries: Array<[string, string]> = [
+      ["Token score", formatScore(scoreComponents.token_score)],
+      ["Keyword bonus", formatScore(scoreComponents.keyword_bonus)],
+      ["Policy bonus", formatScore(scoreComponents.policy_bonus)],
+      ["Budget penalty", formatScore(scoreComponents.budget_penalty)],
+    ].filter((entry): entry is [string, string] => entry[1] !== null);
+
+    componentEntries.forEach(([label, value]) => {
+      fields.push({ label, value });
+    });
+  }
+
+  return { summary, detail, fields };
+}
+
 export function LedgerRequestDetail({ entry, calibrationSummary = null }: LedgerRequestDetailProps) {
   if (!entry) {
     return <div className="panel px-6 py-5 text-sm text-slate-500">Select a ledger row to inspect request detail.</div>;
@@ -234,6 +359,7 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
     budgetProximity === null || budgetProximity === undefined ? null : formatBudgetProximity(budgetProximity);
   const budgetExplanation = extractBudgetExplanation(entry.policy_outcome);
   const calibrationExplanation = calibrationSummary ? buildCalibrationExplanation(calibrationSummary) : null;
+  const routingInspection = buildRoutingInspection(routeSignals, entry.route_reason);
 
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -298,9 +424,24 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
           </dl>
         </section>
       ) : null}
+      {routingInspection ? (
+        <section className="space-y-3">
+          <h4 className="text-sm font-semibold text-slate-950">Routing inspection</h4>
+          <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Summary</div>
+            <p className="mt-2 text-sm font-medium text-slate-950">{routingInspection.summary}</p>
+            <p className="mt-2 text-sm text-slate-600">{routingInspection.detail}</p>
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            {routingInspection.fields.map((field) => (
+              <DetailRow key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
+            ))}
+          </dl>
+        </section>
+      ) : null}
       {routeSignals ? (
         <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-950">Route Decision</h4>
+          <h4 className="text-sm font-semibold text-slate-950">Route signals</h4>
           <dl className="grid gap-4 sm:grid-cols-2">
             {tokenCount !== undefined ? <DetailRow label="Token count" value={String(tokenCount)} /> : null}
             {complexityTier !== undefined ? (

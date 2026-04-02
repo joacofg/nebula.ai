@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:55:21.259Z",
+  "exported_at": "2026-04-02T04:04:56.060Z",
   "milestones": [
     {
       "id": "M001",
@@ -734,7 +734,7 @@
       "milestone_id": "M006",
       "id": "S03",
       "title": "Runtime / simulation parity",
-      "status": "pending",
+      "status": "complete",
       "risk": "medium",
       "depends": [
         "S01",
@@ -742,9 +742,9 @@
       ],
       "demo": "After this: policy simulation replay reports the same calibrated routing and degraded-mode semantics as live runtime for the same tenant traffic class.",
       "created_at": "2026-04-02T02:40:01.730Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-02T03:57:24.610Z",
+      "full_summary_md": "---\nid: S03\nparent: M006\nmilestone: M006\nprovides:\n  - A stable runtime/simulation parity contract for calibrated, degraded, and rollout-disabled routing semantics that downstream operator-inspection work can reuse without re-deriving meaning from raw route signals.\nrequires:\n  - slice: S01\n    provides: Shared calibrated routing vocabulary, response-header semantics, and the tenant-scoped `calibrated_routing_enabled` rollout valve.\n  - slice: S02\n    provides: Tenant-scoped calibration evidence classification and the bounded sufficient/thin/stale/degraded/gated vocabulary reused by simulation and downstream operator surfaces.\naffects:\n  - S04\n  - S05\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/policy_simulation_service.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - tests/test_service_flows.py\n  - tests/test_governance_api.py\n  - .gsd/KNOWLEDGE.md\nkey_decisions:\n  - Infer baseline replay parity from persisted ledger route signals when available, with bounded fallback inference for older rows that only retained replay hints, but keep calibrated-routing-disabled and policy-forced paths null-mode instead of synthesizing fake route semantics.\n  - Prove degraded and gated replay parity at the admin boundary from real runtime requests plus correlated usage-ledger evidence rather than relying only on synthetic replay fixtures.\n  - Keep routing parity rendering inside the existing policy preview changed-request cards and reuse rollout-disabled vocabulary instead of widening the preview into a separate routing-inspection surface.\npatterns_established:\n  - Use the usage ledger as the parity seam between live runtime and simulation: correlate `X-Request-ID` and persisted route fields first, then assert replay changed-request fields against that shared evidence.\n  - Treat `route_mode=null` as a first-class, intentional state for rollout-disabled or policy-forced routing rather than as missing data; only token-complexity decisions should emit calibrated/degraded scoring semantics.\n  - Count simulation changes on route, policy outcome, or projected premium cost deltas so unchanged targets can still surface meaningful parity differences.\nobservability_surfaces:\n  - Admin policy simulation changed-request samples now expose baseline/simulated route mode, calibrated/degraded flags, route reason, and route score parity fields.\n  - Policy preview changed-request cards render a compact routing parity line, including explicit rollout-disabled rendering when calibrated routing is gated.\n  - Usage-ledger correlation remains the authoritative diagnostic seam for runtime-to-replay parity proof.\ndrill_down_paths:\n  - .gsd/milestones/M006/slices/S03/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M006/slices/S03/tasks/T02-SUMMARY.md\n  - .gsd/milestones/M006/slices/S03/tasks/T03-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:57:24.611Z\nblocker_discovered: false\n---\n\n# S03: Runtime / simulation parity\n\n**Policy simulation replay now exposes the same calibrated, degraded, and rollout-disabled routing semantics as live runtime for the same tenant traffic class, and the policy preview surfaces that parity compactly without widening scope.**\n\n## What Happened\n\nS03 closed the runtime-versus-replay gap introduced by M006/S01 and S02. The backend simulation contract now carries baseline and simulated route mode, calibrated/degraded flags, and route score fields on changed-request samples, using persisted ledger route signals when available and bounded inference for older replayable rows that only retained token/keyword hints. The replay path preserves explicit null route mode for calibrated-routing-disabled and policy-forced rows instead of fabricating synthetic routing signals, so gated and forced cases stay visibly distinct from degraded evidence.\n\nThe slice then locked parity at the admin boundary with focused runtime-to-replay tests that start from real chat-completions requests, correlate the request through usage-ledger rows, and assert that simulation changed-request samples match the shipped runtime headers and persisted route evidence. That coverage now includes a calibrated request that replays as calibrated, a degraded replay case where missing persisted route signals intentionally leaves runtime and ledger without route mode while replay still classifies the row as degraded evidence, and a calibrated-routing-disabled gate where replay and live runtime both expose the same `calibrated_routing_disabled` reason with null route mode.\n\nOn the console side, the existing policy preview changed-request cards now render one compact routing parity line that compares baseline versus simulated routing semantics using the established vocabulary. Calibrated and degraded markers plus route score appear when meaningful, and null route mode tied to `calibrated_routing_disabled` renders as an intentional rollout-disabled state rather than missing data. The preview stayed bounded: no new dashboard, analytics surface, or separate routing inspector was added. The slice therefore delivers runtime/simulation parity through the existing admin simulation contract and bounded policy preview surface that S04 can now build on for richer operator inspection.\n\n## Verification\n\nSlice-plan verification passed exactly as written: `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` passed (6 selected tests), `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` passed, and `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx` passed (4 tests). I also inspected the assembled backend and console code paths to confirm that null route mode remains intentional for rollout-disabled and policy-forced cases and that the preview rendering stays compact and local to the changed-request cards.\n\n## Requirements Advanced\n\n- R039 — S03 proved that replay now reports the same calibrated-versus-degraded-versus-gated routing semantics as live runtime for the same tenant traffic class, using correlated runtime headers and usage-ledger evidence rather than heuristic-only assertions. This materially strengthens the outcome-aware routing story, but full operator inspection closure and integrated milestone proof are still pending.\n\n## Requirements Validated\n\nNone.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nNone.\n\n## Known Limitations\n\nReplay parity is still constrained by what the usage ledger persists. Older or thinner rows without full `route_signals` can only recover bounded inferred baseline semantics from replay hints, so degraded parity remains an evidence-aware approximation rather than perfect historical reconstruction. Operator inspection also remains intentionally compact in the policy preview; richer request-detail and Observability inspection is deferred to S04.\n\n## Follow-ups\n\nS04 should reuse the new parity fields directly in request-detail and Observability surfaces instead of re-deriving route-mode semantics in the UI. Milestone close-out should also include an integrated proof that the runtime request, headers, ledger row, replay response, and operator surfaces all tell the same calibration story for the same request class.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py` — Extended `PolicySimulationChangedRequest` with baseline/simulated route parity fields for mode, calibrated/degraded flags, and route score.\n- `src/nebula/services/policy_simulation_service.py` — Derived baseline parity from persisted ledger route signals or bounded replay inference, derived simulated parity from `PolicyEvaluation.route_decision`, and preserved explicit null-mode semantics for gated/policy-forced cases.\n- `console/src/lib/admin-api.ts` — Mirrored the backend simulation changed-request parity contract and nullability in the console admin API types.\n- `console/src/components/policy/policy-form.tsx` — Rendered a compact routing parity line in changed-request cards, including explicit rollout-disabled text when route mode is intentionally null because calibrated routing is disabled.\n- `console/src/components/policy/policy-page.test.tsx` — Locked compact parity rendering for calibrated-to-degraded and degraded-to-rollout-disabled preview cases.\n- `tests/test_service_flows.py` — Added focused service-level assertions for changed-request parity fields, bounded inference, null-mode gated semantics, and changed-row sampling behavior.\n- `tests/test_governance_api.py` — Added runtime-to-replay parity coverage that correlates live request headers and usage-ledger rows to simulation changed-request entries for calibrated, degraded, and gated scenarios.\n- `.gsd/KNOWLEDGE.md` — Recorded the replay-parity proof pattern so future slices reuse runtime-plus-ledger correlation instead of weaker synthetic-only parity evidence.\n",
+      "full_uat_md": "# S03: Runtime / simulation parity — UAT\n\n**Milestone:** M006\n**Written:** 2026-04-02T03:57:24.612Z\n\n# S03 UAT — Runtime / simulation parity\n\n## Preconditions\n- Python virtualenv dependencies are installed and `./.venv/bin/pytest` is available.\n- Console dependencies are installed and `npm --prefix console run test` works.\n- The assembled worktree includes the S03 backend and console changes.\n- Admin policy simulation continues to use the existing `POST /v1/admin/tenants/{tenant_id}/policy/simulate` contract and the policy page preview surface.\n\n## Test Case 1 — Service-level replay exposes calibrated parity fields\n1. Run `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x`.\n2. Confirm the simulation-focused service tests pass.\n3. Inspect the selected cases conceptually: changed-request samples must include baseline and simulated route target, route reason, route mode, calibrated/degraded booleans, and route score.\n\n**Expected outcome**\n- The suite passes.\n- Calibrated replay samples show non-null route mode and route score when backed by calibrated runtime evidence.\n- Policy-forced and calibrated-routing-disabled replay cases keep `route_mode`, calibrated/degraded flags, and route score null instead of inventing synthetic values.\n\n## Test Case 2 — Admin simulation parity matches live runtime evidence for a calibrated request\n1. Run `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x`.\n2. Confirm the calibrated runtime request test creates a real chat-completions response, captures `X-Request-ID` plus `X-Nebula-*` headers, reads the correlated usage-ledger row, and then replays through the admin simulation endpoint.\n3. Verify the changed-request sample for the runtime request matches the live header and ledger semantics for route target, route reason, route mode, calibrated/degraded flags, and route score.\n\n**Expected outcome**\n- The suite passes.\n- Baseline replay fields equal the live runtime headers and persisted ledger fields for the same request.\n- Replay preserves null route semantics when the simulated policy forces a policy-only route instead of a calibrated token-complexity decision.\n\n## Test Case 3 — Degraded replay evidence remains explicit when persisted route signals are thin\n1. Use the same focused governance simulation test run from Test Case 2.\n2. Inspect the degraded runtime/replay scenario covered there.\n3. Verify the degraded row is treated as eligible degraded evidence, not as calibrated evidence and not as rollout-disabled evidence.\n\n**Expected outcome**\n- The replay window reports degraded evidence through the calibration summary and changed-request semantics.\n- Runtime and persisted ledger intentionally lack a route mode for the thin-signals row.\n- Replay classification still distinguishes this from rollout-disabled gating and explicit override rows.\n\n## Test Case 4 — Rollout-disabled gating renders as intentional null mode in preview\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`.\n2. Confirm the policy preview tests pass.\n3. Verify the changed-request preview includes a routing parity line for both a calibrated→degraded case and a degraded→rollout-disabled case.\n\n**Expected outcome**\n- The suite passes.\n- The preview renders `routing parity: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)` for the calibrated/degraded sample.\n- The preview renders `routing parity: degraded (degraded, score 0.28) → rollout disabled` for the gated sample.\n- The preview remains inside the existing changed-request card and does not introduce a separate routing dashboard.\n\n## Test Case 5 — Preview remains bounded and save semantics stay explicit\n1. In the same console test run, verify the preview interaction path on the policy page.\n2. Trigger Preview impact with an edited draft policy.\n3. Confirm the preview response renders a changed-request sample and the page still states that the preview did not save the policy.\n\n**Expected outcome**\n- Preview invokes simulation without calling the save mutation.\n- The page shows `Save remains explicit` and `This preview did not save the policy.`\n- Routing parity is presented as compact supporting evidence rather than expanded analytics.\n\n## Edge Cases\n- Inverted simulation windows still fail with `from_timestamp must be less than or equal to to_timestamp.`\n- Empty replay windows still produce a zero-result preview state rather than stale changed-request content.\n- Explicit premium/local overrides and policy-forced routes remain unscored and null-mode in parity output.\n- Calibrated-routing-disabled rows render as `rollout disabled`, not as missing data or degraded routing.\n",
       "goal": "Extend policy simulation replay so the existing admin simulation contract and policy preview surface report the same calibrated-versus-degraded routing semantics that live runtime already emits for the same tenant traffic class, including explicit gated/null-mode behavior when calibrated routing is disabled.",
       "success_criteria": "- Policy simulation changed-request entries expose baseline-versus-simulated calibrated parity fields using the existing route vocabulary (`route_mode`, calibrated/degraded flags, route score, and explicit null mode when routing is gated).\n- Focused backend tests prove parity for calibrated, degraded replay, and calibrated-routing-disabled cases by comparing live runtime evidence to replay output for the same tenant traffic class.\n- The existing policy preview UI renders compact parity cues from the shared simulation contract without creating a new analytics or inspection surface.",
       "proof_level": "integration",
@@ -769,11 +769,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Expose calibration evidence through existing operator inspection surfaces without creating a new dashboard or broad UX program.",
-      "success_criteria": "- Existing operator evidence surfaces show calibrated vs heuristic-only state clearly.\n- Contributing calibration evidence is visible but bounded.\n- Wording stays aligned to runtime truth and avoids analytics-product drift.\n- No broad redesign or parallel dashboard is introduced.",
-      "proof_level": "Focused Vitest inspection-surface coverage.",
-      "integration_closure": "Existing request-detail and Observability surfaces render calibration state from the same typed evidence contract produced by runtime and replay.",
-      "observability_impact": "Adds bounded operator-readable calibration state and contributing fields to existing evidence surfaces.",
+      "goal": "Expose calibrated-versus-heuristic routing state and contributing evidence through the existing request-detail and Observability console surfaces without adding new admin APIs or analytics-style views.",
+      "success_criteria": "- Selected usage-ledger request detail renders bounded routing inspection for calibrated, degraded, rollout-disabled, and unscored rows using persisted `route_signals` and existing route vocabulary.\n- Observability reads as one request-centric inspection surface: the selected ledger row remains primary proof, while calibration summary and runtime context stay supporting evidence.\n- Focused Vitest coverage proves the selected request detail and Observability composition for calibrated, degraded, rollout-disabled, and thin/stale summary cases, including duplicate-label-safe scoped assertions.",
+      "proof_level": "This slice proves: integration\n- Real runtime required: no\n- Human/UAT required: no",
+      "integration_closure": "- Upstream surfaces consumed: `console/src/lib/admin-api.ts` usage-ledger and calibration-summary types, `console/src/components/policy/policy-form.tsx` routing-state vocabulary, and the S01/S02/S03 calibrated/degraded/null-mode contract carried in persisted ledger rows.\n- New wiring introduced in this slice: request-detail rendering of route-mode/score-component evidence and tighter Observability composition around the selected request plus supporting calibration/runtime cards.\n- What remains before the milestone is truly usable end-to-end: S05 must assemble the integrated proof path across runtime request headers, ledger correlation, replay parity, operator inspection, and milestone close-out verification.",
+      "observability_impact": "Operators inspect calibrated/degraded/gated state from the selected ledger row in `console/src/components/ledger/ledger-request-detail.tsx`, then corroborate tenant readiness and runtime state in `console/src/app/(console)/observability/page.tsx`. Focused Vitest coverage in `console/src/components/ledger/ledger-request-detail.test.tsx`, `console/src/app/(console)/observability/observability-page.test.tsx`, and `console/src/app/(console)/observability/page.test.tsx` locks the request-primary framing and scoped duplicate-label assertions so future regressions are diagnosable from the existing UI surfaces.",
       "sequence": 0,
       "replan_triggered_at": null
     },
@@ -3395,6 +3395,94 @@
       "observability_impact": "Improves operator-facing replay inspection in the existing preview panel by surfacing route-mode and degraded/gated state explicitly, while keeping the UI bounded and readable.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M006",
+      "slice_id": "S04",
+      "id": "T01",
+      "title": "Added bounded routing-state inspection to ledger request detail, including calibrated, degraded, rollout-disabled, and unscored persisted rows.",
+      "status": "complete",
+      "one_liner": "Added bounded routing-state inspection to ledger request detail, including calibrated, degraded, rollout-disabled, and unscored persisted rows.",
+      "narrative": "Extended the ledger request-detail component with local helpers that parse persisted route_signals into operator-facing routing inspection fields. The panel now renders bounded request-scoped routing state, route mode, route score, and additive score components when present, while preserving explicit null-mode semantics for rollout-disabled and unscored rows. Added focused Vitest coverage for calibrated additive-score rendering, degraded replay rendering, rollout-disabled null-mode rows, and partial-signal unscored rows. Adjusted assertions to explicitly lock the intentional duplication of routing-state values across the summary card and detail row.",
+      "verification_result": "Ran the focused verification command from the task plan: npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. The first run failed because the new UI intentionally repeats routing-state values in both the summary and detail rows; updated the tests to assert that bounded duplication explicitly. Re-ran the suite and it passed with 15/15 tests. Also attempted LSP diagnostics for console/src/components/ledger/ledger-request-detail.tsx, but no TypeScript language server was active in this environment.",
+      "duration": "",
+      "completed_at": "2026-04-02T04:04:56.027Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "No active TypeScript language server was available in the worktree, so diagnostics could not be collected through LSP.",
+      "key_files": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        ".gsd/milestones/M006/slices/S04/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reused the existing S03 route vocabulary and policy-preview parity strings in the ledger request-detail surface instead of introducing a new explanation vocabulary.",
+        "Treated duplicate routing-state labels in the summary card and detail row as intentional bounded operator evidence and locked that behavior in focused tests."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S04\nmilestone: M006\nkey_files:\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - .gsd/milestones/M006/slices/S04/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Reused the existing S03 route vocabulary and policy-preview parity strings in the ledger request-detail surface instead of introducing a new explanation vocabulary.\n  - Treated duplicate routing-state labels in the summary card and detail row as intentional bounded operator evidence and locked that behavior in focused tests.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-04-02T04:04:56.028Z\nblocker_discovered: false\n---\n\n# T01: Added bounded routing-state inspection to ledger request detail, including calibrated, degraded, rollout-disabled, and unscored persisted rows.\n\n**Added bounded routing-state inspection to ledger request detail, including calibrated, degraded, rollout-disabled, and unscored persisted rows.**\n\n## What Happened\n\nExtended the ledger request-detail component with local helpers that parse persisted route_signals into operator-facing routing inspection fields. The panel now renders bounded request-scoped routing state, route mode, route score, and additive score components when present, while preserving explicit null-mode semantics for rollout-disabled and unscored rows. Added focused Vitest coverage for calibrated additive-score rendering, degraded replay rendering, rollout-disabled null-mode rows, and partial-signal unscored rows. Adjusted assertions to explicitly lock the intentional duplication of routing-state values across the summary card and detail row.\n\n## Verification\n\nRan the focused verification command from the task plan: npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. The first run failed because the new UI intentionally repeats routing-state values in both the summary and detail rows; updated the tests to assert that bounded duplication explicitly. Re-ran the suite and it passed with 15/15 tests. Also attempted LSP diagnostics for console/src/components/ledger/ledger-request-detail.tsx, but no TypeScript language server was active in this environment.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 1 | ❌ fail | 2600ms |\n| 2 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 0 | ✅ pass | 3000ms |\n| 3 | `lsp diagnostics console/src/components/ledger/ledger-request-detail.tsx` | 1 | ❌ fail | 0ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNo active TypeScript language server was available in the worktree, so diagnostics could not be collected through LSP.\n\n## Files Created/Modified\n\n- `console/src/components/ledger/ledger-request-detail.tsx`\n- `console/src/components/ledger/ledger-request-detail.test.tsx`\n- `.gsd/milestones/M006/slices/S04/tasks/T01-SUMMARY.md`\n",
+      "description": "Add bounded request-detail rendering for the selected persisted ledger row so operators can inspect calibrated, degraded, rollout-disabled, and unscored routing states directly from `route_signals` without inventing a new API or analytics surface.\n\nSteps:\n1. Extend `console/src/components/ledger/ledger-request-detail.tsx` with small local helpers that parse persisted `route_signals` into operator-facing routing-state fields: route mode, calibrated/degraded markers, total route score, and additive score components while preserving intentional null-mode semantics for rollout-disabled or policy-forced rows.\n2. Reuse the established S03 vocabulary from `console/src/components/policy/policy-form.tsx` and `docs/route-decision-vocabulary.md` so calibrated, degraded, rollout-disabled, and unscored rows read consistently across preview and request detail.\n3. Keep the selected ledger row authoritative: render routing evidence as part of request inspection, preserve existing budget/calibration summary context, and avoid turning the panel into a generic tenant analytics summary.\n4. Extend `console/src/components/ledger/ledger-request-detail.test.tsx` with focused cases for calibrated rows with additive score components, degraded rows, rollout-disabled/null-mode rows, and rows whose route signals are absent or partial.\n\nMust-haves:\n- The panel shows a compact routing-state explanation derived from persisted `route_signals`, including route mode and score when present.\n- Rollout-disabled and other intentional null-mode rows stay explicit rather than looking like missing data.\n- Existing request-detail framing and no-payload-leak guarantees remain intact.\n- Focused Vitest assertions cover the new routing inspection states and bounded rendering behavior.",
+      "estimate": "45m",
+      "files": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/policy/policy-form.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "inputs": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "expected_output": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx"
+      ],
+      "observability_impact": "This task strengthens the primary operator inspection surface for a single request. Failures remain inspectable in the selected request panel itself, and the focused test file becomes the contract that locks calibrated/degraded/null-mode rendering.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M006",
+      "slice_id": "S04",
+      "id": "T02",
+      "title": "Compose Observability around request-first routing inspection",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Tighten the Observability page so it clearly presents one selected request as the primary proof surface, with calibration summary, grounded recommendations, cache/runtime state, and dependency health as supporting context for the same routing investigation.\n\nSteps:\n1. Update `console/src/app/(console)/observability/page.tsx` copy and layout only where needed so the page explicitly ties selected request inspection to supporting calibration and runtime context, without introducing a new inspector concept or analytics framing.\n2. Wire any request-detail changes from T01 into the page composition and keep tenant calibration summary bounded to readiness/supporting context rather than a replacement for persisted request evidence.\n3. Extend `console/src/app/(console)/observability/observability-page.test.tsx` and `console/src/app/(console)/observability/page.test.tsx` to assert request-primary framing, bounded supporting-context wording, and duplicate-label-safe scoped assertions when the same calibration labels appear in multiple cards.\n4. Re-run the focused request-detail and Observability Vitest suites together to prove the integrated inspection surface still matches the routed-request story shipped by S01–S03.\n\nMust-haves:\n- Observability explicitly reads as selected request evidence first, supporting context second.\n- Calibration summary and runtime cards do not claim authority over the selected persisted ledger row.\n- Scoped tests tolerate intentional duplicate labels across cards and lock the non-analytics framing.\n- The integrated focused Vitest suite passes with the new request-detail rendering in place.",
+      "estimate": "45m",
+      "files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/components/ledger/ledger-request-detail.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "inputs": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx"
+      ],
+      "expected_output": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx"
+      ],
+      "observability_impact": "This task preserves diagnosability at the page-composition level: the selected request panel, calibration summary card, recommendation cards, and runtime-health section keep distinct roles, and the focused Observability tests verify that role separation remains visible.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -4678,6 +4766,39 @@
       "verdict": "✅ pass",
       "duration_ms": 1050,
       "created_at": "2026-04-02T03:55:21.230Z"
+    },
+    {
+      "id": 78,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 2600,
+      "created_at": "2026-04-02T04:04:56.027Z"
+    },
+    {
+      "id": 79,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 3000,
+      "created_at": "2026-04-02T04:04:56.027Z"
+    },
+    {
+      "id": 80,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics console/src/components/ledger/ledger-request-detail.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T04:04:56.027Z"
     }
   ]
 }
