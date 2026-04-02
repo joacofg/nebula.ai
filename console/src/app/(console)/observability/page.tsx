@@ -145,14 +145,14 @@ export default function ObservabilityPage() {
       <header className="panel px-6 py-5">
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Observability</div>
         <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-          Persisted request evidence
+          Selected request evidence first
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-slate-600">
-          Inspect the persisted usage ledger for recorded request outcomes by tenant, route target, terminal status,
-          and time window so operators can confirm the final route, fallback, provider, and policy evidence behind
-          each request after correlating the same request through public X-Request-ID and X-Nebula-* headers, then
-          use dependency health, calibration evidence, and recommendation summaries as supporting runtime context for
-          the same investigation.
+          Start with one persisted ledger row for the selected request ID so operators can confirm the final route,
+          fallback, provider, routing inspection, and policy evidence behind the same request first corroborated
+          through public X-Request-ID and X-Nebula-* headers. Calibration readiness, grounded recommendations,
+          cache posture, and dependency health stay on this page as supporting runtime context for that same routed
+          request investigation.
         </p>
       </header>
 
@@ -177,15 +177,16 @@ export default function ObservabilityPage() {
       <section className="space-y-4">
         <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
-            Grounded recommendations
+            Supporting context
           </div>
           <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-            Next-best actions from recent tenant traffic
+            Grounded follow-up guidance for the selected request
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Recommendations are derived from recent ledger-backed traffic plus supporting runtime context. They are
-            bounded operator guidance, not black-box optimization, and they stay read-only until you choose to adjust
-            policy controls elsewhere in the console.
+            Recommendations are derived from recent ledger-backed traffic plus supporting runtime context. They stay
+            bounded operator guidance for the selected-request investigation, not black-box optimization or a
+            replacement for the persisted ledger row, and remain read-only until you choose to adjust policy controls
+            elsewhere in the console.
           </p>
         </header>
 
@@ -443,25 +444,39 @@ export default function ObservabilityPage() {
         ) : null}
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
-        {ledgerQuery.isError ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
-            {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
-          </div>
-        ) : (
-          <LedgerTable
-            rows={ledgerQuery.data ?? []}
-            selectedRequestId={selectedEntry?.request_id ?? null}
-            onSelectRow={(requestId) => setSelectedRequestId(requestId)}
-            isLoading={ledgerQuery.isLoading}
-          />
-        )}
+      <section className="space-y-4">
+        <header className="panel px-6 py-5">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Selected request</div>
+          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            Inspect one persisted ledger row before reading tenant context
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            Pick the request first. The selected ledger row remains the authoritative persisted record for route,
+            provider, fallback, calibration state, and policy outcome. The cards above and below help explain the same
+            investigation, but they do not overrule the selected request evidence.
+          </p>
+        </header>
 
-        <LedgerRequestDetail
-          entry={selectedEntry}
-          calibrationSummary={recommendationsQuery.data?.calibration_summary ?? null}
-        />
-      </div>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
+          {ledgerQuery.isError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+              {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
+            </div>
+          ) : (
+            <LedgerTable
+              rows={ledgerQuery.data ?? []}
+              selectedRequestId={selectedEntry?.request_id ?? null}
+              onSelectRow={(requestId) => setSelectedRequestId(requestId)}
+              isLoading={ledgerQuery.isLoading}
+            />
+          )}
+
+          <LedgerRequestDetail
+            entry={selectedEntry}
+            calibrationSummary={recommendationsQuery.data?.calibration_summary ?? null}
+          />
+        </div>
+      </section>
 
       <section className="space-y-4">
         <header className="panel px-6 py-5">

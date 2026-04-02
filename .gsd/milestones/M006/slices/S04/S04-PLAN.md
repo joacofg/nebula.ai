@@ -20,7 +20,7 @@ Must-haves:
   - Estimate: 45m
   - Files: console/src/components/ledger/ledger-request-detail.tsx, console/src/components/ledger/ledger-request-detail.test.tsx, console/src/components/policy/policy-form.tsx
   - Verify: npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx
-- [ ] **T02: Compose Observability around request-first routing inspection** — Tighten the Observability page so it clearly presents one selected request as the primary proof surface, with calibration summary, grounded recommendations, cache/runtime state, and dependency health as supporting context for the same routing investigation.
+- [x] **T02: Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.** — Tighten the Observability page so it clearly presents one selected request as the primary proof surface, with calibration summary, grounded recommendations, cache/runtime state, and dependency health as supporting context for the same routing investigation.
 
 Steps:
 1. Update `console/src/app/(console)/observability/page.tsx` copy and layout only where needed so the page explicitly ties selected request inspection to supporting calibration and runtime context, without introducing a new inspector concept or analytics framing.

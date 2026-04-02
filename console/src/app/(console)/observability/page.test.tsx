@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import ObservabilityPage from "@/app/(console)/observability/page";
@@ -21,7 +21,7 @@ vi.mock("@/lib/admin-api", async () => {
 });
 
 describe("observability-page", () => {
-  it("frames observability as persisted request evidence plus grounded recommendation and dependency context", async () => {
+  it("frames observability around selected request evidence with bounded supporting context", async () => {
     adminApi.listTenants.mockResolvedValue([
       {
         id: "default",
@@ -59,6 +59,25 @@ describe("observability-page", () => {
       tenant_id: "default",
       generated_at: "2026-03-27T18:00:00Z",
       window_requests_evaluated: 24,
+      calibration_summary: {
+        tenant_id: "default",
+        scope: "tenant",
+        state: "sufficient",
+        state_reason: "Recent eligible calibrated rows meet the tenant sufficiency threshold.",
+        generated_at: "2026-03-27T18:00:00Z",
+        latest_eligible_request_at: "2026-03-27T17:15:00Z",
+        latest_any_request_at: "2026-03-27T17:15:00Z",
+        eligible_request_count: 12,
+        sufficient_request_count: 12,
+        thin_request_threshold: 5,
+        staleness_threshold_hours: 24,
+        excluded_request_count: 1,
+        gated_request_count: 0,
+        degraded_request_count: 1,
+        excluded_reasons: [{ reason: "policy_forced_route", count: 1 }],
+        gated_reasons: [],
+        degraded_reasons: [{ reason: "missing_route_signals", count: 1 }],
+      },
       recommendations: [
         {
           code: "cache-tighten-threshold",
@@ -107,20 +126,24 @@ describe("observability-page", () => {
 
     renderWithProviders(<ObservabilityPage />, { adminKey: "nebula-admin-key" });
 
-    expect(await screen.findByRole("heading", { name: "Persisted request evidence" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Inspect the persisted usage ledger for recorded request outcomes/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/use dependency health and recommendation summaries as supporting runtime context/i),
-    ).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Next-best actions from recent tenant traffic" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Recommendations are derived from recent ledger-backed traffic plus supporting runtime context/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/not black-box optimization/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Selected request evidence first" })).toBeInTheDocument();
+    expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
+    expect(screen.getByText(/supporting runtime context for that same routed request investigation/i)).toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
+    expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
+    expect(screen.getByText(/not black-box optimization or a replacement for the persisted ledger row/i)).toBeInTheDocument();
     expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
+
+    const selectedRequestSection = screen.getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" }).closest("section");
+    expect(selectedRequestSection).not.toBeNull();
+    const selectedRequest = within(selectedRequestSection!);
+    expect(selectedRequest.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
+    expect(selectedRequest.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
+    expect(selectedRequest.getByText("Request detail")).toBeInTheDocument();
+    expect(selectedRequest.getAllByText("req-123").length).toBeGreaterThanOrEqual(2);
+
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
     expect(screen.getByText("Similarity threshold")).toBeInTheDocument();
     expect(screen.getByText("0.82")).toBeInTheDocument();

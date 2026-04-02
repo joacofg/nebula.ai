@@ -130,26 +130,42 @@ describe("ObservabilityPage", () => {
     );
   });
 
-  it("renders the integrated observability framing, calibration context, recommendation context, and cache controls summary", async () => {
+  it("renders request-first observability framing with bounded supporting context", async () => {
     renderPage();
 
-    expect(await screen.findByText("Persisted request evidence")).toBeInTheDocument();
-    expect(screen.getByText(/public X-Request-ID and X-Nebula-\* headers/i)).toBeInTheDocument();
-    expect(await screen.findByText("Next-best actions from recent tenant traffic")).toBeInTheDocument();
-    expect(
-      screen.getByText(/Recommendations are derived from recent ledger-backed traffic plus supporting runtime context/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/not black-box optimization/i)).toBeInTheDocument();
-    expect(await screen.findByText("Tenant-scoped replay readiness context")).toBeInTheDocument();
-    expect(screen.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
-    expect(screen.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
-    expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
-    const replayReadinessCard = screen.getByRole("heading", { name: "Tenant-scoped replay readiness context" }).closest("article");
+    expect(await screen.findByRole("heading", { name: "Selected request evidence first" })).toBeInTheDocument();
+    expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
+    expect(screen.getByText(/Calibration readiness, grounded recommendations, cache posture, and dependency health stay on this page as supporting runtime context/i)).toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeInTheDocument();
+    expect(screen.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
+    expect(screen.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
+
+    expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
+    expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
+    expect(screen.getByText(/not black-box optimization or a replacement for the persisted ledger row/i)).toBeInTheDocument();
+
+    const replayReadinessHeading = await screen.findByText("Tenant-scoped replay readiness context");
+    const replayReadinessCard = replayReadinessHeading.closest("article");
     expect(replayReadinessCard).not.toBeNull();
     const replayReadiness = within(replayReadinessCard!);
+    expect(replayReadiness.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
+    expect(replayReadiness.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
     expect(replayReadiness.getByText("Eligible calibrated rows")).toBeInTheDocument();
     expect(replayReadiness.getByText("12")).toBeInTheDocument();
     expect(replayReadiness.getByText("Sufficiency threshold")).toBeInTheDocument();
+    expect(replayReadiness.getByText("5")).toBeInTheDocument();
+    expect(replayReadiness.getByText(/Keep using the ledger row and request ID correlation as the primary proof\./i)).toBeInTheDocument();
+
+    const requestDetail = screen.getByText("Request detail").closest("section");
+    expect(requestDetail).not.toBeNull();
+    const requestDetailSection = within(requestDetail!);
+    expect(requestDetailSection.getAllByText("req-integrated-001").length).toBeGreaterThanOrEqual(2);
+    expect(requestDetailSection.getByText("Calibration evidence")).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Tenant evidence is ready for calibrated routing and replay checks.")).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toBeInTheDocument();
+
+    expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
     expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
     expect(screen.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
@@ -293,7 +309,8 @@ describe("ObservabilityPage", () => {
     renderPage();
 
     expect(await screen.findAllByText("Calibrated routing remained disabled for recent tenant traffic.")).toHaveLength(2);
-    const replayReadinessCard = screen.getByRole("heading", { name: "Tenant-scoped replay readiness context" }).closest("article");
+    const replayReadinessHeading = screen.getByText("Tenant-scoped replay readiness context");
+    const replayReadinessCard = replayReadinessHeading.closest("article");
     expect(replayReadinessCard).not.toBeNull();
     const replayReadiness = within(replayReadinessCard!);
     expect(replayReadiness.getByText("Rollout-disabled rows")).toBeInTheDocument();

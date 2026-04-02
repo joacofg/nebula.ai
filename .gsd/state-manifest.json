@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T04:04:56.060Z",
+  "exported_at": "2026-04-02T04:12:58.804Z",
   "milestones": [
     {
       "id": "M001",
@@ -3446,19 +3446,27 @@
       "milestone_id": "M006",
       "slice_id": "S04",
       "id": "T02",
-      "title": "Compose Observability around request-first routing inspection",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.",
+      "status": "complete",
+      "one_liner": "Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.",
+      "narrative": "Updated the Observability page copy and composition so the page now explicitly starts with selected request evidence, then layers grounded follow-up guidance and tenant/runtime context around that same routed-request investigation. The ledger table and request-detail panel remain the authoritative proof surface, while calibration readiness, semantic-cache posture, recommendations, and dependency health now describe themselves as supporting context rather than a separate inspector or analytics view. Extended the two focused Observability Vitest files to assert that framing directly and to tolerate intentional duplicate labels and request IDs across cards, the ledger table, and request detail. Re-ran the request-detail suite from T01 alongside the Observability suites to confirm the integrated routed-request story still holds end to end.",
+      "verification_result": "Ran the focused integrated verification command from the task plan: npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx. Intermediate failures were limited to brittle test matchers around duplicate labels, duplicate request IDs, and waiting for the supporting calibration card before its query settled; each was corrected without changing product behavior. The final rerun passed with 20/20 focused tests green. Attempted LSP diagnostics for the touched TypeScript files, but no language server was active in this worktree.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T04:12:58.775Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "No active TypeScript language server was available in the worktree, so diagnostics could not be collected through LSP.",
+      "key_files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        ".gsd/milestones/M006/slices/S04/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reframed Observability around an explicit selected-request section instead of inventing a new inspector or analytics surface, so the persisted ledger row stays authoritative.",
+        "Kept duplicate calibration and routing labels intentional across request detail and supporting cards, and made the focused tests scope those duplicates instead of forbidding them."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S04\nmilestone: M006\nkey_files:\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - console/src/app/(console)/observability/page.test.tsx\n  - .gsd/milestones/M006/slices/S04/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Reframed Observability around an explicit selected-request section instead of inventing a new inspector or analytics surface, so the persisted ledger row stays authoritative.\n  - Kept duplicate calibration and routing labels intentional across request detail and supporting cards, and made the focused tests scope those duplicates instead of forbidding them.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-04-02T04:12:58.776Z\nblocker_discovered: false\n---\n\n# T02: Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.\n\n**Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.**\n\n## What Happened\n\nUpdated the Observability page copy and composition so the page now explicitly starts with selected request evidence, then layers grounded follow-up guidance and tenant/runtime context around that same routed-request investigation. The ledger table and request-detail panel remain the authoritative proof surface, while calibration readiness, semantic-cache posture, recommendations, and dependency health now describe themselves as supporting context rather than a separate inspector or analytics view. Extended the two focused Observability Vitest files to assert that framing directly and to tolerate intentional duplicate labels and request IDs across cards, the ledger table, and request detail. Re-ran the request-detail suite from T01 alongside the Observability suites to confirm the integrated routed-request story still holds end to end.\n\n## Verification\n\nRan the focused integrated verification command from the task plan: npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx. Intermediate failures were limited to brittle test matchers around duplicate labels, duplicate request IDs, and waiting for the supporting calibration card before its query settled; each was corrected without changing product behavior. The final rerun passed with 20/20 focused tests green. Attempted LSP diagnostics for the touched TypeScript files, but no language server was active in this worktree.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 1 | ❌ fail | 11500ms |\n| 2 | `lsp diagnostics console/src/app/(console)/observability/page.tsx` | 1 | ❌ fail | 0ms |\n| 3 | `lsp diagnostics console/src/app/(console)/observability/observability-page.test.tsx` | 1 | ❌ fail | 0ms |\n| 4 | `lsp diagnostics console/src/app/(console)/observability/page.test.tsx` | 1 | ❌ fail | 0ms |\n| 5 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 1 | ❌ fail | 7100ms |\n| 6 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 1 | ❌ fail | 2800ms |\n| 7 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 1 | ❌ fail | 15400ms |\n| 8 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 1 | ❌ fail | 3500ms |\n| 9 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx` | 0 | ✅ pass | 5300ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNo active TypeScript language server was available in the worktree, so diagnostics could not be collected through LSP.\n\n## Files Created/Modified\n\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `.gsd/milestones/M006/slices/S04/tasks/T02-SUMMARY.md`\n",
       "description": "Tighten the Observability page so it clearly presents one selected request as the primary proof surface, with calibration summary, grounded recommendations, cache/runtime state, and dependency health as supporting context for the same routing investigation.\n\nSteps:\n1. Update `console/src/app/(console)/observability/page.tsx` copy and layout only where needed so the page explicitly ties selected request inspection to supporting calibration and runtime context, without introducing a new inspector concept or analytics framing.\n2. Wire any request-detail changes from T01 into the page composition and keep tenant calibration summary bounded to readiness/supporting context rather than a replacement for persisted request evidence.\n3. Extend `console/src/app/(console)/observability/observability-page.test.tsx` and `console/src/app/(console)/observability/page.test.tsx` to assert request-primary framing, bounded supporting-context wording, and duplicate-label-safe scoped assertions when the same calibration labels appear in multiple cards.\n4. Re-run the focused request-detail and Observability Vitest suites together to prove the integrated inspection surface still matches the routed-request story shipped by S01–S03.\n\nMust-haves:\n- Observability explicitly reads as selected request evidence first, supporting context second.\n- Calibration summary and runtime cards do not claim authority over the selected persisted ledger row.\n- Scoped tests tolerate intentional duplicate labels across cards and lock the non-analytics framing.\n- The integrated focused Vitest suite passes with the new request-detail rendering in place.",
       "estimate": "45m",
       "files": [
@@ -4799,6 +4807,105 @@
       "verdict": "❌ fail",
       "duration_ms": 0,
       "created_at": "2026-04-02T04:04:56.027Z"
+    },
+    {
+      "id": 81,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 11500,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 82,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics console/src/app/(console)/observability/page.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 83,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics console/src/app/(console)/observability/observability-page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 84,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics console/src/app/(console)/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 85,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 7100,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 86,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 2800,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 87,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 15400,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 88,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 3500,
+      "created_at": "2026-04-02T04:12:58.775Z"
+    },
+    {
+      "id": 89,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/app/'(console)'/observability/page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 5300,
+      "created_at": "2026-04-02T04:12:58.775Z"
     }
   ]
 }
