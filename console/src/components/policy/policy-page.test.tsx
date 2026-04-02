@@ -251,6 +251,7 @@ describe("policy-page", () => {
 
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
     expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
+    expect(screen.getByText(/Compact sample of requests whose route, status, policy outcome, or projected cost changed\./i)).toBeInTheDocument();
     expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
     expect(screen.getByText("Save remains explicit")).toBeInTheDocument();
     expect(

@@ -841,14 +841,23 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
             )
 
     assert baseline.status_code == 200
+    assert baseline.headers["X-Request-ID"] == request_id
     assert baseline.headers["X-Nebula-Route-Target"] == "premium"
     assert baseline.headers["X-Nebula-Route-Reason"] == "token_complexity"
     assert baseline.headers["X-Nebula-Route-Mode"] == "calibrated"
     baseline_score = float(baseline.headers["X-Nebula-Route-Score"])
     assert baseline_score > 0.0
+
     assert baseline_ledger.status_code == 200
-    baseline_row = baseline_ledger.json()[0]
-    assert baseline_row["route_signals"]["route_mode"] == "calibrated"
+    baseline_rows = baseline_ledger.json()
+    assert len(baseline_rows) == 1
+    baseline_row = baseline_rows[0]
+    assert baseline_row["request_id"] == request_id
+    assert baseline_row["final_route_target"] == baseline.headers["X-Nebula-Route-Target"] == "premium"
+    assert baseline_row["final_provider"] == baseline.headers["X-Nebula-Provider"] == "mock-premium"
+    assert baseline_row["route_reason"] == baseline.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert baseline_row["policy_outcome"] == baseline.headers["X-Nebula-Policy-Outcome"]
+    assert baseline_row["route_signals"]["route_mode"] == baseline.headers["X-Nebula-Route-Mode"] == "calibrated"
     assert baseline_row["route_signals"]["calibrated_routing"] is True
     assert baseline_row["route_signals"]["degraded_routing"] is False
     assert baseline_row["route_signals"]["score_components"]["total_score"] == baseline_score
@@ -857,9 +866,11 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     body = simulation.json()
     assert body["candidate_policy"]["calibrated_routing_enabled"] is False
     assert body["summary"]["changed_routes"] == 1
+    assert body["summary"]["newly_denied"] == 0
+    assert body["window"]["returned_rows"] == 1
     changed = body["changed_requests"][0]
-    assert changed["request_id"] == baseline_row["request_id"]
-    assert changed["baseline_route_target"] == baseline.headers["X-Nebula-Route-Target"] == "premium"
+    assert changed["request_id"] == request_id == baseline_row["request_id"]
+    assert changed["baseline_route_target"] == baseline.headers["X-Nebula-Route-Target"] == baseline_row["final_route_target"] == "premium"
     assert changed["baseline_route_reason"] == baseline.headers["X-Nebula-Route-Reason"] == baseline_row["route_reason"]
     assert changed["baseline_policy_outcome"] == baseline.headers["X-Nebula-Policy-Outcome"] == baseline_row["policy_outcome"]
     assert changed["baseline_route_mode"] == baseline.headers["X-Nebula-Route-Mode"] == baseline_row["route_signals"]["route_mode"]
@@ -878,13 +889,21 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     assert updated_policy.json()["calibrated_routing_enabled"] is False
 
     assert gated.status_code == 200
+    gated_request_id = gated.headers["X-Request-ID"]
+    assert gated_request_id
+    assert gated_request_id != request_id
     assert gated.headers["X-Nebula-Route-Target"] == "local"
     assert gated.headers["X-Nebula-Route-Reason"] == "calibrated_routing_disabled"
     assert gated.headers.get("X-Nebula-Route-Mode") is None
     assert gated.headers["X-Nebula-Policy-Outcome"] == "calibrated_routing=disabled"
+
     assert gated_ledger.status_code == 200
-    gated_row = gated_ledger.json()[0]
+    gated_rows = gated_ledger.json()
+    assert len(gated_rows) == 1
+    gated_row = gated_rows[0]
+    assert gated_row["request_id"] == gated_request_id
     assert gated_row["final_route_target"] == gated.headers["X-Nebula-Route-Target"] == "local"
+    assert gated_row["final_provider"] == gated.headers["X-Nebula-Provider"] == "ollama"
     assert gated_row["route_reason"] == gated.headers["X-Nebula-Route-Reason"] == "calibrated_routing_disabled"
     assert gated_row["policy_outcome"] == gated.headers["X-Nebula-Policy-Outcome"] == "calibrated_routing=disabled"
     assert gated_row["route_signals"] is None

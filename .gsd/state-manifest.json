@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T04:22:57.016Z",
+  "exported_at": "2026-04-02T04:25:47.345Z",
   "milestones": [
     {
       "id": "M001",
@@ -3548,19 +3548,27 @@
       "milestone_id": "M006",
       "slice_id": "S05",
       "id": "T02",
-      "title": "Lock the assembled M006 proof path with focused backend and console verification",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Locked the assembled M006 proof path with focused backend and console verification.",
+      "status": "complete",
+      "one_liner": "Locked the assembled M006 proof path with focused backend and console verification.",
+      "narrative": "Tightened the existing calibrated-routing proof seams rather than adding a new harness. In tests/test_governance_api.py, the close-out simulation path now asserts one calibrated public request through X-Request-ID, calibrated X-Nebula-* headers, the correlated usage-ledger row, replay changed-request parity, and the bounded rollout-disabled runtime case after the policy flip. In the console test suite, I tightened the existing Observability and Policy page assertions so the selected request remains primary, supporting context stays subordinate, and replay preview remains a compact changed-request sample instead of reading like a broader analytics or tuning surface. No runtime code changes were required because the shipped behavior already matched the integrated proof doc; this task makes that assembled story executable in the current worktree.",
+      "verification_result": "Ran the exact focused verification sequence from the task plan. `./.venv/bin/pytest tests/test_response_headers.py -x` passed, confirming the public header seam still exposes calibrated routing metadata. `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` passed, confirming request-id ledger correlation plus replay and rollout-disabled semantics in the tightened backend proof path. `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx` passed, confirming selected-request-first Observability framing and bounded policy preview wording in the console.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T04:25:47.316Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "A pre-existing Ruff diagnostic reports a duplicate test name in tests/test_governance_api.py outside the M006 close-out seam touched here. The focused verification for this task still passed, so I left that unrelated warning unchanged.",
+      "key_files": [
+        "tests/test_governance_api.py",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        ".gsd/milestones/M006/slices/S05/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Reused the existing calibrated-routing and operator-page test seams instead of adding a new integrated harness, and tightened them to assert the close-out proof order directly."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S05\nmilestone: M006\nkey_files:\n  - tests/test_governance_api.py\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/milestones/M006/slices/S05/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Reused the existing calibrated-routing and operator-page test seams instead of adding a new integrated harness, and tightened them to assert the close-out proof order directly.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T04:25:47.317Z\nblocker_discovered: false\n---\n\n# T02: Locked the assembled M006 proof path with focused backend and console verification.\n\n**Locked the assembled M006 proof path with focused backend and console verification.**\n\n## What Happened\n\nTightened the existing calibrated-routing proof seams rather than adding a new harness. In tests/test_governance_api.py, the close-out simulation path now asserts one calibrated public request through X-Request-ID, calibrated X-Nebula-* headers, the correlated usage-ledger row, replay changed-request parity, and the bounded rollout-disabled runtime case after the policy flip. In the console test suite, I tightened the existing Observability and Policy page assertions so the selected request remains primary, supporting context stays subordinate, and replay preview remains a compact changed-request sample instead of reading like a broader analytics or tuning surface. No runtime code changes were required because the shipped behavior already matched the integrated proof doc; this task makes that assembled story executable in the current worktree.\n\n## Verification\n\nRan the exact focused verification sequence from the task plan. `./.venv/bin/pytest tests/test_response_headers.py -x` passed, confirming the public header seam still exposes calibrated routing metadata. `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` passed, confirming request-id ledger correlation plus replay and rollout-disabled semantics in the tightened backend proof path. `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx` passed, confirming selected-request-first Observability framing and bounded policy preview wording in the console.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_response_headers.py -x` | 0 | ✅ pass | 1410ms |\n| 2 | `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x` | 0 | ✅ pass | 740ms |\n| 3 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1180ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nA pre-existing Ruff diagnostic reports a duplicate test name in tests/test_governance_api.py outside the M006 close-out seam touched here. The focused verification for this task still passed, so I left that unrelated warning unchanged.\n\n## Files Created/Modified\n\n- `tests/test_governance_api.py`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `.gsd/milestones/M006/slices/S05/tasks/T02-SUMMARY.md`\n",
       "description": "Tighten the strongest existing proof seams so the current worktree explicitly proves the assembled M006 story instead of relying on slice summaries alone. Prefer extending the existing targeted tests over adding a new harness, and keep assertions grounded in the same public-request-to-ledger-to-replay-to-operator order used by the new integrated proof doc.\n\nSteps:\n1. Extend the strongest backend seam in `tests/test_governance_api.py` and, only if needed, `tests/test_response_headers.py` so a calibrated runtime request is correlated through `X-Request-ID`, calibrated `X-Nebula-*` headers, the persisted usage-ledger row, and simulation parity or rollout-disabled/degraded semantics in one close-out-focused assertion path.\n2. Inspect existing console tests in `console/src/app/(console)/observability/page.test.tsx`, `console/src/app/(console)/observability/observability-page.test.tsx`, and `console/src/components/policy/policy-page.test.tsx`; tighten only the assertions needed to preserve the integrated order and bounded roles if the new proof doc exposes wording drift or discoverability gaps.\n3. Re-run the focused backend and console suites named by this slice so the integrated proof is executable in the assembled worktree, including at least one observability-sensitive assertion that the selected request remains primary while supporting context stays bounded.\n4. Keep the proof bounded: no new admin routes, no broad integration harness, and no UI expansion beyond wording or assertions needed to lock the already-shipped calibrated-routing story.",
       "estimate": "1h",
       "files": [
@@ -5084,6 +5092,39 @@
       "verdict": "✅ pass",
       "duration_ms": 100,
       "created_at": "2026-04-02T04:22:56.987Z"
+    },
+    {
+      "id": 95,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_response_headers.py -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1410,
+      "created_at": "2026-04-02T04:25:47.316Z"
+    },
+    {
+      "id": 96,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 740,
+      "created_at": "2026-04-02T04:25:47.316Z"
+    },
+    {
+      "id": 97,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1180,
+      "created_at": "2026-04-02T04:25:47.316Z"
     }
   ]
 }

@@ -36,7 +36,7 @@ for token in required:
 assert 'TODO' not in proof and 'TBD' not in proof
 PY
 rg -n "m006-integrated-proof|route-decision-vocabulary|X-Request-ID|X-Nebula-|/v1/admin/usage/ledger|policy/simulate|Observability|does not duplicate|failure modes" README.md docs/architecture.md docs/m006-integrated-proof.md
-- [ ] **T02: Lock the assembled M006 proof path with focused backend and console verification** — Tighten the strongest existing proof seams so the current worktree explicitly proves the assembled M006 story instead of relying on slice summaries alone. Prefer extending the existing targeted tests over adding a new harness, and keep assertions grounded in the same public-request-to-ledger-to-replay-to-operator order used by the new integrated proof doc.
+- [x] **T02: Locked the assembled M006 proof path with focused backend and console verification.** — Tighten the strongest existing proof seams so the current worktree explicitly proves the assembled M006 story instead of relying on slice summaries alone. Prefer extending the existing targeted tests over adding a new harness, and keep assertions grounded in the same public-request-to-ledger-to-replay-to-operator order used by the new integrated proof doc.
 
 Steps:
 1. Extend the strongest backend seam in `tests/test_governance_api.py` and, only if needed, `tests/test_response_headers.py` so a calibrated runtime request is correlated through `X-Request-ID`, calibrated `X-Nebula-*` headers, the persisted usage-ledger row, and simulation parity or rollout-disabled/degraded semantics in one close-out-focused assertion path.

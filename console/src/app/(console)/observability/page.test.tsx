@@ -139,6 +139,7 @@ describe("observability-page", () => {
     const selectedRequestSection = screen.getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" }).closest("section");
     expect(selectedRequestSection).not.toBeNull();
     const selectedRequest = within(selectedRequestSection!);
+    expect(selectedRequest.getByText(/Pick the request first\./i)).toBeInTheDocument();
     expect(selectedRequest.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
     expect(selectedRequest.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
     expect(selectedRequest.getByText("Request detail")).toBeInTheDocument();

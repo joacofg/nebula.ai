@@ -138,6 +138,7 @@ describe("ObservabilityPage", () => {
     expect(screen.getByText(/Calibration readiness, grounded recommendations, cache posture, and dependency health stay on this page as supporting runtime context/i)).toBeInTheDocument();
 
     expect(await screen.findByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeInTheDocument();
+    expect(screen.getByText(/Pick the request first\./i)).toBeInTheDocument();
     expect(screen.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
     expect(screen.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
 
