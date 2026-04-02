@@ -24,7 +24,7 @@ Steps:
   - Estimate: 1h
   - Files: src/nebula/services/policy_simulation_service.py, src/nebula/api/routes/admin.py, console/src/lib/admin-api.ts, tests/test_service_flows.py, tests/test_governance_api.py
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or simulation" -x && ./.venv/bin/pytest tests/test_governance_api.py -k "simulation and calibrated" -x
-- [ ] **T03: Render bounded calibration evidence in Observability and request detail** — Expose the new summary to operators through existing console surfaces without turning them into analytics dashboards.
+- [x] **T03: Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.** — Expose the new summary to operators through existing console surfaces without turning them into analytics dashboards.
 
 Steps:
 1. Update `console/src/components/ledger/ledger-request-detail.tsx` to render a compact calibration-evidence block that explains sufficient, stale, thin, or rollout-disabled state in request-adjacent operator language while preserving the per-request ledger story as primary.

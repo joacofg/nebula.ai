@@ -1,14 +1,22 @@
-import type { UsageLedgerRecord } from "@/lib/admin-api";
+import type { CalibrationEvidenceSummary, UsageLedgerRecord } from "@/lib/admin-api";
 
 type RouteSignals = Record<string, unknown>;
 
 type LedgerRequestDetailProps = {
   entry: UsageLedgerRecord | null;
+  calibrationSummary?: CalibrationEvidenceSummary | null;
 };
 
 type BudgetPolicyExplanation = {
   summary: string;
   detail: string | null;
+  fields: Array<{ label: string; value: string }>;
+};
+
+type CalibrationExplanation = {
+  badge: string;
+  summary: string;
+  detail: string;
   fields: Array<{ label: string; value: string }>;
 };
 
@@ -54,6 +62,94 @@ function titleCaseToken(value: string) {
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function formatReasonCounts(items: CalibrationEvidenceSummary["excluded_reasons"]) {
+  if (items.length === 0) {
+    return "None";
+  }
+  return items.map((item) => `${titleCaseToken(item.reason)} (${item.count})`).join(", ");
+}
+
+function buildCalibrationExplanation(summary: CalibrationEvidenceSummary): CalibrationExplanation {
+  const latestEligible =
+    summary.latest_eligible_request_at !== null
+      ? formatTimestamp(summary.latest_eligible_request_at)
+      : "No eligible calibrated rows yet";
+
+  const fields: Array<{ label: string; value: string }> = [
+    {
+      label: "Eligible calibrated rows",
+      value: `${summary.eligible_request_count} of ${summary.thin_request_threshold} needed`,
+    },
+    {
+      label: "Latest eligible row",
+      value: latestEligible,
+    },
+  ];
+
+  if (summary.gated_request_count > 0) {
+    fields.push({
+      label: "Rollout-disabled rows",
+      value: `${summary.gated_request_count} (${formatReasonCounts(summary.gated_reasons)})`,
+    });
+  }
+
+  if (summary.degraded_request_count > 0) {
+    fields.push({
+      label: "Degraded rows",
+      value: `${summary.degraded_request_count} (${formatReasonCounts(summary.degraded_reasons)})`,
+    });
+  }
+
+  if (summary.excluded_request_count > 0) {
+    fields.push({
+      label: "Excluded rows",
+      value: `${summary.excluded_request_count} (${formatReasonCounts(summary.excluded_reasons)})`,
+    });
+  }
+
+  if (summary.state === "sufficient") {
+    return {
+      badge: "Sufficient",
+      summary: "Tenant evidence is ready for calibrated routing and replay checks.",
+      detail:
+        "Recent ledger-backed rows meet the tenant sufficiency threshold. This supports replay readiness and explains the broader routing posture without replacing the persisted story for this request.",
+      fields,
+    };
+  }
+
+  if (summary.state === "stale") {
+    fields.push({
+      label: "Staleness threshold",
+      value: `${summary.staleness_threshold_hours} hours`,
+    });
+    return {
+      badge: "Stale",
+      summary: "Tenant evidence exists, but the eligible calibrated window is stale.",
+      detail:
+        "The ledger has enough historical calibrated rows, but the newest eligible evidence is older than the allowed freshness window. Treat this as context for operator review, not as fresh proof for current routing behavior.",
+      fields,
+    };
+  }
+
+  if (summary.gated_request_count > 0 && summary.eligible_request_count === 0) {
+    return {
+      badge: "Rollout disabled",
+      summary: "Tenant traffic is visible, but calibrated routing rollout is still operator-gated.",
+      detail:
+        "Recent rows show traffic while calibrated routing remained disabled. Operators can inspect this request and replay posture, but the ledger does not yet provide enough eligible calibrated evidence for live calibration decisions.",
+      fields,
+    };
+  }
+
+  return {
+    badge: "Thin",
+    summary: "Tenant evidence is still thin for calibrated routing and replay checks.",
+    detail:
+      "The ledger does not yet have enough eligible calibrated rows to treat tenant-level evidence as sufficient. Keep using the persisted request record as the primary proof surface while the evidence window fills in.",
+    fields,
+  };
 }
 
 function extractBudgetExplanation(policyOutcome: string | null | undefined): BudgetPolicyExplanation | null {
@@ -123,7 +219,7 @@ function extractBudgetExplanation(policyOutcome: string | null | undefined): Bud
   };
 }
 
-export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
+export function LedgerRequestDetail({ entry, calibrationSummary = null }: LedgerRequestDetailProps) {
   if (!entry) {
     return <div className="panel px-6 py-5 text-sm text-slate-500">Select a ledger row to inspect request detail.</div>;
   }
@@ -137,6 +233,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
   const budgetProximityLabel =
     budgetProximity === null || budgetProximity === undefined ? null : formatBudgetProximity(budgetProximity);
   const budgetExplanation = extractBudgetExplanation(entry.policy_outcome);
+  const calibrationExplanation = calibrationSummary ? buildCalibrationExplanation(calibrationSummary) : null;
 
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -165,6 +262,27 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
         <DetailRow label="Completion tokens" value={String(entry.completion_tokens)} />
         <DetailRow label="Total tokens" value={String(entry.total_tokens)} />
       </dl>
+      {calibrationExplanation ? (
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h4 className="text-sm font-semibold text-slate-950">Calibration evidence</h4>
+            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-900">
+              {calibrationExplanation.badge}
+            </span>
+          </div>
+          <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Summary</div>
+            <p className="mt-2 text-sm font-medium text-slate-950">{calibrationExplanation.summary}</p>
+            <p className="mt-2 text-sm text-slate-600">{calibrationExplanation.detail}</p>
+            <p className="mt-3 text-xs text-slate-500">{calibrationSummary?.state_reason}</p>
+          </div>
+          <dl className="grid gap-4 sm:grid-cols-2">
+            {calibrationExplanation.fields.map((field) => (
+              <DetailRow key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
+            ))}
+          </dl>
+        </section>
+      ) : null}
       {budgetExplanation ? (
         <section className="space-y-3">
           <h4 className="text-sm font-semibold text-slate-950">Budget policy evidence</h4>

@@ -183,6 +183,7 @@ export type RecommendationBundle = {
   tenant_id: string;
   generated_at: string;
   window_requests_evaluated: number;
+  calibration_summary: CalibrationEvidenceSummary;
   recommendations: RecommendationCard[];
   cache_summary: CacheControlSummary;
 };

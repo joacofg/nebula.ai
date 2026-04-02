@@ -79,11 +79,15 @@ class RecommendationService:
         )
         metrics = self._compute_metrics(ledger)
         cache_summary = await self._build_cache_summary(policy=policy, metrics=metrics)
+        calibration_summary = self.governance_store.summarize_calibration_evidence(
+            tenant_id=tenant_context.tenant.id,
+        )
         recommendations = self._build_recommendations(policy=policy, metrics=metrics, cache_summary=cache_summary)
         return RecommendationBundle(
             tenant_id=tenant_context.tenant.id,
             generated_at=datetime.now(UTC),
             window_requests_evaluated=metrics.total_requests,
+            calibration_summary=calibration_summary,
             recommendations=recommendations[:_MAX_RECOMMENDATIONS],
             cache_summary=cache_summary,
         )

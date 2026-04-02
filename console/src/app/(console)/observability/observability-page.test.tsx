@@ -63,6 +63,25 @@ describe("ObservabilityPage", () => {
       tenant_id: "tenant-alpha",
       generated_at: "2026-03-27T18:00:00Z",
       window_requests_evaluated: 30,
+      calibration_summary: {
+        tenant_id: "tenant-alpha",
+        scope: "tenant",
+        state: "sufficient",
+        state_reason: "Recent eligible calibrated rows meet the tenant sufficiency threshold.",
+        generated_at: "2026-03-27T18:00:00Z",
+        latest_eligible_request_at: "2026-03-27T17:15:00Z",
+        latest_any_request_at: "2026-03-27T17:15:00Z",
+        eligible_request_count: 12,
+        sufficient_request_count: 12,
+        thin_request_threshold: 5,
+        staleness_threshold_hours: 24,
+        excluded_request_count: 1,
+        gated_request_count: 0,
+        degraded_request_count: 1,
+        excluded_reasons: [{ reason: "policy_forced_route", count: 1 }],
+        gated_reasons: [],
+        degraded_reasons: [{ reason: "missing_route_signals", count: 1 }],
+      },
       recommendations: [
         {
           code: "cache-window-review",
@@ -111,18 +130,23 @@ describe("ObservabilityPage", () => {
     );
   });
 
-  it("renders the integrated observability framing, recommendation context, and cache controls summary", async () => {
+  it("renders the integrated observability framing, calibration context, recommendation context, and cache controls summary", async () => {
     renderPage();
 
     expect(await screen.findByText("Persisted request evidence")).toBeInTheDocument();
-    expect(
-      screen.getByText(/public X-Request-ID and X-Nebula-\* headers/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/public X-Request-ID and X-Nebula-\* headers/i)).toBeInTheDocument();
     expect(await screen.findByText("Next-best actions from recent tenant traffic")).toBeInTheDocument();
     expect(
       screen.getByText(/Recommendations are derived from recent ledger-backed traffic plus supporting runtime context/i),
     ).toBeInTheDocument();
     expect(screen.getByText(/not black-box optimization/i)).toBeInTheDocument();
+    expect(await screen.findByText("Tenant-scoped replay readiness context")).toBeInTheDocument();
+    expect(screen.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
+    expect(screen.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
+    expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
+    expect(screen.getByText("Eligible calibrated rows")).toBeInTheDocument();
+    expect(screen.getByText("12")).toBeInTheDocument();
+    expect(screen.getByText("Sufficiency threshold")).toBeInTheDocument();
     expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
     expect(screen.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
@@ -133,10 +157,140 @@ describe("ObservabilityPage", () => {
     expect(screen.getByText("Max entry age")).toBeInTheDocument();
     expect(screen.getAllByText("168 hours")).toHaveLength(2);
     expect(screen.getByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Required dependency failures block confidence immediately/i),
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Required dependency failures block confidence immediately/i)).toBeInTheDocument();
     expect(await screen.findAllByText("tenant-alpha")).toHaveLength(2);
     expect(await screen.findAllByText("Route target")).toHaveLength(3);
+  });
+
+  it("renders thin calibration evidence without inventing a separate analytics flow", async () => {
+    getTenantRecommendations.mockResolvedValueOnce({
+      tenant_id: "tenant-alpha",
+      generated_at: "2026-03-27T18:00:00Z",
+      window_requests_evaluated: 3,
+      calibration_summary: {
+        tenant_id: "tenant-alpha",
+        scope: "tenant",
+        state: "thin",
+        state_reason: "Eligible calibrated routing evidence is still below the tenant sufficiency threshold.",
+        generated_at: "2026-03-27T18:00:00Z",
+        latest_eligible_request_at: "2026-03-27T16:00:00Z",
+        latest_any_request_at: "2026-03-27T16:30:00Z",
+        eligible_request_count: 3,
+        sufficient_request_count: 3,
+        thin_request_threshold: 5,
+        staleness_threshold_hours: 24,
+        excluded_request_count: 0,
+        gated_request_count: 0,
+        degraded_request_count: 0,
+        excluded_reasons: [],
+        gated_reasons: [],
+        degraded_reasons: [],
+      },
+      recommendations: [],
+      cache_summary: {
+        enabled: true,
+        similarity_threshold: 0.9,
+        max_entry_age_hours: 168,
+        runtime_status: "ready",
+        runtime_detail: "Ready",
+        estimated_hit_rate: 0.1,
+        avoided_premium_cost_usd: 0.02,
+        insights: [],
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("thin")).toBeInTheDocument();
+    expect(screen.getAllByText("Eligible calibrated routing evidence is still below the tenant sufficiency threshold.")).toHaveLength(2);
+    expect(screen.getByText(/Keep using the ledger row and request ID correlation as the primary proof/i)).toBeInTheDocument();
+    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
+  });
+
+  it("renders stale calibration evidence when the tenant window is no longer fresh", async () => {
+    getTenantRecommendations.mockResolvedValueOnce({
+      tenant_id: "tenant-alpha",
+      generated_at: "2026-03-27T18:00:00Z",
+      window_requests_evaluated: 11,
+      calibration_summary: {
+        tenant_id: "tenant-alpha",
+        scope: "tenant",
+        state: "stale",
+        state_reason: "Eligible calibrated evidence exists but the newest row is outside the freshness window.",
+        generated_at: "2026-03-27T18:00:00Z",
+        latest_eligible_request_at: "2026-03-24T12:00:00Z",
+        latest_any_request_at: "2026-03-27T17:00:00Z",
+        eligible_request_count: 11,
+        sufficient_request_count: 11,
+        thin_request_threshold: 5,
+        staleness_threshold_hours: 24,
+        excluded_request_count: 0,
+        gated_request_count: 0,
+        degraded_request_count: 1,
+        excluded_reasons: [],
+        gated_reasons: [],
+        degraded_reasons: [{ reason: "missing_route_signals", count: 1 }],
+      },
+      recommendations: [],
+      cache_summary: {
+        enabled: false,
+        similarity_threshold: 0.9,
+        max_entry_age_hours: 168,
+        runtime_status: "unknown",
+        runtime_detail: "Unavailable",
+        estimated_hit_rate: 0,
+        avoided_premium_cost_usd: 0,
+        insights: [],
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findByText("stale")).toBeInTheDocument();
+    expect(screen.getAllByText("Eligible calibrated evidence exists but the newest row is outside the freshness window.")).toHaveLength(2);
+  });
+
+  it("renders rollout-disabled calibration evidence when recent traffic is gated", async () => {
+    getTenantRecommendations.mockResolvedValueOnce({
+      tenant_id: "tenant-alpha",
+      generated_at: "2026-03-27T18:00:00Z",
+      window_requests_evaluated: 4,
+      calibration_summary: {
+        tenant_id: "tenant-alpha",
+        scope: "tenant",
+        state: "thin",
+        state_reason: "Calibrated routing remained disabled for recent tenant traffic.",
+        generated_at: "2026-03-27T18:00:00Z",
+        latest_eligible_request_at: null,
+        latest_any_request_at: "2026-03-27T17:00:00Z",
+        eligible_request_count: 0,
+        sufficient_request_count: 0,
+        thin_request_threshold: 5,
+        staleness_threshold_hours: 24,
+        excluded_request_count: 0,
+        gated_request_count: 4,
+        degraded_request_count: 0,
+        excluded_reasons: [],
+        gated_reasons: [{ reason: "calibrated_routing_disabled", count: 4 }],
+        degraded_reasons: [],
+      },
+      recommendations: [],
+      cache_summary: {
+        enabled: true,
+        similarity_threshold: 0.9,
+        max_entry_age_hours: 168,
+        runtime_status: "ready",
+        runtime_detail: "Ready",
+        estimated_hit_rate: 0.25,
+        avoided_premium_cost_usd: 0.12,
+        insights: [],
+      },
+    });
+
+    renderPage();
+
+    expect(await screen.findAllByText("Calibrated routing remained disabled for recent tenant traffic.")).toHaveLength(2);
+    expect(screen.getByText("Rollout-disabled rows")).toBeInTheDocument();
+    expect(screen.getByText("4")).toBeInTheDocument();
   });
 });

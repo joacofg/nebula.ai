@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:27:47.596Z",
+  "exported_at": "2026-04-02T03:36:39.543Z",
   "milestones": [
     {
       "id": "M001",
@@ -3202,19 +3202,29 @@
       "milestone_id": "M006",
       "slice_id": "S02",
       "id": "T03",
-      "title": "Render bounded calibration evidence in Observability and request detail",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.",
+      "status": "complete",
+      "one_liner": "Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.",
+      "narrative": "Extended the shared recommendation contract so admin recommendation responses now carry the existing calibration summary derived from GovernanceStore, then mirrored that field in the console admin API types. Updated console/src/components/ledger/ledger-request-detail.tsx to render a compact calibration-evidence block that explains sufficient, stale, thin, and rollout-disabled states in operator language while keeping the selected ledger row as the primary persisted proof surface. Updated console/src/app/(console)/observability/page.tsx to show tenant-scoped calibration evidence beside grounded recommendations and cache/runtime context, explicitly framing it as bounded supporting context rather than a separate analytics view. Added focused Vitest coverage for sufficient/stale/thin/disabled messaging, absent-summary handling, and the guardrail that Observability remains ledger-first.",
+      "verification_result": "Ran the focused console Vitest suite for ledger-request-detail and observability-page and it passed after aligning duplicate-label assertions with the final UI. LSP diagnostics were clean for src/nebula/models/governance.py and src/nebula/services/recommendation_service.py.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-02T03:36:39.519Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Added calibration_summary to RecommendationBundle and RecommendationService because the task-required Observability surface needed the shared bounded calibration contract but the existing recommendation response had not been extended yet.",
+      "known_issues": "None.",
+      "key_files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/recommendation_service.py",
+        "console/src/lib/admin-api.ts",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx"
+      ],
+      "key_decisions": [
+        "Extended RecommendationBundle with calibration_summary so Observability can reuse the same bounded tenant-scoped calibration contract as replay without adding a new admin surface."
+      ],
+      "full_summary_md": "---\nid: T03\nparent: S02\nmilestone: M006\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/recommendation_service.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\nkey_decisions:\n  - Extended RecommendationBundle with calibration_summary so Observability can reuse the same bounded tenant-scoped calibration contract as replay without adding a new admin surface.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:36:39.520Z\nblocker_discovered: false\n---\n\n# T03: Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.\n\n**Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.**\n\n## What Happened\n\nExtended the shared recommendation contract so admin recommendation responses now carry the existing calibration summary derived from GovernanceStore, then mirrored that field in the console admin API types. Updated console/src/components/ledger/ledger-request-detail.tsx to render a compact calibration-evidence block that explains sufficient, stale, thin, and rollout-disabled states in operator language while keeping the selected ledger row as the primary persisted proof surface. Updated console/src/app/(console)/observability/page.tsx to show tenant-scoped calibration evidence beside grounded recommendations and cache/runtime context, explicitly framing it as bounded supporting context rather than a separate analytics view. Added focused Vitest coverage for sufficient/stale/thin/disabled messaging, absent-summary handling, and the guardrail that Observability remains ledger-first.\n\n## Verification\n\nRan the focused console Vitest suite for ledger-request-detail and observability-page and it passed after aligning duplicate-label assertions with the final UI. LSP diagnostics were clean for src/nebula/models/governance.py and src/nebula/services/recommendation_service.py.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx` | 0 | ✅ pass | 3800ms |\n| 2 | `lsp diagnostics src/nebula/models/governance.py` | 0 | ✅ pass | 0ms |\n| 3 | `lsp diagnostics src/nebula/services/recommendation_service.py` | 0 | ✅ pass | 0ms |\n\n\n## Deviations\n\nAdded calibration_summary to RecommendationBundle and RecommendationService because the task-required Observability surface needed the shared bounded calibration contract but the existing recommendation response had not been extended yet.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py`\n- `src/nebula/services/recommendation_service.py`\n- `console/src/lib/admin-api.ts`\n- `console/src/components/ledger/ledger-request-detail.tsx`\n- `console/src/components/ledger/ledger-request-detail.test.tsx`\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n",
       "description": "Expose the new summary to operators through existing console surfaces without turning them into analytics dashboards.\n\nSteps:\n1. Update `console/src/components/ledger/ledger-request-detail.tsx` to render a compact calibration-evidence block that explains sufficient, stale, thin, or rollout-disabled state in request-adjacent operator language while preserving the per-request ledger story as primary.\n2. Update `console/src/app/(console)/observability/page.tsx` to show tenant-scoped calibration evidence as bounded supporting context alongside persisted ledger evidence and recommendations, not as a separate analytics destination.\n3. Add focused Vitest coverage in `console/src/components/ledger/ledger-request-detail.test.tsx` and `console/src/app/(console)/observability/observability-page.test.tsx` for sufficient/stale/thin/disabled messaging, graceful handling when summaries are absent, and the guardrail that Observability remains the persisted explanation surface rather than a replacement for ledger proof.\n4. Keep copy derived from runtime/admin truth: calibration evidence should explain ledger-backed state, gated rollout, and replay readiness without inventing new runtime entities or promising raw-outcome analytics.",
       "estimate": "1h",
       "files": [
@@ -4439,6 +4449,39 @@
       "verdict": "✅ pass",
       "duration_ms": 0,
       "created_at": "2026-04-02T03:27:47.568Z"
+    },
+    {
+      "id": 70,
+      "task_id": "T03",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 3800,
+      "created_at": "2026-04-02T03:36:39.519Z"
+    },
+    {
+      "id": 71,
+      "task_id": "T03",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/models/governance.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T03:36:39.519Z"
+    },
+    {
+      "id": 72,
+      "task_id": "T03",
+      "slice_id": "S02",
+      "milestone_id": "M006",
+      "command": "lsp diagnostics src/nebula/services/recommendation_service.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 0,
+      "created_at": "2026-04-02T03:36:39.519Z"
     }
   ]
 }

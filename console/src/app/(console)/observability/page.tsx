@@ -25,6 +25,17 @@ function formatUsd(value: number) {
   }).format(value);
 }
 
+function formatTimestamp(value: string | null) {
+  if (!value) {
+    return "N/A";
+  }
+  const timestamp = new Date(value);
+  if (Number.isNaN(timestamp.getTime())) {
+    return value;
+  }
+  return timestamp.toLocaleString();
+}
+
 function recommendationTone(category: "policy" | "cache" | "info") {
   if (category === "policy") {
     return "border-amber-200 bg-amber-50 text-amber-950";
@@ -40,6 +51,16 @@ function cacheInsightTone(level: "info" | "notice" | "warning") {
     return "border-rose-200 bg-rose-50 text-rose-950";
   }
   if (level === "notice") {
+    return "border-amber-200 bg-amber-50 text-amber-950";
+  }
+  return "border-slate-200 bg-slate-50 text-slate-900";
+}
+
+function calibrationBadgeTone(state: "sufficient" | "thin" | "stale") {
+  if (state === "sufficient") {
+    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+  }
+  if (state === "stale") {
     return "border-amber-200 bg-amber-50 text-amber-950";
   }
   return "border-slate-200 bg-slate-50 text-slate-900";
@@ -130,7 +151,8 @@ export default function ObservabilityPage() {
           Inspect the persisted usage ledger for recorded request outcomes by tenant, route target, terminal status,
           and time window so operators can confirm the final route, fallback, provider, and policy evidence behind
           each request after correlating the same request through public X-Request-ID and X-Nebula-* headers, then
-          use dependency health and recommendation summaries as supporting runtime context for the same investigation.
+          use dependency health, calibration evidence, and recommendation summaries as supporting runtime context for
+          the same investigation.
         </p>
       </header>
 
@@ -257,95 +279,164 @@ export default function ObservabilityPage() {
                 )}
               </section>
 
-              <section className="panel space-y-4 px-6 py-5">
-                <div>
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Semantic cache</div>
-                  <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
-                    Cache effectiveness and runtime controls
-                  </h3>
+              <section className="space-y-4">
+                <article className="panel px-6 py-5">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
+                        Calibration evidence
+                      </div>
+                      <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                        Tenant-scoped replay readiness context
+                      </h3>
+                    </div>
+                    <span
+                      className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${calibrationBadgeTone(recommendationsQuery.data.calibration_summary.state)}`}
+                    >
+                      {recommendationsQuery.data.calibration_summary.state}
+                    </span>
+                  </div>
                   <p className="mt-2 text-sm text-slate-600">
-                    This summary shows the current runtime-enforced cache posture and the supporting evidence behind it.
-                    Tune these controls in the existing policy editor; this page stays inspection-only.
+                    This summary is derived from existing ledger metadata for the selected tenant. It helps operators
+                    judge whether calibration evidence is sufficient, stale, or still thin without turning Observability
+                    into a replacement for the persisted request record.
                   </p>
-                </div>
+                  <div className="mt-4 rounded-xl border border-border bg-slate-50 px-4 py-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">State reason</div>
+                    <p className="mt-2 text-sm font-medium text-slate-950">
+                      {recommendationsQuery.data.calibration_summary.state_reason}
+                    </p>
+                  </div>
+                  <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Eligible calibrated rows
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.calibration_summary.eligible_request_count}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Sufficiency threshold
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.calibration_summary.thin_request_threshold}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Latest eligible row
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {formatTimestamp(recommendationsQuery.data.calibration_summary.latest_eligible_request_at)}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Rollout-disabled rows
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.calibration_summary.gated_request_count}
+                      </dd>
+                    </div>
+                  </dl>
+                  <p className="mt-4 text-sm text-slate-600">
+                    Keep using the ledger row and request ID correlation as the primary proof. This tenant summary only
+                    explains whether replay and calibration posture are grounded by enough recent metadata-backed traffic.
+                  </p>
+                </article>
 
-                <dl className="grid gap-4 sm:grid-cols-2">
-                  <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cache enabled</dt>
-                    <dd className="mt-2 text-sm font-medium text-slate-900">
-                      {recommendationsQuery.data.cache_summary.enabled ? "Yes" : "No"}
-                    </dd>
+                <section className="panel space-y-4 px-6 py-5">
+                  <div>
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Semantic cache</div>
+                    <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                      Cache effectiveness and runtime controls
+                    </h3>
+                    <p className="mt-2 text-sm text-slate-600">
+                      This summary shows the current runtime-enforced cache posture and the supporting evidence behind it.
+                      Tune these controls in the existing policy editor; this page stays inspection-only.
+                    </p>
                   </div>
-                  <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Runtime status</dt>
-                    <dd className="mt-2 text-sm font-medium text-slate-900">
-                      {recommendationsQuery.data.cache_summary.runtime_status}
-                    </dd>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Similarity threshold
-                    </dt>
-                    <dd className="mt-2 text-sm font-medium text-slate-900">
-                      {recommendationsQuery.data.cache_summary.similarity_threshold.toFixed(2)}
-                    </dd>
-                  </div>
-                  <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                    <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                      Max entry age
-                    </dt>
-                    <dd className="mt-2 text-sm font-medium text-slate-900">
-                      {recommendationsQuery.data.cache_summary.max_entry_age_hours} hours
-                    </dd>
-                  </div>
-                </dl>
 
-                <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                  <span className="font-medium text-slate-900">Runtime detail:</span>{" "}
-                  {recommendationsQuery.data.cache_summary.runtime_detail}
-                </div>
+                  <dl className="grid gap-4 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cache enabled</dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.cache_summary.enabled ? "Yes" : "No"}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Runtime status</dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.cache_summary.runtime_status}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Similarity threshold
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.cache_summary.similarity_threshold.toFixed(2)}
+                      </dd>
+                    </div>
+                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                        Max entry age
+                      </dt>
+                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                        {recommendationsQuery.data.cache_summary.max_entry_age_hours} hours
+                      </dd>
+                    </div>
+                  </dl>
 
-                {recommendationsQuery.data.cache_summary.insights.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
-                    No additional cache insights were derived from the current evidence window.
+                  <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    <span className="font-medium text-slate-900">Runtime detail:</span>{" "}
+                    {recommendationsQuery.data.cache_summary.runtime_detail}
                   </div>
-                ) : (
-                  <div className="space-y-3">
-                    {recommendationsQuery.data.cache_summary.insights.map((insight) => (
-                      <article
-                        key={insight.code}
-                        className={`rounded-xl border px-4 py-4 ${cacheInsightTone(insight.level)}`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-3">
-                          <div>
-                            <div className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
-                              {insight.level} cache insight
-                            </div>
-                            <h4 className="mt-2 font-[var(--font-fira-code)] text-base font-semibold">
-                              {insight.title}
-                            </h4>
-                          </div>
-                          <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-700">
-                            {insight.code}
-                          </span>
-                        </div>
-                        <p className="mt-3 text-sm leading-6">{insight.summary}</p>
-                        {insight.evidence.length > 0 ? (
-                          <dl className="mt-4 grid gap-3 sm:grid-cols-2">
-                            {insight.evidence.map((item) => (
-                              <div key={`${insight.code}-${item.label}`} className="rounded-xl bg-white/70 px-4 py-3">
-                                <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
-                                  {item.label}
-                                </dt>
-                                <dd className="mt-2 text-sm font-medium text-slate-900">{item.value}</dd>
+
+                  {recommendationsQuery.data.cache_summary.insights.length === 0 ? (
+                    <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+                      No additional cache insights were derived from the current evidence window.
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {recommendationsQuery.data.cache_summary.insights.map((insight) => (
+                        <article
+                          key={insight.code}
+                          className={`rounded-xl border px-4 py-4 ${cacheInsightTone(insight.level)}`}
+                        >
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <div className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
+                                {insight.level} cache insight
                               </div>
-                            ))}
-                          </dl>
-                        ) : null}
-                      </article>
-                    ))}
-                  </div>
-                )}
+                              <h4 className="mt-2 font-[var(--font-fira-code)] text-base font-semibold">
+                                {insight.title}
+                              </h4>
+                            </div>
+                            <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-700">
+                              {insight.code}
+                            </span>
+                          </div>
+                          <p className="mt-3 text-sm leading-6">{insight.summary}</p>
+                          {insight.evidence.length > 0 ? (
+                            <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                              {insight.evidence.map((item) => (
+                                <div key={`${insight.code}-${item.label}`} className="rounded-xl bg-white/70 px-4 py-3">
+                                  <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                    {item.label}
+                                  </dt>
+                                  <dd className="mt-2 text-sm font-medium text-slate-900">{item.value}</dd>
+                                </div>
+                              ))}
+                            </dl>
+                          ) : null}
+                        </article>
+                      ))}
+                    </div>
+                  )}
+                </section>
               </section>
             </div>
           </div>
@@ -366,7 +457,10 @@ export default function ObservabilityPage() {
           />
         )}
 
-        <LedgerRequestDetail entry={selectedEntry} />
+        <LedgerRequestDetail
+          entry={selectedEntry}
+          calibrationSummary={recommendationsQuery.data?.calibration_summary ?? null}
+        />
       </div>
 
       <section className="space-y-4">

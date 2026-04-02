@@ -251,5 +251,6 @@ class RecommendationBundle(BaseModel):
     tenant_id: str = Field(min_length=1)
     generated_at: datetime
     window_requests_evaluated: int = Field(ge=0, le=200)
+    calibration_summary: CalibrationEvidenceSummary
     recommendations: list[RecommendationCard] = Field(default_factory=list, max_length=3)
     cache_summary: CacheControlSummary
