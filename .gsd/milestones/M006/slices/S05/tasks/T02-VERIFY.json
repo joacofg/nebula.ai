@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M006/S05/T02",
+  "timestamp": 1775103950018,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_response_headers.py -x",
+      "exitCode": 0,
+      "durationMs": 1025,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "exitCode": 0,
+      "durationMs": 965,
+      "verdict": "pass"
+    },
+    {
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx",
+      "exitCode": 0,
+      "durationMs": 1278,
+      "verdict": "pass"
+    }
+  ]
+}
