@@ -655,10 +655,19 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
     assert store.calls == [("default", now)]
     assert response.summary.evaluated_rows == 1
     assert response.summary.changed_routes == 1
-    assert response.changed_requests[0].baseline_route_target == "premium"
-    assert response.changed_requests[0].simulated_route_target == "local"
-    assert response.changed_requests[0].simulated_route_reason == "hard_budget_downgrade"
-    assert "hard_budget=exceeded" in (response.changed_requests[0].simulated_policy_outcome or "")
+    changed = response.changed_requests[0]
+    assert changed.baseline_route_target == "premium"
+    assert changed.simulated_route_target == "local"
+    assert changed.simulated_route_reason == "hard_budget_downgrade"
+    assert changed.baseline_route_mode == "calibrated"
+    assert changed.baseline_calibrated_routing is True
+    assert changed.baseline_degraded_routing is False
+    assert changed.baseline_route_score == 1.0
+    assert changed.simulated_route_mode == "calibrated"
+    assert changed.simulated_calibrated_routing is True
+    assert changed.simulated_degraded_routing is False
+    assert changed.simulated_route_score == 1.0
+    assert "hard_budget=exceeded" in (changed.simulated_policy_outcome or "")
 
 
 @pytest.mark.asyncio
@@ -906,8 +915,73 @@ async def test_policy_simulation_replays_recent_ledger_rows_and_reports_changed_
     assert [item.request_id for item in response.changed_requests] == ["req-2", "req-1"]
     assert all(item.baseline_route_target == "local" for item in response.changed_requests)
     assert all(item.simulated_route_target == "premium" for item in response.changed_requests)
+    assert all(item.baseline_route_mode == "calibrated" for item in response.changed_requests)
+    assert all(item.baseline_calibrated_routing is True for item in response.changed_requests)
+    assert all(item.baseline_degraded_routing is False for item in response.changed_requests)
+    assert all(item.baseline_route_score is not None for item in response.changed_requests)
+    assert all(item.simulated_route_mode is None for item in response.changed_requests)
+    assert all(item.simulated_calibrated_routing is None for item in response.changed_requests)
+    assert all(item.simulated_degraded_routing is None for item in response.changed_requests)
+    assert all(item.simulated_route_score is None for item in response.changed_requests)
     assert store.record_usage_calls == []
     assert store.policy_updates == []
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_preserves_gated_null_mode_for_changed_request_samples() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id="req-gated-parity",
+            timestamp=now,
+            final_route_target="premium",
+            requested_model="nebula-auto",
+            estimated_cost=0.002,
+            prompt_tokens=800,
+            completion_tokens=256,
+            route_signals={
+                "route_mode": "calibrated",
+                "calibrated_routing": True,
+                "degraded_routing": False,
+                "token_count": 900,
+                "complexity_tier": "medium",
+                "keyword_match": True,
+                "score_components": {"total_score": 1.0},
+            },
+        )
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(calibrated_routing_enabled=False),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert response.summary.changed_routes == 1
+    changed = response.changed_requests[0]
+    assert changed.baseline_route_target == "premium"
+    assert changed.simulated_route_target == "local"
+    assert changed.simulated_route_reason == "calibrated_routing_disabled"
+    assert changed.simulated_policy_outcome == "calibrated_routing=disabled"
+    assert changed.baseline_route_mode == "calibrated"
+    assert changed.baseline_calibrated_routing is True
+    assert changed.baseline_degraded_routing is False
+    assert changed.baseline_route_score == 1.0
+    assert changed.simulated_route_mode is None
+    assert changed.simulated_calibrated_routing is None
+    assert changed.simulated_degraded_routing is None
+    assert changed.simulated_route_score is None
 
 
 @pytest.mark.asyncio

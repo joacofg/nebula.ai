@@ -199,6 +199,14 @@ class PolicySimulationChangedRequest(BaseModel):
     simulated_policy_outcome: str | None = None
     baseline_route_reason: str | None = None
     simulated_route_reason: str | None = None
+    baseline_route_mode: str | None = None
+    simulated_route_mode: str | None = None
+    baseline_calibrated_routing: bool | None = None
+    simulated_calibrated_routing: bool | None = None
+    baseline_degraded_routing: bool | None = None
+    simulated_degraded_routing: bool | None = None
+    baseline_route_score: float | None = None
+    simulated_route_score: float | None = None
     baseline_estimated_cost: float = 0.0
     simulated_estimated_cost: float = 0.0
 

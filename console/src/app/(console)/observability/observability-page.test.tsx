@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -144,9 +144,12 @@ describe("ObservabilityPage", () => {
     expect(screen.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
     expect(screen.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
     expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
-    expect(screen.getByText("Eligible calibrated rows")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("Sufficiency threshold")).toBeInTheDocument();
+    const replayReadinessCard = screen.getByRole("heading", { name: "Tenant-scoped replay readiness context" }).closest("article");
+    expect(replayReadinessCard).not.toBeNull();
+    const replayReadiness = within(replayReadinessCard!);
+    expect(replayReadiness.getByText("Eligible calibrated rows")).toBeInTheDocument();
+    expect(replayReadiness.getByText("12")).toBeInTheDocument();
+    expect(replayReadiness.getByText("Sufficiency threshold")).toBeInTheDocument();
     expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
     expect(screen.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
@@ -290,7 +293,10 @@ describe("ObservabilityPage", () => {
     renderPage();
 
     expect(await screen.findAllByText("Calibrated routing remained disabled for recent tenant traffic.")).toHaveLength(2);
-    expect(screen.getByText("Rollout-disabled rows")).toBeInTheDocument();
-    expect(screen.getByText("4")).toBeInTheDocument();
+    const replayReadinessCard = screen.getByRole("heading", { name: "Tenant-scoped replay readiness context" }).closest("article");
+    expect(replayReadinessCard).not.toBeNull();
+    const replayReadiness = within(replayReadinessCard!);
+    expect(replayReadiness.getByText("Rollout-disabled rows")).toBeInTheDocument();
+    expect(replayReadiness.getByText("4")).toBeInTheDocument();
   });
 });

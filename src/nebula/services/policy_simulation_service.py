@@ -14,7 +14,7 @@ from nebula.models.openai import ChatCompletionRequest
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyEvaluation, PolicyService
-from nebula.services.router_service import ReplayRouteContext, RouterService
+from nebula.services.router_service import ReplayRouteContext, RouteDecision, RouterService
 
 
 @dataclass(slots=True, frozen=True)
@@ -101,6 +101,8 @@ class PolicySimulationService:
                 newly_denied += 1
 
             if self._record_changed(replay_input.record, evaluation, simulated_target):
+                baseline_parity = self._route_parity_from_record(replay_input.record)
+                simulated_parity = self._route_parity_from_decision(evaluation.route_decision)
                 changed.append(
                     PolicySimulationChangedRequest(
                         request_id=replay_input.record.request_id,
@@ -116,6 +118,14 @@ class PolicySimulationService:
                         simulated_policy_outcome=evaluation.policy_outcome,
                         baseline_route_reason=replay_input.record.route_reason,
                         simulated_route_reason=evaluation.route_decision.reason,
+                        baseline_route_mode=baseline_parity["route_mode"],
+                        simulated_route_mode=simulated_parity["route_mode"],
+                        baseline_calibrated_routing=baseline_parity["calibrated_routing"],
+                        simulated_calibrated_routing=simulated_parity["calibrated_routing"],
+                        baseline_degraded_routing=baseline_parity["degraded_routing"],
+                        simulated_degraded_routing=simulated_parity["degraded_routing"],
+                        baseline_route_score=baseline_parity["route_score"],
+                        simulated_route_score=simulated_parity["route_score"],
                         baseline_estimated_cost=baseline_cost,
                         simulated_estimated_cost=simulated_cost,
                     )
@@ -223,3 +233,73 @@ class PolicySimulationService:
         if round(baseline_cost, 8) != round(simulated_cost, 8):
             return True
         return False
+
+    def _route_parity_from_record(self, record: UsageLedgerRecord) -> dict[str, str | bool | float | None]:
+        route_signals = record.route_signals or {}
+        inferred_route_mode = self._infer_route_mode_from_record(record)
+        return {
+            "route_mode": inferred_route_mode,
+            "calibrated_routing": self._as_bool(route_signals.get("calibrated_routing"), default=(True if inferred_route_mode == "calibrated" else False if inferred_route_mode == "degraded" else None)),
+            "degraded_routing": self._as_bool(route_signals.get("degraded_routing"), default=(True if inferred_route_mode == "degraded" else False if inferred_route_mode == "calibrated" else None)),
+            "route_score": self._baseline_route_score(record, inferred_route_mode),
+        }
+
+    def _route_parity_from_decision(self, decision: RouteDecision) -> dict[str, str | bool | float | None]:
+        route_signals = decision.signals or {}
+        route_mode = self._as_route_mode(route_signals.get("route_mode"))
+        return {
+            "route_mode": route_mode,
+            "calibrated_routing": self._as_bool(route_signals.get("calibrated_routing")),
+            "degraded_routing": self._as_bool(route_signals.get("degraded_routing")),
+            "route_score": self._decision_route_score(decision),
+        }
+
+    def _baseline_route_score(self, record: UsageLedgerRecord, route_mode: str | None) -> float | None:
+        route_signals = record.route_signals or {}
+        if route_mode is None:
+            return None
+        score_components = route_signals.get("score_components")
+        if isinstance(score_components, dict):
+            total_score = score_components.get("total_score")
+            if isinstance(total_score, int | float):
+                return float(total_score)
+        token_count = route_signals.get("token_count")
+        complexity_tier = route_signals.get("complexity_tier")
+        keyword_match = route_signals.get("keyword_match")
+        model_constraint = route_signals.get("model_constraint")
+        if isinstance(token_count, int) and isinstance(keyword_match, bool):
+            token_score = min(token_count / 500, 1.0)
+            keyword_bonus = 0.2 if keyword_match else 0.0
+            policy_bonus = 0.1 if model_constraint is True else 0.0
+            return round(min(max(token_score + keyword_bonus + policy_bonus, 0.0), 1.0), 4)
+        return None
+
+    def _infer_route_mode_from_record(self, record: UsageLedgerRecord) -> str | None:
+        route_signals = record.route_signals or {}
+        explicit_route_mode = self._as_route_mode(route_signals.get("route_mode"))
+        if explicit_route_mode is not None:
+            return explicit_route_mode
+        if record.route_reason == "calibrated_routing_disabled":
+            return None
+        token_count = route_signals.get("token_count")
+        complexity_tier = route_signals.get("complexity_tier")
+        keyword_match = route_signals.get("keyword_match")
+        if isinstance(token_count, int) and isinstance(keyword_match, bool):
+            if isinstance(complexity_tier, str):
+                return "calibrated"
+            return "degraded"
+        return None
+
+    def _decision_route_score(self, decision: RouteDecision) -> float | None:
+        route_mode = self._as_route_mode((decision.signals or {}).get("route_mode"))
+        if route_mode is None:
+            return None
+        return float(decision.score)
+
+    def _as_route_mode(self, value: object) -> str | None:
+        return value if isinstance(value, str) else None
+
+    def _as_bool(self, value: object, default: bool | None = None) -> bool | None:
+        if isinstance(value, bool):
+            return value
+        return default

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T03:36:39.543Z",
+  "exported_at": "2026-04-02T03:46:43.672Z",
   "milestones": [
     {
       "id": "M001",
@@ -712,16 +712,16 @@
       "milestone_id": "M006",
       "id": "S02",
       "title": "Ledger-backed calibration evidence",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [
         "S01"
       ],
       "demo": "After this: the router can derive tenant-scoped calibration summaries from existing ledger metadata and report when evidence is sufficient, stale, or thin.",
       "created_at": "2026-04-02T02:40:01.730Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-02T03:39:43.376Z",
+      "full_summary_md": "---\nid: S02\nparent: M006\nmilestone: M006\nprovides:\n  - A shared CalibrationEvidenceSummary contract for tenant-scoped sufficient/thin/stale/gated/degraded evidence derived from existing usage-ledger metadata.\n  - Deterministic governance-store aggregation rules that exclude override/policy-forced rows from sufficiency while preserving gated and degraded counts/reasons.\n  - Policy simulation responses that reuse the same calibration evidence vocabulary as runtime/admin data.\n  - Existing Observability and ledger request-detail surfaces that explain calibration posture without replacing the persisted request-proof story.\nrequires:\n  - slice: S01\n    provides: Shared calibrated routing score/mode vocabulary, additive score metadata, and the tenant-scoped calibrated_routing_enabled rollout valve that this slice’s evidence summary builds on.\naffects:\n  - S03\n  - S04\n  - S05\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/governance_store.py\n  - src/nebula/services/policy_simulation_service.py\n  - src/nebula/services/recommendation_service.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - tests/test_service_flows.py\n  - tests/test_governance_api.py\n  - .gsd/KNOWLEDGE.md\n  - .gsd/PROJECT.md\nkey_decisions:\n  - Derived tenant-scoped calibration evidence strictly from existing usage-ledger metadata instead of widening persistence or adding replay-only summary tables.\n  - Excluded explicit overrides and policy-forced routing from calibration sufficiency math while still reporting calibrated_routing_disabled rows as operator-controlled gating.\n  - Based calibration staleness on the newest eligible evidence row so fresh degraded rows do not incorrectly flip the tenant summary to stale.\n  - Reused GovernanceStore.summarize_calibration_evidence() directly in policy simulation so runtime/admin and replay share one calibration vocabulary.\n  - Extended RecommendationBundle with calibration_summary so Observability could reuse the same bounded contract as replay without creating a new admin surface.\n  - Hardened Observability tests by scoping duplicate-label assertions to the intended calibration card rather than assuming page-wide uniqueness.\npatterns_established:\n  - Use one typed tenant-scoped summary contract for new operator/replay evidence instead of inventing separate simulation- or UI-only classifications.\n  - Keep calibration evidence bounded to existing usage-ledger metadata and explicit reason/count fields; do not widen persistence or drift into analytics-style aggregates.\n  - Treat explicit overrides and policy-forced routing as excluded from sufficiency while showing rollout-disabled traffic separately as operator-controlled gating.\n  - When a bounded summary appears in multiple UI panels, keep the product copy shared but scope focused tests to the intended container with within(...).\nobservability_surfaces:\n  - Tenant-scoped CalibrationEvidenceSummary derived from existing usage-ledger metadata in governance/admin services.\n  - Policy simulation responses now include the shared calibration_summary for replay-window inspection.\n  - Ledger request detail renders compact calibration-evidence context beside the selected persisted ledger row.\n  - Observability renders tenant-scoped replay-readiness context beside bounded recommendations and cache/runtime context.\n  - Focused backend and console tests lock sufficient/thin/stale/rollout-disabled messaging and duplicate-label assertion discipline.\ndrill_down_paths:\n  - .gsd/milestones/M006/slices/S02/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M006/slices/S02/tasks/T02-SUMMARY.md\n  - .gsd/milestones/M006/slices/S02/tasks/T03-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:39:43.378Z\nblocker_discovered: false\n---\n\n# S02: Ledger-backed calibration evidence\n\n**Delivered one bounded tenant-scoped calibration evidence contract derived from existing ledger metadata and reused it across replay and operator inspection surfaces.**\n\n## What Happened\n\nS02 completed the missing tenant-scoped evidence layer for M006’s calibrated routing story. The backend now derives a bounded CalibrationEvidenceSummary directly from existing usage-ledger metadata for a tenant and classifies evidence as sufficient, thin, stale, rollout-disabled/gated, and degraded without adding new persistence or analytics-style aggregates. That shared contract was then reused in the policy simulation path so replay uses the same classification vocabulary and deterministic tenant-window semantics as the runtime/admin layer. Finally, the console surfaces adopted the same summary in two bounded places: request detail shows compact calibration context next to the selected ledger row, and Observability renders tenant-scoped replay-readiness context beside recommendations and cache/runtime context while explicitly preserving the persisted request-evidence story as primary. Slice close-out also hardened focused Observability tests after the shared labels appeared intentionally in more than one bounded panel.\n\n## Verification\n\nPassed all slice-plan verification commands in the assembled worktree: `./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x`, and `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/app/'(console)'/observability/observability-page.test.tsx`. The console verification initially failed only because the close-out test still assumed labels like `Eligible calibrated rows` and `Rollout-disabled rows` were unique across the whole page after the same bounded summary was rendered in more than one panel; scoping those assertions to the intended card fixed the false negative without changing shipped behavior.\n\n## Requirements Advanced\n\n- R039 — S02 adds the tenant-scoped ledger-backed calibration summary, shared replay vocabulary, and bounded operator rendering that M006 needs before final parity proof and integrated close-out can validate outcome-aware routing.\n\n## Requirements Validated\n\nNone.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nT03 had to extend RecommendationBundle and RecommendationService with calibration_summary so Observability could reuse the shared bounded calibration contract without adding a new admin surface. During slice close-out, the focused Observability Vitest assertions also needed scoping with within(...) because the same calibration labels now appear intentionally in both the tenant summary card and the request-detail panel. No shipped product behavior changed during close-out beyond that test hardening.\n\n## Known Limitations\n\nR039 remains active. The slice establishes the bounded ledger-backed calibration evidence vocabulary and reuses it across replay and operator surfaces, but it does not yet prove full runtime/simulation parity across all scenarios or provide the final integrated milestone walkthrough. `tests/test_governance_api.py` still carries a pre-existing duplicate test definition warning unrelated to this slice.\n\n## Follow-ups\n\nS03 should prove runtime and replay parity against the same tenant traffic classes now that both paths share CalibrationEvidenceSummary vocabulary. S04 should keep operator rendering bounded by reusing these existing summary fields instead of introducing route-inspection or analytics-specific APIs. S05 will need one integrated proof path showing public/request evidence, calibration summary state, replay parity, and degraded/gated explanations together.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py` — Added bounded calibration evidence summary models and shared governance typing for tenant-scoped ledger-backed evidence.\n- `src/nebula/services/governance_store.py` — Implemented tenant-scoped calibration summary derivation from usage-ledger metadata with sufficient/thin/stale/gated/degraded classification.\n- `src/nebula/services/policy_simulation_service.py` — Reused the shared calibration evidence summary in policy simulation responses for replay-window parity.\n- `src/nebula/services/recommendation_service.py` — Extended recommendation responses to carry calibration_summary so Observability could reuse the same bounded evidence contract.\n- `console/src/lib/admin-api.ts` — Mirrored the shared calibration evidence contract in console admin API types.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Rendered request-adjacent calibration evidence messaging while keeping the persisted ledger row as the primary proof surface.\n- `console/src/components/ledger/ledger-request-detail.test.tsx` — Added focused request-detail coverage for sufficient, thin, stale, rollout-disabled, and absent-summary calibration messaging.\n- `console/src/app/(console)/observability/page.tsx` — Rendered tenant-scoped calibration evidence beside recommendations and cache/runtime context without turning Observability into an analytics destination.\n- `console/src/app/(console)/observability/observability-page.test.tsx` — Added focused Observability coverage for calibration-state messaging and hardened duplicate-label assertions by scoping to the intended card.\n- `tests/test_service_flows.py` — Added focused backend tests for calibration summary classification and simulation reuse of the shared contract.\n- `tests/test_governance_api.py` — Added focused admin API coverage proving simulation surfaces the shared calibrated evidence semantics.\n- `.gsd/KNOWLEDGE.md` — Recorded an S02 testing lesson about scoping duplicate-label Observability assertions.\n- `.gsd/PROJECT.md` — Refreshed current project state to reflect M006/S02 completion.\n",
+      "full_uat_md": "# S02: Ledger-backed calibration evidence — UAT\n\n**Milestone:** M006\n**Written:** 2026-04-02T03:39:43.378Z\n\n# S02 UAT — Ledger-backed calibration evidence\n\n## Preconditions\n- Backend test environment is available with `./.venv/bin/pytest` runnable from the repo root.\n- Console test environment is available with `npm --prefix console run test` runnable from the repo root.\n- The worktree includes the M006/S01 calibrated routing contract and tenant `calibrated_routing_enabled` policy field.\n\n## Test Case 1 — Backend derives sufficient tenant calibration evidence from existing ledger metadata\n1. Run `./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or simulation\" -x`.\n   - Expected: The selected tests pass.\n2. Confirm the passing cases cover a tenant summary where recent eligible calibrated rows meet the sufficiency threshold.\n   - Expected: The summary state is `sufficient`, with eligible row counts, latest eligible timestamp, and reason text derived from usage-ledger metadata only.\n3. Confirm the same passing set includes degraded evidence rows.\n   - Expected: Degraded counts/reasons stay visible without widening persistence or inventing replay-only fields.\n\n## Test Case 2 — Override and policy-forced traffic do not poison calibration sufficiency\n1. Inspect the passing `tests/test_service_flows.py -k \"calibration_summary or simulation\" -x` cases covering excluded traffic.\n   - Expected: Explicit overrides and policy-forced routing are excluded from sufficiency counts.\n2. Verify gated traffic is still visible.\n   - Expected: `calibrated_routing_disabled` rows are reported distinctly as gated/rollout-disabled evidence rather than disappearing into missing-data classification.\n\n## Test Case 3 — Stale versus thin versus rollout-disabled semantics stay distinct in replay\n1. Run `./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x`.\n   - Expected: The selected simulation API coverage passes.\n2. Confirm replay responses include the shared `calibration_summary` contract.\n   - Expected: Simulation reports the same `sufficient`, `thin`, `stale`, and rollout-disabled semantics as the governance summary contract instead of a replay-only vocabulary.\n3. Confirm replay ordering remains deterministic.\n   - Expected: The replay path still uses oldest-first deterministic sampling while adding calibration evidence state to the response.\n\n## Test Case 4 — Request detail keeps persisted request proof primary while adding calibration context\n1. Run `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`.\n   - Expected: The focused request-detail suite passes.\n2. Confirm the request-detail cases render calibration messaging for `sufficient`, `thin`, `stale`, and rollout-disabled states.\n   - Expected: The selected ledger row remains the primary proof surface and calibration text appears as compact supporting context.\n3. Confirm absent-summary coverage passes.\n   - Expected: Request detail handles missing calibration summaries gracefully without inventing empty placeholders or analytics framing.\n\n## Test Case 5 — Observability shows bounded tenant replay-readiness context, not a new analytics destination\n1. Run `npm --prefix console run test -- --run src/app/'(console)'/observability/observability-page.test.tsx`.\n   - Expected: The focused Observability suite passes.\n2. Confirm the integrated page copy still frames Observability as persisted request evidence first.\n   - Expected: The page references public `X-Request-ID` / `X-Nebula-*` correlation and describes calibration evidence as supporting tenant-scoped context.\n3. Confirm sufficient, thin, stale, and rollout-disabled calibration states render in the tenant summary card.\n   - Expected: The card shows state reason, eligible rows, sufficiency threshold, latest eligible row, and rollout-disabled rows where applicable.\n4. Confirm recommendation and cache sections remain bounded.\n   - Expected: The page does not describe itself as analytics or black-box optimization, and calibration evidence appears beside existing recommendation/cache/runtime context rather than replacing the ledger proof flow.\n\n## Edge Cases\n- Thin evidence: eligible rows exist but remain below the sufficiency threshold; the UI and replay surfaces should show `thin`, not `stale`.\n- Stale evidence: eligible evidence exists but the newest eligible row is outside the freshness window; the UI and replay surfaces should show `stale`.\n- Rollout-disabled evidence: recent rows exist but calibrated routing is disabled; the summary should surface rollout-disabled row counts/reasons distinctly from missing data.\n- Duplicate UI labels: the same calibration labels may appear in both Observability summary and request detail; focused UI tests should scope assertions to the intended panel rather than assuming page-wide uniqueness.\n",
       "goal": "Derive a bounded tenant-scoped calibration evidence summary from existing usage-ledger metadata, classify when calibration evidence is sufficient, stale, or thin without widening persistence, and expose that shared contract to replay and operator surfaces so later parity and inspection slices build on one vocabulary.",
       "success_criteria": "- Tenant-scoped calibration summaries are derived deterministically from existing usage-ledger metadata and explicitly classify evidence as sufficient, stale, or thin while excluding override traffic from sufficiency math and distinguishing rollout-disabled/gated traffic from accidental missing evidence.\n- Policy simulation reuses the same backend calibration evidence contract so replay windows report calibration sufficiency/staleness/thinness with bounded explanation rather than a separate UI-only heuristic.\n- Existing admin/operator surfaces can consume the shared summary contract through backend and console types without turning Observability or request detail into a broad analytics surface.",
       "proof_level": "This slice proves: integration\nReal runtime required: yes\nHuman/UAT required: no",
@@ -745,11 +745,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Keep policy simulation replay aligned with the calibrated routing semantics used at runtime.",
-      "success_criteria": "- Policy simulation replay uses the same calibration semantics as live runtime.\n- Replay preserves calibrated vs degraded behavior consistently.\n- Changed-request and summary output stay aligned with calibrated routing evidence.\n- Focused tests prove parity between runtime and replay expectations.",
-      "proof_level": "Backend service and governance API parity verification.",
-      "integration_closure": "Replay and runtime share the same calibration seam, degraded-mode rules, and route-decision vocabulary.",
-      "observability_impact": "Simulation responses and changed-request samples reflect calibrated routing semantics consistently with live evidence.",
+      "goal": "Extend policy simulation replay so the existing admin simulation contract and policy preview surface report the same calibrated-versus-degraded routing semantics that live runtime already emits for the same tenant traffic class, including explicit gated/null-mode behavior when calibrated routing is disabled.",
+      "success_criteria": "- Policy simulation changed-request entries expose baseline-versus-simulated calibrated parity fields using the existing route vocabulary (`route_mode`, calibrated/degraded flags, route score, and explicit null mode when routing is gated).\n- Focused backend tests prove parity for calibrated, degraded replay, and calibrated-routing-disabled cases by comparing live runtime evidence to replay output for the same tenant traffic class.\n- The existing policy preview UI renders compact parity cues from the shared simulation contract without creating a new analytics or inspection surface.",
+      "proof_level": "integration",
+      "integration_closure": "Complete when the existing `/v1/admin/tenants/{tenant_id}/policy/simulate` response, backend tests, and policy preview UI all use the same calibrated/degraded/gated vocabulary already established in runtime headers and ledger rows, with no new persistence or admin endpoint added.",
+      "observability_impact": "Keeps replay diagnostics inspectable through the existing simulation payload by exposing route-mode, calibrated/degraded flags, and route-score parity alongside route reason and policy outcome, so a future agent can compare runtime headers/ledger evidence to replay output without inferring semantics from route target alone.",
       "sequence": 0,
       "replan_triggered_at": null
     },
@@ -3254,6 +3254,135 @@
       "observability_impact": "",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M006",
+      "slice_id": "S03",
+      "id": "T01",
+      "title": "Extended simulation changed-request samples with route parity fields and null-safe gated semantics aligned to runtime routing signals.",
+      "status": "complete",
+      "one_liner": "Extended simulation changed-request samples with route parity fields and null-safe gated semantics aligned to runtime routing signals.",
+      "narrative": "Extended PolicySimulationChangedRequest with baseline and simulated route mode, calibrated/degraded booleans, and route score fields. Wired PolicySimulationService to derive baseline parity from persisted ledger route_signals with bounded inference for older rows that only persisted replay hints, and to derive simulated parity from PolicyEvaluation.route_decision. Preserved explicit null-mode behavior for calibrated_routing_disabled and policy-forced explicit override paths instead of synthesizing fake route signals. Mirrored the contract in console/src/lib/admin-api.ts and added focused service-level assertions proving calibrated parity, policy-forced null-mode parity, and gated null-mode parity in replay samples.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` and the focused simulation suite passed with the new changed-request parity assertions.",
+      "duration": "",
+      "completed_at": "2026-04-02T03:46:43.647Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_service_flows.py",
+        ".gsd/milestones/M006/slices/S03/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Infer baseline parity from persisted replay hints when explicit route_mode booleans are absent, but keep gated and policy-forced replay paths null-mode instead of fabricating signals."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S03\nmilestone: M006\nkey_files:\n  - src/nebula/models/governance.py\n  - src/nebula/services/policy_simulation_service.py\n  - console/src/lib/admin-api.ts\n  - tests/test_service_flows.py\n  - .gsd/milestones/M006/slices/S03/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Infer baseline parity from persisted replay hints when explicit route_mode booleans are absent, but keep gated and policy-forced replay paths null-mode instead of fabricating signals.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-02T03:46:43.647Z\nblocker_discovered: false\n---\n\n# T01: Extended simulation changed-request samples with route parity fields and null-safe gated semantics aligned to runtime routing signals.\n\n**Extended simulation changed-request samples with route parity fields and null-safe gated semantics aligned to runtime routing signals.**\n\n## What Happened\n\nExtended PolicySimulationChangedRequest with baseline and simulated route mode, calibrated/degraded booleans, and route score fields. Wired PolicySimulationService to derive baseline parity from persisted ledger route_signals with bounded inference for older rows that only persisted replay hints, and to derive simulated parity from PolicyEvaluation.route_decision. Preserved explicit null-mode behavior for calibrated_routing_disabled and policy-forced explicit override paths instead of synthesizing fake route signals. Mirrored the contract in console/src/lib/admin-api.ts and added focused service-level assertions proving calibrated parity, policy-forced null-mode parity, and gated null-mode parity in replay samples.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` and the focused simulation suite passed with the new changed-request parity assertions.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` | 0 | ✅ pass | 600ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `src/nebula/models/governance.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `console/src/lib/admin-api.ts`\n- `tests/test_service_flows.py`\n- `.gsd/milestones/M006/slices/S03/tasks/T01-SUMMARY.md`\n",
+      "description": "Add the smallest backend contract needed for S03: extend `PolicySimulationChangedRequest` and the simulation service so replay changed-request samples carry the same calibrated/degraded/gated semantics that runtime already persists in `route_signals` and headers. Keep the vocabulary aligned to S01/S02 and preserve explicit null mode when calibrated routing is gated.\n\nSteps:\n1. Update the typed governance models in `src/nebula/models/governance.py` to add baseline/simulated parity fields for route mode, calibrated/degraded booleans, and route score on `PolicySimulationChangedRequest`, keeping gated rows explicit as null mode rather than synthesizing fake route signals.\n2. Wire `src/nebula/services/policy_simulation_service.py` to derive baseline parity values from persisted ledger `route_signals` and simulated parity values from `PolicyEvaluation.route_decision`, including unchanged route targets that still count as changed because policy outcome or projected cost changed.\n3. Mirror the contract in `console/src/lib/admin-api.ts` so the console uses the same field names and nullability as the backend response.\n4. Add or update focused service-level assertions in `tests/test_service_flows.py` for the changed-request payload shape so later tasks can rely on the parity fields instead of re-deriving them in the UI.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_service_flows.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "inputs": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_service_flows.py",
+        "tests/test_router_signals.py"
+      ],
+      "expected_output": [
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "console/src/lib/admin-api.ts",
+        "tests/test_service_flows.py"
+      ],
+      "observability_impact": "Changes the simulation payload that operators and future agents inspect during replay debugging; the task should keep parity fields bounded, explicit, and null-safe for gated paths.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M006",
+      "slice_id": "S03",
+      "id": "T02",
+      "title": "Prove runtime and replay parity across calibrated, degraded, and gated paths",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Lock the S03 requirement at the backend boundary with focused parity tests. Use real runtime requests plus replay over the same tenant traffic class so parity is proven from shipped behavior, not assumed from shared architecture.\n\nSteps:\n1. Extend `tests/test_governance_api.py` to assert that simulation changed-request entries expose the same route reason, route mode, calibrated/degraded flags, and route score semantics as the live request that produced the ledger row.\n2. Cover three concrete scenarios: a calibrated live request that stays calibrated in replay, a degraded replay case where missing or partial persisted signals produce `route_mode=\"degraded\"`, and a calibrated-routing-disabled gate where runtime and replay both expose `calibrated_routing_disabled` with null route mode.\n3. Reuse the existing oldest-first replay ordering and current admin endpoint; do not add a new endpoint or widen persistence.\n4. Keep assertions aligned to the current contract by pairing runtime headers and ledger rows with simulation response fields rather than asserting on copy alone.",
+      "estimate": "1h",
+      "files": [
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        "src/nebula/services/policy_simulation_service.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x && ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x",
+      "inputs": [
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "src/nebula/services/policy_service.py",
+        "src/nebula/services/router_service.py"
+      ],
+      "expected_output": [
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py"
+      ],
+      "observability_impact": "Strengthens the backend proof that replay diagnostics remain trustworthy by verifying parity fields against live headers and persisted ledger evidence, including failure-safe gated behavior.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M006",
+      "slice_id": "S03",
+      "id": "T03",
+      "title": "Render compact routing parity cues in the existing policy preview",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Expose the new parity fields in the existing policy preview UI without widening it into a routing dashboard. Executors should keep the rendering compact and operator-readable so S03 stays bounded and S04 can build richer inspection later.\n\nSteps:\n1. Update `console/src/components/policy/policy-form.tsx` to render a concise parity line in each changed-request card using the new baseline/simulated route mode, calibrated/degraded markers, and route score fields when present.\n2. Preserve explicit gated semantics: when route mode is null because calibrated routing is disabled, render the absence as an intentional gated state tied to the existing `calibrated_routing_disabled` reason rather than as missing data.\n3. Keep the existing changed-request sample compact and reuse the established route vocabulary; do not add new sections, charts, or analytics framing.\n4. Extend `console/src/components/policy/policy-page.test.tsx` to lock the parity rendering so future slices cannot regress the bounded preview contract.",
+      "estimate": "45m",
+      "files": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "expected_output": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-page.test.tsx"
+      ],
+      "observability_impact": "Improves operator-facing replay inspection in the existing preview panel by surfacing route-mode and degraded/gated state explicitly, while keeping the UI bounded and readable.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -4482,6 +4611,17 @@
       "verdict": "✅ pass",
       "duration_ms": 0,
       "created_at": "2026-04-02T03:36:39.519Z"
+    },
+    {
+      "id": 73,
+      "task_id": "T01",
+      "slice_id": "S03",
+      "milestone_id": "M006",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 600,
+      "created_at": "2026-04-02T03:46:43.647Z"
     }
   ]
 }

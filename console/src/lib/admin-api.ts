@@ -106,6 +106,14 @@ export type PolicySimulationChangedRequest = {
   simulated_policy_outcome: string | null;
   baseline_route_reason: string | null;
   simulated_route_reason: string | null;
+  baseline_route_mode: string | null;
+  simulated_route_mode: string | null;
+  baseline_calibrated_routing: boolean | null;
+  simulated_calibrated_routing: boolean | null;
+  baseline_degraded_routing: boolean | null;
+  simulated_degraded_routing: boolean | null;
+  baseline_route_score: number | null;
+  simulated_route_score: number | null;
   baseline_estimated_cost: number;
   simulated_estimated_cost: number;
 };
