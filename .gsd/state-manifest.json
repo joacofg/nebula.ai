@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-03T02:44:23.520Z",
+  "exported_at": "2026-04-03T02:47:36.339Z",
   "milestones": [
     {
       "id": "M001",
@@ -4158,19 +4158,26 @@
       "milestone_id": "M007",
       "slice_id": "S04",
       "id": "T02",
-      "title": "Align page framing and mutation orchestration with the new decision flow",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.",
+      "status": "complete",
+      "one_liner": "Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.",
+      "narrative": "Reviewed console/src/app/(console)/policy/page.tsx against the new form-level decision flow and found the existing orchestration already preserved the required split: preview and save are separate mutations, the simulate payload remains bounded at limit 50 with changed_sample_limit 5, tenant changes clear stale preview state, and save success clears the last simulation before refetching policy data. Kept that runtime wiring intact and tightened only the page intro copy so the route entrypoint explicitly reads as current baseline versus candidate draft comparison before save. Expanded console/src/components/policy/policy-page.test.tsx to cover unchanged previews staying explicitly non-saving, preview errors remaining isolated from save, save success clearing stale preview evidence, and tenant switching dropping prior comparison evidence before the next tenant policy loads. The test fixture now includes two tenants so stale-preview carryover is exercised directly rather than assumed.",
+      "verification_result": "Ran the focused Vitest bundle twice with npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx. Both runs passed. The suite proved the bounded simulate payload, explicit non-saving preview semantics, and reset behavior after save and tenant change at the real page entrypoint.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-03T02:47:36.314Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/app/(console)/policy/page.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        ".gsd/milestones/M007/slices/S04/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Kept the existing preview/save mutation split and reset wiring because the page orchestration already matched the decision-flow contract; tightened the page entrypoint with copy and tests instead of adding new state.",
+        "Extended page-level coverage at the real route entrypoint to prove stale preview evidence clears on tenant switch and save success rather than widening the component contract."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S04\nmilestone: M007\nkey_files:\n  - console/src/app/(console)/policy/page.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/milestones/M007/slices/S04/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Kept the existing preview/save mutation split and reset wiring because the page orchestration already matched the decision-flow contract; tightened the page entrypoint with copy and tests instead of adding new state.\n  - Extended page-level coverage at the real route entrypoint to prove stale preview evidence clears on tenant switch and save success rather than widening the component contract.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-03T02:47:36.315Z\nblocker_discovered: false\n---\n\n# T02: Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.\n\n**Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.**\n\n## What Happened\n\nReviewed console/src/app/(console)/policy/page.tsx against the new form-level decision flow and found the existing orchestration already preserved the required split: preview and save are separate mutations, the simulate payload remains bounded at limit 50 with changed_sample_limit 5, tenant changes clear stale preview state, and save success clears the last simulation before refetching policy data. Kept that runtime wiring intact and tightened only the page intro copy so the route entrypoint explicitly reads as current baseline versus candidate draft comparison before save. Expanded console/src/components/policy/policy-page.test.tsx to cover unchanged previews staying explicitly non-saving, preview errors remaining isolated from save, save success clearing stale preview evidence, and tenant switching dropping prior comparison evidence before the next tenant policy loads. The test fixture now includes two tenants so stale-preview carryover is exercised directly rather than assumed.\n\n## Verification\n\nRan the focused Vitest bundle twice with npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx. Both runs passed. The suite proved the bounded simulate payload, explicit non-saving preview semantics, and reset behavior after save and tenant change at the real page entrypoint.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1420ms |\n| 2 | `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1480ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/app/(console)/policy/page.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `.gsd/milestones/M007/slices/S04/tasks/T02-SUMMARY.md`\n",
       "description": "---\nestimated_steps: 4\nestimated_files: 2\nskills_used:\n  - react-best-practices\n---\n\n# T02: Align page framing and mutation orchestration with the new decision flow\n\n**Slice:** S04 — Rework policy preview into a comparison-and-decision flow\n**Milestone:** M007\n\n## Description\n\nUpdate the policy page wrapper only where the new form-level decision flow exposes framing or orchestration gaps. Preserve the current preview-vs-save mutation split, tenant-level reset behavior, and bounded simulate request shape, while tightening page-level copy and tests so the whole surface reads as compare → decide → save instead of a blended editor or analytics page.\n\n## Failure Modes\n\n| Dependency | On error | On timeout | On malformed response |\n|------------|----------|-----------|----------------------|\n| `simulateTenantPolicy` / `updateTenantPolicy` mutations in `console/src/app/(console)/policy/page.tsx` | Keep preview and save errors isolated to their existing surfaces; do not let preview imply persistence | Preserve pending-state separation so preview latency does not block unrelated framing or fake a saved state | Fail through existing page/form error handling; do not widen contract assumptions beyond the current bounded response |\n\n## Load Profile\n\n- **Shared resources**: React Query cache entries for tenant list, policy, options, and simulation state within the policy page\n- **Per-operation cost**: One tenant-policy query, one options query, and bounded preview/save mutations already present\n- **10x breakpoint**: Repeated tenant switching or preview calls mainly risks stale UI messaging; keep resets explicit and local\n\n## Negative Tests\n\n- **Malformed inputs**: tenant switch with stale preview state does not leak old comparison evidence into the new tenant context\n- **Error paths**: preview mutation failure remains non-saving and save mutation success clears obsolete preview evidence\n- **Boundary conditions**: zero-result preview, unchanged preview, and null parity rows remain correctly framed at the page level\n\n## Steps\n\n1. Review `console/src/app/(console)/policy/page.tsx` against the new form-level decision review and adjust only the page intro, handoff props, or state-reset semantics needed to keep compare-before-save framing coherent.\n2. Preserve the existing bounded simulate payload (`limit: 50`, `changed_sample_limit: 5`), tenant-change reset, and save-success reset behavior unless a real mismatch with the decision flow appears.\n3. Expand `console/src/components/policy/policy-page.test.tsx` to prove the page-level framing, non-saving preview contract, reset semantics, and anti-drift boundary still hold with the new comparison-and-decision UI.\n4. Run the focused policy Vitest bundle and adjust until the form/page integration is stable.\n\n## Must-Haves\n\n- [ ] Preview and save remain separate mutations with explicit non-saving preview semantics.\n- [ ] Tenant change and save success clear obsolete preview evidence.\n- [ ] Page-level copy reinforces compare-before-save framing without adding dashboard or analytics language.\n- [ ] Focused integration tests cover the real page entrypoint and bounded simulate payload.\n\n## Verification\n\n- `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`\n- Page tests assert preview payload shape, explicit non-saving semantics, tenant-level framing, and reset behavior after save/tenant change.\n\n## Observability Impact\n\n- Signals added/changed: Focused page-level Vitest assertions for mutation separation, reset semantics, and bounded framing\n- How a future agent inspects this: `src/components/policy/policy-page.test.tsx`\n- Failure state exposed: Stale preview carryover, incorrect mutation wiring, or page-level scope drift appears as narrow integration-test failures\n\n## Inputs\n\n- `console/src/app/(console)/policy/page.tsx` — current tenant selection, simulation/save mutations, and reset behavior\n- `console/src/components/policy/policy-page.test.tsx` — existing page-level policy framing and orchestration assertions\n- `console/src/components/policy/policy-form.tsx` — task-one comparison-and-decision UI that the page composes\n\n## Expected Output\n\n- `console/src/app/(console)/policy/page.tsx` — page framing and orchestration aligned to compare-before-save flow\n- `console/src/components/policy/policy-page.test.tsx` — integration assertions for page-level decision-flow composition and reset semantics\n",
       "estimate": "45m",
       "files": [
@@ -5930,6 +5937,28 @@
       "verdict": "❌ fail",
       "duration_ms": 0,
       "created_at": "2026-04-03T02:44:23.497Z"
+    },
+    {
+      "id": 113,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M007",
+      "command": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1420,
+      "created_at": "2026-04-03T02:47:36.315Z"
+    },
+    {
+      "id": 114,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M007",
+      "command": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1480,
+      "created_at": "2026-04-03T02:47:36.315Z"
     }
   ]
 }

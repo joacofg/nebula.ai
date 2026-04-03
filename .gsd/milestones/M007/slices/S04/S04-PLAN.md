@@ -77,7 +77,7 @@ Rework the preview section inside `PolicyForm` so the operator sees one bounded 
   - Estimate: 75m
   - Files: console/src/components/policy/policy-form.tsx, console/src/components/policy/policy-form.test.tsx
   - Verify: npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx
-- [ ] **T02: Align page framing and mutation orchestration with the new decision flow** — ---
+- [x] **T02: Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.** — ---
 estimated_steps: 4
 estimated_files: 2
 skills_used:

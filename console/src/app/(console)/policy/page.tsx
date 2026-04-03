@@ -104,7 +104,7 @@ export default function PolicyPage() {
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Policy</div>
           <p className="mt-2 text-sm text-slate-600">
-            Load a tenant policy, compare a candidate draft against recent persisted traffic, and save explicitly only after the preview evidence supports the change.
+            Load a tenant policy, compare the current baseline against a candidate draft using recent persisted traffic, and save explicitly only after the preview evidence supports the change.
           </p>
         </div>
 
