@@ -323,6 +323,129 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M005 milestone close-out through the pointer-only integrated proof in `docs/v4-integrated-proof.md`, discoverability links in `README.md` and `docs/architecture.md`, and passing integrated verification: `./.venv/bin/pytest tests/test_service_flows.py -k "simulation or recommendation or cache or runtime_policy or budget" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "simulation or recommendation or guardrail or policy_options or policy_denied" -x`, `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`, plus file/link checks for `docs/v4-integrated-proof.md`. Evidence shows M005 improved operator decision quality/control without widening Nebula into new public APIs, SDK sprawl, hosted authority, or unrelated platform scope.
 - Notes: This is the main v4 anti-sprawl guardrail.
 
+### R045 — Nebula calibrates routing using recent tenant-scoped observed outcomes rather than static heuristics alone.
+- Class: core-capability
+- Status: validated
+- Description: Nebula calibrates routing using recent tenant-scoped observed outcomes rather than static heuristics alone.
+- Why it matters: Outcome-aware routing is the substantive product improvement behind M006; without it, route explainability improves but route quality does not materially evolve.
+- Source: user
+- Primary owning slice: M006/S02
+- Supporting slices: M006/S01, M006/S03
+- Validation: Validated by M006/S02-S03. Calibration is derived from recent tenant-scoped observed outcomes using existing usage-ledger metadata only, surfaced through a bounded CalibrationEvidenceSummary (sufficient/thin/stale/gated/degraded), and reused by policy simulation replay without raw prompt/response persistence expansion.
+- Notes: Calibration stays bounded, additive, and interpretable; no raw prompt or response persistence expansion was introduced.
+
+### R046 — Operators can inspect the calibration evidence affecting current routing behavior through existing evidence surfaces.
+- Class: failure-visibility
+- Status: validated
+- Description: Operators can inspect the calibration evidence affecting current routing behavior through existing evidence surfaces.
+- Why it matters: Outcome-aware routing only improves trust if operators can still explain what happened after the fact.
+- Source: user
+- Primary owning slice: M006/S04
+- Supporting slices: M006/S01, M006/S02
+- Validation: Validated by M006/S04. Existing ledger request-detail and Observability surfaces now expose whether routing was calibrated, degraded, rollout-disabled, or unscored and show the influencing evidence while keeping the selected persisted request authoritative; no new analytics surface was introduced.
+- Notes: M006 extends existing request-detail / Observability surfaces rather than creating a new analytics dashboard.
+
+### R047 — Calibrated routing fails safe to explicit heuristic behavior when evidence is missing, stale, or low-confidence.
+- Class: continuity
+- Status: validated
+- Description: Calibrated routing fails safe to explicit heuristic behavior when evidence is missing, stale, or low-confidence.
+- Why it matters: A calibration layer that fails ambiguously would weaken both routing safety and operator trust.
+- Source: user
+- Primary owning slice: M006/S01
+- Supporting slices: M006/S02, M006/S03, M006/S04
+- Validation: Validated by M006/S01-S04. When calibration evidence is missing, stale, thin, or disabled, Nebula falls back to explicit heuristic/degraded behavior with deterministic visible semantics across runtime headers, usage-ledger evidence, policy simulation replay, and operator surfaces.
+- Notes: Degraded-mode semantics are deterministic and visible in runtime, replay, and operator evidence.
+
+### R048 — Policy simulation replay uses the same calibration semantics as live runtime routing.
+- Class: integration
+- Status: validated
+- Description: Policy simulation replay uses the same calibration semantics as live runtime routing.
+- Why it matters: Preview loses credibility if replay and runtime tell different routing stories.
+- Source: user
+- Primary owning slice: M006/S03
+- Supporting slices: M006/S01, M006/S02, M006/S05
+- Validation: Validated by M006/S03-S05. Policy simulation replay now uses the same calibrated/degraded/rollout-disabled semantics, route-mode vocabulary, and parity fields as live runtime for the same tenant traffic class, proved through real runtime request plus correlated usage-ledger evidence and rechecked in final close-out backend verification.
+- Notes: Existing replay reconstructs requests from persisted metadata and route signals; M006 preserves and strengthens that parity.
+
+### R049 — M006 improves routing quality without becoming a black-box optimizer, analytics product, hosted-authority expansion, or unrelated platform program.
+- Class: constraint
+- Status: validated
+- Description: M006 improves routing quality without becoming a black-box optimizer, analytics product, hosted-authority expansion, or unrelated platform program.
+- Why it matters: Nebula’s wedge is interpretable operator control; losing scope discipline would blur that advantage quickly.
+- Source: user
+- Primary owning slice: M006/S05
+- Supporting slices: M006/S01, M006/S02, M006/S03, M006/S04
+- Validation: Validated by M006/S05 and milestone close-out. The assembled calibrated-routing story remains pointer-only, bounded, and operator-readable: no new public API family, no analytics dashboard or routing studio, no hosted-authority expansion, no black-box ML routing, and no raw payload persistence widening.
+- Notes: This is the milestone’s main anti-drift guardrail.
+
+## Active
+
+### R050 — Observability has a single primary role as request investigation.
+- Class: operability
+- Status: active
+- Description: Observability leads with one selected request investigation flow rather than competing equally with tenant summary, recommendation, cache, or dependency panels.
+- Why it matters: Operators need to know what the page is for within seconds; blended roles weaken trust and slow investigation.
+- Source: user
+- Primary owning slice: M007/S01
+- Supporting slices: M007/S03, M007/S05
+- Validation: mapped
+- Notes: This is a page-identity requirement, not a visual refresh requirement.
+
+### R051 — Request detail remains the authoritative persisted evidence record.
+- Class: failure-visibility
+- Status: active
+- Description: Request detail shows the persisted route, provider, fallback, calibration, and policy evidence as the authoritative record, with only restrained interpretation layered on top.
+- Why it matters: Nebula’s operator trust depends on durable evidence staying primary rather than being overshadowed by summaries or guidance.
+- Source: user
+- Primary owning slice: M007/S01
+- Supporting slices: M007/S03, M007/S05
+- Validation: mapped
+- Notes: Interpretation may help, but it must not displace the persisted record.
+
+### R052 — Policy preview supports a clear save / don’t-save decision workflow.
+- Class: operability
+- Status: active
+- Description: The policy page helps an operator compare baseline versus simulated outcomes and decide whether to save, instead of feeling like a mixed settings form plus analytics surface.
+- Why it matters: Replay is only valuable if operators can convert it into an explicit decision with low ambiguity.
+- Source: user
+- Primary owning slice: M007/S04
+- Supporting slices: M007/S02, M007/S05
+- Validation: mapped
+- Notes: Keep the page decision-oriented, not preview-heavy for its own sake.
+
+### R053 — Supporting context stays subordinate to the primary evidence on each page.
+- Class: quality-attribute
+- Status: active
+- Description: Recommendations, calibration posture, cache posture, and dependency health remain visibly secondary to the lead evidence for the current page.
+- Why it matters: Summary cards that compete with evidence create dashboard drift and make operator reasoning less trustworthy.
+- Source: inferred
+- Primary owning slice: M007/S03
+- Supporting slices: M007/S04, M007/S05
+- Validation: mapped
+- Notes: The exact supporting mix may differ by page, but hierarchy must remain obvious.
+
+### R054 — Operators can tell what action follows from each decision surface without reading surrounding prose first.
+- Class: launchability
+- Status: active
+- Description: Each major operator page makes the next operator action legible through page structure and evidence framing, not only explanatory copy.
+- Why it matters: A surface can be accurate yet still feel messy if the operator cannot tell what they are supposed to do from it.
+- Source: inferred
+- Primary owning slice: M007/S04
+- Supporting slices: M007/S03, M007/S05
+- Validation: mapped
+- Notes: This is about product legibility, not reducing information density at all costs.
+
+### R055 — Page identity is clarified without widening Nebula into a dashboard, routing studio, or parallel operator workflow.
+- Class: constraint
+- Status: active
+- Description: M007 improves operator decision clarity while staying within Nebula’s current operator surfaces and bounded control-plane posture.
+- Why it matters: The milestone should sharpen the product, not accidentally create a broader analytics or redesign program.
+- Source: user
+- Primary owning slice: M007/S05
+- Supporting slices: M007/S01, M007/S02, M007/S03, M007/S04
+- Validation: mapped
+- Notes: This is the milestone’s anti-sprawl guardrail.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -390,6 +513,28 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: none
 - Validation: unmapped
 - Notes: Prefer backend/operator evidence reuse first.
+
+### R056 — Nebula offers richer cross-page workflow tools such as saved investigations, handoff state, or multi-step operator playbooks.
+- Class: admin/support
+- Status: deferred
+- Description: Nebula may later add richer cross-page workflow tools around investigations or handoffs, but M007 does not need them.
+- Why it matters: They could improve operator collaboration later, but adding them now would blur page-identity work into workflow-platform expansion.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Defer until page roles are clear first.
+
+### R057 — Nebula adds broader tenant-level posture and trend views beyond the bounded supporting context already present.
+- Class: operability
+- Status: deferred
+- Description: Nebula may later add broader tenant posture and trend views, but M007 will not widen current surfaces into dashboard-style monitoring.
+- Why it matters: There may be later value in trend views, but they would compete directly with the current milestone’s request-first and decision-first clarity goals.
+- Source: inferred
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: unmapped
+- Notes: Revisit only if the product later needs a true posture surface.
 
 ## Out of Scope
 
@@ -492,6 +637,39 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: n/a
 - Notes: The internal embeddings capability already exists; new infra should be treated as a smell unless directly justified.
 
+### R058 — Broad visual redesign or brand-oriented console refresh.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M007 does not become a broad visual redesign, brand refresh, or polish-only UI pass.
+- Why it matters: This prevents the milestone from drifting away from operator decision clarity into cosmetic work.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Visual cleanup is acceptable only when it serves page identity and evidence hierarchy.
+
+### R059 — New analytics dashboard, routing studio, or alternate control-plane workflow.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M007 does not introduce a new dashboard concept, routing studio, or parallel operator workflow outside the current surfaces.
+- Why it matters: Dashboard drift would weaken the request-first and decision-first product stance Nebula is trying to sharpen.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Reuse and clarify existing surfaces instead.
+
+### R060 — Backend routing research and expansion that does not directly improve operator decision clarity.
+- Class: anti-feature
+- Status: out-of-scope
+- Description: M007 does not become a new routing R&D milestone, model-selection program, or backend complexity expansion unrelated to page identity and operator workflow clarity.
+- Why it matters: This keeps the milestone from blurring into a second decisioning milestone before the current operator surfaces are made legible.
+- Source: user
+- Primary owning slice: none
+- Supporting slices: none
+- Validation: n/a
+- Notes: Backend changes are allowed only when they directly support clearer operator decisions.
+
 ## Traceability
 
 | ID | Class | Status | Primary owner | Supporting | Proof |
@@ -540,10 +718,26 @@ This file is the explicit capability and coverage contract for the project.
 | R042 | differentiator | validated | M005/S04 | M005/S02, M005/S03 | M005/S04 added a deterministic RecommendationBundle service grounded in recent usage-ledger rows plus runtime cache health, exposed it through `GET /v1/admin/tenants/{tenant_id}/recommendations`, and rendered bounded next-best-action guidance in Observability with explicit ledger-backed framing. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
 | R043 | operability | validated | M005/S04 | M005/S05 | M005/S04 added explicit tenant policy knobs for semantic-cache similarity threshold and max entry age, persisted them through governance storage and migration, exposed bounded cache-effectiveness/runtime summaries, and rendered tuning in the existing policy preview/save flow plus observability context. Verified by `./.venv/bin/pytest tests/test_service_flows.py -k "recommendation or cache" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "recommendation or cache" -x`, and `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. |
 | R044 | constraint | validated | M005/S05 | M005/S01, M005/S02, M005/S03, M005/S04 | Validated by M005 milestone close-out through the pointer-only integrated proof in `docs/v4-integrated-proof.md`, discoverability links in `README.md` and `docs/architecture.md`, and passing integrated verification: `./.venv/bin/pytest tests/test_service_flows.py -k "simulation or recommendation or cache or runtime_policy or budget" -x`, `./.venv/bin/pytest tests/test_governance_api.py -k "simulation or recommendation or guardrail or policy_options or policy_denied" -x`, `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx`, plus file/link checks for `docs/v4-integrated-proof.md`. Evidence shows M005 improved operator decision quality/control without widening Nebula into new public APIs, SDK sprawl, hosted authority, or unrelated platform scope. |
+| R045 | core-capability | validated | M006/S02 | M006/S01, M006/S03 | Validated by M006/S02-S03. Calibration is derived from recent tenant-scoped observed outcomes using existing usage-ledger metadata only, surfaced through a bounded CalibrationEvidenceSummary (sufficient/thin/stale/gated/degraded), and reused by policy simulation replay without raw prompt/response persistence expansion. |
+| R046 | failure-visibility | validated | M006/S04 | M006/S01, M006/S02 | Validated by M006/S04. Existing ledger request-detail and Observability surfaces now expose whether routing was calibrated, degraded, rollout-disabled, or unscored and show the influencing evidence while keeping the selected persisted request authoritative; no new analytics surface was introduced. |
+| R047 | continuity | validated | M006/S01 | M006/S02, M006/S03, M006/S04 | Validated by M006/S01-S04. When calibration evidence is missing, stale, thin, or disabled, Nebula falls back to explicit heuristic/degraded behavior with deterministic visible semantics across runtime headers, usage-ledger evidence, policy simulation replay, and operator surfaces. |
+| R048 | integration | validated | M006/S03 | M006/S01, M006/S02, M006/S05 | Validated by M006/S03-S05. Policy simulation replay now uses the same calibrated/degraded/rollout-disabled semantics, route-mode vocabulary, and parity fields as live runtime for the same tenant traffic class, proved through real runtime request plus correlated usage-ledger evidence and rechecked in final close-out backend verification. |
+| R049 | constraint | validated | M006/S05 | M006/S01, M006/S02, M006/S03, M006/S04 | Validated by M006/S05 and milestone close-out. The assembled calibrated-routing story remains pointer-only, bounded, and operator-readable: no new public API family, no analytics dashboard or routing studio, no hosted-authority expansion, no black-box ML routing, and no raw payload persistence widening. |
+| R050 | operability | active | M007/S01 | M007/S03, M007/S05 | mapped |
+| R051 | failure-visibility | active | M007/S01 | M007/S03, M007/S05 | mapped |
+| R052 | operability | active | M007/S04 | M007/S02, M007/S05 | mapped |
+| R053 | quality-attribute | active | M007/S03 | M007/S04, M007/S05 | mapped |
+| R054 | launchability | active | M007/S04 | M007/S03, M007/S05 | mapped |
+| R055 | constraint | active | M007/S05 | M007/S01, M007/S02, M007/S03, M007/S04 | mapped |
+| R056 | admin/support | deferred | none | none | unmapped |
+| R057 | operability | deferred | none | none | unmapped |
+| R058 | anti-feature | out-of-scope | none | none | n/a |
+| R059 | anti-feature | out-of-scope | none | none | n/a |
+| R060 | anti-feature | out-of-scope | none | none | n/a |
 
 ## Coverage Summary
 
-- Active requirements: 0
-- Mapped to slices: 0
-- Validated: 29 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044)
+- Active requirements: 6
+- Mapped to slices: 6
+- Validated: 34 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049)
 - Unmapped active requirements: 0
