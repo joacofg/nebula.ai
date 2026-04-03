@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-02T13:34:10.148Z",
+  "exported_at": "2026-04-03T01:52:04.488Z",
   "milestones": [
     {
       "id": "M001",
@@ -197,6 +197,76 @@
       ],
       "requirement_coverage": "Primary coverage: validate R039 by replacing heuristic-first routing with interpretable outcome-aware calibrated routing. M006 also owns R045-R049: ledger-backed calibration, operator inspection of calibration evidence, explicit fail-safe degraded mode, runtime/replay parity, and anti-sprawl scope discipline. Deferred advanced tuning remains outside this milestone.",
       "boundary_map_markdown": "## Boundary Map\n\n### S01 → S02\nProduces:\n- `router_calibration.py` / router calibration seam → typed calibrated-routing input and score breakdown\n- `RouteDecision.signals` / governance types → calibrated-vs-heuristic mode markers and explicit contributing signal fields\n- runtime request evidence → persisted calibrated routing metadata for live requests\n\nConsumes:\n- nothing (first slice)\n\n### S02 → S03\nProduces:\n- ledger-backed calibration summary derivation → bounded tenant-scoped recent-window evidence and sufficiency / staleness state\n- governance / persistence shapes → calibration evidence contract reusable by runtime and replay\n\nConsumes from S01:\n- calibrated route-decision seam and mode markers\n\n### S01,S02 → S04\nProduces:\n- operator-readable calibration state contract → labels and fields for calibrated vs heuristic-only routing\n- request-detail evidence inputs → bounded contributing-signal data for inspection surfaces\n\nConsumes from S01:\n- calibrated route-decision seam and mode markers\n\nConsumes from S02:\n- calibration summary / sufficiency / staleness evidence\n\n### S01,S02,S03,S04 → S05\nProduces:\n- final integrated proof path → calibrated runtime request, replay parity evidence, degraded-mode evidence, operator inspection, and evaluation guidance\n\nConsumes from S01:\n- calibrated routing runtime behavior\n\nConsumes from S02:\n- ledger-backed calibration evidence model\n\nConsumes from S03:\n- runtime / replay parity semantics\n\nConsumes from S04:\n- operator inspection surfaces and wording"
+    },
+    {
+      "id": "M007",
+      "title": "",
+      "status": "queued",
+      "depends_on": [],
+      "created_at": "2026-04-03T01:37:09.569Z",
+      "completed_at": null,
+      "vision": "Make Nebula’s operator surfaces feel like a coherent decision system rather than a collection of proof surfaces. Tighten page roles, evidence hierarchy, simulation comparison flow, and request investigation flow so the console becomes easier to trust and easier to act from, without widening into analytics-product sprawl, visual-only polish work, or unrelated routing R&D.",
+      "success_criteria": [
+        "An operator can open Observability and understand within seconds that one selected request is the primary investigation object and that surrounding cards are supporting context.",
+        "An operator can use request detail as the authoritative persisted evidence record without it being overshadowed by summaries or helper panels.",
+        "An operator can compare baseline versus simulated policy outcomes and make a clear save / don’t-save decision from the policy surface.",
+        "The clarified console remains bounded: no broad analytics dashboard, routing studio, alternate workflow, or redesign-only milestone emerges.",
+        "Focused verification proves the assembled operator workflow is more legible and trustworthy to operate."
+      ],
+      "key_risks": [
+        {
+          "risk": "Page-identity work could collapse into copy-only cleanup instead of real hierarchy changes.",
+          "whyItMatters": "That would leave the operator workflow feeling messy even if wording improves."
+        },
+        {
+          "risk": "Current backend/UI seams may not quite fit the clarified page roles.",
+          "whyItMatters": "If the supporting contracts are off, the UI will keep compensating with mixed-purpose layouts or excessive explanatory text."
+        },
+        {
+          "risk": "Observability may keep reading like a mixed dashboard because too many supporting cards compete with the selected request.",
+          "whyItMatters": "This is the highest-leverage surface and the clearest current product weakness."
+        }
+      ],
+      "proof_strategy": [
+        {
+          "riskOrUnknown": "Unclear page roles and evidence boundaries",
+          "retireIn": "S01",
+          "whatWillBeProven": "The milestone has one explicit operator surface model that downstream slices can implement and verify."
+        },
+        {
+          "riskOrUnknown": "Supporting contract mismatch with clarified workflows",
+          "retireIn": "S02",
+          "whatWillBeProven": "Any missing data or comparison seams are tightened in a bounded way without widening product scope."
+        },
+        {
+          "riskOrUnknown": "Observability still reads like a mixed dashboard",
+          "retireIn": "S03",
+          "whatWillBeProven": "Observability behaves as a request-investigation-first surface with clearly subordinate supporting context."
+        },
+        {
+          "riskOrUnknown": "Policy preview still feels dual-purpose and ambiguous",
+          "retireIn": "S04",
+          "whatWillBeProven": "Policy preview supports a clear baseline-vs-preview save decision workflow."
+        },
+        {
+          "riskOrUnknown": "The clarified surfaces may not hold together as one operator story",
+          "retireIn": "S05",
+          "whatWillBeProven": "The assembled console presents a coherent decision workflow across investigation, evidence, and review without dashboard drift."
+        }
+      ],
+      "verification_contract": "Focused frontend and supporting contract verification for page-role wording, evidence hierarchy, and bounded preview semantics across the touched console surfaces.",
+      "verification_integration": "Exercise the assembled operator flow across Observability, ledger request detail, and policy preview so the clarified page roles hold together in one console story.",
+      "verification_operational": "None beyond normal console runtime behavior; this milestone is about product clarity inside existing surfaces, not new service lifecycle behavior.",
+      "verification_uat": "A human should be able to open the touched pages and state what each page is for, what evidence leads, and what action follows without coaching or external explanation.",
+      "definition_of_done": [
+        "All active M007 requirements are mapped and materially advanced by completed slices.",
+        "Observability, request detail, and policy preview each have a clear primary role in shipped product behavior, not just prose.",
+        "Supporting context is visibly secondary to primary evidence across the touched operator surfaces.",
+        "Any backend or contract changes remain bounded to operator-clarity support and do not expand into routing R&D or dashboard sprawl.",
+        "Focused console and supporting backend verification prove the clarified operator workflow end to end."
+      ],
+      "requirement_coverage": "Covers: R050, R051, R052, R053, R054, R055. Leaves for later: R056, R057. Protected by out-of-scope guardrails: R058, R059, R060.",
+      "boundary_map_markdown": "## Boundary Map\n\n### S01 → S02\nProduces:\n- Operator surface role map for `/observability`, ledger request detail, and `/policy`\n- Explicit primary-vs-supporting evidence rules for each surface\n- Page-purpose wording targets that downstream implementation and tests can lock\n\nConsumes:\n- Existing operator vocabulary and trust-boundary patterns from M005 and M006\n\n### S02 → S03\nProduces:\n- Bounded admin/UI contract adjustments needed to express request-first and decision-first page roles cleanly\n- Stable supporting-context data seams for Observability that keep selected request evidence primary\n\nConsumes from S01:\n- Page role map and evidence hierarchy rules\n\n### S02 → S04\nProduces:\n- Stable preview/comparison contract expectations for baseline vs simulated policy decisions\n- Explicit separation between editable controls and decision-review evidence\n\nConsumes from S01:\n- Page role map and evidence hierarchy rules\n\n### S03 → S05\nProduces:\n- Request-investigation-first Observability flow with clearly subordinate recommendation, calibration, cache, and dependency context\n- Updated Observability verification seams proving page identity and action legibility\n\nConsumes from S02:\n- Supporting evidence contract adjustments\n\n### S04 → S05\nProduces:\n- Policy preview flow centered on save / don’t-save decision review\n- Updated policy verification seams proving baseline-vs-preview comparison remains bounded and legible\n\nConsumes from S02:\n- Preview/comparison contract adjustments\n\n### S01 → S05\nProduces:\n- Canonical operator page-role model used to judge final integrated clarity\n\nConsumes:\n- none (first slice)\n"
     }
   ],
   "slices": [
@@ -799,6 +869,117 @@
       "proof_level": "final-assembly",
       "integration_closure": "This slice closes M006 by joining the already-shipped runtime, ledger, replay, and operator-inspection seams into one discoverable review path and by re-verifying the integrated story in focused backend and console suites. Nothing new should remain for milestone usability after this slice except slice-completion requirement adjudication and milestone validation based on the assembled evidence.",
       "observability_impact": "Operators and future agents keep the same durable diagnostic seams: public `X-Request-ID` and calibrated `X-Nebula-*` headers, `GET /v1/admin/usage/ledger?request_id=...`, simulation changed-request parity fields, and selected-request-first Observability/request-detail rendering. This slice adds discoverability and stronger close-out assertions rather than new runtime telemetry.",
+      "sequence": 0,
+      "replan_triggered_at": null
+    },
+    {
+      "milestone_id": "M007",
+      "id": "S01",
+      "title": "Define page roles and evidence boundaries",
+      "status": "pending",
+      "risk": "high",
+      "depends": [],
+      "demo": "After this: Nebula has one explicit operator-surface model that says what Observability, request detail, and policy preview are for, what evidence leads, and what context stays secondary.",
+      "created_at": "2026-04-03T01:41:21.148Z",
+      "completed_at": null,
+      "full_summary_md": "",
+      "full_uat_md": "",
+      "goal": "Define and lock the operator-surface role contract so Observability is structurally request-investigation-first, request detail stays the authoritative persisted evidence record, and later slices inherit clear evidence-boundary rules without dashboard drift.",
+      "success_criteria": "- Observability page structure leads with one selected request investigation object rather than placing supporting context ahead of it.\n- Ledger request detail remains the authoritative persisted record for route/provider/fallback/calibration/policy evidence, with interpretation explicitly bounded as secondary context.\n- Policy preview and surrounding console wording remain aligned to preview-before-save decision review and do not drift into dashboard, routing-studio, or analytics-product framing.\n- Focused Vitest coverage proves both wording and structure/order boundaries for these page roles.",
+      "proof_level": "contract",
+      "integration_closure": "This slice closes the product-contract seam for M007 by turning page-role intent into explicit UI structure and focused tests. Later slices can tighten supporting data and flows against these locked boundaries instead of re-deciding what each page is for.",
+      "observability_impact": "Operators and future agents can inspect page-role regressions through stable headings, section order, and existing request-detail evidence copy in focused Vitest suites for Observability, request detail, and policy preview. Failure remains visible as test-level structural regressions rather than hidden copy drift.",
+      "sequence": 0,
+      "replan_triggered_at": null
+    },
+    {
+      "milestone_id": "M007",
+      "id": "S02",
+      "title": "Tighten supporting evidence and preview contracts",
+      "status": "pending",
+      "risk": "medium",
+      "depends": [
+        "S01"
+      ],
+      "demo": "After this: the supporting data and UI seams needed for clearer page roles exist without introducing a new dashboard or routing-research scope.",
+      "created_at": "2026-04-03T01:41:21.148Z",
+      "completed_at": null,
+      "full_summary_md": "",
+      "full_uat_md": "",
+      "goal": "Tighten only the supporting contracts and page-level seams required to express the clarified operator workflows cleanly.",
+      "success_criteria": "- Any missing supporting fields or comparison seams are added in a bounded way.\n- No new dashboard family, routing studio, or alternate workflow is introduced.\n- The updated seams map cleanly onto the S01 page-role model.",
+      "proof_level": "Supporting contracts and wording seams are sufficient for request-first and decision-first surfaces.",
+      "integration_closure": "Observability and policy implementation can rely on bounded supporting seams instead of compensating with mixed-purpose structure or prose.",
+      "observability_impact": "Makes the supporting evidence contracts fit the intended hierarchy rather than forcing UI workarounds.",
+      "sequence": 0,
+      "replan_triggered_at": null
+    },
+    {
+      "milestone_id": "M007",
+      "id": "S03",
+      "title": "Rework Observability around a primary investigation flow",
+      "status": "pending",
+      "risk": "high",
+      "depends": [
+        "S01",
+        "S02"
+      ],
+      "demo": "After this: an operator can open Observability and immediately understand one selected request as the lead investigation object, with all other cards clearly supporting that investigation.",
+      "created_at": "2026-04-03T01:41:21.148Z",
+      "completed_at": null,
+      "full_summary_md": "",
+      "full_uat_md": "",
+      "goal": "Rework Observability around a clear primary investigation flow instead of a mixed-role page.",
+      "success_criteria": "- Observability leads with the selected request investigation.\n- Recommendation, calibration, cache, and dependency sections are visibly secondary.\n- The page tells the operator what to inspect and what follow-up action the surface supports.\n- The page does not read like a dashboard.",
+      "proof_level": "The shipped page structure and focused verification both make the selected request clearly primary.",
+      "integration_closure": "Observability, ledger table, request detail, and supporting summaries work together as one investigation surface.",
+      "observability_impact": "Highest-impact page-role clarification in the milestone; this is the main proving ground for request-first hierarchy.",
+      "sequence": 0,
+      "replan_triggered_at": null
+    },
+    {
+      "milestone_id": "M007",
+      "id": "S04",
+      "title": "Rework policy preview into a comparison-and-decision flow",
+      "status": "pending",
+      "risk": "medium",
+      "depends": [
+        "S01",
+        "S02"
+      ],
+      "demo": "After this: an operator can use policy preview to compare baseline versus simulated outcomes and decide whether to save without the page feeling like a blended editor and analytics surface.",
+      "created_at": "2026-04-03T01:41:21.148Z",
+      "completed_at": null,
+      "full_summary_md": "",
+      "full_uat_md": "",
+      "goal": "Rework policy preview into a clear comparison-and-decision flow that keeps save explicit.",
+      "success_criteria": "- Policy preview clearly supports a save / don’t-save decision.\n- Baseline vs simulated changes are easy to compare without extra interpretation burden.\n- The page no longer reads as a mixed settings form plus analytics view.\n- Save remains explicit and preview remains bounded.",
+      "proof_level": "The preview surface makes baseline-vs-simulated differences and the save decision legible in shipped UI and focused tests.",
+      "integration_closure": "Policy editing, preview, and changed-request interpretation line up around one decision workflow rather than competing roles.",
+      "observability_impact": "Strengthens the operator decision loop by making replay evidence actionable without expanding product scope.",
+      "sequence": 0,
+      "replan_triggered_at": null
+    },
+    {
+      "milestone_id": "M007",
+      "id": "S05",
+      "title": "Integrated operator proof and close-out",
+      "status": "pending",
+      "risk": "low",
+      "depends": [
+        "S03",
+        "S04"
+      ],
+      "demo": "After this: one integrated proof path shows the clarified operator surfaces work together as a coherent decision system without dashboard drift or redesign sprawl.",
+      "created_at": "2026-04-03T01:41:21.148Z",
+      "completed_at": null,
+      "full_summary_md": "",
+      "full_uat_md": "",
+      "goal": "Close out the milestone with an integrated operator proof that re-checks page identity, evidence hierarchy, and bounded scope across the assembled console.",
+      "success_criteria": "- The assembled console presents a coherent operator decision workflow across the touched surfaces.\n- Page identity remains clear at milestone close-out.\n- The final proof confirms Nebula stayed within bounded control-plane scope.\n- No dashboard drift or redesign sprawl appeared during assembly.",
+      "proof_level": "Integrated console proof and focused verification demonstrate the final product-clarity outcome.",
+      "integration_closure": "The touched surfaces hold together as one operator story: investigate request, inspect persisted evidence, compare policy preview, and act deliberately.",
+      "observability_impact": "Confirms the clarified roles remain coherent across the full operator workflow instead of only within isolated pages.",
       "sequence": 0,
       "replan_triggered_at": null
     }
@@ -3598,6 +3779,94 @@
       "observability_impact": "This task strengthens the proof that future agents can inspect failures or drift through existing surfaces: public request headers, request-id ledger lookup, replay changed-request fields, and selected-request-first Observability rendering. The assertions should catch if those surfaces drift out of order or start claiming broader authority.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S01",
+      "id": "T01",
+      "title": "Reordered Observability so selected-request investigation leads the page and added hierarchy guardrails in focused tests.",
+      "status": "complete",
+      "one_liner": "Reordered Observability so selected-request investigation leads the page and added hierarchy guardrails in focused tests.",
+      "narrative": "Updated `console/src/app/(console)/observability/page.tsx` so the selected request investigation is the first major evidence section after filters, with recommendations, calibration/cache context, and dependency health rendered afterward as supporting context. Preserved the existing metadata-only wording and data seams, only adjusting the stale \"above and below\" phrasing after the reorder. Strengthened `console/src/app/(console)/observability/page.test.tsx` and `console/src/app/(console)/observability/observability-page.test.tsx` to assert top-level section order, require the selected-request section to appear before supporting guidance, and reject dashboard-style drift.",
+      "verification_result": "Task-level verification passed: `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx` completed successfully with both files passing. Copy-presence verification passed via `rg -n \"Selected request evidence first|Grounded follow-up guidance for the selected request|Inspect one persisted ledger row before reading tenant context\" console/src/app/'(console)'/observability/page.tsx`. Slice-level verification was run and partially passed; the Observability files plus `ledger-request-detail` and `policy-page` passed, while unrelated existing failure remains in `src/components/policy/policy-form.test.tsx` due to `formatRouteScore` calling `toFixed` on undefined preview data.",
+      "duration": "",
+      "completed_at": "2026-04-03T01:52:04.464Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "`src/components/policy/policy-form.test.tsx` still fails in untouched code because `console/src/components/policy/policy-form.tsx` does not handle an undefined route score during preview rendering. This blocks the full slice verification command but does not affect the Observability task changes.",
+      "key_files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        ".gsd/milestones/M007/slices/S01/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Encoded the request-first operator-surface contract with DOM-order assertions in focused and integrated Observability tests instead of relying on copy-only checks."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S01\nmilestone: M007\nkey_files:\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - .gsd/milestones/M007/slices/S01/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Encoded the request-first operator-surface contract with DOM-order assertions in focused and integrated Observability tests instead of relying on copy-only checks.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-04-03T01:52:04.465Z\nblocker_discovered: false\n---\n\n# T01: Reordered Observability so selected-request investigation leads the page and added hierarchy guardrails in focused tests.\n\n**Reordered Observability so selected-request investigation leads the page and added hierarchy guardrails in focused tests.**\n\n## What Happened\n\nUpdated `console/src/app/(console)/observability/page.tsx` so the selected request investigation is the first major evidence section after filters, with recommendations, calibration/cache context, and dependency health rendered afterward as supporting context. Preserved the existing metadata-only wording and data seams, only adjusting the stale \"above and below\" phrasing after the reorder. Strengthened `console/src/app/(console)/observability/page.test.tsx` and `console/src/app/(console)/observability/observability-page.test.tsx` to assert top-level section order, require the selected-request section to appear before supporting guidance, and reject dashboard-style drift.\n\n## Verification\n\nTask-level verification passed: `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx` completed successfully with both files passing. Copy-presence verification passed via `rg -n \"Selected request evidence first|Grounded follow-up guidance for the selected request|Inspect one persisted ledger row before reading tenant context\" console/src/app/'(console)'/observability/page.tsx`. Slice-level verification was run and partially passed; the Observability files plus `ledger-request-detail` and `policy-page` passed, while unrelated existing failure remains in `src/components/policy/policy-form.test.tsx` due to `formatRouteScore` calling `toFixed` on undefined preview data.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx` | 0 | ✅ pass | 1270ms |\n| 2 | `rg -n \"Selected request evidence first|Grounded follow-up guidance for the selected request|Inspect one persisted ledger row before reading tenant context\" console/src/app/'(console)'/observability/page.tsx` | 0 | ✅ pass | 4800ms |\n| 3 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 1 | ❌ fail | 1580ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\n`src/components/policy/policy-form.test.tsx` still fails in untouched code because `console/src/components/policy/policy-form.tsx` does not handle an undefined route score during preview rendering. This blocks the full slice verification command but does not affect the Observability task changes.\n\n## Files Created/Modified\n\n- `console/src/app/(console)/observability/page.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/app/(console)/observability/observability-page.test.tsx`\n- `.gsd/milestones/M007/slices/S01/tasks/T01-SUMMARY.md`\n",
+      "description": "Rework the Observability page so the selected request investigation section leads the main page hierarchy after filters, with supporting context clearly sequenced after the authoritative request investigation. Strengthen the focused page tests so they assert section order and subordinate framing rather than only headline presence.\n\nSteps:\n1. Update `console/src/app/(console)/observability/page.tsx` so the selected-request section renders before supporting context, while preserving existing bounded wording and runtime data seams.\n2. Extend `console/src/app/(console)/observability/page.test.tsx` and `console/src/app/(console)/observability/observability-page.test.tsx` to assert the structural hierarchy: selected request leads, supporting context follows, and dependency health remains supporting context.\n3. Keep the page within the current Observability surface — no new dashboard shell, analytics framing, or alternate workflow entrypoints.\n\nMust-haves:\n- The selected-request section is the first major evidence section after filters.\n- Supporting context copy still states it is subordinate to the selected request.\n- Tests fail if future changes move supporting context ahead of the request investigation or introduce dashboard-style framing.",
+      "estimate": "45m",
+      "files": [
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx",
+      "inputs": [
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`"
+      ],
+      "expected_output": [
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`"
+      ],
+      "observability_impact": "Strengthens UI-level failure visibility by making page-role regressions detectable through explicit section-order assertions in focused Vitest coverage.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S01",
+      "id": "T02",
+      "title": "Lock request-detail authority and policy-role guardrails",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Preserve `LedgerRequestDetail` as the authoritative persisted evidence surface and add guardrails that later M007 slices must preserve: interpretation stays secondary, policy preview stays preview-before-save, and no new analytics/dashboard drift appears in these bounded surfaces.\n\nSteps:\n1. Review `console/src/components/ledger/ledger-request-detail.tsx` and tighten wording or section ordering only if needed to make persisted evidence clearly lead supporting interpretation.\n2. Extend `console/src/components/ledger/ledger-request-detail.test.tsx` with assertions that the persisted record remains primary and supplementary interpretation does not replace it.\n3. Add or tighten policy role-boundary assertions in `console/src/components/policy/policy-form.test.tsx` and `console/src/components/policy/policy-page.test.tsx` so S04 inherits an explicit preview-before-save decision-review contract without analytics drift.\n\nMust-haves:\n- Request detail still leads with persisted request fields and keeps calibration/budget/routing explanations supplementary.\n- Policy preview remains explicitly non-saving until the operator chooses save.\n- Tests reject dashboard, routing-studio, or analytics-product framing on these bounded surfaces.",
+      "estimate": "45m",
+      "files": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "expected_output": [
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "observability_impact": "Keeps the authoritative evidence boundary inspectable through focused request-detail and policy preview test assertions, so later slices can detect contract drift quickly.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -4067,6 +4336,18 @@
       "rationale": "M006/S05 assembled the calibrated-routing close-out as a pointer-only integrated proof in docs/m006-integrated-proof.md, added discoverability links in README.md and docs/architecture.md, and reverified the shipped seams with passing focused checks: ./.venv/bin/python mechanical file/content validation for docs/m006-integrated-proof.md plus README.md/docs/architecture.md, rg proof-token checks, ./.venv/bin/pytest tests/test_response_headers.py -x, ./.venv/bin/pytest tests/test_governance_api.py -k \"simulation and calibrated\" -x, and npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/policy/policy-page.test.tsx. The assembled proof stays narrow and operator-readable: no new admin routes, no new public API family, no analytics-product drift, no broader tuning surface, and no hosted-authority expansion.",
       "revisable": "Yes",
       "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 42,
+      "id": "D040",
+      "when_context": "M007",
+      "scope": "console-product",
+      "decision": "What the primary roles of the M007 operator surfaces should be",
+      "choice": "Observability is request investigation first, request detail remains the authoritative persisted evidence record, and policy preview is a save/don’t-save decision-review surface.",
+      "rationale": "These role decisions directly address the current page identity blur and give the milestone a concrete product spine. They also preserve Nebula’s existing wedge by keeping durable evidence primary and supporting context visibly secondary.",
+      "revisable": "Yes",
+      "made_by": "collaborative",
       "superseded_by": null
     }
   ],
@@ -5137,6 +5418,39 @@
       "verdict": "✅ pass",
       "duration_ms": 1180,
       "created_at": "2026-04-02T04:25:47.316Z"
+    },
+    {
+      "id": 98,
+      "task_id": "T01",
+      "slice_id": "S01",
+      "milestone_id": "M007",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1270,
+      "created_at": "2026-04-03T01:52:04.464Z"
+    },
+    {
+      "id": 99,
+      "task_id": "T01",
+      "slice_id": "S01",
+      "milestone_id": "M007",
+      "command": "rg -n \"Selected request evidence first|Grounded follow-up guidance for the selected request|Inspect one persisted ledger row before reading tenant context\" console/src/app/'(console)'/observability/page.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 4800,
+      "created_at": "2026-04-03T01:52:04.464Z"
+    },
+    {
+      "id": 100,
+      "task_id": "T01",
+      "slice_id": "S01",
+      "milestone_id": "M007",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 1580,
+      "created_at": "2026-04-03T01:52:04.464Z"
     }
   ]
 }

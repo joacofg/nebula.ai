@@ -20,6 +20,26 @@ vi.mock("@/lib/admin-api", async () => {
   };
 });
 
+function getTopLevelSectionHeadings(container: HTMLElement) {
+  return Array.from(container.querySelectorAll(":scope > section > header h2")).map((heading) =>
+    heading.textContent?.trim() ?? "",
+  );
+}
+
+function expectHeadingOrder(container: HTMLElement, expectedOrder: string[]) {
+  expect(getTopLevelSectionHeadings(container)).toEqual(expectedOrder);
+}
+
+function expectTextToAppearBefore(container: HTMLElement, first: string, second: string) {
+  const content = container.textContent ?? "";
+  const firstIndex = content.indexOf(first);
+  const secondIndex = content.indexOf(second);
+
+  expect(firstIndex).toBeGreaterThanOrEqual(0);
+  expect(secondIndex).toBeGreaterThanOrEqual(0);
+  expect(firstIndex).toBeLessThan(secondIndex);
+}
+
 describe("observability-page", () => {
   it("frames observability around selected request evidence with bounded supporting context", async () => {
     adminApi.listTenants.mockResolvedValue([
@@ -124,7 +144,7 @@ describe("observability-page", () => {
       }),
     );
 
-    renderWithProviders(<ObservabilityPage />, { adminKey: "nebula-admin-key" });
+    const { container } = renderWithProviders(<ObservabilityPage />, { adminKey: "nebula-admin-key" });
 
     expect(await screen.findByRole("heading", { name: "Selected request evidence first" })).toBeInTheDocument();
     expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
@@ -136,7 +156,21 @@ describe("observability-page", () => {
     expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
 
-    const selectedRequestSection = screen.getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" }).closest("section");
+    expectHeadingOrder(container.firstElementChild as HTMLElement, [
+      "Inspect one persisted ledger row before reading tenant context",
+      "Grounded follow-up guidance for the selected request",
+      "Dependency health context",
+    ]);
+    expectTextToAppearBefore(
+      container.firstElementChild as HTMLElement,
+      "Inspect one persisted ledger row before reading tenant context",
+      "Grounded follow-up guidance for the selected request",
+    );
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+
+    const selectedRequestSection = screen
+      .getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })
+      .closest("section");
     expect(selectedRequestSection).not.toBeNull();
     const selectedRequest = within(selectedRequestSection!);
     expect(selectedRequest.getByText(/Pick the request first\./i)).toBeInTheDocument();

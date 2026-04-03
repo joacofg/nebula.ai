@@ -176,6 +176,40 @@ export default function ObservabilityPage() {
 
       <section className="space-y-4">
         <header className="panel px-6 py-5">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Selected request</div>
+          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            Inspect one persisted ledger row before reading tenant context
+          </h2>
+          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+            Pick the request first. The selected ledger row remains the authoritative persisted record for route,
+            provider, fallback, calibration state, and policy outcome. The cards below help explain the same
+            investigation, but they do not overrule the selected request evidence.
+          </p>
+        </header>
+
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
+          {ledgerQuery.isError ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+              {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
+            </div>
+          ) : (
+            <LedgerTable
+              rows={ledgerQuery.data ?? []}
+              selectedRequestId={selectedEntry?.request_id ?? null}
+              onSelectRow={(requestId) => setSelectedRequestId(requestId)}
+              isLoading={ledgerQuery.isLoading}
+            />
+          )}
+
+          <LedgerRequestDetail
+            entry={selectedEntry}
+            calibrationSummary={recommendationsQuery.data?.calibration_summary ?? null}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
             Supporting context
           </div>
@@ -442,40 +476,6 @@ export default function ObservabilityPage() {
             </div>
           </div>
         ) : null}
-      </section>
-
-      <section className="space-y-4">
-        <header className="panel px-6 py-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Selected request</div>
-          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
-            Inspect one persisted ledger row before reading tenant context
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Pick the request first. The selected ledger row remains the authoritative persisted record for route,
-            provider, fallback, calibration state, and policy outcome. The cards above and below help explain the same
-            investigation, but they do not overrule the selected request evidence.
-          </p>
-        </header>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
-          {ledgerQuery.isError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
-              {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
-            </div>
-          ) : (
-            <LedgerTable
-              rows={ledgerQuery.data ?? []}
-              selectedRequestId={selectedEntry?.request_id ?? null}
-              onSelectRow={(requestId) => setSelectedRequestId(requestId)}
-              isLoading={ledgerQuery.isLoading}
-            />
-          )}
-
-          <LedgerRequestDetail
-            entry={selectedEntry}
-            calibrationSummary={recommendationsQuery.data?.calibration_summary ?? null}
-          />
-        </div>
       </section>
 
       <section className="space-y-4">

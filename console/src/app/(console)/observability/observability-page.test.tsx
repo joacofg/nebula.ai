@@ -34,6 +34,26 @@ function renderPage() {
   );
 }
 
+function getTopLevelSectionHeadings(container: HTMLElement) {
+  return Array.from(container.querySelectorAll(":scope > section > header h2")).map((heading) =>
+    heading.textContent?.trim() ?? "",
+  );
+}
+
+function expectHeadingOrder(container: HTMLElement, expectedOrder: string[]) {
+  expect(getTopLevelSectionHeadings(container)).toEqual(expectedOrder);
+}
+
+function expectTextToAppearBefore(container: HTMLElement, first: string, second: string) {
+  const content = container.textContent ?? "";
+  const firstIndex = content.indexOf(first);
+  const secondIndex = content.indexOf(second);
+
+  expect(firstIndex).toBeGreaterThanOrEqual(0);
+  expect(secondIndex).toBeGreaterThanOrEqual(0);
+  expect(firstIndex).toBeLessThan(secondIndex);
+}
+
 describe("ObservabilityPage", () => {
   beforeEach(() => {
     listTenants.mockResolvedValue([{ id: "tenant-alpha", name: "Tenant Alpha" }]);
@@ -131,11 +151,23 @@ describe("ObservabilityPage", () => {
   });
 
   it("renders request-first observability framing with bounded supporting context", async () => {
-    renderPage();
+    const { container } = renderPage();
 
     expect(await screen.findByRole("heading", { name: "Selected request evidence first" })).toBeInTheDocument();
     expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
     expect(screen.getByText(/Calibration readiness, grounded recommendations, cache posture, and dependency health stay on this page as supporting runtime context/i)).toBeInTheDocument();
+
+    expectHeadingOrder(container.firstElementChild as HTMLElement, [
+      "Inspect one persisted ledger row before reading tenant context",
+      "Grounded follow-up guidance for the selected request",
+      "Dependency health context",
+    ]);
+    expectTextToAppearBefore(
+      container.firstElementChild as HTMLElement,
+      "Inspect one persisted ledger row before reading tenant context",
+      "Grounded follow-up guidance for the selected request",
+    );
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
 
     expect(await screen.findByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeInTheDocument();
     expect(screen.getByText(/Pick the request first\./i)).toBeInTheDocument();
