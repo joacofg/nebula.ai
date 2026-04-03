@@ -159,32 +159,48 @@ describe("ObservabilityPage", () => {
 
     expectHeadingOrder(container.firstElementChild as HTMLElement, [
       "Inspect one persisted ledger row before reading tenant context",
-      "Grounded follow-up guidance for the selected request",
-      "Dependency health context",
+      "Follow-up context for the selected request",
     ]);
     expectTextToAppearBefore(
       container.firstElementChild as HTMLElement,
       "Inspect one persisted ledger row before reading tenant context",
-      "Grounded follow-up guidance for the selected request",
+      "Follow-up context for the selected request",
     );
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
 
     expect(await screen.findByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeInTheDocument();
     expect(screen.getByText(/Pick the request first\./i)).toBeInTheDocument();
     expect(screen.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
     expect(screen.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
-    expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
-    expect(screen.getByText(/point operators back toward the next comparison or follow-up action/i)).toBeInTheDocument();
-    expect(screen.getByText(/do not replace the persisted ledger row/i)).toBeInTheDocument();
+    const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
+    expect(followUpSection).not.toBeNull();
+    const followUp = within(followUpSection!);
+    expect(followUp.getByText(/use these supporting cards to decide the next operator action/i)).toBeInTheDocument();
+    expect(followUp.getByText(/point toward policy preview as the comparison surface before any save elsewhere in the console/i)).toBeInTheDocument();
 
-    const replayReadinessHeading = await screen.findByText("Tenant-scoped replay readiness context");
+    const guidanceCard = followUp.getByRole("heading", { name: "Grounded follow-up guidance for the selected request" }).closest("article");
+    expect(guidanceCard).not.toBeNull();
+    const guidance = within(guidanceCard!);
+    expect(guidance.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
+    expect(guidance.getByText(/Compare options in policy preview before saving any change elsewhere in the console/i)).toBeInTheDocument();
+
+    const policyPreviewCard = followUp.getByRole("heading", { name: "Policy preview follow-up for the same request" }).closest("article");
+    expect(policyPreviewCard).not.toBeNull();
+    const policyPreview = within(policyPreviewCard!);
+    expect(policyPreview.getByText(/Use calibration, cache, and dependency context to judge whether a policy preview comparison is grounded enough/i)).toBeInTheDocument();
+    expect(policyPreview.getByText(/This page stays inspection-only: preview before saving in the policy editor/i)).toBeInTheDocument();
+    expect(policyPreview.getByText(/keep the persisted request row as the authoritative evidence seam/i)).toBeInTheDocument();
+
+    const replayReadinessHeading = await screen.findByRole("heading", { name: "Tenant-scoped replay readiness context" });
     const replayReadinessCard = replayReadinessHeading.closest("article");
     expect(replayReadinessCard).not.toBeNull();
     const replayReadiness = within(replayReadinessCard!);
     expect(replayReadiness.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
     expect(replayReadiness.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
+    expect(replayReadiness.getByText(/before deciding whether a replay or policy preview comparison is grounded enough/i)).toBeInTheDocument();
     expect(replayReadiness.getByText("Eligible calibrated rows")).toBeInTheDocument();
     expect(replayReadiness.getByText("12")).toBeInTheDocument();
     expect(replayReadiness.getByText("Sufficiency threshold")).toBeInTheDocument();
@@ -200,18 +216,24 @@ describe("ObservabilityPage", () => {
     expect(requestDetailSection.getByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toBeInTheDocument();
 
     expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
-    expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
-    expect(screen.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
-    expect(screen.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
-    expect(screen.getByText("Runtime detail:")).toBeInTheDocument();
-    expect(screen.getByText(/Qdrant is warming and may reduce cache consistency/i)).toBeInTheDocument();
-    expect(screen.getByText("Similarity threshold")).toBeInTheDocument();
-    expect(screen.getByText("0.90")).toBeInTheDocument();
-    expect(screen.getByText("Max entry age")).toBeInTheDocument();
-    expect(screen.getAllByText("168 hours")).toHaveLength(2);
-    expect(screen.getByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
-    expect(screen.getByText(/Required dependency failures block confidence immediately/i)).toBeInTheDocument();
+    expect(await followUp.findByText("Review cache aging window")).toBeInTheDocument();
+    expect(followUp.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
+
+    const cacheCard = followUp.getByRole("heading", { name: "Cache effectiveness and runtime controls" }).closest("section");
+    expect(cacheCard).not.toBeNull();
+    const cache = within(cacheCard!);
+    expect(cache.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
+    expect(cache.getByText("Runtime detail:")).toBeInTheDocument();
+    expect(cache.getByText(/Qdrant is warming and may reduce cache consistency/i)).toBeInTheDocument();
+    expect(cache.getByText("Similarity threshold")).toBeInTheDocument();
+    expect(cache.getByText("0.90")).toBeInTheDocument();
+    expect(cache.getByText("Max entry age")).toBeInTheDocument();
+    expect(cache.getByText("168 hours")).toBeInTheDocument();
+
+    const dependencySection = followUp.getByRole("heading", { name: "Dependency health context" }).closest("section");
+    expect(dependencySection).not.toBeNull();
+    const dependency = within(dependencySection!);
+    expect(dependency.getByText(/Required dependency failures block confidence immediately/i)).toBeInTheDocument();
     expect(await screen.findAllByText("tenant-alpha")).toHaveLength(2);
     expect(await screen.findAllByText("Route target")).toHaveLength(3);
   });
@@ -344,7 +366,10 @@ describe("ObservabilityPage", () => {
     renderPage();
 
     expect(await screen.findAllByText("Calibrated routing remained disabled for recent tenant traffic.")).toHaveLength(2);
-    const replayReadinessHeading = screen.getByText("Tenant-scoped replay readiness context");
+    const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
+    expect(followUpSection).not.toBeNull();
+    const followUp = within(followUpSection!);
+    const replayReadinessHeading = followUp.getByRole("heading", { name: "Tenant-scoped replay readiness context" });
     const replayReadinessCard = replayReadinessHeading.closest("article");
     expect(replayReadinessCard).not.toBeNull();
     const replayReadiness = within(replayReadinessCard!);

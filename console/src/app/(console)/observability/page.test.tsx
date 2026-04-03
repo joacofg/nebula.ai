@@ -150,24 +150,18 @@ describe("observability-page", () => {
     expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
     expect(screen.getByText(/supporting runtime context for that same routed request investigation/i)).toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
-    expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
-    expect(screen.getByText(/point operators back toward the next comparison or follow-up action/i)).toBeInTheDocument();
-    expect(screen.getByText(/do not replace the persisted ledger row/i)).toBeInTheDocument();
-    expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
-    expect(screen.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
-
     expectHeadingOrder(container.firstElementChild as HTMLElement, [
       "Inspect one persisted ledger row before reading tenant context",
-      "Grounded follow-up guidance for the selected request",
-      "Dependency health context",
+      "Follow-up context for the selected request",
     ]);
     expectTextToAppearBefore(
       container.firstElementChild as HTMLElement,
       "Inspect one persisted ledger row before reading tenant context",
-      "Grounded follow-up guidance for the selected request",
+      "Follow-up context for the selected request",
     );
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
 
     const selectedRequestSection = screen
       .getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })
@@ -177,26 +171,56 @@ describe("observability-page", () => {
     expect(selectedRequest.getByText(/Pick the request first\./i)).toBeInTheDocument();
     expect(selectedRequest.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
     expect(selectedRequest.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
-    expect(selectedRequest.getByText("Request detail")).toBeInTheDocument();
-    expect(selectedRequest.getAllByText("req-123").length).toBeGreaterThanOrEqual(2);
+    expect(await screen.findAllByText("req-123")).toHaveLength(3);
+    expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
 
-    const supportingContextSection = screen
-      .getByRole("heading", { name: "Grounded follow-up guidance for the selected request" })
-      .closest("section");
-    expect(supportingContextSection).not.toBeNull();
-    const supportingContext = within(supportingContextSection!);
-    expect(supportingContext.getByText(/before deciding whether a replay or policy comparison is grounded enough/i)).toBeInTheDocument();
+    const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
+    expect(followUpSection).not.toBeNull();
+    const followUp = within(followUpSection!);
+    expect(followUp.getByText(/use these supporting cards to decide the next operator action/i)).toBeInTheDocument();
+    expect(followUp.getByText(/point toward policy preview as the comparison surface before any save elsewhere in the console/i)).toBeInTheDocument();
 
-    expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
-    expect(screen.getByText("Similarity threshold")).toBeInTheDocument();
-    expect(screen.getByText("0.82")).toBeInTheDocument();
-    expect(screen.getByText("Max entry age")).toBeInTheDocument();
-    expect(screen.getByText("48 hours")).toBeInTheDocument();
-    expect(screen.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
-    expect(screen.getByText(/this page stays inspection-only/i)).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
+    const guidanceCard = followUp.getByRole("heading", { name: "Grounded follow-up guidance for the selected request" }).closest("article");
+    expect(guidanceCard).not.toBeNull();
+    const guidance = within(guidanceCard!);
+    expect(guidance.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
+    expect(guidance.getByText(/Compare options in policy preview before saving any change elsewhere in the console/i)).toBeInTheDocument();
+
+    expect(await followUp.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
+    expect(followUp.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
+
+    const policyPreviewCard = followUp.getByRole("heading", { name: "Policy preview follow-up for the same request" }).closest("article");
+    expect(policyPreviewCard).not.toBeNull();
+    const policyPreview = within(policyPreviewCard!);
+    expect(policyPreview.getByText(/Use calibration, cache, and dependency context to judge whether a policy preview comparison is grounded enough/i)).toBeInTheDocument();
+    expect(policyPreview.getByText(/preview before saving in the policy editor/i)).toBeInTheDocument();
+    expect(policyPreview.getByText(/keep the persisted request row as the authoritative evidence seam/i)).toBeInTheDocument();
+
+    const calibrationCard = followUp.getByRole("heading", { name: "Tenant-scoped replay readiness context" }).closest("article");
+    expect(calibrationCard).not.toBeNull();
+    const calibration = within(calibrationCard!);
+    expect(calibration.getByText(/before deciding whether a replay or policy preview comparison is grounded enough/i)).toBeInTheDocument();
+    expect(calibration.getByText("Eligible calibrated rows")).toBeInTheDocument();
+    expect(calibration.getByText("12")).toBeInTheDocument();
+    expect(calibration.getByText("Sufficiency threshold")).toBeInTheDocument();
+    expect(calibration.getByText("5")).toBeInTheDocument();
+    expect(calibration.getByText(/Keep using the ledger row and request ID correlation as the primary proof\./i)).toBeInTheDocument();
+
+    const cacheCard = followUp.getByRole("heading", { name: "Cache effectiveness and runtime controls" }).closest("section");
+    expect(cacheCard).not.toBeNull();
+    const cache = within(cacheCard!);
+    expect(cache.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
+    expect(cache.getByText(/this page stays inspection-only/i)).toBeInTheDocument();
+    expect(cache.getByText("Similarity threshold")).toBeInTheDocument();
+    expect(cache.getByText("0.82")).toBeInTheDocument();
+    expect(cache.getByText("Max entry age")).toBeInTheDocument();
+    expect(cache.getByText("48 hours")).toBeInTheDocument();
+
+    const dependencySection = followUp.getByRole("heading", { name: "Dependency health context" }).closest("section");
+    expect(dependencySection).not.toBeNull();
+    const dependency = within(dependencySection!);
     expect(
-      screen.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),
+      dependency.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),
     ).toBeInTheDocument();
 
     vi.unstubAllGlobals();
