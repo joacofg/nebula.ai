@@ -218,9 +218,9 @@ export default function ObservabilityPage() {
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
             Recommendations are derived from recent ledger-backed traffic plus supporting runtime context. They stay
-            bounded operator guidance for the selected-request investigation, not black-box optimization or a
-            replacement for the persisted ledger row, and remain read-only until you choose to adjust policy controls
-            elsewhere in the console.
+            bounded operator guidance for the selected-request investigation, point operators back toward the next
+            comparison or follow-up action, and do not replace the persisted ledger row. They remain read-only until
+            you choose to adjust policy controls elsewhere in the console.
           </p>
         </header>
 
@@ -333,8 +333,9 @@ export default function ObservabilityPage() {
                   </div>
                   <p className="mt-2 text-sm text-slate-600">
                     This summary is derived from existing ledger metadata for the selected tenant. It helps operators
-                    judge whether calibration evidence is sufficient, stale, or still thin without turning Observability
-                    into a replacement for the persisted request record.
+                    judge whether calibration evidence is sufficient, stale, or still thin before deciding whether a
+                    replay or policy comparison is grounded enough, without turning Observability into a replacement
+                    for the persisted request record.
                   </p>
                   <div className="mt-4 rounded-xl border border-border bg-slate-50 px-4 py-4">
                     <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">State reason</div>
@@ -390,7 +391,8 @@ export default function ObservabilityPage() {
                     </h3>
                     <p className="mt-2 text-sm text-slate-600">
                       This summary shows the current runtime-enforced cache posture and the supporting evidence behind it.
-                      Tune these controls in the existing policy editor; this page stays inspection-only.
+                      Use it to decide whether the next step is a policy preview comparison; tune these controls in the
+                      existing policy editor because this page stays inspection-only.
                     </p>
                   </div>
 

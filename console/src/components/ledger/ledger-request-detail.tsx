@@ -369,7 +369,7 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <p className="mt-2 text-sm text-slate-600">
           This persisted ledger record is the authoritative evidence row for this request ID. It explains the
           final route, provider, fallback, cache, and policy outcome that operators first corroborate through
-          the public response headers.
+          the public response headers before reading the supporting tenant context elsewhere on this page.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">

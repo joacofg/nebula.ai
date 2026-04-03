@@ -296,7 +296,7 @@ export function PolicyForm({
           <div>
             <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Preview before save</h3>
             <p className="mt-2 text-sm text-slate-500">
-              Replay the current draft against recent tenant traffic without persisting the policy.
+              Compare the current draft against the tenant&apos;s recent persisted baseline before deciding whether to save.
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
@@ -352,7 +352,7 @@ export function PolicyForm({
             </div>
 
             <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
-              Previewed {simulationResult.window.returned_rows} request(s) from the recent replay window. This preview did not save the policy.
+              Compared {simulationResult.window.returned_rows} recent persisted request(s) against this draft baseline. This preview did not save the policy.
             </div>
 
             {simulationResult.window.returned_rows === 0 ? (
@@ -370,7 +370,7 @@ export function PolicyForm({
                     Changed request sample
                   </h4>
                   <p className="mt-1 text-sm text-slate-500">
-                    Compact sample of requests whose route, status, policy outcome, or projected cost changed.
+                    Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft.
                   </p>
                 </div>
                 <ul className="space-y-3">
@@ -674,4 +674,3 @@ export function PolicyForm({
     </form>
   );
 }
-

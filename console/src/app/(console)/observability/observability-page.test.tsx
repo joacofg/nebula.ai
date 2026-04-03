@@ -176,7 +176,8 @@ describe("ObservabilityPage", () => {
 
     expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
     expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
-    expect(screen.getByText(/not black-box optimization or a replacement for the persisted ledger row/i)).toBeInTheDocument();
+    expect(screen.getByText(/point operators back toward the next comparison or follow-up action/i)).toBeInTheDocument();
+    expect(screen.getByText(/do not replace the persisted ledger row/i)).toBeInTheDocument();
 
     const replayReadinessHeading = await screen.findByText("Tenant-scoped replay readiness context");
     const replayReadinessCard = replayReadinessHeading.closest("article");
@@ -202,6 +203,7 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
     expect(screen.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
+    expect(screen.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
     expect(screen.getByText("Runtime detail:")).toBeInTheDocument();
     expect(screen.getByText(/Qdrant is warming and may reduce cache consistency/i)).toBeInTheDocument();
     expect(screen.getByText("Similarity threshold")).toBeInTheDocument();

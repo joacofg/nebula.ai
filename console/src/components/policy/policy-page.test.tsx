@@ -199,6 +199,11 @@ describe("policy-page", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
+        "Load a tenant policy, compare a candidate draft against recent persisted traffic, and save explicitly only after the preview evidence supports the change.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
         "Higher values require a closer semantic match before Nebula reuses a cached response.",
       ),
     ).toBeInTheDocument();
@@ -251,7 +256,12 @@ describe("policy-page", () => {
 
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
     expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
-    expect(screen.getByText(/Compact sample of requests whose route, status, policy outcome, or projected cost changed\./i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
     expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
     expect(screen.getByText("Save remains explicit")).toBeInTheDocument();
     expect(

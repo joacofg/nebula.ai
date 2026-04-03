@@ -152,7 +152,8 @@ describe("observability-page", () => {
 
     expect(await screen.findByRole("heading", { name: "Grounded follow-up guidance for the selected request" })).toBeInTheDocument();
     expect(screen.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
-    expect(screen.getByText(/not black-box optimization or a replacement for the persisted ledger row/i)).toBeInTheDocument();
+    expect(screen.getByText(/point operators back toward the next comparison or follow-up action/i)).toBeInTheDocument();
+    expect(screen.getByText(/do not replace the persisted ledger row/i)).toBeInTheDocument();
     expect(await screen.findByText("Tighten cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByText(/Raise the similarity threshold in policy preview before saving/i)).toBeInTheDocument();
 
@@ -179,12 +180,20 @@ describe("observability-page", () => {
     expect(selectedRequest.getByText("Request detail")).toBeInTheDocument();
     expect(selectedRequest.getAllByText("req-123").length).toBeGreaterThanOrEqual(2);
 
+    const supportingContextSection = screen
+      .getByRole("heading", { name: "Grounded follow-up guidance for the selected request" })
+      .closest("section");
+    expect(supportingContextSection).not.toBeNull();
+    const supportingContext = within(supportingContextSection!);
+    expect(supportingContext.getByText(/before deciding whether a replay or policy comparison is grounded enough/i)).toBeInTheDocument();
+
     expect(screen.getByRole("heading", { name: "Cache effectiveness and runtime controls" })).toBeInTheDocument();
     expect(screen.getByText("Similarity threshold")).toBeInTheDocument();
     expect(screen.getByText("0.82")).toBeInTheDocument();
     expect(screen.getByText("Max entry age")).toBeInTheDocument();
     expect(screen.getByText("48 hours")).toBeInTheDocument();
-    expect(screen.getByText(/Tune these controls in the existing policy editor; this page stays inspection-only/i)).toBeInTheDocument();
+    expect(screen.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
+    expect(screen.getByText(/this page stays inspection-only/i)).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Dependency health context" })).toBeInTheDocument();
     expect(
       screen.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),

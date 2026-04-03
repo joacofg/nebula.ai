@@ -13,7 +13,7 @@ Steps:
   - Estimate: 1h
   - Files: src/nebula/api/routes/admin.py, src/nebula/models/governance.py, src/nebula/services/policy_simulation_service.py, tests/test_governance_api.py, tests/test_service_flows.py, console/src/lib/admin-api.ts
   - Verify: ./.venv/bin/pytest tests/test_governance_api.py -k "policy_options or simulation" -x && ./.venv/bin/pytest tests/test_service_flows.py -k "simulation" -x
-- [ ] **T02: Tighten policy preview and Observability supporting seams** — Consume the aligned contracts in the console by making policy preview and Observability more explicit about the operator’s next comparison or follow-up action while preserving the S01 authority hierarchy. Extend existing components locally; do not add a new surface, summary dashboard, or alternate request authority path.
+- [x] **T02: Tightened policy preview comparison wording and request-first Observability seams with scoped console tests.** — Consume the aligned contracts in the console by making policy preview and Observability more explicit about the operator’s next comparison or follow-up action while preserving the S01 authority hierarchy. Extend existing components locally; do not add a new surface, summary dashboard, or alternate request authority path.
 
 Steps:
 1. Refine `PolicyForm` / policy page rendering so preview reads as baseline-vs-simulated decision evidence with explicit bounded samples, save-explicit semantics, and cache-control/runtime wording grounded in the aligned policy-options contract.

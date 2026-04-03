@@ -52,6 +52,7 @@ describe("ledger-request-detail", () => {
 
     expect(screen.getByText("Request detail")).toBeInTheDocument();
     expect(screen.getByText("This persisted ledger record is the authoritative evidence row for this request ID.", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText(/before reading the supporting tenant context elsewhere on this page/i)).toBeInTheDocument();
     expect(screen.getByText("Request ID")).toBeInTheDocument();
     expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();

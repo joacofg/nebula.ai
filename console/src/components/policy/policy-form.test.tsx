@@ -205,7 +205,13 @@ describe("policy-form", () => {
     expect(screen.getByText("req-1")).toBeInTheDocument();
     expect(screen.getByText(/route local → premium/i)).toBeInTheDocument();
     expect(screen.getByText(/status completed → policy_denied/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/Replay uses stored route signals rather than raw prompt text./i)).toBeInTheDocument();
+    expect(screen.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
     expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();

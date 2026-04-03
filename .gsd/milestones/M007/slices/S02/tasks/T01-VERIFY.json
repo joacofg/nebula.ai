@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M007/S02/T01",
+  "timestamp": 1775182241929,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x",
+      "exitCode": 0,
+      "durationMs": 1728,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "exitCode": 0,
+      "durationMs": 927,
+      "verdict": "pass"
+    }
+  ]
+}
