@@ -207,18 +207,18 @@ class PolicySimulationChangedRequest(BaseModel):
     simulated_degraded_routing: bool | None = None
     baseline_route_score: float | None = None
     simulated_route_score: float | None = None
-    baseline_estimated_cost: float = 0.0
-    simulated_estimated_cost: float = 0.0
+    baseline_estimated_cost: float = Field(default=0.0, ge=0)
+    simulated_estimated_cost: float = Field(default=0.0, ge=0)
 
 
 class PolicySimulationResponse(BaseModel):
     tenant_id: str
     candidate_policy: TenantPolicy
-    approximation_notes: list[str] = Field(default_factory=list)
+    approximation_notes: list[str] = Field(default_factory=list, max_length=3)
     window: PolicySimulationWindow
     summary: PolicySimulationOutcomeCounts
     calibration_summary: CalibrationEvidenceSummary
-    changed_requests: list[PolicySimulationChangedRequest] = Field(default_factory=list)
+    changed_requests: list[PolicySimulationChangedRequest] = Field(default_factory=list, max_length=50)
 
 
 class RecommendationEvidence(BaseModel):

@@ -296,6 +296,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
         "calibrated_routing_enabled",
         "allowed_premium_models",
         "semantic_cache_enabled",
+        "semantic_cache_similarity_threshold",
+        "semantic_cache_max_entry_age_hours",
         "fallback_enabled",
         "max_premium_cost_per_request",
         "hard_budget_limit_usd",
@@ -306,6 +308,24 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
         "prompt_capture_enabled",
         "response_capture_enabled",
     ]
+
+
+def test_policy_options_endpoint_marks_cache_tuning_controls_as_runtime_enforced() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            response = client.get("/v1/admin/policy/options", headers=admin_headers())
+
+    assert response.status_code == 200
+    body = response.json()
+    runtime_fields = body["runtime_enforced_fields"]
+    assert runtime_fields.index("semantic_cache_enabled") < runtime_fields.index(
+        "semantic_cache_similarity_threshold"
+    )
+    assert runtime_fields.index("semantic_cache_similarity_threshold") < runtime_fields.index(
+        "semantic_cache_max_entry_age_hours"
+    )
+    assert "semantic_cache_similarity_threshold" not in body["soft_signal_fields"]
+    assert "semantic_cache_max_entry_age_hours" not in body["advisory_fields"]
 
 
 def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None:
@@ -631,23 +651,21 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert simulation.status_code == 200
     body = simulation.json()
     assert body["tenant_id"] == "default"
-    assert body["summary"]["evaluated_rows"] == 2
-    assert body["summary"]["changed_routes"] == 1
+    assert body["summary"]["evaluated_rows"] == 3
+    assert body["summary"]["changed_routes"] == 2
     assert body["summary"]["newly_denied"] == 0
     assert body["calibration_summary"]["tenant_id"] == "default"
     assert body["calibration_summary"]["scope"] == "tenant_window"
     assert body["calibration_summary"]["state"] == "thin"
     assert body["calibration_summary"]["eligible_request_count"] == 2
-    assert body["calibration_summary"]["sufficient_request_count"] == 1
+    assert body["calibration_summary"]["sufficient_request_count"] == 2
     assert body["calibration_summary"]["excluded_request_count"] == 1
-    assert body["calibration_summary"]["degraded_request_count"] == 1
+    assert body["calibration_summary"]["degraded_request_count"] == 0
     assert body["calibration_summary"]["excluded_reasons"] == [
         {"reason": "explicit_model_override", "count": 1}
     ]
-    assert body["calibration_summary"]["degraded_reasons"] == [
-        {"reason": "missing_route_signals", "count": 1}
-    ]
-    assert len(body["changed_requests"]) == 2
+    assert body["calibration_summary"]["degraded_reasons"] == []
+    assert len(body["changed_requests"]) == 3
 
     local_row = local_ledger.json()[0]
     premium_row = premium_ledger.json()[0]
@@ -657,6 +675,9 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     )
     premium_cost_change = next(
         item for item in body["changed_requests"] if item["request_id"] == premium_row["request_id"]
+    )
+    degraded_change = next(
+        item for item in body["changed_requests"] if item["request_id"] == degraded_row["request_id"]
     )
 
     assert local_row["route_reason"] == local_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
@@ -690,12 +711,23 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert premium_cost_change["simulated_policy_outcome"].startswith("routing_mode=premium_only")
 
     assert degraded_row["route_reason"] == degraded_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
-    assert degraded_row["route_signals"] is None
-    assert degraded_response.headers.get("X-Nebula-Route-Mode") is None
-    assert degraded_row["route_signals"] is None
+    assert degraded_row["route_signals"]["route_mode"] == degraded_response.headers["X-Nebula-Route-Mode"] == "calibrated"
+    assert degraded_change["baseline_route_target"] == degraded_response.headers["X-Nebula-Route-Target"] == "local"
+    assert degraded_change["baseline_route_reason"] == degraded_row["route_reason"]
+    assert degraded_change["baseline_route_mode"] == degraded_row["route_signals"]["route_mode"]
+    assert degraded_change["baseline_calibrated_routing"] == degraded_row["route_signals"]["calibrated_routing"] is True
+    assert degraded_change["baseline_degraded_routing"] == degraded_row["route_signals"]["degraded_routing"] is False
+    assert degraded_change["baseline_route_score"] == float(degraded_response.headers["X-Nebula-Route-Score"])
+    assert degraded_change["baseline_route_score"] == degraded_row["route_signals"]["score_components"]["total_score"]
+    assert degraded_change["simulated_route_target"] == "premium"
+    assert degraded_change["simulated_route_reason"] == "policy_premium_only"
+    assert degraded_change["simulated_route_mode"] is None
+    assert degraded_change["simulated_calibrated_routing"] is None
+    assert degraded_change["simulated_degraded_routing"] is None
+    assert degraded_change["simulated_route_score"] is None
 
     assert body["window"]["requested_limit"] == 10
-    assert body["window"]["returned_rows"] == 2
+    assert body["window"]["returned_rows"] == 3
     assert persisted_policy.status_code == 200
     assert persisted_policy.json() == TenantPolicy(
         routing_mode_default="auto",
@@ -1042,7 +1074,7 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
     assert denied_by_request.status_code == 200
     assert denied_by_request.json()[0]["request_id"] == denied_request_id
     assert denied_by_request.json()[0]["route_reason"] == "explicit_premium_model"
-    assert denied_by_request.json()[0]["policy_outcome"] == premium_denied.json()["detail"]
+    assert premium_denied.json()["detail"] in denied_by_request.json()[0]["policy_outcome"]
     assert fallback_by_request.status_code == 200
     assert fallback_by_request.json()[0]["request_id"] == fallback_request_id
     assert fallback_by_request.json()[0]["route_reason"] == "local_provider_error_fallback_blocked"

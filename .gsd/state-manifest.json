@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-03T01:57:49.120Z",
+  "exported_at": "2026-04-03T02:10:02.542Z",
   "milestones": [
     {
       "id": "M001",
@@ -876,14 +876,14 @@
       "milestone_id": "M007",
       "id": "S01",
       "title": "Define page roles and evidence boundaries",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [],
       "demo": "After this: Nebula has one explicit operator-surface model that says what Observability, request detail, and policy preview are for, what evidence leads, and what context stays secondary.",
       "created_at": "2026-04-03T01:41:21.148Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-03T02:00:04.230Z",
+      "full_summary_md": "---\nid: S01\nparent: M007\nmilestone: M007\nprovides:\n  - An explicit operator-surface model for M007: Observability leads with selected-request investigation, request detail is authoritative persisted evidence, and policy preview is replay-before-save decision review.\n  - A reusable test guardrail pattern that catches page-role drift through section order and negative boundary assertions.\n  - Stable rendering of preview parity rows even when route score is absent, which keeps later policy-preview work testable.\nrequires:\n  []\naffects:\n  - S02\n  - S03\n  - S04\n  - S05\nkey_files:\n  - console/src/app/(console)/observability/page.tsx\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/app/(console)/observability/observability-page.test.tsx\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-form.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/PROJECT.md\n  - .gsd/KNOWLEDGE.md\nkey_decisions:\n  - Encoded the request-first operator-surface contract with DOM-order assertions in focused and integrated Observability tests instead of relying on copy-only checks.\n  - Preserved request detail as the authoritative persisted evidence seam and encoded preview-before-save boundaries with focused negative assertions instead of adding new product framing.\n  - Handled undefined preview route scores in `formatRouteScore` so rollout-disabled parity rows remain renderable during policy preview verification.\npatterns_established:\n  - Use DOM-order assertions plus scoped negative wording checks to lock page identity and evidence hierarchy, not just headline presence.\n  - Treat the selected persisted ledger row as the lead evidence object; calibration, cache, recommendation, budget, and dependency surfaces may explain it but must stay visibly secondary.\n  - Keep policy preview read-only and comparison-oriented until save is explicitly chosen, and render rollout-disabled or unscored parity states as first-class preview output rather than missing data.\nobservability_surfaces:\n  - Focused Vitest coverage for Observability section order and subordinate framing.\n  - Focused Vitest coverage for request-detail authority and bounded supporting interpretation.\n  - Focused Vitest coverage for policy preview-before-save semantics and rollout-disabled parity rendering.\ndrill_down_paths:\n  - .gsd/milestones/M007/slices/S01/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M007/slices/S01/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-03T02:00:04.231Z\nblocker_discovered: false\n---\n\n# S01: Define page roles and evidence boundaries\n\n**Locked Nebula’s operator-surface role contract so Observability is request-investigation-first, request detail remains the authoritative persisted evidence seam, and policy preview stays explicitly preview-before-save.**\n\n## What Happened\n\nS01 turned the M007 product thesis into an explicit operator-surface contract instead of leaving page identity implicit in copy. Observability now leads with the selected-request investigation section immediately after filters, and its supporting recommendation, calibration, cache, and dependency sections are framed as subordinate context for the same request-level investigation. `LedgerRequestDetail` now states plainly that the persisted ledger row is the authoritative evidence record for the selected request ID, with calibration, budget, and routing explanation panels kept as supporting interpretation rather than a replacement evidence surface. On the policy side, preview remains explicitly a replay-before-save comparison surface, with guardrails that reject dashboard, routing-studio, and analytics-product framing. While verifying that seam, the slice fixed an existing preview crash by making route-score formatting tolerate undefined preview values, which keeps rollout-disabled parity rows renderable instead of failing the page. The lasting output of the slice is not only the copy and ordering changes but the focused test pattern that locks section order, authority hierarchy, and negative boundary language across the three operator surfaces.\n\n## Verification\n\nSlice-level verification passed with `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` (5 files, 32 tests). The run confirmed Observability section order, request-detail authority copy and bounded interpretation, policy preview-before-save semantics, negative assertions against dashboard/routing-studio/analytics drift, and the route-score formatting fix that keeps rollout-disabled parity rows renderable.\n\n## Requirements Advanced\n\n- R044 — S01 materially strengthens the operator-decision clarity milestone by defining one explicit evidence hierarchy across Observability, request detail, and policy preview without widening scope into a dashboard or analytics surface.\n\n## Requirements Validated\n\nNone.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nT02 adapted the page-level policy seam to the real test path `console/src/components/policy/policy-page.test.tsx` instead of the plan’s outdated `console/src/app/(console)/policy/page.test.tsx`. No product-scope deviation was introduced.\n\n## Known Limitations\n\nThis slice defines role boundaries and test guardrails but does not yet simplify the underlying supporting-context density on Observability or restructure the policy workflow itself. Recommendations, calibration, cache, and dependency sections still coexist on the page; later slices need to refine how those supporting seams read without breaking the request-first contract established here.\n\n## Follow-ups\n\nS02 should tighten only the supporting evidence seams needed by this contract: request-investigation-first Observability is already set, so later work should feed clearer secondary context into that structure rather than reshuffling page identity again. S03 and S04 should preserve the explicit role split established here when reworking investigation and policy-preview flows.\n\n## Files Created/Modified\n\n- `console/src/app/(console)/observability/page.tsx` — Reordered the page so selected-request investigation leads after filters and supporting context remains explicitly subordinate.\n- `console/src/app/(console)/observability/page.test.tsx` — Locked focused Observability hierarchy assertions around request-first framing, subordinate supporting context, and no dashboard drift.\n- `console/src/app/(console)/observability/observability-page.test.tsx` — Locked integrated Observability section order, scoped supporting context assertions, and duplicate-label-safe request-first inspection coverage.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Tightened request-detail lead copy so the persisted ledger row is explicitly the authoritative evidence seam.\n- `console/src/components/ledger/ledger-request-detail.test.tsx` — Added authority, bounded-surface, calibrated/degraded/rollout-disabled, and budget evidence assertions for request detail.\n- `console/src/components/policy/policy-form.tsx` — Fixed preview rendering so undefined route scores no longer crash parity rows and kept preview-before-save framing explicit.\n- `console/src/components/policy/policy-form.test.tsx` — Added preview-before-save guardrails, bounded negative assertions, and runtime-control boundary coverage.\n- `console/src/components/policy/policy-page.test.tsx` — Verified page-level policy preview framing, changed-request parity rows, and explicit non-saving semantics.\n- `.gsd/PROJECT.md` — Updated project current-state summary to reflect the completed M007/S01 operator-surface contract.\n- `.gsd/KNOWLEDGE.md` — Recorded the new page-identity testing pattern for future slices.\n",
+      "full_uat_md": "# S01: Define page roles and evidence boundaries — UAT\n\n**Milestone:** M007\n**Written:** 2026-04-03T02:00:04.231Z\n\n# S01 UAT — Define page roles and evidence boundaries\n\n## Preconditions\n- Console dependencies are installed and `npm --prefix console run test` can execute Vitest.\n- Worktree includes the M007/S01 console changes.\n- Use the focused verification command when confirming this slice: `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n\n## Test Case 1 — Observability leads with selected-request investigation\n1. Run the focused verification command above.\n   - Expected: all 5 Vitest files pass.\n2. Open `console/src/app/(console)/observability/page.tsx` and inspect the top-level sections after filters.\n   - Expected: the first major evidence section after `LedgerFilters` is the selected-request section headed `Inspect one persisted ledger row before reading tenant context`.\n3. Confirm the next major sections are supporting context and dependency health, in that order.\n   - Expected: `Grounded follow-up guidance for the selected request` appears before `Dependency health context`, with no dashboard framing.\n4. Review the Observability tests.\n   - Expected: `page.test.tsx` and `observability-page.test.tsx` assert heading order, require selected-request-first phrasing, and reject `dashboard` drift.\n\n## Test Case 2 — Request detail remains the authoritative persisted evidence record\n1. Review `console/src/components/ledger/ledger-request-detail.tsx`.\n   - Expected: the lead paragraph says the persisted ledger record is the authoritative evidence row for the request ID.\n2. Run `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`.\n   - Expected: tests pass.\n3. Inspect the test cases for calibrated, degraded, rollout-disabled, and unscored routing states.\n   - Expected: each state renders as explicit request-level evidence, not as missing data or analytics framing.\n4. Inspect the budget and calibration sections.\n   - Expected: they render as supporting evidence panels and do not replace the persisted request fields as the lead surface.\n\n## Test Case 3 — Policy preview stays preview-before-save and does not drift into analytics/editor blend\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n   - Expected: both files pass.\n2. Inspect `console/src/components/policy/policy-form.tsx` preview section.\n   - Expected: it is headed `Preview before save`, includes the badge `Save remains explicit`, and says replay does not persist the policy.\n3. Review changed-request preview assertions in `policy-page.test.tsx`.\n   - Expected: tests confirm parity rows render for changed requests and explicitly reject `dashboard`, `routing studio`, and `analytics product` wording.\n4. Review the zero-result and error preview states.\n   - Expected: preview still reads as non-saving decision support in both cases.\n\n## Test Case 4 — Edge case: rollout-disabled parity rows remain renderable when route score is absent\n1. Inspect `formatRouteScore` in `console/src/components/policy/policy-form.tsx`.\n   - Expected: it returns `null` for both `null` and `undefined` route scores.\n2. Run the focused policy tests again.\n   - Expected: the preview no longer crashes on rollout-disabled/null-mode changed-request rows.\n3. Check the changed-request parity expectations in `policy-page.test.tsx`.\n   - Expected: one sample renders `routing parity: degraded (degraded, score 0.28) → rollout disabled` without requiring a numeric simulated route score.\n\n## Edge Cases\n- Thin/stale/gated calibration summaries must remain valid supporting context on Observability and request detail without inventing a separate analytics flow.\n- Request detail must continue to render neutral empty state text when no ledger row is selected.\n- Policy preview error and zero-row states must keep explicit preview-before-save semantics and must not imply that the draft has been applied.\n",
       "goal": "Define and lock the operator-surface role contract so Observability is structurally request-investigation-first, request detail stays the authoritative persisted evidence record, and later slices inherit clear evidence-boundary rules without dashboard drift.",
       "success_criteria": "- Observability page structure leads with one selected request investigation object rather than placing supporting context ahead of it.\n- Ledger request detail remains the authoritative persisted record for route/provider/fallback/calibration/policy evidence, with interpretation explicitly bounded as secondary context.\n- Policy preview and surrounding console wording remain aligned to preview-before-save decision review and do not drift into dashboard, routing-studio, or analytics-product framing.\n- Focused Vitest coverage proves both wording and structure/order boundaries for these page roles.",
       "proof_level": "contract",
@@ -906,11 +906,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Tighten only the supporting contracts and page-level seams required to express the clarified operator workflows cleanly.",
-      "success_criteria": "- Any missing supporting fields or comparison seams are added in a bounded way.\n- No new dashboard family, routing studio, or alternate workflow is introduced.\n- The updated seams map cleanly onto the S01 page-role model.",
-      "proof_level": "Supporting contracts and wording seams are sufficient for request-first and decision-first surfaces.",
-      "integration_closure": "Observability and policy implementation can rely on bounded supporting seams instead of compensating with mixed-purpose structure or prose.",
-      "observability_impact": "Makes the supporting evidence contracts fit the intended hierarchy rather than forcing UI workarounds.",
+      "goal": "Tighten the supporting data and UI contracts behind Observability and policy preview so later M007 investigation and comparison flows can rely on explicit, bounded operator evidence without introducing dashboard or analytics drift.",
+      "success_criteria": "- Policy options exposes the real runtime-enforced policy fields the console edits, including semantic-cache tuning controls, with focused backend and frontend assertions preventing contract drift.\n- Policy preview remains preview-before-save but presents clearer baseline-versus-simulated comparison evidence and bounded changed-request context that later S04 work can restructure without backend ambiguity.\n- Observability keeps the selected persisted request authoritative while its supporting recommendation/cache/calibration seams give clearer follow-up context and remain explicitly subordinate, with focused Vitest guardrails blocking dashboard/analytics drift.",
+      "proof_level": "integration",
+      "integration_closure": "Backend admin policy-options and simulation contracts stay aligned with console types/components/tests, and Observability/policy preview consume those bounded contracts without introducing new page identities or alternate authority surfaces.",
+      "observability_impact": "Focused backend pytest and console Vitest coverage become the diagnostic surface for contract drift: policy-options tests catch missing runtime fields, simulation tests lock bounded comparison semantics, and Observability/policy tests keep selected-request evidence primary while surfacing duplicate-label-safe supporting context.",
       "sequence": 0,
       "replan_triggered_at": null
     },
@@ -3876,6 +3876,121 @@
       "observability_impact": "Keeps the authoritative evidence boundary inspectable through focused request-detail and policy preview test assertions, so later slices can detect contract drift quickly.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S02",
+      "id": "T01",
+      "title": "Aligned admin policy options with cache tuning controls and tightened bounded simulation contract coverage.",
+      "status": "complete",
+      "one_liner": "Aligned admin policy options with cache tuning controls and tightened bounded simulation contract coverage.",
+      "narrative": "Updated the admin policy-options contract so runtime-enforced fields now include the live semantic-cache tuning controls already edited in the console. Tightened shared governance models for policy simulation by bounding approximation notes and changed-request samples and constraining cost fields to non-negative values, while preserving the existing comparison-first route/status/policy/cost shape. Strengthened focused pytest coverage at the admin boundary and model layer, including policy-options classification checks and bounded simulation-request validation, and corrected stale simulation assertions to current inclusive replay-window and policy-outcome behavior.",
+      "verification_result": "Ran the task-plan verification commands successfully: `./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x` and `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x`. Also ran LSP diagnostics on the touched backend and test files; no new diagnostics were introduced. One pre-existing Ruff/LSP warning remains in `tests/test_governance_api.py` for a duplicate embeddings test definition unrelated to this task.",
+      "duration": "",
+      "completed_at": "2026-04-03T02:10:02.512Z",
+      "blocker_discovered": false,
+      "deviations": "Did not modify `console/src/lib/admin-api.ts` because its shared types already matched the intended stricter contract; the actual drift was in the backend response and focused backend tests. Updated stale governance pytest expectations uncovered during execution so they match current inclusive replay-window semantics and richer policy-outcome strings.",
+      "known_issues": "Pre-existing duplicate test definition warning remains in `tests/test_governance_api.py` (`test_embeddings_requests_can_be_correlated_through_usage_ledger`, Ruff/LSP F811). It is outside this task's scope.",
+      "key_files": [
+        "src/nebula/api/routes/admin.py",
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        ".gsd/milestones/M007/slices/S02/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Kept policy simulation comparison-first by tightening bounds and tests around the existing route/status/policy/cost evidence instead of widening the response into dashboard-style aggregates.",
+        "Resolved contract drift at the backend admin boundary rather than changing console types that were already aligned with the intended policy-preview contract."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S02\nmilestone: M007\nkey_files:\n  - src/nebula/api/routes/admin.py\n  - src/nebula/models/governance.py\n  - src/nebula/services/policy_simulation_service.py\n  - tests/test_governance_api.py\n  - tests/test_service_flows.py\n  - .gsd/milestones/M007/slices/S02/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Kept policy simulation comparison-first by tightening bounds and tests around the existing route/status/policy/cost evidence instead of widening the response into dashboard-style aggregates.\n  - Resolved contract drift at the backend admin boundary rather than changing console types that were already aligned with the intended policy-preview contract.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-03T02:10:02.514Z\nblocker_discovered: false\n---\n\n# T01: Aligned admin policy options with cache tuning controls and tightened bounded simulation contract coverage.\n\n**Aligned admin policy options with cache tuning controls and tightened bounded simulation contract coverage.**\n\n## What Happened\n\nUpdated the admin policy-options contract so runtime-enforced fields now include the live semantic-cache tuning controls already edited in the console. Tightened shared governance models for policy simulation by bounding approximation notes and changed-request samples and constraining cost fields to non-negative values, while preserving the existing comparison-first route/status/policy/cost shape. Strengthened focused pytest coverage at the admin boundary and model layer, including policy-options classification checks and bounded simulation-request validation, and corrected stale simulation assertions to current inclusive replay-window and policy-outcome behavior.\n\n## Verification\n\nRan the task-plan verification commands successfully: `./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x` and `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x`. Also ran LSP diagnostics on the touched backend and test files; no new diagnostics were introduced. One pre-existing Ruff/LSP warning remains in `tests/test_governance_api.py` for a duplicate embeddings test definition unrelated to this task.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x` | 0 | ✅ pass | 5400ms |\n| 2 | `./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x` | 0 | ✅ pass | 12600ms |\n| 3 | `lsp diagnostics src/nebula/api/routes/admin.py src/nebula/models/governance.py src/nebula/services/policy_simulation_service.py tests/test_service_flows.py` | 0 | ✅ pass | 100ms |\n| 4 | `lsp diagnostics tests/test_governance_api.py` | 0 | ✅ pass | 100ms |\n\n\n## Deviations\n\nDid not modify `console/src/lib/admin-api.ts` because its shared types already matched the intended stricter contract; the actual drift was in the backend response and focused backend tests. Updated stale governance pytest expectations uncovered during execution so they match current inclusive replay-window semantics and richer policy-outcome strings.\n\n## Known Issues\n\nPre-existing duplicate test definition warning remains in `tests/test_governance_api.py` (`test_embeddings_requests_can_be_correlated_through_usage_ledger`, Ruff/LSP F811). It is outside this task's scope.\n\n## Files Created/Modified\n\n- `src/nebula/api/routes/admin.py`\n- `src/nebula/models/governance.py`\n- `src/nebula/services/policy_simulation_service.py`\n- `tests/test_governance_api.py`\n- `tests/test_service_flows.py`\n- `.gsd/milestones/M007/slices/S02/tasks/T01-SUMMARY.md`\n",
+      "description": "Update the admin policy contract so runtime-enforced fields truthfully include the semantic-cache tuning controls already edited in the console, then tighten backend/shared types and focused tests around bounded simulation comparison output. Use the existing admin route/model seams; do not widen the contract into analytics payloads or unbounded samples.\n\nSteps:\n1. Confirm and align `PolicyOptionsResponse` / `/v1/admin/policy/options` so runtime-enforced fields include the semantic-cache similarity-threshold and max-entry-age controls when they are live policy inputs.\n2. Keep `PolicySimulationResponse` bounded and comparison-first by strengthening any shared type/test expectations needed for baseline-vs-simulated route/status/policy/cost evidence without adding dashboard-style aggregates.\n3. Add or tighten focused pytest coverage around policy options and simulation so contract drift is caught at the admin boundary before console work lands.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/api/routes/admin.py",
+        "src/nebula/models/governance.py",
+        "src/nebula/services/policy_simulation_service.py",
+        "tests/test_governance_api.py",
+        "tests/test_service_flows.py",
+        "console/src/lib/admin-api.ts"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x && ./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "inputs": [
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/policy_simulation_service.py`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_service_flows.py`",
+        "`console/src/lib/admin-api.ts`"
+      ],
+      "expected_output": [
+        "`src/nebula/api/routes/admin.py`",
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/services/policy_simulation_service.py`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_service_flows.py`",
+        "`console/src/lib/admin-api.ts`"
+      ],
+      "observability_impact": "Locks the admin API contract with executable failure signals in pytest so later console regressions can be localized to backend contract drift instead of ambiguous UI behavior.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S02",
+      "id": "T02",
+      "title": "Tighten policy preview and Observability supporting seams",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Consume the aligned contracts in the console by making policy preview and Observability more explicit about the operator’s next comparison or follow-up action while preserving the S01 authority hierarchy. Extend existing components locally; do not add a new surface, summary dashboard, or alternate request authority path.\n\nSteps:\n1. Refine `PolicyForm` / policy page rendering so preview reads as baseline-vs-simulated decision evidence with explicit bounded samples, save-explicit semantics, and cache-control/runtime wording grounded in the aligned policy-options contract.\n2. Refine Observability supporting-context seams so recommendation, calibration, cache, and dependency cards point more clearly back to the selected request investigation while keeping `LedgerRequestDetail` authoritative and avoiding tenant-summary takeover.\n3. Tighten focused Vitest coverage with DOM-order and scoped assertions (`within(...)`) for duplicate labels, comparison-first preview semantics, and negative checks against dashboard/routing-studio/analytics drift.",
+      "estimate": "1h30m",
+      "files": [
+        "console/src/app/(console)/policy/page.tsx",
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/app/(console)/observability/page.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/ledger/ledger-request-detail.tsx"
+      ],
+      "verify": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`console/src/app/(console)/policy/page.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/lib/admin-api.ts`"
+      ],
+      "expected_output": [
+        "`console/src/app/(console)/policy/page.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`"
+      ],
+      "observability_impact": "Keeps failure diagnosis local to the operator surfaces: focused Vitest assertions identify whether drift came from preview framing, selected-request hierarchy, or scoped supporting cards.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -4357,6 +4472,18 @@
       "rationale": "These role decisions directly address the current page identity blur and give the milestone a concrete product spine. They also preserve Nebula’s existing wedge by keeping durable evidence primary and supporting context visibly secondary.",
       "revisable": "Yes",
       "made_by": "collaborative",
+      "superseded_by": null
+    },
+    {
+      "seq": 43,
+      "id": "D041",
+      "when_context": "M007/S01",
+      "scope": "console-product",
+      "decision": "M007/S01 operator-surface evidence hierarchy",
+      "choice": "Observability leads with selected-request investigation, ledger request detail remains the authoritative persisted evidence seam, and policy preview stays explicitly preview-before-save with supporting context rendered as secondary.",
+      "rationale": "S01 reordered Observability so selected request evidence is the first major evidence section after filters, tightened request-detail copy to identify the persisted ledger row as authoritative, fixed preview rendering for undefined route scores, and locked the hierarchy with 32 passing focused Vitest assertions across Observability, request detail, and policy surfaces.",
+      "revisable": "Yes",
+      "made_by": "agent",
       "superseded_by": null
     }
   ],
@@ -5482,6 +5609,50 @@
       "verdict": "✅ pass",
       "duration_ms": 3500,
       "created_at": "2026-04-03T01:57:49.096Z"
+    },
+    {
+      "id": 103,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M007",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"policy_options or simulation\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 5400,
+      "created_at": "2026-04-03T02:10:02.512Z"
+    },
+    {
+      "id": 104,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M007",
+      "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"simulation\" -x",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 12600,
+      "created_at": "2026-04-03T02:10:02.512Z"
+    },
+    {
+      "id": 105,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M007",
+      "command": "lsp diagnostics src/nebula/api/routes/admin.py src/nebula/models/governance.py src/nebula/services/policy_simulation_service.py tests/test_service_flows.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 100,
+      "created_at": "2026-04-03T02:10:02.512Z"
+    },
+    {
+      "id": 106,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M007",
+      "command": "lsp diagnostics tests/test_governance_api.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 100,
+      "created_at": "2026-04-03T02:10:02.512Z"
     }
   ]
 }

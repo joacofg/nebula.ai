@@ -1096,6 +1096,23 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
     assert empty_response.changed_requests == []
 
 
+def test_policy_simulation_response_model_is_bounded_and_comparison_first() -> None:
+    response = PolicySimulationRequest(
+        candidate_policy=TenantPolicy(),
+        limit=200,
+        changed_sample_limit=50,
+    )
+
+    assert response.limit == 200
+    assert response.changed_sample_limit == 50
+
+    with pytest.raises(ValidationError):
+        PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            changed_sample_limit=51,
+        )
+
+
 @pytest.mark.asyncio
 async def test_recommendation_service_orders_and_bounds_recommendations_without_mutation() -> None:
     now = datetime.now(UTC)

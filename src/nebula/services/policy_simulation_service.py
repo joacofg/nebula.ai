@@ -264,7 +264,6 @@ class PolicySimulationService:
             if isinstance(total_score, int | float):
                 return float(total_score)
         token_count = route_signals.get("token_count")
-        complexity_tier = route_signals.get("complexity_tier")
         keyword_match = route_signals.get("keyword_match")
         model_constraint = route_signals.get("model_constraint")
         if isinstance(token_count, int) and isinstance(keyword_match, bool):

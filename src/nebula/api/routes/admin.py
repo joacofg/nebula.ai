@@ -185,6 +185,8 @@ async def get_policy_options(
             "calibrated_routing_enabled",
             "allowed_premium_models",
             "semantic_cache_enabled",
+            "semantic_cache_similarity_threshold",
+            "semantic_cache_max_entry_age_hours",
             "fallback_enabled",
             "max_premium_cost_per_request",
             "hard_budget_limit_usd",
