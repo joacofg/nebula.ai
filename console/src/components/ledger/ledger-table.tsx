@@ -42,20 +42,48 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
         <tbody>
           {rows.map((row) => {
             const selected = row.request_id === selectedRequestId;
+            const selectionLabel = selected ? `Current investigation: ${row.request_id}` : `Inspect request ${row.request_id}`;
+
             return (
               <tr
                 key={row.request_id}
-                className={selected ? "cursor-pointer bg-sky-50" : "cursor-pointer hover:bg-slate-50"}
-                onClick={() => onSelectRow(row.request_id)}
+                aria-selected={selected}
+                className={selected ? "bg-sky-50/70 ring-1 ring-inset ring-sky-200" : "hover:bg-slate-50"}
               >
-                <td className="px-4 py-3">{new Date(row.timestamp).toLocaleString()}</td>
-                <td className="px-4 py-3 font-[var(--font-fira-code)] text-xs text-slate-700">{row.request_id}</td>
-                <td className="px-4 py-3">{row.tenant_id}</td>
-                <td className="px-4 py-3">{row.final_route_target}</td>
-                <td className="px-4 py-3">{row.final_provider ?? "N/A"}</td>
-                <td className="px-4 py-3">{row.terminal_status}</td>
-                <td className="px-4 py-3">{formatLatency(row.latency_ms)}</td>
-                <td className="px-4 py-3">{formatEstimatedCost(row.estimated_cost)}</td>
+                <td className="px-4 py-3 align-top">{new Date(row.timestamp).toLocaleString()}</td>
+                <td className="px-4 py-3 align-top">
+                  <button
+                    type="button"
+                    onClick={() => onSelectRow(row.request_id)}
+                    aria-pressed={selected}
+                    aria-label={selectionLabel}
+                    className={selected ? "group w-full rounded-xl border border-sky-200 bg-white/90 px-3 py-2 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-[var(--font-fira-code)] text-xs text-slate-700">{row.request_id}</span>
+                      {selected ? (
+                        <span className="rounded-full border border-sky-200 bg-sky-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                          Current investigation
+                        </span>
+                      ) : (
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 transition group-hover:text-slate-500">
+                          Select request
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      {selected
+                        ? "Primary request for the detail view below."
+                        : "Promote this request into the primary detail view."}
+                    </p>
+                  </button>
+                </td>
+                <td className="px-4 py-3 align-top">{row.tenant_id}</td>
+                <td className="px-4 py-3 align-top">{row.final_route_target}</td>
+                <td className="px-4 py-3 align-top">{row.final_provider ?? "N/A"}</td>
+                <td className="px-4 py-3 align-top">{row.terminal_status}</td>
+                <td className="px-4 py-3 align-top">{formatLatency(row.latency_ms)}</td>
+                <td className="px-4 py-3 align-top">{formatEstimatedCost(row.estimated_cost)}</td>
               </tr>
             );
           })}

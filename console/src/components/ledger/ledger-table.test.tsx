@@ -44,11 +44,11 @@ describe("ledger-table", () => {
     expect(screen.getByText("Latency")).toBeInTheDocument();
     expect(screen.getByText("Estimated cost")).toBeInTheDocument();
 
-    await user.click(screen.getByRole("row", { name: /req-001/i }));
+    await user.click(screen.getByRole("button", { name: /inspect request req-001/i }));
     expect(onSelectRow).toHaveBeenCalledWith("req-001");
   });
 
-  it("exposes request identity in the row so embeddings entries stay discoverable", () => {
+  it("marks the selected request as the current investigation without widening the table surface", () => {
     renderWithProviders(
       <LedgerTable
         rows={[baseRow]}
@@ -59,8 +59,35 @@ describe("ledger-table", () => {
     );
 
     expect(screen.getByText("Request ID")).toBeInTheDocument();
-    expect(screen.getByRole("row", { name: /req-001/i })).toHaveClass("bg-sky-50");
+    expect(screen.getByRole("row", { selected: true })).toHaveClass("bg-sky-50/70");
+    expect(screen.getByRole("button", { name: /current investigation: req-001/i })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Current investigation")).toBeInTheDocument();
+    expect(screen.getByText("Primary request for the detail view below.")).toBeInTheDocument();
     expect(screen.getByText("embeddings")).toBeInTheDocument();
     expect(screen.queryByText(/text to embed/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
+  });
+
+  it("keeps unselected rows discoverable as bounded request selectors", () => {
+    renderWithProviders(
+      <LedgerTable
+        rows={[
+          baseRow,
+          {
+            ...baseRow,
+            request_id: "req-002",
+            final_route_target: "premium",
+          },
+        ]}
+        selectedRequestId={"req-001"}
+        onSelectRow={() => {}}
+        isLoading={false}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: /current investigation: req-001/i })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /inspect request req-002/i })).toHaveAttribute("aria-pressed", "false");
+    expect(screen.getByText("Select request")).toBeInTheDocument();
+    expect(screen.getByText("Promote this request into the primary detail view.")).toBeInTheDocument();
   });
 });
