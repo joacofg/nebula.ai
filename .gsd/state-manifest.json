@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-03T02:47:36.339Z",
+  "exported_at": "2026-04-03T02:55:31.732Z",
   "milestones": [
     {
       "id": "M001",
@@ -941,7 +941,7 @@
       "milestone_id": "M007",
       "id": "S04",
       "title": "Rework policy preview into a comparison-and-decision flow",
-      "status": "pending",
+      "status": "complete",
       "risk": "medium",
       "depends": [
         "S01",
@@ -949,9 +949,9 @@
       ],
       "demo": "After this: an operator can use policy preview to compare baseline versus simulated outcomes and decide whether to save without the page feeling like a blended editor and analytics surface.",
       "created_at": "2026-04-03T01:41:21.148Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-03T02:49:48.792Z",
+      "full_summary_md": "---\nid: S04\nparent: M007\nmilestone: M007\nprovides:\n  - A compare-before-save policy preview flow where operators can read baseline-versus-draft consequences first, inspect bounded supporting replay evidence second, and trust that preview state is cleared when tenant context or saved policy changes.\nrequires:\n  - slice: S01\n    provides: The explicit operator-surface role contract that defines policy preview as a save/don’t-save decision-review surface rather than a blended admin panel.\n  - slice: S02\n    provides: The bounded policy-options and simulation seams needed to keep comparison evidence narrow and runtime-aligned while rewriting the preview hierarchy.\naffects:\n  - S05\nkey_files:\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-form.test.tsx\n  - console/src/app/(console)/policy/page.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - .gsd/PROJECT.md\n  - .gsd/KNOWLEDGE.md\nkey_decisions:\n  - Derived preview decision summaries at render time from `simulationResult` instead of adding client state or widening the simulation payload.\n  - Kept the existing preview/save mutation split and reset wiring because the page orchestration already matched the compare-before-save contract.\n  - Kept changed-request evidence and replay notes explicitly subordinate to the decision summary so the page does not drift into dashboard or analytics framing.\npatterns_established:\n  - For policy-preview work, derive baseline-vs-draft decision summaries from the bounded simulation payload at render time instead of storing parallel UI state.\n  - When the page-level contract is already correct, tighten route-entry framing and tests rather than adding new orchestration state.\n  - Use focused negative assertions against terms like dashboard, routing studio, and analytics product to lock page identity in operator-surface refinement work.\nobservability_surfaces:\n  - Focused Vitest coverage in `console/src/components/policy/policy-form.test.tsx` and `console/src/components/policy/policy-page.test.tsx` now acts as the durable diagnostic surface for preview/save separation, bounded replay framing, and stale-preview reset behavior.\ndrill_down_paths:\n  - .gsd/milestones/M007/slices/S04/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M007/slices/S04/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-03T02:49:48.794Z\nblocker_discovered: false\n---\n\n# S04: Rework policy preview into a comparison-and-decision flow\n\n**Reworked the policy editor into a compare-before-save decision flow that leads with baseline-versus-draft consequences, keeps supporting replay evidence bounded, and clears stale preview state on tenant changes or save.**\n\n## What Happened\n\nS04 tightened Nebula’s policy surface into an explicit decision-review flow rather than a blended editor-plus-analytics page. In `console/src/components/policy/policy-form.tsx`, the preview section now derives its decision summary directly from `simulationResult` at render time instead of introducing new client state or widening the admin payload contract. The preview leads with one bounded baseline-versus-draft summary card, explicit preview-only/save-stays-separate wording, consequence text, and next-step guidance for changed, unchanged, and no-comparison-window states. Supporting replay evidence remains subordinate: the bounded changed-request sample stays capped to the existing replay limits, replay notes remain secondary, and null or rollout-disabled routing parity still renders without crashing.\n\nAt the page entrypoint in `console/src/app/(console)/policy/page.tsx`, the existing mutation wiring already matched the intended contract, so the slice preserved it rather than adding orchestration state. Preview and save remain separate mutations, the simulate request stays bounded at `limit: 50` and `changed_sample_limit: 5`, tenant changes clear stale preview evidence, and successful saves clear the last preview before policy refetch. Page copy was tightened so the overall route reads as load baseline → compare draft → decide whether to save.\n\nFocused Vitest coverage now locks the decision hierarchy and anti-drift boundary at both levels. `policy-form.test.tsx` proves decision-first ordering, explicit non-saving semantics, bounded changed-request framing, unchanged/empty/loading/error states, malformed/null routing parity rendering, and negative assertions against dashboard/routing-studio/analytics language. `policy-page.test.tsx` proves the real route entrypoint keeps the bounded simulate payload, preserves preview/save separation, clears stale preview evidence on tenant switch and save success, and keeps the compare-before-save framing intact.\n\n## Verification\n\nRan the slice verification bundle defined in the plan: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. It passed with 2 test files and 16 assertions green. This reverified the assembled compare-before-save flow, bounded simulate payload shape, explicit preview-only wording, null and rollout-disabled routing parity rendering, and reset behavior after tenant switches and successful saves.\n\n## Requirements Advanced\n\n- R049 — Strengthened the bounded operator-surface contract by making policy preview an explicit decision-review surface with anti-drift tests against dashboard/analytics framing, which advances the milestone’s scope-discipline proof ahead of integrated close-out.\n\n## Requirements Validated\n\nNone.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nNone.\n\n## Known Limitations\n\nThis slice is intentionally artifact-driven console work; it does not add new backend simulation fields or runtime behavior. TypeScript LSP diagnostics were unavailable in the environment during task execution, so focused Vitest coverage remains the authoritative verification surface for the changed console seams.\n\n## Follow-ups\n\nS05 should assemble this policy decision surface with the selected-request-first Observability flow into one integrated operator proof, making the handoff between request investigation and compare-before-save policy action explicit without duplicating contract semantics.\n\n## Files Created/Modified\n\n- `console/src/components/policy/policy-form.tsx` — Reworked the preview section into a decision-first baseline-versus-draft summary with explicit next-step wording and subordinate bounded replay evidence.\n- `console/src/components/policy/policy-form.test.tsx` — Locked the preview hierarchy, explicit non-saving semantics, null/rollout-disabled parity rendering, and anti-drift wording with focused Vitest coverage.\n- `console/src/app/(console)/policy/page.tsx` — Kept preview/save mutation separation intact while tightening page framing around load baseline → compare draft → decide whether to save.\n- `console/src/components/policy/policy-page.test.tsx` — Verified the real route entrypoint preserves bounded simulate payloads and clears stale preview evidence on tenant switch and save success.\n- `.gsd/PROJECT.md` — Updated current-state project context to reflect that M007 S04 is complete and policy preview now ships as a compare-before-save decision surface.\n- `.gsd/KNOWLEDGE.md` — Recorded the policy preview decision-flow pattern so future slices preserve render-time derivation and reset verification at the page entrypoint.\n",
+      "full_uat_md": "# S04: Rework policy preview into a comparison-and-decision flow — UAT\n\n**Milestone:** M007\n**Written:** 2026-04-03T02:49:48.794Z\n\n# S04: Rework policy preview into a comparison-and-decision flow — UAT\n\n**Milestone:** M007\n**Written:** 2026-04-01\n\n## UAT Type\n\n- UAT mode: artifact-driven\n- Why this mode is sufficient: This slice changes bounded console composition and mutation framing rather than backend runtime behavior. The decisive proof is the assembled page behavior locked by focused Vitest coverage at the form seam and the real policy page entrypoint.\n\n## Preconditions\n\n- `console/node_modules` is installed so Vitest can run.\n- The worktree includes the S04 policy form and policy page changes.\n- The tester can run focused console tests from the repo root.\n\n## Smoke Test\n\nRun:\n\n`npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`\n\n**Expected:** Both test files pass, proving the compare-before-save policy flow, explicit preview-only wording, bounded changed-request evidence, and stale-preview reset behavior after tenant switches and saves.\n\n## Test Cases\n\n### 1. Preview leads with a decision summary before supporting replay evidence\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx`.\n2. Inspect the passing assertions around the `Preview before save` section.\n3. **Expected:** The preview shows a decision badge, preview-only/save-stays-separate wording, a baseline-versus-draft consequence summary, and explicit next-step guidance before the `Changed request sample` block appears.\n4. **Expected:** Supporting replay evidence stays subordinate and bounded; the sample explains that it is a limited set of persisted requests whose route, status, policy outcome, or projected cost changed.\n\n### 2. Preview remains explicitly non-saving across changed, unchanged, and empty-window states\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n2. Review the assertions for changed previews, unchanged previews, and zero-row preview windows.\n3. **Expected:** Changed previews still say `Preview only — save stays separate` and `This preview did not save the policy.`\n4. **Expected:** Unchanged previews surface `No decision pressure` plus guidance to save only if the unchanged replay matches operator intent.\n5. **Expected:** Zero-row previews surface `No comparison window` and explain that no recent traffic matched the replay window rather than implying a saved or failed change.\n\n### 3. Null and rollout-disabled routing parity remain legible in the changed-request sample\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n2. Inspect the passing assertions around malformed/null route fields and rollout-disabled parity.\n3. **Expected:** Rows with null route mode/score still render readable parity strings such as `rollout disabled` or `unscored (degraded)` rather than crashing or hiding the row.\n4. **Expected:** Route parity remains supporting evidence only and does not replace the main decision summary.\n\n### 4. The real policy page keeps preview and save as separate mutations\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`.\n2. Inspect the assertions around `Preview impact` and `Save policy`.\n3. **Expected:** Preview calls `simulateTenantPolicy` with the current draft and the bounded payload shape (`limit: 50`, `changed_sample_limit: 5`) and does not call `updateTenantPolicy`.\n4. **Expected:** The page intro frames the route as loading a tenant policy, comparing the baseline against a candidate draft using recent persisted traffic, and saving explicitly only after preview evidence supports the change.\n\n### 5. Tenant changes and save success clear stale preview evidence\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`.\n2. Review the passing assertions for `clears stale preview evidence after a successful save` and `clears stale preview evidence when switching tenants`.\n3. **Expected:** After a preview has rendered changed-request evidence, a successful save removes that stale preview and returns the section to the neutral `Run a preview...` state.\n4. **Expected:** Switching from Tenant A to Tenant B also clears the old preview sample before the new tenant policy loads, so prior comparison evidence does not leak across tenant contexts.\n\n## Edge Cases\n\n### Preview failure remains isolated from save\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-page.test.tsx`.\n2. Review the `shows preview errors from the simulation mutation` case.\n3. **Expected:** A simulation error renders `Preview failed: ...` inside the preview surface, save is not triggered, and the page does not drift into dashboard, routing-studio, or analytics language.\n\n### No decision drift into dashboard framing\n\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n2. Review the negative assertions in both suites.\n3. **Expected:** The policy surface does not render language like `dashboard`, `routing studio`, or `analytics product`; the page remains a bounded compare-before-save decision tool.\n\n## Failure Signals\n\n- `policy-form.test.tsx` fails because the changed-request sample appears before the decision summary, preview-only wording disappears, or null parity rows crash.\n- `policy-page.test.tsx` fails because the simulate payload shape changes, preview starts implying persistence, or stale preview evidence survives a tenant switch or successful save.\n- Negative wording assertions fail, indicating page-identity drift toward dashboard or analytics framing.\n\n## Requirements Proved By This UAT\n\n- R049 — The operator decision-surface refinement remains bounded and interpretable instead of widening Nebula into an analytics-style dashboard or broader product sprawl.\n\n## Not Proven By This UAT\n\n- This UAT does not prove the integrated cross-surface handoff between Observability and policy decision flow; that belongs to S05 close-out.\n- This UAT does not exercise live backend simulation behavior beyond the bounded request/response contracts already modeled in the focused page tests.\n\n## Notes for Tester\n\nIf a failure involves repeated labels or supporting evidence text, first verify whether the regression is real page-hierarchy drift or only a test-scoping issue. In this slice, repeated supporting fields are acceptable as long as the decision summary stays primary, preview stays explicitly non-saving, and stale preview evidence never leaks across tenants or after save.\n",
       "goal": "Turn policy preview into a comparison-and-decision flow that makes baseline versus draft evidence, operator consequence, and save / don’t-save next steps legible without widening the page into analytics or dashboard product scope.",
       "success_criteria": "- Policy preview reads as a decision-review surface where operators can compare the current baseline and current draft over bounded recent persisted traffic and understand whether to save, keep iterating, or stop.\n- Supporting preview context remains subordinate to the baseline-versus-draft comparison, with explicit guardrails against dashboard, routing-studio, or analytics-product drift.\n- Save and preview remain separate mutations, with page-level framing and tests proving preview does not persist changes and resets stay correct on tenant change or save success.",
       "proof_level": "integration",
@@ -975,11 +975,11 @@
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Close out the milestone with an integrated operator proof that re-checks page identity, evidence hierarchy, and bounded scope across the assembled console.",
-      "success_criteria": "- The assembled console presents a coherent operator decision workflow across the touched surfaces.\n- Page identity remains clear at milestone close-out.\n- The final proof confirms Nebula stayed within bounded control-plane scope.\n- No dashboard drift or redesign sprawl appeared during assembly.",
-      "proof_level": "Integrated console proof and focused verification demonstrate the final product-clarity outcome.",
-      "integration_closure": "The touched surfaces hold together as one operator story: investigate request, inspect persisted evidence, compare policy preview, and act deliberately.",
-      "observability_impact": "Confirms the clarified roles remain coherent across the full operator workflow instead of only within isolated pages.",
+      "goal": "Assemble and verify one pointer-only operator proof path that shows selected-request-first Observability, authoritative request detail, and compare-before-save policy preview work together as a coherent decision system without drifting into dashboard, routing-studio, or analytics-product scope.",
+      "success_criteria": "- A new pointer-only integrated proof doc joins the M007 operator story in a strict review order without restating page/component contracts.\n- `README.md` and `docs/architecture.md` make the M007 proof discoverable alongside prior integrated proof walkthroughs.\n- Focused console verification proves the assembled cross-surface story still holds: Observability is request-investigation-first, request detail remains authoritative, policy preview is compare-before-save, supporting context stays subordinate, and anti-drift guards reject dashboard/routing-studio/analytics framing.\n- Any additional test tightening stays narrow and only closes a real integrated-proof gap surfaced by the assembly review.",
+      "proof_level": "final-assembly",
+      "integration_closure": "This slice closes M007 by composing the already-shipped Observability, request-detail, and policy-preview seams into one discoverable review path and re-running the focused console assertions that prove those seams still agree. Nothing new should be introduced beyond the integrated proof artifact, discoverability wiring, and any narrowly justified anti-drift test tightening revealed by the assembled review.",
+      "observability_impact": "The durable diagnostic surface for this close-out remains the focused Vitest suite across Observability, ledger request detail, ledger table, and policy preview/page tests. Failures should tell a future agent whether drift came from proof ordering, authority hierarchy, next-step guidance, or dashboard/analytics scope language rather than from a broad visual regression hunt.",
       "sequence": 0,
       "replan_triggered_at": null
     }
@@ -4197,6 +4197,110 @@
       "observability_impact": "Focused page-level Vitest failures become the inspection surface for stale preview state, drifted page framing, or broken preview/save mutation separation.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S05",
+      "id": "T01",
+      "title": "Added the pointer-only M007 integrated proof and linked it from README and architecture docs.",
+      "status": "complete",
+      "one_liner": "Added the pointer-only M007 integrated proof and linked it from README and architecture docs.",
+      "narrative": "Drafted `docs/m007-integrated-proof.md` using the existing pointer-only integrated-proof pattern, but scoped it to the shipped M007 operator flow: selected-request-first Observability, bounded ledger-row selection, authoritative request detail, compare-before-save policy preview, and page-level preview reset behavior. The new walkthrough points directly at the real console page/component/test seams instead of restating contracts or UI copy, and it makes the anti-drift boundary explicit so dashboard, routing-studio, analytics-product, redesign-sprawl, and parallel-workflow framing do not become positive product claims. Updated `README.md` and `docs/architecture.md` to add discoverability links to the new proof in the same style as the prior integrated proof entries.",
+      "verification_result": "Ran the task-plan verification script as written first; it failed because the worktree does not provide a `python` binary. Reran the same assertions with `python3`, which passed and confirmed that `docs/m007-integrated-proof.md` exists, contains the required section headings, and is linked from both `README.md` and `docs/architecture.md`.",
+      "duration": "",
+      "completed_at": "2026-04-03T02:55:31.707Z",
+      "blocker_discovered": false,
+      "deviations": "The task-plan verification command used `python`, but the active environment only exposed `python3`. I preserved the intended assertions and reran them with `python3` so the actual document and link checks still completed.",
+      "known_issues": "None. The only issue encountered was the missing `python` alias in the environment, which did not block verification with `python3`.",
+      "key_files": [
+        "docs/m007-integrated-proof.md",
+        "README.md",
+        "docs/architecture.md",
+        ".gsd/milestones/M007/slices/S05/tasks/T01-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Kept the M007 walkthrough pointer-only by referencing shipped console page/component/test seams instead of duplicating UI contracts or long-form copy."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S05\nmilestone: M007\nkey_files:\n  - docs/m007-integrated-proof.md\n  - README.md\n  - docs/architecture.md\n  - .gsd/milestones/M007/slices/S05/tasks/T01-SUMMARY.md\nkey_decisions:\n  - Kept the M007 walkthrough pointer-only by referencing shipped console page/component/test seams instead of duplicating UI contracts or long-form copy.\nduration: \"\"\nverification_result: mixed\ncompleted_at: 2026-04-03T02:55:31.708Z\nblocker_discovered: false\n---\n\n# T01: Added the pointer-only M007 integrated proof and linked it from README and architecture docs.\n\n**Added the pointer-only M007 integrated proof and linked it from README and architecture docs.**\n\n## What Happened\n\nDrafted `docs/m007-integrated-proof.md` using the existing pointer-only integrated-proof pattern, but scoped it to the shipped M007 operator flow: selected-request-first Observability, bounded ledger-row selection, authoritative request detail, compare-before-save policy preview, and page-level preview reset behavior. The new walkthrough points directly at the real console page/component/test seams instead of restating contracts or UI copy, and it makes the anti-drift boundary explicit so dashboard, routing-studio, analytics-product, redesign-sprawl, and parallel-workflow framing do not become positive product claims. Updated `README.md` and `docs/architecture.md` to add discoverability links to the new proof in the same style as the prior integrated proof entries.\n\n## Verification\n\nRan the task-plan verification script as written first; it failed because the worktree does not provide a `python` binary. Reran the same assertions with `python3`, which passed and confirmed that `docs/m007-integrated-proof.md` exists, contains the required section headings, and is linked from both `README.md` and `docs/architecture.md`.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `python - <<'PY' ... PY` | 127 | ❌ fail | 100ms |\n| 2 | `python3 - <<'PY' ... PY` | 0 | ✅ pass | 100ms |\n\n\n## Deviations\n\nThe task-plan verification command used `python`, but the active environment only exposed `python3`. I preserved the intended assertions and reran them with `python3` so the actual document and link checks still completed.\n\n## Known Issues\n\nNone. The only issue encountered was the missing `python` alias in the environment, which did not block verification with `python3`.\n\n## Files Created/Modified\n\n- `docs/m007-integrated-proof.md`\n- `README.md`\n- `docs/architecture.md`\n- `.gsd/milestones/M007/slices/S05/tasks/T01-SUMMARY.md`\n",
+      "description": "Create the pointer-only M007 close-out walkthrough and link it from the repo’s main discoverability docs so reviewers can follow one strict operator proof order without treating the new doc as a second spec.\n\nSteps:\n1. Read `docs/m006-integrated-proof.md` and `docs/v4-integrated-proof.md` as the canonical pointer-only pattern, then draft `docs/m007-integrated-proof.md` around the M007 review order: selected-request-first Observability, authoritative request detail, compare-before-save policy preview, and explicit anti-drift scope conclusion.\n2. Keep the new doc composition-first and pointer-only: point to `console/src/app/(console)/observability/page.tsx`, `console/src/components/ledger/ledger-request-detail.tsx`, `console/src/components/ledger/ledger-table.tsx`, `console/src/components/policy/policy-form.tsx`, `console/src/app/(console)/policy/page.tsx`, and the focused Vitest files instead of restating contracts or long UI copy.\n3. Update `README.md` and `docs/architecture.md` to include discoverability links to `docs/m007-integrated-proof.md` in the same style as prior integrated proof entries, without expanding those docs into another explanation surface.\n4. Sanity-check the new wording against M007 scope boundaries: no dashboard, routing studio, analytics product, redesign-sprawl, or parallel workflow framing should appear as positive product claims.",
+      "estimate": "45m",
+      "files": [
+        "docs/m007-integrated-proof.md",
+        "README.md",
+        "docs/architecture.md",
+        "docs/m006-integrated-proof.md",
+        "docs/v4-integrated-proof.md"
+      ],
+      "verify": "python - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m007-integrated-proof.md')\nassert proof.exists() and proof.stat().st_size > 0\ntext = proof.read_text()\nfor needle in [\n    'What this integrated proof establishes',\n    'Canonical proof order',\n    'Minimal operator walkthrough',\n    'What this walkthrough intentionally does not duplicate',\n    'Failure modes this integrated proof makes obvious',\n]:\n    assert needle in text, needle\nfor path in ['README.md', 'docs/architecture.md']:\n    assert 'docs/m007-integrated-proof.md' in Path(path).read_text(), path\nPY",
+      "inputs": [
+        "`docs/m006-integrated-proof.md`",
+        "`docs/v4-integrated-proof.md`",
+        "`README.md`",
+        "`docs/architecture.md`",
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-table.tsx`",
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/app/(console)/policy/page.tsx`"
+      ],
+      "expected_output": [
+        "`docs/m007-integrated-proof.md`",
+        "`README.md`",
+        "`docs/architecture.md`"
+      ],
+      "observability_impact": "Signals added/changed: a new pointer-only proof artifact that names the authoritative code and test seams for future investigation.\nHow a future agent inspects this: read `docs/m007-integrated-proof.md` first, then open the linked page/component/test files in the stated order.\nFailure state exposed: proof-order drift, duplicated contract prose, or scope-language regressions become explicit in one discoverable doc instead of being inferred across scattered files.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M007",
+      "slice_id": "S05",
+      "id": "T02",
+      "title": "Run assembled close-out verification and tighten cross-surface guards only if needed",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Use the integrated proof order to re-run the focused console verification bundle and only touch tests if the assembled story reveals a real missing guard across Observability, request detail, ledger selection, and policy preview/page seams.\n\nSteps:\n1. Run the focused Vitest bundle covering `page.test.tsx`, `observability-page.test.tsx`, `ledger-request-detail.test.tsx`, `ledger-table.test.tsx`, `policy-form.test.tsx`, and `policy-page.test.tsx` to prove the assembled operator story in the shipped worktree.\n2. Compare any failure or uncovered gap against the new integrated proof doc and prior slice summaries before editing: only add or tighten assertions when the gap is real integrated-proof drift, not because the slice needs extra churn.\n3. If changes are required, keep them scoped to the relevant test file and assert the specific cross-surface boundary at risk: request-first ordering, request-detail authority, policy-preview next-step guidance, bounded selector semantics, or anti-drift language.\n4. Re-run the same focused Vitest bundle until it passes cleanly and leaves a narrow, code-backed close-out proof for M007.",
+      "estimate": "45m",
+      "files": [
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/app/(console)/observability/observability-page.test.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/ledger/ledger-table.test.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "docs/m007-integrated-proof.md"
+      ],
+      "verify": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/ledger/ledger-table.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`docs/m007-integrated-proof.md`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/ledger/ledger-table.test.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "expected_output": [
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/app/(console)/observability/observability-page.test.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/ledger/ledger-table.test.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`"
+      ],
+      "observability_impact": "Signals added/changed: focused Vitest assertions remain the durable failure-localization surface for hierarchy drift, authority drift, bounded selector regressions, and anti-drift wording changes.\nHow a future agent inspects this: re-run the same six-file Vitest bundle and inspect the failing test closest to the violated page role.\nFailure state exposed: test failures should pinpoint whether the break is in Observability order, request-detail authority, policy-preview/save separation, or scope-language drift.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -5959,6 +6063,28 @@
       "verdict": "✅ pass",
       "duration_ms": 1480,
       "created_at": "2026-04-03T02:47:36.315Z"
+    },
+    {
+      "id": 115,
+      "task_id": "T01",
+      "slice_id": "S05",
+      "milestone_id": "M007",
+      "command": "python - <<'PY' ... PY",
+      "exit_code": 127,
+      "verdict": "❌ fail",
+      "duration_ms": 100,
+      "created_at": "2026-04-03T02:55:31.707Z"
+    },
+    {
+      "id": 116,
+      "task_id": "T01",
+      "slice_id": "S05",
+      "milestone_id": "M007",
+      "command": "python3 - <<'PY' ... PY",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 100,
+      "created_at": "2026-04-03T02:55:31.707Z"
     }
   ]
 }

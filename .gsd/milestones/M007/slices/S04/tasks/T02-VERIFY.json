@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M007/S04/T02",
+  "timestamp": 1775184475940,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exitCode": 0,
+      "durationMs": 1918,
+      "verdict": "pass"
+    }
+  ]
+}
