@@ -18,7 +18,7 @@ Must-haves:
   - Estimate: 45m
   - Files: console/src/app/(console)/observability/page.tsx, console/src/app/(console)/observability/page.test.tsx, console/src/app/(console)/observability/observability-page.test.tsx
   - Verify: npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx
-- [ ] **T02: Lock request-detail authority and policy-role guardrails** — Preserve `LedgerRequestDetail` as the authoritative persisted evidence surface and add guardrails that later M007 slices must preserve: interpretation stays secondary, policy preview stays preview-before-save, and no new analytics/dashboard drift appears in these bounded surfaces.
+- [x] **T02: Locked request-detail authority copy and hardened policy preview guardrails with focused boundary tests.** — Preserve `LedgerRequestDetail` as the authoritative persisted evidence surface and add guardrails that later M007 slices must preserve: interpretation stays secondary, policy preview stays preview-before-save, and no new analytics/dashboard drift appears in these bounded surfaces.
 
 Steps:
 1. Review `console/src/components/ledger/ledger-request-detail.tsx` and tighten wording or section ordering only if needed to make persisted evidence clearly lead supporting interpretation.

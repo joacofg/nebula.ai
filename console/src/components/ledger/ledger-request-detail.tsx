@@ -367,8 +367,9 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Request detail</div>
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
         <p className="mt-2 text-sm text-slate-600">
-          This persisted ledger record explains the final route, provider, fallback, cache, and policy
-          outcome for the same request ID that operators first corroborate through the public response headers.
+          This persisted ledger record is the authoritative evidence row for this request ID. It explains the
+          final route, provider, fallback, cache, and policy outcome that operators first corroborate through
+          the public response headers.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">

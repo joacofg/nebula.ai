@@ -262,6 +262,9 @@ describe("policy-page", () => {
     expect(
       screen.getByText("routing parity: degraded (degraded, score 0.28) → rollout disabled"),
     ).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
   it("shows preview errors from the simulation mutation", async () => {
@@ -277,6 +280,9 @@ describe("policy-page", () => {
       ),
     ).toBeInTheDocument();
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
   it("shows explicit zero-result preview state", async () => {
@@ -325,6 +331,10 @@ describe("policy-page", () => {
     expect(
       await screen.findByText("No recent traffic matched the replay window, so there was nothing to preview."),
     ).toBeInTheDocument();
+    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 });

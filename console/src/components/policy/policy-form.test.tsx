@@ -207,6 +207,9 @@ describe("policy-form", () => {
     expect(screen.getByText(/status completed → policy_denied/i)).toBeInTheDocument();
     expect(screen.getByText(/Replay uses stored route signals rather than raw prompt text./i)).toBeInTheDocument();
     expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
   it("renders explicit empty and error preview states", () => {
@@ -231,6 +234,10 @@ describe("policy-form", () => {
     expect(
       screen.getByText("No recent traffic matched the replay window, so there was nothing to preview."),
     ).toBeInTheDocument();
+    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
 
     rerender(
       <PolicyForm
@@ -276,6 +283,9 @@ describe("policy-form", () => {
     );
 
     expect(screen.getByText("Preview failed: Nebula admin request failed.")).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
   it("derives runtime-enforced controls from policy options and keeps soft budget outside that section", () => {

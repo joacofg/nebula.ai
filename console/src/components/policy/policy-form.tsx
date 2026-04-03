@@ -84,8 +84,11 @@ function formatUsd(value: number) {
   }).format(value);
 }
 
-function formatRouteScore(score: number | null) {
-  return score === null ? null : score.toFixed(2);
+function formatRouteScore(score: number | null | undefined) {
+  if (score === null || score === undefined) {
+    return null;
+  }
+  return score.toFixed(2);
 }
 
 function formatRoutingState(

@@ -51,6 +51,7 @@ describe("ledger-request-detail", () => {
     renderWithProviders(<LedgerRequestDetail entry={mockEntry} />);
 
     expect(screen.getByText("Request detail")).toBeInTheDocument();
+    expect(screen.getByText("This persisted ledger record is the authoritative evidence row for this request ID.", { exact: false })).toBeInTheDocument();
     expect(screen.getByText("Request ID")).toBeInTheDocument();
     expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();
@@ -73,6 +74,9 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(screen.queryByText(/text to embed/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/\[[0-9.,\s-]+\]/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
   it("shows a neutral empty state when no row is selected", () => {
@@ -257,6 +261,7 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText("7 of 5 needed")).toBeInTheDocument();
     expect(screen.getByText("Degraded rows")).toBeInTheDocument();
     expect(screen.getByText(/Missing Route Signals \(1\)/i)).toBeInTheDocument();
+    expect(screen.queryByText(/authoritative evidence row/i)).not.toHaveTextContent;
   });
 
   it("renders rollout-disabled calibration messaging when traffic is gated by operator rollout state", () => {
