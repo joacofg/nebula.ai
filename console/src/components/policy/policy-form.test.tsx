@@ -1,3 +1,4 @@
+import { within } from "@testing-library/react";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
@@ -72,6 +73,14 @@ const baseSimulationResult: PolicySimulationResponse = {
       simulated_policy_outcome: "routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail.",
       baseline_route_reason: "auto_local",
       simulated_route_reason: "explicit_premium_model",
+      baseline_route_mode: "auto",
+      simulated_route_mode: "premium_only",
+      baseline_calibrated_routing: true,
+      simulated_calibrated_routing: null,
+      baseline_degraded_routing: false,
+      simulated_degraded_routing: false,
+      baseline_route_score: 0.61,
+      simulated_route_score: null,
       baseline_estimated_cost: 0,
       simulated_estimated_cost: 0.1,
     },
@@ -192,58 +201,211 @@ describe("policy-form", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("renders preview aggregates, changed requests, and replay notes without implying save", () => {
+  it("renders a decision-first preview with bounded evidence and explicit save separation", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 
-    expect(screen.getByRole("heading", { name: "Preview before save" })).toBeInTheDocument();
-    expect(screen.getByText("Save remains explicit")).toBeInTheDocument();
-    expect(screen.getByText("Evaluated requests")).toBeInTheDocument();
-    expect(screen.getByText("Changed routes")).toBeInTheDocument();
-    expect(screen.getByText("Newly denied")).toBeInTheDocument();
-    expect(screen.getByText("Premium cost delta")).toBeInTheDocument();
-    expect(screen.getByText("Changed request sample")).toBeInTheDocument();
-    expect(screen.getByText("req-1")).toBeInTheDocument();
-    expect(screen.getByText(/route local → premium/i)).toBeInTheDocument();
-    expect(screen.getByText(/status completed → policy_denied/i)).toBeInTheDocument();
+    const previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
+    expect(previewSection).not.toBeNull();
+    const preview = within(previewSection as HTMLElement);
+
+    expect(preview.getByText("Review before save")).toBeInTheDocument();
+    expect(preview.getByText("Preview only — save stays separate.")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        /Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
+      preview.getByText(
+        "Compared with the current baseline, this draft would change 1 sampled request.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/Replay uses stored route signals rather than raw prompt text./i)).toBeInTheDocument();
-    expect(screen.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
-    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
+    expect(
+      preview.getByText(
+        /Operator consequence: 1 sampled request would route differently; 1 request would become denied; premium spend would increase by \$0\.1000\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      preview.getByText(
+        "Next step: keep iterating if those denials are not intentional, or save only when you want that draft enforced live.",
+      ),
+    ).toBeInTheDocument();
+    expect(preview.getByText("Save remains explicit")).toBeInTheDocument();
+    expect(preview.getByText("Evaluated requests")).toBeInTheDocument();
+    expect(preview.getByText("Changed routes")).toBeInTheDocument();
+    expect(preview.getByText("Newly denied")).toBeInTheDocument();
+    expect(preview.getByText("Premium cost delta")).toBeInTheDocument();
+    expect(preview.getByText("Changed request sample")).toBeInTheDocument();
+    expect(preview.getByText("req-1")).toBeInTheDocument();
+    expect(preview.getByText(/route local → premium/i)).toBeInTheDocument();
+    expect(preview.getByText(/status completed → policy_denied/i)).toBeInTheDocument();
+    expect(preview.getByText(/routing parity: auto \(calibrated, score 0\.61\) → premium_only/i)).toBeInTheDocument();
+    expect(
+      preview.getByText(
+        /Supporting evidence only: bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
+      ),
+    ).toBeInTheDocument();
+    expect(preview.getByText(/Replay uses stored route signals rather than raw prompt text\./i)).toBeInTheDocument();
+    expect(preview.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
+    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
-  it("renders explicit empty and error preview states", () => {
-    const { rerender } = renderPolicyForm({
-      simulationResult: {
-        ...baseSimulationResult,
-        window: {
-          ...baseSimulationResult.window,
-          returned_rows: 0,
-        },
-        summary: {
-          ...baseSimulationResult.summary,
-          evaluated_rows: 0,
-          changed_routes: 0,
-          newly_denied: 0,
-          premium_cost_delta: 0,
-        },
-        changed_requests: [],
+  it("keeps unchanged, empty, loading, and failed preview states explicit and non-saving", () => {
+    const unchangedResult: PolicySimulationResponse = {
+      ...baseSimulationResult,
+      summary: {
+        ...baseSimulationResult.summary,
+        changed_routes: 0,
+        newly_denied: 0,
+        premium_cost_delta: 0,
       },
-    });
+      changed_requests: [],
+    };
 
+    const { rerender } = renderPolicyForm({ simulationResult: unchangedResult });
+
+    let previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
+    expect(previewSection).not.toBeNull();
+    let preview = within(previewSection as HTMLElement);
+
+    expect(preview.getByText("No decision pressure")).toBeInTheDocument();
+    expect(preview.getByText("This draft leaves the sampled baseline unchanged.")).toBeInTheDocument();
     expect(
-      screen.getByText("No recent traffic matched the replay window, so there was nothing to preview."),
+      preview.getByText(
+        "Keep iterating if you expected a different outcome, or save when you want these settings persisted without changing recent request outcomes.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
-    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
+    expect(
+      preview.getByText("Next step: save only if the unchanged replay matches your intent."),
+    ).toBeInTheDocument();
+    expect(preview.getByText("No request outcomes changed in this replay window.")).toBeInTheDocument();
+    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
+
+    rerender(
+      <PolicyForm
+        tenantName="Default Workspace"
+        initialPolicy={{
+          routing_mode_default: "auto",
+          calibrated_routing_enabled: true,
+          fallback_enabled: true,
+          semantic_cache_enabled: true,
+          semantic_cache_similarity_threshold: 0.9,
+          semantic_cache_max_entry_age_hours: 168,
+          allowed_premium_models: ["openai/gpt-4o-mini"],
+          max_premium_cost_per_request: null,
+          hard_budget_limit_usd: null,
+          hard_budget_enforcement: null,
+          soft_budget_usd: null,
+          prompt_capture_enabled: false,
+          response_capture_enabled: false,
+        }}
+        options={{
+          routing_modes: ["auto", "local_only", "premium_only"],
+          known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
+          default_premium_model: "openai/gpt-4o-mini",
+          runtime_enforced_fields: [
+            "routing_mode_default",
+            "calibrated_routing_enabled",
+            "allowed_premium_models",
+            "semantic_cache_enabled",
+            "semantic_cache_similarity_threshold",
+            "semantic_cache_max_entry_age_hours",
+            "fallback_enabled",
+            "max_premium_cost_per_request",
+            "hard_budget_limit_usd",
+            "hard_budget_enforcement",
+          ],
+          soft_signal_fields: ["soft_budget_usd"],
+          advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
+        }}
+        isSaving={false}
+        isSimulating={false}
+        simulationResult={{
+          ...baseSimulationResult,
+          window: {
+            ...baseSimulationResult.window,
+            returned_rows: 0,
+          },
+          summary: {
+            ...baseSimulationResult.summary,
+            evaluated_rows: 0,
+            changed_routes: 0,
+            newly_denied: 0,
+            premium_cost_delta: 0,
+          },
+          changed_requests: [],
+        }}
+        simulationError={null}
+        onSimulate={vi.fn().mockResolvedValue(undefined)}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
+    expect(previewSection).not.toBeNull();
+    preview = within(previewSection as HTMLElement);
+
+    expect(preview.getByText("No comparison window")).toBeInTheDocument();
+    expect(preview.getByText("No recent baseline matched this preview window.")).toBeInTheDocument();
+    expect(
+      preview.getByText(
+        "Keep iterating in the editor if the draft still needs work, or save only when you intend to publish without replay evidence.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      preview.getByText("Next step: preview again after recent persisted traffic is available."),
+    ).toBeInTheDocument();
+    expect(
+      preview.getByText("No recent traffic matched the replay window, so there was nothing to preview."),
+    ).toBeInTheDocument();
+    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
+
+    rerender(
+      <PolicyForm
+        tenantName="Default Workspace"
+        initialPolicy={{
+          routing_mode_default: "auto",
+          calibrated_routing_enabled: true,
+          fallback_enabled: true,
+          semantic_cache_enabled: true,
+          semantic_cache_similarity_threshold: 0.9,
+          semantic_cache_max_entry_age_hours: 168,
+          allowed_premium_models: ["openai/gpt-4o-mini"],
+          max_premium_cost_per_request: null,
+          hard_budget_limit_usd: null,
+          hard_budget_enforcement: null,
+          soft_budget_usd: null,
+          prompt_capture_enabled: false,
+          response_capture_enabled: false,
+        }}
+        options={{
+          routing_modes: ["auto", "local_only", "premium_only"],
+          known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
+          default_premium_model: "openai/gpt-4o-mini",
+          runtime_enforced_fields: [
+            "routing_mode_default",
+            "calibrated_routing_enabled",
+            "allowed_premium_models",
+            "semantic_cache_enabled",
+            "semantic_cache_similarity_threshold",
+            "semantic_cache_max_entry_age_hours",
+            "fallback_enabled",
+            "max_premium_cost_per_request",
+            "hard_budget_limit_usd",
+            "hard_budget_enforcement",
+          ],
+          soft_signal_fields: ["soft_budget_usd"],
+          advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
+        }}
+        isSaving={false}
+        isSimulating={true}
+        simulationResult={null}
+        simulationError={null}
+        onSimulate={vi.fn().mockResolvedValue(undefined)}
+        onSave={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    expect(screen.getByText("Simulating draft policy against recent tenant traffic...")).toBeInTheDocument();
+    expect(screen.queryByText(/save policy/i)).toBeInTheDocument();
 
     rerender(
       <PolicyForm
@@ -292,6 +454,57 @@ describe("policy-form", () => {
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
+  });
+
+  it("renders malformed and rollout-disabled routing parity without crashing", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: {
+          ...baseSimulationResult.summary,
+          changed_routes: 0,
+          newly_denied: 0,
+          premium_cost_delta: 0.025,
+        },
+        changed_requests: [
+          {
+            ...baseSimulationResult.changed_requests[0],
+            request_id: "req-rollout-disabled",
+            baseline_route_mode: null,
+            baseline_calibrated_routing: null,
+            baseline_degraded_routing: null,
+            baseline_route_score: null,
+            baseline_route_reason: "calibrated_routing_disabled",
+            simulated_route_mode: null,
+            simulated_calibrated_routing: null,
+            simulated_degraded_routing: true,
+            simulated_route_score: null,
+            simulated_route_reason: null,
+            baseline_route_target: "local",
+            simulated_route_target: "local",
+            baseline_terminal_status: "completed",
+            simulated_terminal_status: "completed",
+            baseline_policy_outcome: "default",
+            simulated_policy_outcome: "soft_budget_warning",
+            baseline_estimated_cost: 0.05,
+            simulated_estimated_cost: 0.075,
+          },
+        ],
+      },
+    });
+
+    expect(
+      screen.getByText(
+        "Compared with the current baseline, this draft would change 1 sampled request.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Operator consequence: premium spend would increase by \$0\.0250\./i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/routing parity: rollout disabled → unscored \(degraded\)/i),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/policy default → soft_budget_warning/i)).toBeInTheDocument();
   });
 
   it("derives runtime-enforced controls from policy options and keeps soft budget outside that section", () => {

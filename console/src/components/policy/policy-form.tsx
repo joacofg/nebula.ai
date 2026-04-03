@@ -164,6 +164,66 @@ function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
   )}`;
 }
 
+function getDecisionSummary(simulationResult: PolicySimulationResponse) {
+  const { summary, window, changed_requests: changedRequests } = simulationResult;
+  const changedCount = changedRequests.length;
+
+  if (window.returned_rows === 0 || summary.evaluated_rows === 0) {
+    return {
+      tone: "amber" as const,
+      badge: "No comparison window",
+      title: "No recent baseline matched this preview window.",
+      body:
+        "Keep iterating in the editor if the draft still needs work, or save only when you intend to publish without replay evidence.",
+      nextStep: "Next step: preview again after recent persisted traffic is available.",
+    };
+  }
+
+  if (changedCount === 0) {
+    return {
+      tone: "emerald" as const,
+      badge: "No decision pressure",
+      title: "This draft leaves the sampled baseline unchanged.",
+      body:
+        "Keep iterating if you expected a different outcome, or save when you want these settings persisted without changing recent request outcomes.",
+      nextStep: "Next step: save only if the unchanged replay matches your intent.",
+    };
+  }
+
+  const consequenceParts: string[] = [];
+  if (summary.changed_routes > 0) {
+    consequenceParts.push(
+      `${summary.changed_routes} sampled request${summary.changed_routes === 1 ? "" : "s"} would route differently`,
+    );
+  }
+  if (summary.newly_denied > 0) {
+    consequenceParts.push(
+      `${summary.newly_denied} request${summary.newly_denied === 1 ? "" : "s"} would become denied`,
+    );
+  }
+  if (summary.premium_cost_delta > 0) {
+    consequenceParts.push(`premium spend would increase by ${formatUsd(summary.premium_cost_delta)}`);
+  } else if (summary.premium_cost_delta < 0) {
+    consequenceParts.push(`premium spend would drop by ${formatUsd(Math.abs(summary.premium_cost_delta))}`);
+  }
+
+  const consequenceLabel =
+    consequenceParts.length > 0
+      ? consequenceParts.join("; ")
+      : `${changedCount} sampled request${changedCount === 1 ? "" : "s"} would change`;
+
+  return {
+    tone: summary.newly_denied > 0 ? ("rose" as const) : ("sky" as const),
+    badge: summary.newly_denied > 0 ? "Review before save" : "Draft changes outcomes",
+    title: `Compared with the current baseline, this draft would change ${changedCount} sampled request${changedCount === 1 ? "" : "s"}.`,
+    body: `Operator consequence: ${consequenceLabel}.`,
+    nextStep:
+      summary.newly_denied > 0
+        ? "Next step: keep iterating if those denials are not intentional, or save only when you want that draft enforced live."
+        : "Next step: keep iterating if these changes are not the intended tradeoff, or save when you want this draft enforced live.",
+  };
+}
+
 export function PolicyForm({
   tenantName,
   initialPolicy,
@@ -193,6 +253,7 @@ export function PolicyForm({
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
   const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
   const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
+  const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -324,6 +385,31 @@ export function PolicyForm({
 
         {simulationResult ? (
           <div className="mt-4 space-y-4">
+            <div
+              className={[
+                "rounded-2xl border px-4 py-4",
+                previewDecision?.tone === "rose"
+                  ? "border-rose-200 bg-rose-50"
+                  : previewDecision?.tone === "emerald"
+                    ? "border-emerald-200 bg-emerald-50"
+                    : previewDecision?.tone === "amber"
+                      ? "border-amber-200 bg-amber-50"
+                      : "border-sky-200 bg-sky-50",
+              ].join(" ")}
+            >
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
+                  {previewDecision?.badge}
+                </span>
+                <span className="text-xs font-medium text-slate-600">Preview only — save stays separate.</span>
+              </div>
+              <h4 className="mt-3 font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                {previewDecision?.title}
+              </h4>
+              <p className="mt-2 text-sm text-slate-700">{previewDecision?.body}</p>
+              <p className="mt-2 text-sm font-medium text-slate-900">{previewDecision?.nextStep}</p>
+            </div>
+
             <div className="grid gap-3 md:grid-cols-4">
               <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
                 <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Evaluated requests</div>
@@ -370,7 +456,7 @@ export function PolicyForm({
                     Changed request sample
                   </h4>
                   <p className="mt-1 text-sm text-slate-500">
-                    Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft.
+                    Supporting evidence only: bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft.
                   </p>
                 </div>
                 <ul className="space-y-3">
