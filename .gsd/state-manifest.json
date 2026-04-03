@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-03T02:55:31.732Z",
+  "exported_at": "2026-04-03T02:56:28.122Z",
   "milestones": [
     {
       "id": "M001",
@@ -4256,19 +4256,23 @@
       "milestone_id": "M007",
       "slice_id": "S05",
       "id": "T02",
-      "title": "Run assembled close-out verification and tighten cross-surface guards only if needed",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.",
+      "status": "complete",
+      "one_liner": "Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.",
+      "narrative": "Read the task-plan inputs, the new docs/m007-integrated-proof.md, and the existing focused Vitest seams before making any changes. Then ran the exact six-file console bundle called for by the task plan to check whether the assembled story had any real drift across selected-request-first Observability, authoritative request detail, bounded ledger-row selection, and compare-before-save policy preview/page behavior.\n\nThe bundle passed cleanly on the first run: all six test files and all 39 tests succeeded. Because the proof already held in the shipped worktree, I made no source changes. That matches the task contract: tighten assertions only when the integrated proof reveals an actual gap, not for extra churn.",
+      "verification_result": "Ran the exact task-plan Vitest command against the six focused test files. The bundle completed successfully with 6/6 files passing and 39/39 tests passing, which confirms the integrated M007 operator proof still holds in the assembled worktree without additional test edits.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-03T02:56:28.098Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        ".gsd/milestones/M007/slices/S05/tasks/T02-SUMMARY.md"
+      ],
+      "key_decisions": [
+        "Left the focused Vitest seams unchanged because the assembled six-file bundle already proves the integrated proof order without drift or missing guards."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S05\nmilestone: M007\nkey_files:\n  - .gsd/milestones/M007/slices/S05/tasks/T02-SUMMARY.md\nkey_decisions:\n  - Left the focused Vitest seams unchanged because the assembled six-file bundle already proves the integrated proof order without drift or missing guards.\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-03T02:56:28.099Z\nblocker_discovered: false\n---\n\n# T02: Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.\n\n**Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.**\n\n## What Happened\n\nRead the task-plan inputs, the new docs/m007-integrated-proof.md, and the existing focused Vitest seams before making any changes. Then ran the exact six-file console bundle called for by the task plan to check whether the assembled story had any real drift across selected-request-first Observability, authoritative request detail, bounded ledger-row selection, and compare-before-save policy preview/page behavior.\n\nThe bundle passed cleanly on the first run: all six test files and all 39 tests succeeded. Because the proof already held in the shipped worktree, I made no source changes. That matches the task contract: tighten assertions only when the integrated proof reveals an actual gap, not for extra churn.\n\n## Verification\n\nRan the exact task-plan Vitest command against the six focused test files. The bundle completed successfully with 6/6 files passing and 39/39 tests passing, which confirms the integrated M007 operator proof still holds in the assembled worktree without additional test edits.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/ledger/ledger-table.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1500ms |\n\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `.gsd/milestones/M007/slices/S05/tasks/T02-SUMMARY.md`\n",
       "description": "Use the integrated proof order to re-run the focused console verification bundle and only touch tests if the assembled story reveals a real missing guard across Observability, request detail, ledger selection, and policy preview/page seams.\n\nSteps:\n1. Run the focused Vitest bundle covering `page.test.tsx`, `observability-page.test.tsx`, `ledger-request-detail.test.tsx`, `ledger-table.test.tsx`, `policy-form.test.tsx`, and `policy-page.test.tsx` to prove the assembled operator story in the shipped worktree.\n2. Compare any failure or uncovered gap against the new integrated proof doc and prior slice summaries before editing: only add or tighten assertions when the gap is real integrated-proof drift, not because the slice needs extra churn.\n3. If changes are required, keep them scoped to the relevant test file and assert the specific cross-surface boundary at risk: request-first ordering, request-detail authority, policy-preview next-step guidance, bounded selector semantics, or anti-drift language.\n4. Re-run the same focused Vitest bundle until it passes cleanly and leaves a narrow, code-backed close-out proof for M007.",
       "estimate": "45m",
       "files": [
@@ -6085,6 +6089,17 @@
       "verdict": "✅ pass",
       "duration_ms": 100,
       "created_at": "2026-04-03T02:55:31.707Z"
+    },
+    {
+      "id": 117,
+      "task_id": "T02",
+      "slice_id": "S05",
+      "milestone_id": "M007",
+      "command": "npm --prefix console run test -- --run src/app/'(console)'/observability/page.test.tsx src/app/'(console)'/observability/observability-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx src/components/ledger/ledger-table.test.tsx src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1500,
+      "created_at": "2026-04-03T02:56:28.098Z"
     }
   ]
 }

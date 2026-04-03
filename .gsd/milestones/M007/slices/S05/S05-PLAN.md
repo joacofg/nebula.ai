@@ -29,7 +29,7 @@ for needle in [
 for path in ['README.md', 'docs/architecture.md']:
     assert 'docs/m007-integrated-proof.md' in Path(path).read_text(), path
 PY
-- [ ] **T02: Run assembled close-out verification and tighten cross-surface guards only if needed** — Use the integrated proof order to re-run the focused console verification bundle and only touch tests if the assembled story reveals a real missing guard across Observability, request detail, ledger selection, and policy preview/page seams.
+- [x] **T02: Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.** — Use the integrated proof order to re-run the focused console verification bundle and only touch tests if the assembled story reveals a real missing guard across Observability, request detail, ledger selection, and policy preview/page seams.
 
 Steps:
 1. Run the focused Vitest bundle covering `page.test.tsx`, `observability-page.test.tsx`, `ledger-request-detail.test.tsx`, `ledger-table.test.tsx`, `policy-form.test.tsx`, and `policy-page.test.tsx` to prove the assembled operator story in the shipped worktree.

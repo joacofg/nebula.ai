@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M007/S05/T01",
+  "timestamp": 1775184934819,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "python - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m007-integrated-proof.md')\nassert proof.exists() and proof.stat().st_size > 0\ntext = proof.read_text()\nfor needle in [\n    'What this integrated proof establishes',\n    'Canonical proof order',\n    'Minimal operator walkthrough',\n    'What this walkthrough intentionally does not duplicate',\n    'Failure modes this integrated proof makes obvious',\n]:\n    assert needle in text, needle\nfor path in ['README.md', 'docs/architecture.md']:\n    assert 'docs/m007-integrated-proof.md' in Path(path).read_text(), path\nPY",
+      "exitCode": 127,
+      "durationMs": 4,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}
