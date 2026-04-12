@@ -374,9 +374,11 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Request detail</div>
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
         <p className="mt-2 text-sm text-slate-600">
-          This persisted ledger record is the authoritative evidence row for this request ID. It explains the
-          final route, provider, fallback, cache, and policy outcome that operators first corroborate through
-          the public response headers before reading the supporting tenant context elsewhere on this page.
+          This persisted ledger record is the authoritative evidence row for this request ID while the row still
+          exists. It explains the final route, provider, fallback, cache, and policy outcome that operators first
+          corroborate through the public response headers before reading the supporting tenant context elsewhere on
+          this page. If governed retention cleanup later deletes the row at its persisted expiration time, this
+          request detail should disappear with it rather than imply a soft-deleted archive or hosted raw export.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">

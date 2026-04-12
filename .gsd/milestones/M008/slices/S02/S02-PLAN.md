@@ -36,7 +36,7 @@ Assumption to document in code/tests: M008/S02 needs an explicit callable lifecy
   - Files: `src/nebula/services/governance_store.py`, `tests/test_governance_api.py`, `tests/test_chat_completions.py`, `tests/test_embeddings_api.py`
   - Verify: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired" && ./.venv/bin/pytest tests/test_chat_completions.py -k ledger && ./.venv/bin/pytest tests/test_embeddings_api.py
 
-- [ ] **T02: Align admin and request-detail surfaces with real evidence aging semantics** `est:45m`
+- [x] **T02: Align admin and request-detail surfaces with real evidence aging semantics** `est:45m`
   Carry the new retention lifecycle truth through the existing operator-facing read seams without inventing a new governance dashboard. Executors should load the `react-best-practices` and `test` skills before coding.
 
 Steps:

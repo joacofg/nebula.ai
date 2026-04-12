@@ -57,9 +57,20 @@ describe("ledger-request-detail", () => {
     renderWithProviders(<LedgerRequestDetail entry={mockEntry} />);
 
     expect(screen.getByText("Request detail")).toBeInTheDocument();
-    expect(screen.getByText("This persisted ledger record is the authoritative evidence row for this request ID.", { exact: false })).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This persisted ledger record is the authoritative evidence row for this request ID while the row still exists.",
+        { exact: false },
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText(/before reading the supporting tenant context elsewhere on this page/i)).toBeInTheDocument();
-    expect(screen.getByText("Request ID")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        /If governed retention cleanup later deletes the row at its persisted expiration time, this request detail should disappear with it/i,
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/rather than imply a soft-deleted archive or hosted raw export/i)).toBeInTheDocument();
+    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();
     expect(screen.getByText("tenant-embeddings")).toBeInTheDocument();

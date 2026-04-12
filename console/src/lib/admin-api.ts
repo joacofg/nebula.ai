@@ -1,6 +1,8 @@
 "use client";
 
 export type RoutingMode = "auto" | "local_only" | "premium_only";
+export type EvidenceRetentionWindow = "24h" | "7d" | "30d" | "90d";
+export type MetadataMinimizationLevel = "standard" | "strict";
 
 export type TenantPolicy = {
   routing_mode_default: RoutingMode;

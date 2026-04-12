@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T00:28:50.118Z",
+  "exported_at": "2026-04-12T00:31:46.766Z",
   "milestones": [
     {
       "id": "M001",
@@ -4660,19 +4660,27 @@
       "milestone_id": "M008",
       "slice_id": "S02",
       "id": "T02",
-      "title": "Align admin and request-detail surfaces with real evidence aging semantics",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Aligned admin ledger tests and request-detail copy with governed evidence aging semantics.",
+      "status": "complete",
+      "one_liner": "Aligned admin ledger tests and request-detail copy with governed evidence aging semantics.",
+      "narrative": "Updated the operator-facing contract without adding new API surface because `/v1/admin/usage/ledger` already provided the bounded read seam needed to prove retention behavior. In `tests/test_governance_api.py` I extended the governed cleanup regression so it verifies cleanup effects through the admin ledger endpoint itself: the expired request disappears from the tenant ledger listing after cleanup, while surviving and no-expiration rows remain visible with their persisted governance markers. In `console/src/components/ledger/ledger-request-detail.tsx` I revised the request-detail explanation to state that a persisted row is authoritative only while it still exists and that governed cleanup removes the detail surface instead of implying soft-delete, archive recovery, or hosted raw export. In `console/src/components/ledger/ledger-request-detail.test.tsx` I updated the UI assertions to cover that copy precisely. I also fixed a local TypeScript mismatch in `console/src/lib/admin-api.ts` by defining the `EvidenceRetentionWindow` and `MetadataMinimizationLevel` literal types already referenced by `UsageLedgerRecord`, keeping the mirrored admin types aligned with backend governance fields.",
+      "verification_result": "Ran the task verification commands directly. `./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"` passed, including the strengthened admin-ledger cleanup proof that surviving rows retain persisted governance markers and expired rows disappear from `/v1/admin/usage/ledger` after cleanup. `./.venv/bin/pytest tests/test_hosted_contract.py` passed, confirming the metadata-only hosted export boundary did not widen. `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` passed after tightening the UI assertion to validate the new explanatory copy rather than incorrectly rejecting the words used in the warning itself.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-12T00:31:46.745Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "No backend route changes were needed after verifying the existing admin ledger endpoint already satisfied the planned read-path seam. I made one small local adaptation outside the expected-output list by adding missing TypeScript literal aliases in `console/src/lib/admin-api.ts`, because the request-detail types already referenced them and keeping the mirrored admin types accurate was necessary for consistency.",
+      "known_issues": "None.",
+      "key_files": [
+        "tests/test_governance_api.py",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "key_decisions": [
+        "Kept the operator inspection path anchored on the existing `/v1/admin/usage/ledger` seam instead of inventing a new retention-specific endpoint.",
+        "Expressed evidence aging as row disappearance after governed cleanup, not soft-delete or hosted export expansion, so request detail remains truthful only while a persisted row exists."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S02\nmilestone: M008\nkey_files:\n  - tests/test_governance_api.py\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/lib/admin-api.ts\nkey_decisions:\n  - Kept the operator inspection path anchored on the existing `/v1/admin/usage/ledger` seam instead of inventing a new retention-specific endpoint.\n  - Expressed evidence aging as row disappearance after governed cleanup, not soft-delete or hosted export expansion, so request detail remains truthful only while a persisted row exists.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T00:31:46.745Z\nblocker_discovered: false\n---\n\n# T02: Aligned admin ledger tests and request-detail copy with governed evidence aging semantics.\n\n**Aligned admin ledger tests and request-detail copy with governed evidence aging semantics.**\n\n## What Happened\n\nUpdated the operator-facing contract without adding new API surface because `/v1/admin/usage/ledger` already provided the bounded read seam needed to prove retention behavior. In `tests/test_governance_api.py` I extended the governed cleanup regression so it verifies cleanup effects through the admin ledger endpoint itself: the expired request disappears from the tenant ledger listing after cleanup, while surviving and no-expiration rows remain visible with their persisted governance markers. In `console/src/components/ledger/ledger-request-detail.tsx` I revised the request-detail explanation to state that a persisted row is authoritative only while it still exists and that governed cleanup removes the detail surface instead of implying soft-delete, archive recovery, or hosted raw export. In `console/src/components/ledger/ledger-request-detail.test.tsx` I updated the UI assertions to cover that copy precisely. I also fixed a local TypeScript mismatch in `console/src/lib/admin-api.ts` by defining the `EvidenceRetentionWindow` and `MetadataMinimizationLevel` literal types already referenced by `UsageLedgerRecord`, keeping the mirrored admin types aligned with backend governance fields.\n\n## Verification\n\nRan the task verification commands directly. `./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"` passed, including the strengthened admin-ledger cleanup proof that surviving rows retain persisted governance markers and expired rows disappear from `/v1/admin/usage/ledger` after cleanup. `./.venv/bin/pytest tests/test_hosted_contract.py` passed, confirming the metadata-only hosted export boundary did not widen. `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` passed after tightening the UI assertion to validate the new explanatory copy rather than incorrectly rejecting the words used in the warning itself.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"` | 0 | ✅ pass | 930ms |\n| 2 | `./.venv/bin/pytest tests/test_hosted_contract.py` | 0 | ✅ pass | 40ms |\n| 3 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` | 0 | ✅ pass | 525ms |\n\n## Deviations\n\nNo backend route changes were needed after verifying the existing admin ledger endpoint already satisfied the planned read-path seam. I made one small local adaptation outside the expected-output list by adding missing TypeScript literal aliases in `console/src/lib/admin-api.ts`, because the request-detail types already referenced them and keeping the mirrored admin types accurate was necessary for consistency.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `tests/test_governance_api.py`\n- `console/src/components/ledger/ledger-request-detail.tsx`\n- `console/src/components/ledger/ledger-request-detail.test.tsx`\n- `console/src/lib/admin-api.ts`\n",
       "description": "Carry the new retention lifecycle truth through the existing operator-facing read seams without inventing a new governance dashboard. Executors should load the `react-best-practices` and `test` skills before coding.\n\nSteps:\n1. If needed, expose a minimal admin/read-path seam that allows tests to prove cleanup effects through existing usage-ledger APIs rather than direct database inspection, keeping the surface local-authoritative and bounded.\n2. Update request-detail and any mirrored admin types only as far as needed to explain that a persisted row is authoritative while it exists and may later disappear when governed retention cleanup deletes expired evidence. Do not imply soft-delete, archival recovery, or hosted raw export.\n3. Add focused backend/UI verification covering the operator-facing contract: surviving rows still render persisted governance markers, and the request-detail copy remains consistent with actual deletion behavior introduced in T01.\n4. Re-run the hosted-boundary regression suite to prove the slice did not widen the metadata-only export contract.\n\nIf no new backend route is necessary after T01, keep this task limited to read-path tests and UI/copy alignment rather than inventing extra API surface.",
       "estimate": "45m",
       "files": [
@@ -6455,6 +6463,39 @@
       "verdict": "✅ pass",
       "duration_ms": 870,
       "created_at": "2026-04-12T00:28:50.097Z"
+    },
+    {
+      "id": 128,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 930,
+      "created_at": "2026-04-12T00:31:46.745Z"
+    },
+    {
+      "id": 129,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_hosted_contract.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 40,
+      "created_at": "2026-04-12T00:31:46.746Z"
+    },
+    {
+      "id": 130,
+      "task_id": "T02",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 525,
+      "created_at": "2026-04-12T00:31:46.746Z"
     }
   ]
 }

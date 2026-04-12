@@ -594,6 +594,10 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
             )
 
             cleanup = store.delete_expired_usage_records(now=expired_record.evidence_expires_at)
+            ledger_after_cleanup = client.get(
+                "/v1/admin/usage/ledger?tenant_id=default&limit=10",
+                headers=admin_headers(),
+            )
             expired_after_cleanup = client.get(
                 f"/v1/admin/usage/ledger?request_id={expired_request_id}",
                 headers=admin_headers(),
@@ -643,6 +647,11 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
     assert cleanup["cutoff"].isoformat() == store._normalize_comparable_datetime(
         expired_record.evidence_expires_at
     ).isoformat()
+    assert ledger_after_cleanup.status_code == 200
+    ledger_request_ids = {entry["request_id"] for entry in ledger_after_cleanup.json()}
+    assert expired_request_id not in ledger_request_ids
+    assert surviving_request_id in ledger_request_ids
+    assert "no-expiration-marker" in ledger_request_ids
     assert expired_after_cleanup.status_code == 200
     assert expired_after_cleanup.json() == []
     assert surviving_after_cleanup.status_code == 200

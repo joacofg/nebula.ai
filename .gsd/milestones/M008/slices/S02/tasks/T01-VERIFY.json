@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M008/S02/T01",
+  "timestamp": 1775953732561,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"",
+      "exitCode": 0,
+      "durationMs": 1146,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_chat_completions.py -k ledger",
+      "exitCode": 0,
+      "durationMs": 888,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_embeddings_api.py",
+      "exitCode": 0,
+      "durationMs": 1190,
+      "verdict": "pass"
+    }
+  ]
+}
