@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-04-11T23:42:02Z | Files: 267 | Described: 0/267
-<!-- gsd:codebase-meta {"generatedAt":"2026-04-11T23:42:02Z","fingerprint":"9bdb4e87708c83585db35a901243f23719c8a4b3","fileCount":267,"truncated":false} -->
+Generated: 2026-04-12T00:12:58Z | Files: 268 | Described: 0/268
+<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T00:12:58Z","fingerprint":"e1702b723c5697dfd3516828c101c10d713180bf","fileCount":268,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
@@ -243,6 +243,7 @@ Generated: 2026-04-11T23:42:02Z | Files: 267 | Described: 0/267
 - `migrations/versions/20260328_0007_hard_budget_guardrails.py`
 - `migrations/versions/20260328_0008_cache_policy_controls.py`
 - `migrations/versions/20260401_0009_calibrated_routing_rollout.py`
+- `migrations/versions/20260411_0010_evidence_governance_policy.py`
 
 ### scripts/
 - `scripts/smoke_openrouter.sh`

@@ -36,6 +36,8 @@ type PolicyFormState = {
   hardBudgetLimitUsd: string;
   hardBudgetEnforcement: NonNullable<TenantPolicy["hard_budget_enforcement"]>;
   softBudgetUsd: string;
+  evidenceRetentionWindow: TenantPolicy["evidence_retention_window"];
+  metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"];
 };
 
 function toFormState(policy: TenantPolicy): PolicyFormState {
@@ -51,6 +53,8 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     hardBudgetLimitUsd: policy.hard_budget_limit_usd?.toString() ?? "",
     hardBudgetEnforcement: policy.hard_budget_enforcement ?? "downgrade",
     softBudgetUsd: policy.soft_budget_usd?.toString() ?? "",
+    evidenceRetentionWindow: policy.evidence_retention_window,
+    metadataMinimizationLevel: policy.metadata_minimization_level,
   };
 }
 
@@ -72,6 +76,8 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
     hard_budget_limit_usd: hardBudgetLimitUsd,
     hard_budget_enforcement: hardBudgetLimitUsd === null ? null : state.hardBudgetEnforcement,
     soft_budget_usd: state.softBudgetUsd.trim() === "" ? null : Number(state.softBudgetUsd),
+    evidence_retention_window: state.evidenceRetentionWindow,
+    metadata_minimization_level: state.metadataMinimizationLevel,
   };
 }
 
@@ -721,6 +727,58 @@ export function PolicyForm({
                 {hardBudgetConfigured
                   ? "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed."
                   : "Set a hard cumulative budget limit first to activate this enforcement choice."}
+              </p>
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("evidence_retention_window") ? (
+            <div>
+              <label className="field-label" htmlFor="evidence-retention-window">
+                Evidence retention window
+              </label>
+              <select
+                id="evidence-retention-window"
+                className="field-input"
+                value={formState.evidenceRetentionWindow}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    evidenceRetentionWindow: event.target.value as TenantPolicy["evidence_retention_window"],
+                  }))
+                }
+              >
+                <option value="24h">24h</option>
+                <option value="7d">7d</option>
+                <option value="30d">30d</option>
+                <option value="90d">90d</option>
+              </select>
+              <p className="mt-2 text-sm text-slate-500">
+                Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.
+              </p>
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("metadata_minimization_level") ? (
+            <div>
+              <label className="field-label" htmlFor="metadata-minimization-level">
+                Metadata minimization level
+              </label>
+              <select
+                id="metadata-minimization-level"
+                className="field-input"
+                value={formState.metadataMinimizationLevel}
+                onChange={(event) =>
+                  setFormState((current) => ({
+                    ...current,
+                    metadataMinimizationLevel: event.target.value as TenantPolicy["metadata_minimization_level"],
+                  }))
+                }
+              >
+                <option value="standard">Standard</option>
+                <option value="strict">Strict</option>
+              </select>
+              <p className="mt-2 text-sm text-slate-500">
+                Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.
               </p>
             </div>
           ) : null}

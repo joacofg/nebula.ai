@@ -53,6 +53,7 @@ beforeEach(() => {
   ]);
   getTenantPolicyMock.mockImplementation(async (_adminKey, tenantId) => ({
     routing_mode_default: tenantId === "tenant-b" ? "local_only" : "auto",
+    calibrated_routing_enabled: true,
     fallback_enabled: tenantId === "tenant-b" ? false : true,
     semantic_cache_enabled: true,
     semantic_cache_similarity_threshold: tenantId === "tenant-b" ? 0.88 : 0.9,
@@ -64,6 +65,8 @@ beforeEach(() => {
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
+    evidence_retention_window: "30d",
+    metadata_minimization_level: "standard",
   }));
   getPolicyOptionsMock.mockResolvedValue({
     routing_modes: ["auto", "local_only", "premium_only"],
@@ -79,6 +82,8 @@ beforeEach(() => {
       "max_premium_cost_per_request",
       "hard_budget_limit_usd",
       "hard_budget_enforcement",
+      "evidence_retention_window",
+      "metadata_minimization_level",
     ],
     soft_signal_fields: ["soft_budget_usd"],
     advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
@@ -96,6 +101,8 @@ beforeEach(() => {
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
+    evidence_retention_window: "30d",
+    metadata_minimization_level: "standard",
   });
   simulateTenantPolicyMock.mockResolvedValue({
     tenant_id: "tenant-a",
@@ -222,6 +229,8 @@ describe("policy-page", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Evidence retention window")).toBeInTheDocument();
+    expect(screen.getByLabelText("Metadata minimization level")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
@@ -229,7 +238,7 @@ describe("policy-page", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
+        "Prompt/response capture remains advisory and deferred for a future governance/privacy phase. Evidence retention and metadata minimization are runtime-enforced above; capture toggles are not editable in Phase 4.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByLabelText("Prompt capture enabled")).not.toBeInTheDocument();
@@ -320,6 +329,8 @@ describe("policy-page", () => {
         soft_budget_usd: null,
         prompt_capture_enabled: false,
         response_capture_enabled: false,
+        evidence_retention_window: "30d",
+        metadata_minimization_level: "standard",
       },
       approximation_notes: [],
       window: {
@@ -373,6 +384,8 @@ describe("policy-page", () => {
         soft_budget_usd: null,
         prompt_capture_enabled: false,
         response_capture_enabled: false,
+        evidence_retention_window: "30d",
+        metadata_minimization_level: "standard",
       },
       approximation_notes: [],
       window: {

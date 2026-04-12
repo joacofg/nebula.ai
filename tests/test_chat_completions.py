@@ -97,6 +97,61 @@ def test_chat_completions_streams_sse() -> None:
     assert b"[DONE]" in body
 
 
+def test_chat_completions_persist_governed_ledger_markers_from_tenant_policy() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.governance_store.upsert_policy(
+                "default",
+                container.governance_store.get_policy("default").model_copy(
+                    update={
+                        "evidence_retention_window": "7d",
+                        "metadata_minimization_level": "strict",
+                    }
+                ),
+            )
+            container.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="governed local response",
+                    model=container.settings.local_model,
+                    provider="ollama",
+                    usage=usage(9, 4),
+                ),
+            )
+            container.provider_registry.local_provider = container.local_provider
+            container.cache_service = FakeCacheService()
+            container.chat_service.cache_service = container.cache_service
+
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "Need a governed ledger row."}],
+                },
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers={"X-Nebula-Admin-Key": "nebula-admin-key"},
+            )
+
+    assert response.status_code == 200
+    assert ledger.status_code == 200
+    body = ledger.json()
+    assert len(body) == 1
+    row = body[0]
+    assert row["request_id"] == request_id
+    assert row["message_type"] == "chat"
+    assert row["evidence_retention_window"] == "7d"
+    assert row["metadata_minimization_level"] == "strict"
+    assert row["metadata_fields_suppressed"] == ["route_signals"]
+    assert row["route_signals"] is None
+    assert row["governance_source"] == "tenant_policy"
+    assert row["evidence_expires_at"] is not None
+
+
 def test_chat_completions_require_nebula_auth_headers_not_bearer_authorization() -> None:
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         with TestClient(app) as client:

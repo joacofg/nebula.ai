@@ -260,6 +260,12 @@ export type UsageLedgerRecord = {
   route_reason: string | null;
   policy_outcome: string | null;
   route_signals: Record<string, unknown> | null;
+  message_type: "chat" | "embeddings";
+  evidence_retention_window: EvidenceRetentionWindow;
+  evidence_expires_at: string | null;
+  metadata_minimization_level: MetadataMinimizationLevel;
+  metadata_fields_suppressed: string[];
+  governance_source: "tenant_policy";
 };
 
 export type UsageLedgerFilters = {

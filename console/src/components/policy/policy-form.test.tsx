@@ -11,6 +11,7 @@ const baseSimulationResult: PolicySimulationResponse = {
   tenant_id: "default",
   candidate_policy: {
     routing_mode_default: "premium_only",
+    calibrated_routing_enabled: true,
     fallback_enabled: false,
     semantic_cache_enabled: true,
     semantic_cache_similarity_threshold: 0.9,
@@ -22,6 +23,8 @@ const baseSimulationResult: PolicySimulationResponse = {
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
+    evidence_retention_window: "30d",
+    metadata_minimization_level: "standard",
   },
   approximation_notes: ["Replay uses stored route signals rather than raw prompt text."],
   window: {
@@ -111,6 +114,8 @@ function renderPolicyForm({
         soft_budget_usd: null,
         prompt_capture_enabled: false,
         response_capture_enabled: false,
+        evidence_retention_window: "30d",
+        metadata_minimization_level: "standard",
       }}
       options={{
         routing_modes: ["auto", "local_only", "premium_only"],
@@ -127,6 +132,8 @@ function renderPolicyForm({
           "max_premium_cost_per_request",
           "hard_budget_limit_usd",
           "hard_budget_enforcement",
+          "evidence_retention_window",
+          "metadata_minimization_level",
         ],
         soft_signal_fields: ["soft_budget_usd"],
         advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
@@ -531,6 +538,12 @@ describe("policy-form", () => {
     );
     expect(runtimeSection).toHaveTextContent(
       "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.",
     );
     expect(runtimeSection).toHaveTextContent(
       "Higher values require a closer semantic match before Nebula reuses a cached response.",

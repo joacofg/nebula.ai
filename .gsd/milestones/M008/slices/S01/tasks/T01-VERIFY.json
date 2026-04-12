@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M008/S01/T01",
+  "timestamp": 1775952778682,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py",
+      "exitCode": 127,
+      "durationMs": 2,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

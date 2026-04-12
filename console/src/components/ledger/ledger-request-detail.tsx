@@ -344,6 +344,13 @@ function buildRoutingInspection(
   return { summary, detail, fields };
 }
 
+function formatSuppressedFields(fields: string[]) {
+  if (fields.length === 0) {
+    return "None";
+  }
+  return fields.map((field) => titleCaseToken(field)).join(", ");
+}
+
 export function LedgerRequestDetail({ entry, calibrationSummary = null }: LedgerRequestDetailProps) {
   if (!entry) {
     return <div className="panel px-6 py-5 text-sm text-slate-500">Select a ledger row to inspect request detail.</div>;
@@ -376,12 +383,18 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <DetailRow label="Request ID" value={entry.request_id} mono />
         <DetailRow label="Timestamp" value={formatTimestamp(entry.timestamp)} />
         <DetailRow label="Tenant" value={entry.tenant_id} mono />
+        <DetailRow label="Message type" value={entry.message_type} />
         <DetailRow label="Route target" value={entry.final_route_target} />
         <DetailRow label="Requested model" value={entry.requested_model} />
         <DetailRow label="Response model" value={valueOrFallback(entry.response_model)} />
         <DetailRow label="Provider" value={valueOrFallback(entry.final_provider)} />
         <DetailRow label="Route reason" value={valueOrFallback(entry.route_reason)} />
         <DetailRow label="Policy outcome" value={valueOrFallback(entry.policy_outcome)} />
+        <DetailRow label="Evidence retention" value={entry.evidence_retention_window} />
+        <DetailRow label="Evidence expires at" value={valueOrFallback(entry.evidence_expires_at)} />
+        <DetailRow label="Metadata minimization" value={entry.metadata_minimization_level} />
+        <DetailRow label="Suppressed metadata fields" value={formatSuppressedFields(entry.metadata_fields_suppressed)} />
+        <DetailRow label="Governance source" value={entry.governance_source} />
         <DetailRow label="Fallback used" value={boolLabel(entry.fallback_used)} />
         <DetailRow label="Cache hit" value={boolLabel(entry.cache_hit)} />
         <DetailRow label="Terminal status" value={entry.terminal_status} />

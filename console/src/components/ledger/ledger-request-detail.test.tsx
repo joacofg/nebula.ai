@@ -24,6 +24,12 @@ const mockEntry: UsageLedgerRecord = {
   route_reason: "embeddings_request",
   policy_outcome: "allowed",
   route_signals: null,
+  message_type: "embeddings",
+  evidence_retention_window: "30d",
+  evidence_expires_at: "2026-04-16T01:02:03Z",
+  metadata_minimization_level: "strict",
+  metadata_fields_suppressed: [],
+  governance_source: "tenant_policy",
 };
 
 const sufficientCalibration: CalibrationEvidenceSummary = {
@@ -57,8 +63,9 @@ describe("ledger-request-detail", () => {
     expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();
     expect(screen.getByText("tenant-embeddings")).toBeInTheDocument();
+    expect(screen.getByText("Message type")).toBeInTheDocument();
     expect(screen.getByText("Route target")).toBeInTheDocument();
-    expect(screen.getByText("embeddings")).toBeInTheDocument();
+    expect(screen.getAllByText("embeddings").length).toBeGreaterThanOrEqual(2);
     expect(screen.getByText("Terminal status")).toBeInTheDocument();
     expect(screen.getByText("completed")).toBeInTheDocument();
     expect(screen.getByText("Requested model")).toBeInTheDocument();
@@ -69,6 +76,14 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText("embeddings_request")).toBeInTheDocument();
     expect(screen.getByText("Policy outcome")).toBeInTheDocument();
     expect(screen.getByText("allowed")).toBeInTheDocument();
+    expect(screen.getByText("Evidence retention")).toBeInTheDocument();
+    expect(screen.getByText("30d")).toBeInTheDocument();
+    expect(screen.getByText("Evidence expires at")).toBeInTheDocument();
+    expect(screen.getByText("Metadata minimization")).toBeInTheDocument();
+    expect(screen.getByText("strict")).toBeInTheDocument();
+    expect(screen.getByText("Suppressed metadata fields")).toBeInTheDocument();
+    expect(screen.getByText("Governance source")).toBeInTheDocument();
+    expect(screen.getByText("tenant_policy")).toBeInTheDocument();
     expect(screen.getByText("Fallback used")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("Cache hit")).toBeInTheDocument();

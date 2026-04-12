@@ -119,7 +119,7 @@ def _record_usage(
 ) -> None:
     container.governance_store.record_usage(
         UsageLedgerRecord(
-            request_id=request_id or "",
+            request_id=request_id or f"req-{uuid4().hex}",
             tenant_id=tenant_context.tenant.id,
             requested_model=requested_model,
             final_route_target="embeddings",
