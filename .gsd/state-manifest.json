@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T00:57:37.950Z",
+  "exported_at": "2026-04-12T17:09:11.695Z",
   "milestones": [
     {
       "id": "M001",
@@ -1076,14 +1076,14 @@
       "milestone_id": "M008",
       "id": "S03",
       "title": "S03",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [],
       "demo": "Expired evidence is actually deleted according to tenant policy, with a bounded retention execution path that can be exercised and verified rather than inferred.",
       "created_at": "2026-04-11T23:45:07.519Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-12T17:03:23.551Z",
+      "full_summary_md": "---\nid: S03\nparent: M008\nmilestone: M008\nprovides:\n  - A running retention cleanup lifecycle wired into app startup and shutdown.\n  - Truthful bounded health diagnostics for retention execution and failures.\n  - An operational proof path showing real evidence deletion through existing ledger and observability seams.\nrequires:\n  - slice: S01\n    provides: Typed evidence retention policy fields and persisted row-level governance markers including `evidence_expires_at`.\n  - slice: S02\n    provides: The explicit governance-store deletion seam and historically truthful ledger/request-detail evidence model that S03 operationalizes.\naffects:\n  - S04\n  - S05\nkey_files:\n  - src/nebula/services/retention_lifecycle_service.py\n  - src/nebula/core/config.py\n  - src/nebula/core/container.py\n  - src/nebula/main.py\n  - src/nebula/services/runtime_health_service.py\n  - src/nebula/services/heartbeat_service.py\n  - tests/test_retention_lifecycle_service.py\n  - tests/test_governance_api.py\n  - tests/test_health.py\n  - tests/test_hosted_contract.py\n  - console/src/components/health/runtime-health-cards.tsx\n  - console/src/components/health/runtime-health-cards.test.tsx\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/lib/admin-api.ts\nkey_decisions:\n  - Implemented retention cleanup as a small background lifecycle service following the existing heartbeat/remote-management loop pattern instead of introducing a new abstraction.\n  - Kept operator proof on existing runtime-health cards and `/v1/admin/usage/ledger` rather than adding a retention-specific endpoint or dashboard.\n  - Preserved the hosted metadata-only boundary by reducing the new dependency to coarse heartbeat summary membership only.\npatterns_established:\n  - Use persisted row-level governance markers as the source of truth for later lifecycle behavior; do not recompute cleanup eligibility from current tenant policy.\n  - For bounded runtime features, publish optional dependency state through `RuntimeHealthService` so failures are visible without unnecessarily blocking local serving.\n  - When verifying historical governance behavior, seed exact ledger rows instead of calling write-time governance seams that intentionally recompute policy-derived fields.\nobservability_surfaces:\n  - `/health/ready` retention_lifecycle dependency payload\n  - `/health/dependencies` retention_lifecycle dependency payload\n  - Console Observability runtime-health dependency cards\n  - Hosted heartbeat dependency summary (coarse healthy/degraded/unavailable membership only)\n  - `/v1/admin/usage/ledger` before/after cleanup proof path\ndrill_down_paths:\n  - .gsd/milestones/M008/slices/S03/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M008/slices/S03/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-12T17:03:23.552Z\nblocker_discovered: false\n---\n\n# S03: Retention lifecycle enforcement\n\n**Operationalized governed evidence deletion as a running retention lifecycle that deletes expired ledger rows by persisted expiration markers, reports truthful runtime status through existing health/observability seams, and keeps hosted export bounded to coarse dependency metadata.**\n\n## What Happened\n\nS03 turned the governed deletion seam from S02 into a real runtime lifecycle without widening Nebula’s trust boundary. The backend now includes a dedicated `RetentionLifecycleService` that follows the existing background-service shape already used for heartbeat and remote-management loops. It is registered in the service container, started and stopped from FastAPI lifespan, and controlled by bounded settings for enablement and cleanup cadence. The lifecycle calls `GovernanceStore.delete_expired_usage_records()` directly and therefore deletes evidence only according to each row’s persisted `evidence_expires_at` marker rather than recomputing eligibility from current tenant policy. The service keeps in-memory execution diagnostics — last status, last run and attempt timestamps, deleted and eligible counts, cutoff, and last error — so operators can inspect runtime truth without exposing raw evidence.\n\nThat operational state is now surfaced on the existing runtime-health seams rather than through a new retention product surface. `RuntimeHealthService` publishes a `retention_lifecycle` dependency payload on `/health/ready` and `/health/dependencies`, and optional degradation from cleanup failures is visible without blocking local serving. The existing hosted heartbeat summary was reverified so the new dependency remains reduced to coarse healthy/degraded/unavailable membership only, preserving the metadata-only hosted boundary. On the operator side, the console runtime-health cards now render retention lifecycle status, counts, timestamps, and last error on the existing observability dependency cards. There is no new retention-specific endpoint or dashboard; before/after proof remains on the existing `/v1/admin/usage/ledger` seam.\n\nEnd-to-end proof was tightened around the real seams. Tests now seed expired, surviving, and no-expiration rows, invoke cleanup through the running lifecycle service, and verify expired rows disappear from `/v1/admin/usage/ledger` while future or null-expiration rows remain. Health tests prove the dependency appears on readiness surfaces, and hosted-contract coverage proves the added dependency name does not widen exported payload detail. During execution, one important lesson emerged: tests that need historical expiration markers must not use `GovernanceStore.record_usage()`, because that seam intentionally reapplies current governance policy and will overwrite hand-crafted expiration timestamps. Direct ledger-row insertion is the correct pattern when proving persisted-marker deletion behavior.\n\nOverall, the slice delivers the bounded operational claim M008 needed: retention is now enforced as real deletion performed by a running lifecycle, operators can inspect whether that lifecycle is healthy or degraded through existing health and observability surfaces, and Nebula still avoids payload capture, archive semantics, or hosted-authority drift.\n\n## Verification\n\nPassed the slice-plan verification checks. Backend verification: `./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\"` → 5 selected tests passed. Console verification: `npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'` → 2 files / 3 tests passed. These checks verified: retention lifecycle dependency state appears on `/health/ready` and `/health/dependencies`; cleanup through the lifecycle service removes only rows whose persisted `evidence_expires_at` is expired while preserving future/null-expiration rows; hosted heartbeat export stays metadata-only and coarse despite the new dependency; and the console observability runtime-health cards render truthful retention lifecycle status/count/error details on the existing dependency-card surface.\n\n## Requirements Advanced\n\n- R062 — Provides the operational deletion and runtime-health leg needed for the end-to-end governance chain proof in M008/S05.\n- R064 — Proves retention enforcement while keeping scope bounded to existing health, ledger, and hosted-summary seams instead of adding payload capture or new compliance surfaces.\n\n## Requirements Validated\n\n- R059 — Validated by passing backend and console slice verification showing that the running lifecycle deletes expired ledger rows by persisted `evidence_expires_at`, exposes truthful health state, and keeps hosted export metadata-only.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nConsole verification initially failed because the shell interpreted the unquoted `src/app/(console)/observability/page.test.tsx` path. Re-running the exact Vitest command with that path quoted resolved the shell issue; no product code change was required. Earlier task execution also corrected tests that had mistakenly used `record_usage()` when direct ledger-row insertion was required to preserve historical expiration markers.\n\n## Known Limitations\n\nRetention lifecycle diagnostics are kept in memory only. They provide truthful current-process status for health and observability, but they do not yet persist historical run history across process restarts.\n\n## Follow-ups\n\nS04 should build directly on these seams by making the effective evidence boundary clearer in request-detail and policy/operator surfaces without adding a separate retention console. S05 should use the running lifecycle, health dependency, and before/after ledger proof path as the operational leg of the final end-to-end governance proof.\n\n## Files Created/Modified\n\n- `src/nebula/services/retention_lifecycle_service.py` — Added the retention cleanup background service, health snapshot model, and deterministic single-run helper.\n- `src/nebula/core/config.py` — Added bounded settings for retention lifecycle enablement and cleanup cadence.\n- `src/nebula/core/container.py` — Registered the retention lifecycle service in the service container.\n- `src/nebula/main.py` — Started the retention lifecycle service from FastAPI lifespan and shut it down with the app.\n- `src/nebula/services/runtime_health_service.py` — Exposed `retention_lifecycle` as an optional dependency in runtime health output.\n- `src/nebula/services/heartbeat_service.py` — Reused dependency summaries so hosted heartbeat sees the new dependency only as coarse healthy/degraded/unavailable state.\n- `tests/test_retention_lifecycle_service.py` — Added lifecycle tests for expired-row deletion, disabled mode, failure capture, and health visibility.\n- `tests/test_governance_api.py` — Added end-to-end ledger proof that expired rows disappear after lifecycle cleanup while surviving rows remain.\n- `tests/test_health.py` — Verified health endpoints include the retention lifecycle dependency and degraded semantics.\n- `tests/test_hosted_contract.py` — Locked the hosted metadata-only dependency summary contract with the added retention lifecycle dependency.\n- `console/src/components/health/runtime-health-cards.tsx` — Rendered retention lifecycle status, counts, timestamps, and last error on existing runtime-health cards.\n- `console/src/components/health/runtime-health-cards.test.tsx` — Verified runtime-health cards render retention lifecycle diagnostics truthfully.\n- `console/src/app/(console)/observability/page.test.tsx` — Verified the Observability page continues to show the lifecycle on existing health surfaces without a new dashboard.\n- `console/src/lib/admin-api.ts` — Widened runtime-health dependency typing so richer lifecycle payload fields can be consumed safely.\n",
+      "full_uat_md": "# S03: Retention lifecycle enforcement — UAT\n\n**Milestone:** M008\n**Written:** 2026-04-12T17:03:23.553Z\n\n# UAT — S03 Retention lifecycle enforcement\n\n## Preconditions\n\n- Nebula is running with M008/S03 code and default retention cleanup enabled.\n- A test tenant exists with evidence governance already configured from S01/S02.\n- The operator can access `/health/ready`, `/health/dependencies`, `/v1/admin/usage/ledger`, and the console Observability page.\n- At least three ledger rows can be prepared for one tenant/request cohort:\n  1. one row with `evidence_expires_at` in the past,\n  2. one row with `evidence_expires_at` in the future,\n  3. one row with `evidence_expires_at = null`.\n- For deterministic proof in non-production environments, the operator may trigger the lifecycle through the test/helper seam used by automated verification (or wait for the configured cleanup interval).\n\n## Test Case 1 — Expired evidence is actually deleted through the lifecycle\n\n1. Open `/v1/admin/usage/ledger` and confirm all three prepared rows are visible before cleanup.\n   - Expected: the expired row, future-expiration row, and null-expiration row all appear before the lifecycle runs.\n2. Trigger one retention cleanup run through the real lifecycle seam, or wait for the configured interval to elapse.\n   - Expected: cleanup executes without requiring a retention-specific admin endpoint.\n3. Refresh `/v1/admin/usage/ledger` using the same filters/request IDs.\n   - Expected: the expired row is no longer returned.\n   - Expected: the future-expiration row still exists.\n   - Expected: the null-expiration row still exists.\n4. Confirm request-detail access for the surviving rows still shows their governance markers normally.\n   - Expected: surviving rows remain inspectable through the existing ledger/request-detail surfaces.\n\n## Test Case 2 — Runtime health reports lifecycle status truthfully\n\n1. Open `/health/ready`.\n   - Expected: the response includes a `retention_lifecycle` dependency payload.\n   - Expected: payload includes bounded fields such as status/detail, enablement, last status, last run/attempt times, counts, and last error.\n2. Open `/health/dependencies`.\n   - Expected: the same retention lifecycle dependency is visible through the dependency-health surface.\n3. After a successful cleanup run, inspect the retention dependency fields again.\n   - Expected: `last_status` indicates success, `last_run_at` is populated, and count fields reflect the run.\n\n## Test Case 3 — Console observability shows retention lifecycle on existing cards only\n\n1. Open the console Observability page.\n   - Expected: runtime health includes a card for the retention lifecycle dependency.\n2. Inspect the retention lifecycle card content.\n   - Expected: the card shows truthful summary information such as current status, last run/attempt, deleted rows, eligible rows, and last error when present.\n3. Inspect the rest of the page structure.\n   - Expected: there is no dedicated retention dashboard, wizard, or new cleanup control surface; the lifecycle is represented only as part of existing runtime health/observability cards.\n\n## Test Case 4 — Failure is visible but does not falsely imply gateway outage\n\n1. Simulate a cleanup failure in a non-production environment (for example, by forcing the governance-store cleanup seam to raise during a run).\n   - Expected: the retention lifecycle records a failed attempt rather than crashing request serving.\n2. Re-open `/health/ready` and `/health/dependencies`.\n   - Expected: `retention_lifecycle` reports a degraded or failed status with a bounded `last_error` and updated `last_attempted_run_at`.\n   - Expected: the gateway can still report overall readiness as degraded rather than unavailable if only this optional dependency failed.\n3. Open the console Observability runtime health section.\n   - Expected: the retention lifecycle card surfaces the failure truthfully through the existing dependency-card UI.\n\n## Test Case 5 — Hosted boundary remains metadata-only\n\n1. Inspect the hosted heartbeat/dependency summary path after the new lifecycle dependency is present.\n   - Expected: the hosted payload includes only coarse dependency membership (`healthy`, `degraded`, or `unavailable`) for `retention_lifecycle`.\n   - Expected: hosted export does not contain deleted row counts, eligible counts, cutoff times, raw evidence, or cleanup payload details.\n\n## Edge Cases\n\n- A row whose expiration is in the future must survive cleanup even if the tenant’s current policy is stricter than when the row was written.\n- A row with no expiration marker must survive cleanup.\n- A failed cleanup attempt must update failure diagnostics without introducing raw evidence into health payloads.\n- Disabling the lifecycle by configuration should prevent the background loop from starting and should report that disabled state truthfully on health surfaces.\n",
       "goal": "Operationalize governed evidence retention as a running cleanup lifecycle that deletes expired usage-ledger rows by persisted expiration markers, exposes truthful runtime status through existing health surfaces, and keeps operator proof on the current ledger/observability seams.",
       "success_criteria": "- Expired usage-ledger evidence is deleted by a running lifecycle service that calls the existing `GovernanceStore.delete_expired_usage_records()` seam rather than duplicating cleanup logic.\n- Cleanup eligibility remains keyed to persisted `evidence_expires_at` markers, not recomputed from current tenant policy.\n- Runtime health exposes retention lifecycle status and failure diagnostics through existing health/dependency surfaces.\n- `/v1/admin/usage/ledger` and existing observability surfaces provide the proof path before/after cleanup without adding a retention-specific endpoint or dashboard.\n- Hosted metadata-only summaries remain bounded after the new dependency is introduced.",
       "proof_level": "operational",
@@ -1095,23 +1095,20 @@
     {
       "milestone_id": "M008",
       "id": "S04",
-      "title": "Operator evidence-boundary surfaces",
+      "title": "S04",
       "status": "pending",
       "risk": "medium",
-      "depends": [
-        "S02",
-        "S03"
-      ],
+      "depends": [],
       "demo": "The policy page and request-detail surface clearly show the effective evidence boundary, including what is retained, suppressed, or no longer available due to policy.",
       "created_at": "2026-04-11T23:45:07.520Z",
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Expose the effective evidence boundary in the bounded operator surfaces that already govern and inspect request evidence.",
-      "success_criteria": "- Policy surfaces explain configured retention/minimization controls as real enforced behavior.\n- Request detail shows historical governance markers for the selected row.\n- Operator surfaces explain deleted or suppressed evidence truthfully without displacing the persisted row as primary evidence.",
-      "proof_level": "Focused UI + admin integration verification",
-      "integration_closure": "Policy and request-detail surfaces consume the governed row shape and retention outcomes without regressing M007’s request-led hierarchy or introducing dashboard sprawl.",
-      "observability_impact": "Shows operators what policy is configured and what evidence result it produced for a selected request.",
+      "goal": "Make the policy and request-detail console surfaces explain Nebula’s effective evidence boundary using the already-persisted governance fields, while keeping hosted trust-boundary wording visibly aligned with the metadata-only contract.",
+      "success_criteria": "- The policy surface presents an explicit effective evidence boundary summary derived from `evidence_retention_window` and `metadata_minimization_level`, including what is retained while a row exists, what strict minimization suppresses today, and that hosted export stays metadata-only.\n- The request-detail surface explains the selected row’s retained, suppressed, and deletion semantics using persisted row-level governance markers without implying soft-delete, archive recovery, or hosted raw export.\n- Hosted trust-boundary wording remains schema-backed and visibly consistent with the operator evidence vocabulary introduced on the policy and request-detail seams.\n- Focused console tests and hosted-contract regression prove the copy matches real runtime behavior and does not widen scope into a dashboard, archive system, or hosted authority surface.",
+      "proof_level": "integration",
+      "integration_closure": "This slice composes existing tenant-policy controls, persisted usage-ledger markers, and hosted trust-boundary copy into one operator-readable evidence story. After it lands, S05 can use the already-running policy → persistence → deletion → operator surface → hosted boundary chain without adding new API surface.",
+      "observability_impact": "- Runtime signals: operator-visible boundary summaries on the policy page, request-detail panel, and hosted trust page.\n- Inspection surfaces: `console/src/components/policy/policy-form.tsx`, `console/src/components/ledger/ledger-request-detail.tsx`, `console/src/components/hosted/trust-boundary-card.tsx`, and their focused tests.\n- Failure visibility: wording drift shows up as failing Vitest assertions or mismatched hosted-contract regression rather than latent ambiguity.\n- Redaction constraints: copy must stay bounded to persisted governance markers and schema-backed hosted metadata; no raw prompt/response or secret-bearing surfaces may be introduced.",
       "sequence": 4,
       "replan_triggered_at": null
     },
@@ -4831,6 +4828,106 @@
       "observability_impact": "Makes cleanup execution, last result, and failure state inspectable through runtime health and existing observability cards; validates that hosted only sees summarized dependency state.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S04",
+      "id": "T01",
+      "title": "Added policy-side effective evidence boundary guidance driven by retention/minimization controls and shared hosted export limits.",
+      "status": "complete",
+      "one_liner": "Added policy-side effective evidence boundary guidance driven by retention/minimization controls and shared hosted export limits.",
+      "narrative": "Updated `console/src/components/policy/policy-form.tsx` to render a subordinate “Effective evidence boundary” panel inside the existing runtime-enforced controls section. The panel derives operator-facing guidance from the live `evidence_retention_window` and `metadata_minimization_level` form values, making it explicit what governed ledger metadata remains inspectable while retained, what strict minimization suppresses at write time, and that hosted export still excludes raw usage-ledger rows. To keep hosted wording aligned with the metadata-only contract instead of duplicating ad hoc copy, I extended `console/src/lib/hosted-contract.ts` with a shared `hostedExportExclusion` string and consumed it from the policy form. I then updated `console/src/components/policy/policy-form.test.tsx` and `console/src/components/policy/policy-page.test.tsx` to lock the new boundary vocabulary, verify the strict-minimization variant, and preserve the runtime-enforced versus advisory distinction already present on the page.",
+      "verification_result": "Ran the focused console Vitest command from the task plan: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. The suite passed with 17/17 tests green, confirming the new policy-side evidence-boundary copy, the strict-minimization branch, the shared hosted export exclusion wording, and the existing runtime-enforced/advisory separation.",
+      "duration": "",
+      "completed_at": "2026-04-12T17:09:11.666Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/lib/hosted-contract.ts"
+      ],
+      "key_decisions": [
+        "Reused shared hosted-contract copy for the hosted export exclusion sentence so policy, hosted trust-boundary, and future request-detail surfaces stay aligned to one metadata-only contract."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S04\nmilestone: M008\nkey_files:\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-form.test.tsx\n  - console/src/components/policy/policy-page.test.tsx\n  - console/src/lib/hosted-contract.ts\nkey_decisions:\n  - Reused shared hosted-contract copy for the hosted export exclusion sentence so policy, hosted trust-boundary, and future request-detail surfaces stay aligned to one metadata-only contract.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T17:09:11.665Z\nblocker_discovered: false\n---\n\n# T01: Added policy-side effective evidence boundary guidance driven by retention/minimization controls and shared hosted export limits.\n\n**Added policy-side effective evidence boundary guidance driven by retention/minimization controls and shared hosted export limits.**\n\n## What Happened\n\nUpdated `console/src/components/policy/policy-form.tsx` to render a subordinate “Effective evidence boundary” panel inside the existing runtime-enforced controls section. The panel derives operator-facing guidance from the live `evidence_retention_window` and `metadata_minimization_level` form values, making it explicit what governed ledger metadata remains inspectable while retained, what strict minimization suppresses at write time, and that hosted export still excludes raw usage-ledger rows. To keep hosted wording aligned with the metadata-only contract instead of duplicating ad hoc copy, I extended `console/src/lib/hosted-contract.ts` with a shared `hostedExportExclusion` string and consumed it from the policy form. I then updated `console/src/components/policy/policy-form.test.tsx` and `console/src/components/policy/policy-page.test.tsx` to lock the new boundary vocabulary, verify the strict-minimization variant, and preserve the runtime-enforced versus advisory distinction already present on the page.\n\n## Verification\n\nRan the focused console Vitest command from the task plan: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`. The suite passed with 17/17 tests green, confirming the new policy-side evidence-boundary copy, the strict-minimization branch, the shared hosted export exclusion wording, and the existing runtime-enforced/advisory separation.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` | 0 | ✅ pass | 1490ms |\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/components/policy/policy-form.tsx`\n- `console/src/components/policy/policy-form.test.tsx`\n- `console/src/components/policy/policy-page.test.tsx`\n- `console/src/lib/hosted-contract.ts`\n",
+      "description": "Add a bounded operator-facing explanation to the policy surface that synthesizes the runtime-enforced governance controls already present in `console/src/components/policy/policy-form.tsx`. Reuse the existing `evidence_retention_window` and `metadata_minimization_level` values plus the shared hosted contract copy from `console/src/lib/hosted-contract.ts` to explain, in explicit operator language, what evidence remains inspectable while a row exists, what strict minimization suppresses today, and that hosted export still excludes raw usage-ledger rows. Keep this explanatory surface subordinate to the existing runtime-enforced controls rather than turning the page into a second observability/dashboard seam. Update focused policy tests to lock the new boundary vocabulary and verify that the page still distinguishes runtime-enforced controls from advisory capture settings.",
+      "estimate": "45m",
+      "files": [
+        "console/src/components/policy/policy-form.tsx",
+        "console/src/components/policy/policy-form.test.tsx",
+        "console/src/components/policy/policy-page.test.tsx",
+        "console/src/lib/hosted-contract.ts"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "inputs": [
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/lib/hosted-contract.ts`",
+        "`console/src/lib/admin-api.ts`"
+      ],
+      "expected_output": [
+        "`console/src/components/policy/policy-form.tsx`",
+        "`console/src/components/policy/policy-form.test.tsx`",
+        "`console/src/components/policy/policy-page.test.tsx`",
+        "`console/src/lib/hosted-contract.ts`"
+      ],
+      "observability_impact": "Makes policy-page UI itself the inspection surface for configured evidence boundary truth: future failures are localized by boundary-card copy/tests rather than inferred from scattered helper text.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S04",
+      "id": "T02",
+      "title": "Align request-detail and hosted trust-boundary copy with the same evidence vocabulary",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Extend the request-detail evidence surface so a selected persisted row explains the effective evidence boundary with the same retained/suppressed/deleted/not-hosted vocabulary introduced on the policy page. Keep the selected ledger row authoritative while it exists, explicitly distinguish row-level persisted truth from broader hosted-boundary guidance, and do not imply recovery, soft-delete, or hosted raw export. If the existing trust-boundary card/page needs reinforcement, make only small shared-copy updates through `console/src/lib/hosted-contract.ts` and the existing hosted components/tests so hosted wording remains metadata-only and schema-backed. Add or update request-detail and hosted tests to prove row-level governance markers remain legible while present and that hosted surfaces still exclude raw usage-ledger export or runtime authority claims.",
+      "estimate": "45m",
+      "files": [
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/hosted/trust-boundary-card.tsx",
+        "console/src/components/hosted/trust-boundary-card.test.tsx",
+        "console/src/app/trust-boundary/page.tsx",
+        "console/src/app/trust-boundary/page.test.tsx",
+        "console/src/lib/hosted-contract.ts"
+      ],
+      "verify": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx && ./.venv/bin/pytest tests/test_hosted_contract.py",
+      "inputs": [
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/hosted/trust-boundary-card.tsx`",
+        "`console/src/components/hosted/trust-boundary-card.test.tsx`",
+        "`console/src/app/trust-boundary/page.tsx`",
+        "`console/src/app/trust-boundary/page.test.tsx`",
+        "`console/src/lib/hosted-contract.ts`",
+        "`tests/test_hosted_contract.py`"
+      ],
+      "expected_output": [
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/hosted/trust-boundary-card.test.tsx`",
+        "`console/src/app/trust-boundary/page.test.tsx`",
+        "`console/src/lib/hosted-contract.ts`"
+      ],
+      "observability_impact": "Keeps the selected request-detail panel and hosted trust page as the two bounded inspection surfaces for runtime-evidence-vs-hosted-boundary diagnosis, with tests catching wording drift.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -5382,6 +5479,18 @@
       "decision": "How M008/S02 should prove evidence aging and historical request governance without widening APIs",
       "choice": "Keep evidence aging on the existing usage-ledger seam: add an explicit GovernanceStore cleanup lifecycle keyed by persisted evidence_expires_at and explain request detail as authoritative only while the row still exists, without adding a retention-specific admin endpoint.",
       "rationale": "S02 needed real deletion proof and historically truthful request inspection, but the existing /v1/admin/usage/ledger seam already provides the bounded operator read path. Centralizing cleanup in GovernanceStore preserves the write-time governance seam from S01, lets tests prove surviving-row markers and expired-row disappearance through the real admin contract, and avoids soft-delete, archive-recovery, or hosted-boundary drift.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 54,
+      "id": "D047",
+      "when_context": "M008/S03",
+      "scope": "governance",
+      "decision": "How M008/S03 should operationalize governed evidence deletion and operator proof",
+      "choice": "Run retention cleanup as a small background lifecycle service wired into FastAPI/container startup, expose only coarse runtime diagnostics through existing health/dependency and observability surfaces, and continue proving deletion through the existing usage-ledger seam rather than adding a retention-specific endpoint or dashboard.",
+      "rationale": "S03 needed real bounded deletion execution that operators could inspect without widening Nebula into a compliance/analytics product or hosted authority. Reusing GovernanceStore.delete_expired_usage_records() plus existing health cards and /v1/admin/usage/ledger preserves one authoritative persistence/deletion seam, keeps hosted export metadata-only, and makes failures visible without blocking local serving.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -6674,6 +6783,17 @@
       "verdict": "✅ pass",
       "duration_ms": 605,
       "created_at": "2026-04-12T00:57:37.927Z"
+    },
+    {
+      "id": 135,
+      "task_id": "T01",
+      "slice_id": "S04",
+      "milestone_id": "M008",
+      "command": "npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 1490,
+      "created_at": "2026-04-12T17:09:11.666Z"
     }
   ]
 }

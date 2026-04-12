@@ -105,6 +105,8 @@ export const trustBoundaryCopy = {
   notInPath: "Nebula's hosted control plane is not in the request-serving path.",
   excludedHeading: "Excluded by default",
   footnote: "Richer diagnostics must be operator-initiated exceptions to this default contract.",
+  hostedExportExclusion:
+    "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
 } as const;
 
 function assertNonEmptyArray<T>(value: readonly T[], fieldName: string) {

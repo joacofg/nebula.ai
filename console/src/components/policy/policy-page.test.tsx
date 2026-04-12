@@ -206,6 +206,33 @@ describe("policy-page", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Applies in live request evaluation")).toBeInTheDocument();
+    expect(screen.getByText("Effective evidence boundary")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Runtime-enforced guidance derived from the retention and minimization controls below.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Local runtime evidence")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Nebula keeps governed request metadata historically inspectable for up to 30 days before expiration markers say it should age out.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache max entry age hours")).toBeInTheDocument();
     expect(

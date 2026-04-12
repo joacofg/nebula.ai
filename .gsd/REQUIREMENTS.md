@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R059 — Retention policy is enforced as real evidence deletion, not UI-only hiding.
-- Class: continuity
-- Status: active
-- Description: Retention policy is enforced as real evidence deletion, not UI-only hiding.
-- Why it matters: A visibility-only expiry model weakens the product claim that operators can deliberately bound what evidence Nebula keeps.
-- Source: user
-- Primary owning slice: M008/S03
-- Supporting slices: none
-- Validation: mapped
-- Notes: The proof bar for M008 requires actual deletion behavior.
-
 ### R060 — Operators can inspect the effective evidence boundary in the policy surface and the request-detail evidence surface.
 - Class: operability
 - Status: active
@@ -545,6 +534,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M008/S02 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired", ./.venv/bin/pytest tests/test_chat_completions.py -k ledger, ./.venv/bin/pytest tests/test_embeddings_api.py, ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or retention", ./.venv/bin/pytest tests/test_hosted_contract.py, and npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. Usage-ledger rows now retain write-time governance markers while present, expired rows are deleted via persisted evidence_expires_at cleanup rather than current-policy inference, and operator request detail explains that governed evidence disappears after cleanup instead of implying soft-delete or hosted export recovery.
 - Notes: S02 closes the historical explainability requirement by proving both the surviving-row contract and the expired-row disappearance contract through the existing admin ledger seam and request-detail copy.
 
+### R059 — Retention policy is enforced as real evidence deletion, not UI-only hiding.
+- Class: continuity
+- Status: validated
+- Description: Retention policy is enforced as real evidence deletion, not UI-only hiding.
+- Why it matters: A visibility-only expiry model weakens the product claim that operators can deliberately bound what evidence Nebula keeps.
+- Source: user
+- Primary owning slice: M008/S03
+- Supporting slices: none
+- Validation: Validated by M008/S03 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k "retention or health or heartbeat" and npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'. Retention cleanup now runs as a lifecycle service wired into app startup, deletes expired ledger rows via persisted evidence_expires_at markers through GovernanceStore.delete_expired_usage_records(), exposes degraded/ready runtime health with last-run diagnostics, and preserves the hosted metadata-only dependency summary boundary.
+- Notes: The proof bar for M008 requires actual deletion behavior.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -864,7 +864,7 @@ This file is the explicit capability and coverage contract for the project.
 | R056 | compliance/security | validated | M008/S01 | M008/S03 | Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py and ./.venv/bin/pytest tests/test_chat_completions.py -k ledger && ./.venv/bin/pytest tests/test_embeddings_api.py, plus console Vitest coverage for policy surfaces. Tenant policy now carries explicit evidence_retention_window and usage-ledger rows persist request-time retention/expiration markers via the centralized governed persistence seam. |
 | R057 | compliance/security | validated | M008/S01 | M008/S02 | Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py; ./.venv/bin/pytest tests/test_chat_completions.py -k ledger; ./.venv/bin/pytest tests/test_embeddings_api.py; and npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx. Tenant policy now governs metadata_minimization_level and governed ledger writes suppress non-essential metadata while preserving the bounded no-raw-payload-capture contract. |
 | R058 | failure-visibility | validated | M008/S02 | M008/S04 | Validated by M008/S02 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired", ./.venv/bin/pytest tests/test_chat_completions.py -k ledger, ./.venv/bin/pytest tests/test_embeddings_api.py, ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or retention", ./.venv/bin/pytest tests/test_hosted_contract.py, and npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. Usage-ledger rows now retain write-time governance markers while present, expired rows are deleted via persisted evidence_expires_at cleanup rather than current-policy inference, and operator request detail explains that governed evidence disappears after cleanup instead of implying soft-delete or hosted export recovery. |
-| R059 | continuity | active | M008/S03 | none | mapped |
+| R059 | continuity | validated | M008/S03 | none | Validated by M008/S03 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k "retention or health or heartbeat" and npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'. Retention cleanup now runs as a lifecycle service wired into app startup, deletes expired ledger rows via persisted evidence_expires_at markers through GovernanceStore.delete_expired_usage_records(), exposes degraded/ready runtime health with last-run diagnostics, and preserves the hosted metadata-only dependency summary boundary. |
 | R060 | operability | active | M008/S04 | M008/S02 | mapped |
 | R061 | integration | active | M008/S04 | M008/S05 | mapped |
 | R062 | quality-attribute | active | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | mapped |
@@ -881,7 +881,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 6
-- Mapped to slices: 6
-- Validated: 43 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058)
+- Active requirements: 5
+- Mapped to slices: 5
+- Validated: 44 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059)
 - Unmapped active requirements: 0

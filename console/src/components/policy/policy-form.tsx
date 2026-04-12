@@ -11,6 +11,7 @@ import type {
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import { PolicyAdvancedSection } from "@/components/policy/policy-advanced-section";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -95,6 +96,42 @@ function formatRouteScore(score: number | null | undefined) {
     return null;
   }
   return score.toFixed(2);
+}
+
+function formatEvidenceRetentionWindow(window: TenantPolicy["evidence_retention_window"]) {
+  switch (window) {
+    case "24h":
+      return "24 hours";
+    case "7d":
+      return "7 days";
+    case "30d":
+      return "30 days";
+    case "90d":
+      return "90 days";
+    default:
+      return window;
+  }
+}
+
+function getEvidenceBoundarySummary(
+  evidenceRetentionWindow: TenantPolicy["evidence_retention_window"],
+  metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"],
+) {
+  const retentionLabel = formatEvidenceRetentionWindow(evidenceRetentionWindow);
+  const inspectableWhileRetained =
+    metadataMinimizationLevel === "strict"
+      ? "While a retained row exists, operators can still inspect bounded ledger metadata such as tenant, model, status, and governance markers."
+      : "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.";
+  const minimizationEffect =
+    metadataMinimizationLevel === "strict"
+      ? "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger."
+      : "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.";
+
+  return {
+    retention: `Nebula keeps governed request metadata historically inspectable for up to ${retentionLabel} before expiration markers say it should age out.`,
+    inspectableWhileRetained,
+    minimizationEffect,
+  };
 }
 
 function formatRoutingState(
@@ -260,6 +297,15 @@ export function PolicyForm({
   const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
   const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
+  const { copy: hostedContractCopy } = getHostedContractContent();
+  const evidenceBoundarySummary = useMemo(
+    () =>
+      getEvidenceBoundarySummary(
+        formState.evidenceRetentionWindow,
+        formState.metadataMinimizationLevel,
+      ),
+    [formState.evidenceRetentionWindow, formState.metadataMinimizationLevel],
+  );
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -516,6 +562,27 @@ export function PolicyForm({
         </div>
         <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-950">
           When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.
+        </div>
+        <div className="mt-4 rounded-2xl border border-border bg-slate-50 px-4 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                Effective evidence boundary
+              </h4>
+              <p className="mt-2 text-sm text-slate-600">
+                Runtime-enforced guidance derived from the retention and minimization controls below.
+              </p>
+            </div>
+            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+              Local runtime evidence
+            </span>
+          </div>
+          <div className="mt-4 space-y-3 text-sm text-slate-700">
+            <p>{evidenceBoundarySummary.retention}</p>
+            <p>{evidenceBoundarySummary.inspectableWhileRetained}</p>
+            <p>{evidenceBoundarySummary.minimizationEffect}</p>
+            <p>{hostedContractCopy.hostedExportExclusion}</p>
+          </div>
         </div>
         <div className="mt-4 space-y-5">
           {runtimeEnforcedFields.has("routing_mode_default") ? (

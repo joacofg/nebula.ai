@@ -539,6 +539,23 @@ describe("policy-form", () => {
     expect(runtimeSection).toHaveTextContent(
       "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
     );
+    expect(runtimeSection).toHaveTextContent("Effective evidence boundary");
+    expect(runtimeSection).toHaveTextContent(
+      "Runtime-enforced guidance derived from the retention and minimization controls below.",
+    );
+    expect(runtimeSection).toHaveTextContent("Local runtime evidence");
+    expect(runtimeSection).toHaveTextContent(
+      "Nebula keeps governed request metadata historically inspectable for up to 30 days before expiration markers say it should age out.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
+    );
     expect(runtimeSection).toHaveTextContent(
       "Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.",
     );
@@ -564,6 +581,24 @@ describe("policy-form", () => {
         "Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.",
       ),
     ).toBeInTheDocument();
+  });
+
+  it("updates the effective evidence boundary copy when strict minimization is selected", async () => {
+    renderPolicyForm();
+
+    await userEvent.selectOptions(screen.getByLabelText("Metadata minimization level"), "strict");
+
+    const runtimeSection = screen.getByRole("heading", { name: "Runtime-enforced controls" }).closest("section");
+    expect(runtimeSection).not.toBeNull();
+    expect(runtimeSection).toHaveTextContent(
+      "While a retained row exists, operators can still inspect bounded ledger metadata such as tenant, model, status, and governance markers.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger.",
+    );
+    expect(runtimeSection).toHaveTextContent(
+      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
+    );
   });
 
   it("blocks save when cache tuning values are outside the enforced bounds", async () => {
