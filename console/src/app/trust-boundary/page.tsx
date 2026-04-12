@@ -61,6 +61,34 @@ export default function TrustBoundaryPage() {
 
           <div>
             <h2 className="text-sm font-semibold text-slate-900">
+              Shared evidence vocabulary
+            </h2>
+            <ul className="mt-2 grid gap-2">
+              <li className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+                <span>{reinforcement.evidenceBoundaryVocabulary.retained}</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+                <span>{reinforcement.evidenceBoundaryVocabulary.suppressed}</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+                <span>{reinforcement.evidenceBoundaryVocabulary.deleted}</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+                <span>{reinforcement.evidenceBoundaryVocabulary.notHosted}</span>
+              </li>
+              <li className="flex items-start gap-2 text-sm leading-relaxed text-slate-600">
+                <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+                <span>{copy.hostedExportExclusion}</span>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h2 className="text-sm font-semibold text-slate-900">
               Hosted outage behavior
             </h2>
             <p className="mt-1 text-sm leading-relaxed text-slate-600">

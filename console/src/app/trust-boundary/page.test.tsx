@@ -58,6 +58,17 @@ describe("TrustBoundaryPage", () => {
     expect(screen.getByText(reinforcement.prohibitedAuthorityClaims[1])).toBeInTheDocument();
   });
 
+  it("renders evidence-boundary guidance that stays metadata-only and row-bounded", () => {
+    render(<TrustBoundaryPage />);
+
+    expect(screen.getAllByText("Retained request detail stays local to the persisted ledger row while that governed row still exists.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(copy.hostedExportExclusion).length).toBeGreaterThan(0);
+    expect(screen.queryByText(/serves traffic/i)).toBeInTheDocument();
+  });
+
   it("renders the pilot onboarding, outage, and remote-management sections", () => {
     render(<TrustBoundaryPage />);
     expect(

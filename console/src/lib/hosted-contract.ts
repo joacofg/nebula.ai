@@ -63,6 +63,15 @@ export const reinforcementContract = {
     "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane.",
     "Hosted remote actions stay bounded to audited deployment-credential rotation and related audit visibility.",
   ],
+  evidenceBoundaryVocabulary: {
+    retained: "Retained request detail stays local to the persisted ledger row while that governed row still exists.",
+    suppressed:
+      "Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.",
+    deleted:
+      "Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.",
+    notHosted:
+      "Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.",
+  },
   prohibitedAuthorityClaims: [
     "Do not say the hosted plane serves traffic or sits in the request-serving path.",
     "Do not say the hosted plane has local runtime authority.",
@@ -116,8 +125,13 @@ function assertNonEmptyArray<T>(value: readonly T[], fieldName: string) {
 }
 
 function assertReinforcementContract() {
-  const { allowedDescriptiveClaims, prohibitedAuthorityClaims, operatorReadingGuidance, boundedActionPhrasing } =
-    reinforcementContract;
+  const {
+    allowedDescriptiveClaims,
+    evidenceBoundaryVocabulary,
+    prohibitedAuthorityClaims,
+    operatorReadingGuidance,
+    boundedActionPhrasing,
+  } = reinforcementContract;
 
   assertNonEmptyArray(
     allowedDescriptiveClaims,
@@ -176,6 +190,45 @@ function assertReinforcementContract() {
         `reinforcementContract.operatorReadingGuidance must include guidance containing \"${phrase}\".`
       );
     }
+  }
+
+  if (!evidenceBoundaryVocabulary.retained.includes("persisted ledger row")) {
+    throw new Error(
+      'reinforcementContract.evidenceBoundaryVocabulary.retained must reference the persisted ledger row.'
+    );
+  }
+
+  const requiredEvidenceVocabularyKeys: Array<keyof typeof evidenceBoundaryVocabulary> = [
+    "suppressed",
+    "deleted",
+    "notHosted",
+  ];
+
+  for (const key of requiredEvidenceVocabularyKeys) {
+    const phrase = evidenceBoundaryVocabulary[key];
+    if (!phrase || phrase.trim().length === 0) {
+      throw new Error(
+        `reinforcementContract.evidenceBoundaryVocabulary.${key} must be non-empty.`
+      );
+    }
+  }
+
+  if (!evidenceBoundaryVocabulary.suppressed.includes("no longer available from the ledger")) {
+    throw new Error(
+      'reinforcementContract.evidenceBoundaryVocabulary.suppressed must explain that suppressed fields are no longer available from the ledger.'
+    );
+  }
+
+  if (!evidenceBoundaryVocabulary.deleted.includes("soft-delete archives")) {
+    throw new Error(
+      'reinforcementContract.evidenceBoundaryVocabulary.deleted must reject soft-delete archive implications.'
+    );
+  }
+
+  if (!evidenceBoundaryVocabulary.notHosted.includes("does not receive raw usage-ledger rows")) {
+    throw new Error(
+      'reinforcementContract.evidenceBoundaryVocabulary.notHosted must keep hosted wording metadata-only.'
+    );
   }
 
   if (!boundedActionPhrasing.label.includes("credential rotation")) {

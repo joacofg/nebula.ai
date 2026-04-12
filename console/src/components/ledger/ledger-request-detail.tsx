@@ -1,4 +1,5 @@
 import type { CalibrationEvidenceSummary, UsageLedgerRecord } from "@/lib/admin-api";
+import { getHostedContractContent } from "@/lib/hosted-contract";
 
 type RouteSignals = Record<string, unknown>;
 
@@ -367,6 +368,7 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
   const budgetExplanation = extractBudgetExplanation(entry.policy_outcome);
   const calibrationExplanation = calibrationSummary ? buildCalibrationExplanation(calibrationSummary) : null;
   const routingInspection = buildRoutingInspection(routeSignals, entry.route_reason);
+  const { copy, reinforcement } = getHostedContractContent();
 
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -375,10 +377,11 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
         <p className="mt-2 text-sm text-slate-600">
           This persisted ledger record is the authoritative evidence row for this request ID while the row still
-          exists. It explains the final route, provider, fallback, cache, and policy outcome that operators first
-          corroborate through the public response headers before reading the supporting tenant context elsewhere on
-          this page. If governed retention cleanup later deletes the row at its persisted expiration time, this
-          request detail should disappear with it rather than imply a soft-deleted archive or hosted raw export.
+          exists. It explains the retained route, provider, fallback, cache, and policy outcome that operators first
+          corroborate through the public response headers before reading broader tenant or hosted posture guidance
+          elsewhere on this page. If governed retention cleanup later deletes the row at its persisted expiration time,
+          this request detail should disappear with it rather than imply recovery, a soft-deleted archive, or hosted raw
+          export.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">
@@ -404,6 +407,21 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <DetailRow label="Completion tokens" value={String(entry.completion_tokens)} />
         <DetailRow label="Total tokens" value={String(entry.total_tokens)} />
       </dl>
+      <section className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h4 className="text-sm font-semibold text-slate-950">Effective evidence boundary</h4>
+          <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-900">
+            Row-level governance truth
+          </span>
+        </div>
+        <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4 text-sm text-slate-700">
+          <p>{reinforcement.evidenceBoundaryVocabulary.retained}</p>
+          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.suppressed}</p>
+          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.deleted}</p>
+          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.notHosted}</p>
+          <p className="mt-3">{copy.hostedExportExclusion}</p>
+        </div>
+      </section>
       {calibrationExplanation ? (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">

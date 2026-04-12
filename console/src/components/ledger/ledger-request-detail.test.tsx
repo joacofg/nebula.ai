@@ -63,13 +63,42 @@ describe("ledger-request-detail", () => {
         { exact: false },
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/before reading the supporting tenant context elsewhere on this page/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/before reading broader tenant or hosted posture guidance elsewhere on this page/i),
+    ).toBeInTheDocument();
     expect(
       screen.getByText(
         /If governed retention cleanup later deletes the row at its persisted expiration time, this request detail should disappear with it/i,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/rather than imply a soft-deleted archive or hosted raw export/i)).toBeInTheDocument();
+    expect(screen.getByText(/rather than imply recovery, a soft-deleted archive, or hosted raw export/i)).toBeInTheDocument();
+    expect(screen.getByText("Effective evidence boundary")).toBeInTheDocument();
+    expect(screen.getByText("Row-level governance truth")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Retained request detail stays local to the persisted ledger row while that governed row still exists.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.getAllByText("req-embed-001")).toHaveLength(2);
     expect(screen.getByText("Tenant")).toBeInTheDocument();
@@ -288,7 +317,6 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText("7 of 5 needed")).toBeInTheDocument();
     expect(screen.getByText("Degraded rows")).toBeInTheDocument();
     expect(screen.getByText(/Missing Route Signals \(1\)/i)).toBeInTheDocument();
-    expect(screen.queryByText(/authoritative evidence row/i)).not.toHaveTextContent;
   });
 
   it("renders rollout-disabled calibration messaging when traffic is gated by operator rollout state", () => {

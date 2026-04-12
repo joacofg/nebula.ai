@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T17:09:11.695Z",
+  "exported_at": "2026-04-12T17:18:19.744Z",
   "milestones": [
     {
       "id": "M001",
@@ -4883,19 +4883,30 @@
       "milestone_id": "M008",
       "slice_id": "S04",
       "id": "T02",
-      "title": "Align request-detail and hosted trust-boundary copy with the same evidence vocabulary",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Aligned request-detail and hosted trust-boundary surfaces to the same retained/suppressed/deleted/not-hosted evidence vocabulary.",
+      "status": "complete",
+      "one_liner": "Aligned request-detail and hosted trust-boundary surfaces to the same retained/suppressed/deleted/not-hosted evidence vocabulary.",
+      "narrative": "Updated `console/src/lib/hosted-contract.ts` to add a shared `evidenceBoundaryVocabulary` contract alongside the existing metadata-only hosted guidance, with validation that the retained/suppressed/deleted/not-hosted phrases continue to reject soft-delete, raw usage-ledger export, and hosted runtime-authority drift. Used that shared vocabulary in `console/src/components/ledger/ledger-request-detail.tsx` to add an explicit “Effective evidence boundary” panel that keeps the selected persisted ledger row authoritative while it exists, explains suppressed metadata as no longer available from the ledger, explains deletion as full row removal at expiration, and states that hosted cannot replace local row-level evidence. Reinforced the same vocabulary on hosted surfaces by rendering it in `console/src/components/hosted/trust-boundary-card.tsx` and the public `console/src/app/trust-boundary/page.tsx`, keeping the hosted message metadata-only and schema-backed rather than introducing ad hoc copy. Expanded the focused console tests plus the shared hosted-contract unit test so wording drift, duplicate-vocabulary regressions, and hosted raw-export/runtime-authority claims fail fast in Vitest, while the existing Python hosted contract checks continue guarding schema-backed exclusions.",
+      "verification_result": "Ran the focused verification command from the task plan, expanded to include the shared hosted-contract unit test that now guards the new shared vocabulary: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx src/lib/hosted-contract.test.ts && ./.venv/bin/pytest tests/test_hosted_contract.py`. Vitest passed all 44 assertions across the request-detail, hosted card, trust-boundary page, and contract module; pytest passed all 11 hosted-contract backend checks. This directly verifies the two operator inspection surfaces called out in the slice observability contract and confirms hosted surfaces still exclude raw usage-ledger export or runtime authority claims.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-12T17:18:19.717Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Expanded the console-side verification set to include `console/src/lib/hosted-contract.test.ts` because the shared copy contract became the enforcement point for the new vocabulary and is the most direct place to catch hosted wording drift. No product-scope deviation beyond that.",
+      "known_issues": "None.",
+      "key_files": [
+        "console/src/lib/hosted-contract.ts",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/hosted/trust-boundary-card.tsx",
+        "console/src/components/hosted/trust-boundary-card.test.tsx",
+        "console/src/app/trust-boundary/page.tsx",
+        "console/src/app/trust-boundary/page.test.tsx",
+        "console/src/lib/hosted-contract.test.ts"
+      ],
+      "key_decisions": [
+        "Centralized retained/suppressed/deleted/not-hosted wording in `console/src/lib/hosted-contract.ts` so request-detail and hosted trust-boundary surfaces stay aligned to one metadata-only contract instead of duplicating strings."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S04\nmilestone: M008\nkey_files:\n  - console/src/lib/hosted-contract.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/components/hosted/trust-boundary-card.tsx\n  - console/src/components/hosted/trust-boundary-card.test.tsx\n  - console/src/app/trust-boundary/page.tsx\n  - console/src/app/trust-boundary/page.test.tsx\n  - console/src/lib/hosted-contract.test.ts\nkey_decisions:\n  - Centralized retained/suppressed/deleted/not-hosted wording in `console/src/lib/hosted-contract.ts` so request-detail and hosted trust-boundary surfaces stay aligned to one metadata-only contract instead of duplicating strings.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T17:18:19.717Z\nblocker_discovered: false\n---\n\n# T02: Aligned request-detail and hosted trust-boundary surfaces to the same retained/suppressed/deleted/not-hosted evidence vocabulary.\n\n**Aligned request-detail and hosted trust-boundary surfaces to the same retained/suppressed/deleted/not-hosted evidence vocabulary.**\n\n## What Happened\n\nUpdated `console/src/lib/hosted-contract.ts` to add a shared `evidenceBoundaryVocabulary` contract alongside the existing metadata-only hosted guidance, with validation that the retained/suppressed/deleted/not-hosted phrases continue to reject soft-delete, raw usage-ledger export, and hosted runtime-authority drift. Used that shared vocabulary in `console/src/components/ledger/ledger-request-detail.tsx` to add an explicit “Effective evidence boundary” panel that keeps the selected persisted ledger row authoritative while it exists, explains suppressed metadata as no longer available from the ledger, explains deletion as full row removal at expiration, and states that hosted cannot replace local row-level evidence. Reinforced the same vocabulary on hosted surfaces by rendering it in `console/src/components/hosted/trust-boundary-card.tsx` and the public `console/src/app/trust-boundary/page.tsx`, keeping the hosted message metadata-only and schema-backed rather than introducing ad hoc copy. Expanded the focused console tests plus the shared hosted-contract unit test so wording drift, duplicate-vocabulary regressions, and hosted raw-export/runtime-authority claims fail fast in Vitest, while the existing Python hosted contract checks continue guarding schema-backed exclusions.\n\n## Verification\n\nRan the focused verification command from the task plan, expanded to include the shared hosted-contract unit test that now guards the new shared vocabulary: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx src/lib/hosted-contract.test.ts && ./.venv/bin/pytest tests/test_hosted_contract.py`. Vitest passed all 44 assertions across the request-detail, hosted card, trust-boundary page, and contract module; pytest passed all 11 hosted-contract backend checks. This directly verifies the two operator inspection surfaces called out in the slice observability contract and confirms hosted surfaces still exclude raw usage-ledger export or runtime authority claims.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx src/lib/hosted-contract.test.ts` | 0 | ✅ pass | 639ms |\n| 2 | `./.venv/bin/pytest tests/test_hosted_contract.py` | 0 | ✅ pass | 760ms |\n\n## Deviations\n\nExpanded the console-side verification set to include `console/src/lib/hosted-contract.test.ts` because the shared copy contract became the enforcement point for the new vocabulary and is the most direct place to catch hosted wording drift. No product-scope deviation beyond that.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/lib/hosted-contract.ts`\n- `console/src/components/ledger/ledger-request-detail.tsx`\n- `console/src/components/ledger/ledger-request-detail.test.tsx`\n- `console/src/components/hosted/trust-boundary-card.tsx`\n- `console/src/components/hosted/trust-boundary-card.test.tsx`\n- `console/src/app/trust-boundary/page.tsx`\n- `console/src/app/trust-boundary/page.test.tsx`\n- `console/src/lib/hosted-contract.test.ts`\n",
       "description": "Extend the request-detail evidence surface so a selected persisted row explains the effective evidence boundary with the same retained/suppressed/deleted/not-hosted vocabulary introduced on the policy page. Keep the selected ledger row authoritative while it exists, explicitly distinguish row-level persisted truth from broader hosted-boundary guidance, and do not imply recovery, soft-delete, or hosted raw export. If the existing trust-boundary card/page needs reinforcement, make only small shared-copy updates through `console/src/lib/hosted-contract.ts` and the existing hosted components/tests so hosted wording remains metadata-only and schema-backed. Add or update request-detail and hosted tests to prove row-level governance markers remain legible while present and that hosted surfaces still exclude raw usage-ledger export or runtime authority claims.",
       "estimate": "45m",
       "files": [
@@ -6794,6 +6805,28 @@
       "verdict": "✅ pass",
       "duration_ms": 1490,
       "created_at": "2026-04-12T17:09:11.666Z"
+    },
+    {
+      "id": 136,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M008",
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx src/lib/hosted-contract.test.ts",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 639,
+      "created_at": "2026-04-12T17:18:19.718Z"
+    },
+    {
+      "id": 137,
+      "task_id": "T02",
+      "slice_id": "S04",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_hosted_contract.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 760,
+      "created_at": "2026-04-12T17:18:19.718Z"
     }
   ]
 }

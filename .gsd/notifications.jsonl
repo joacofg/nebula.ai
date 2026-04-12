@@ -63,3 +63,5 @@
 {"id":"6a025043-31be-4666-a364-23e9f4129255","ts":"2026-04-12T00:57:53.199Z","severity":"info","message":"Auto-mode paused (Escape). Type to interact, or /gsd auto to resume.","source":"notify","read":false}
 {"id":"580a2fd9-2f29-4368-8915-129be065f7ff","ts":"2026-04-12T17:01:01.210Z","severity":"info","message":"Auto-mode resumed.","source":"notify","read":false}
 {"id":"7052678b-720c-4847-95de-7fa132b4518f","ts":"2026-04-12T17:01:03.097Z","severity":"info","message":"Resume: applied 3 fix(es) to state.","source":"notify","read":false}
+{"id":"646056e9-286a-48d4-b437-55ed9cf96747","ts":"2026-04-12T17:09:15.434Z","severity":"info","message":"Committed: feat: Added policy-side effective evidence boundary guidance driven by…","source":"notify","read":false}
+{"id":"8124a21f-ca17-4b60-8513-93bda9fb19ae","ts":"2026-04-12T17:09:16.974Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}

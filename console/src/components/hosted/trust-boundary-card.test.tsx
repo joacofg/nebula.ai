@@ -64,6 +64,17 @@ describe("TrustBoundaryCard", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders the hosted evidence vocabulary without implying raw export or runtime authority", () => {
+    render(<TrustBoundaryCard />);
+
+    expect(screen.getByText("Retained request detail stays local to the persisted ledger row while that governed row still exists.")).toBeInTheDocument();
+    expect(screen.getByText("Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.")).toBeInTheDocument();
+    expect(screen.getByText("Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.")).toBeInTheDocument();
+    expect(screen.getByText("Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.")).toBeInTheDocument();
+    expect(screen.getByText("Raw usage-ledger rows")).toBeInTheDocument();
+    expect(screen.getByText("Authoritative runtime policy state")).toBeInTheDocument();
+  });
+
   it("renders the freshness warning", () => {
     render(<TrustBoundaryCard />);
 

@@ -45,6 +45,32 @@ export function TrustBoundaryCard() {
       </ul>
 
       <h3 className="mt-6 text-sm font-semibold text-slate-900">
+        Shared evidence vocabulary
+      </h3>
+      <ul className="mt-2 grid gap-1.5">
+        <li className="flex items-start gap-2 text-sm text-slate-700">
+          <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+          <span>{reinforcement.evidenceBoundaryVocabulary.retained}</span>
+        </li>
+        <li className="flex items-start gap-2 text-sm text-slate-700">
+          <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+          <span>{reinforcement.evidenceBoundaryVocabulary.suppressed}</span>
+        </li>
+        <li className="flex items-start gap-2 text-sm text-slate-700">
+          <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+          <span>{reinforcement.evidenceBoundaryVocabulary.deleted}</span>
+        </li>
+        <li className="flex items-start gap-2 text-sm text-slate-700">
+          <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+          <span>{reinforcement.evidenceBoundaryVocabulary.notHosted}</span>
+        </li>
+        <li className="flex items-start gap-2 text-sm text-slate-700">
+          <span className="mt-1 inline-block h-1.5 w-1.5 flex-shrink-0 rounded-full bg-sky-500" />
+          <span>{copy.hostedExportExclusion}</span>
+        </li>
+      </ul>
+
+      <h3 className="mt-6 text-sm font-semibold text-slate-900">
         Freshness states
       </h3>
       <ul className="mt-2 grid gap-1.5">

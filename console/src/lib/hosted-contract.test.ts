@@ -101,6 +101,15 @@ describe("hosted-contract content module", () => {
       "Hosted onboarding establishes deployment identity and operator visibility without moving request-serving or policy authority into the hosted plane.",
       "Hosted remote actions stay bounded to audited deployment-credential rotation and related audit visibility.",
     ]);
+    expect(content.reinforcement.evidenceBoundaryVocabulary).toEqual({
+      retained: "Retained request detail stays local to the persisted ledger row while that governed row still exists.",
+      suppressed:
+        "Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.",
+      deleted:
+        "Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.",
+      notHosted:
+        "Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.",
+    });
     expect(content.reinforcement.prohibitedAuthorityClaims).toEqual([
       "Do not say the hosted plane serves traffic or sits in the request-serving path.",
       "Do not say the hosted plane has local runtime authority.",
@@ -159,6 +168,18 @@ describe("hosted-contract content module", () => {
         claim.includes("local runtime")
       )
     ).toBe(true);
+    expect(content.reinforcement.evidenceBoundaryVocabulary.retained).toContain(
+      "persisted ledger row"
+    );
+    expect(content.reinforcement.evidenceBoundaryVocabulary.suppressed).toContain(
+      "no longer available from the ledger"
+    );
+    expect(content.reinforcement.evidenceBoundaryVocabulary.deleted).toContain(
+      "soft-delete archives"
+    );
+    expect(content.reinforcement.evidenceBoundaryVocabulary.notHosted).toContain(
+      "does not receive raw usage-ledger rows"
+    );
     expect(content.reinforcement.boundedActionPhrasing.label).toContain(
       "credential rotation"
     );
