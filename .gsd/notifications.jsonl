@@ -73,3 +73,6 @@
 {"id":"db06aa83-b17d-42ec-a92e-f157c4f9e4e2","ts":"2026-04-12T17:27:10.583Z","severity":"warning","message":"[safety] file-change: .tmp_s05_research.md — Modified but not in task plan's expected output","source":"workflow-logger","read":false}
 {"id":"47eac1be-ad61-4daf-a78d-4f1d1c4293dd","ts":"2026-04-12T17:27:10.584Z","severity":"warning","message":"Safety: 1 unexpected file change(s) outside task plan","source":"notify","read":false}
 {"id":"57244038-eef9-4ebe-854c-9a310cf9747e","ts":"2026-04-12T17:27:10.612Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}
+{"id":"0631e67e-f3fb-407b-9f3e-7975023fe7e4","ts":"2026-04-12T17:29:16.103Z","severity":"info","message":"Committed: test: Tightened integrated-governance proof tests to lock request-evide…","source":"notify","read":false}
+{"id":"d1746123-5cac-4198-87ce-9ac83e0ce4e0","ts":"2026-04-12T17:29:19.217Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}
+{"id":"38fe5582-4a50-48ba-b8d6-10a4826a86a2","ts":"2026-04-12T17:34:15.436Z","severity":"warning","message":"[dispatch] Implementation artifact check inconclusive for M008 — proceeding (git context unavailable)","source":"workflow-logger","read":false}

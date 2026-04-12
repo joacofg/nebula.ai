@@ -4,28 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R062 — M008 proves the full governance chain end to end: tenant policy → persistence/export behavior → operator evidence surface → hosted trust boundary.
-- Class: quality-attribute
-- Status: active
-- Description: M008 proves the full governance chain end to end: tenant policy → persistence/export behavior → operator evidence surface → hosted trust boundary.
-- Why it matters: This milestone only feels real if operators can follow one request-level proof path instead of trusting isolated backend or UI claims.
-- Source: user
-- Primary owning slice: M008/S05
-- Supporting slices: M008/S01, M008/S02, M008/S03, M008/S04
-- Validation: mapped
-- Notes: Proof should remain request-led and bounded, not turn into a generic governance dashboard.
-
-### R063 — Evidence governance improves operator trust without weakening Nebula’s request-led debugging and interpretable evidence model.
-- Class: differentiator
-- Status: active
-- Description: Evidence governance improves operator trust without weakening Nebula’s request-led debugging and interpretable evidence model.
-- Why it matters: Nebula’s value is not just that evidence exists; it is that the evidence remains legible and useful while staying under operator control.
-- Source: inferred
-- Primary owning slice: M008/S05
-- Supporting slices: M008/S02, M008/S04
-- Validation: mapped
-- Notes: Minimization and retention must stay compatible with the bounded debugging story rather than collapsing it.
-
 ### R064 — M008 stays bounded to request/policy/evidence governance and does not expand into a compliance platform, analytics product, or hosted authority layer.
 - Class: constraint
 - Status: active
@@ -545,6 +523,28 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M008/S04 through passing focused hosted and console verification: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx` and `./.venv/bin/pytest tests/test_hosted_contract.py`. Hosted trust-boundary surfaces now reuse the same retained/suppressed/deleted/not-hosted vocabulary as policy and request detail while still excluding raw usage-ledger rows and runtime-authority claims.
 - Notes: S04 strengthens the hosted metadata-only claim by reusing one shared evidence vocabulary across local operator surfaces and the public trust-boundary page.
 
+### R062 — M008 proves the full governance chain end to end: tenant policy → persistence/export behavior → operator evidence surface → hosted trust boundary.
+- Class: quality-attribute
+- Status: validated
+- Description: M008 proves the full governance chain end to end: tenant policy → persistence/export behavior → operator evidence surface → hosted trust boundary.
+- Why it matters: This milestone only feels real if operators can follow one request-level proof path instead of trusting isolated backend or UI claims.
+- Source: user
+- Primary owning slice: M008/S05
+- Supporting slices: M008/S01, M008/S02, M008/S03, M008/S04
+- Validation: Validated by M008/S05 through the assembled integrated governance proof in `docs/m008-integrated-proof.md`, discoverability links in `README.md` and `docs/architecture.md`, and passing focused verification: `./.venv/bin/pytest tests/test_governance_api.py tests/test_retention_lifecycle_service.py tests/test_health.py tests/test_hosted_contract.py -k "usage_ledger or retention or lifecycle or health or heartbeat"` and `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx' src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`. The assembled path now proves tenant policy → persistence/deletion → operator evidence surface → hosted metadata-only boundary end to end.
+- Notes: Proof should remain request-led and bounded, not turn into a generic governance dashboard.
+
+### R063 — Evidence governance improves operator trust without weakening Nebula’s request-led debugging and interpretable evidence model.
+- Class: differentiator
+- Status: validated
+- Description: Evidence governance improves operator trust without weakening Nebula’s request-led debugging and interpretable evidence model.
+- Why it matters: Nebula’s value is not just that evidence exists; it is that the evidence remains legible and useful while staying under operator control.
+- Source: inferred
+- Primary owning slice: M008/S05
+- Supporting slices: M008/S02, M008/S04
+- Validation: Validated by M008/S05 through the canonical pointer-only integrated proof (`docs/m008-integrated-proof.md`) and passing focused backend/console verification proving that request-led evidence remains primary while a row exists, deletion is governed by persisted `evidence_expires_at`, runtime health stays supporting context, and hosted surfaces remain metadata-only rather than a recovery or authority layer.
+- Notes: Minimization and retention must stay compatible with the bounded debugging story rather than collapsing it.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -867,8 +867,8 @@ This file is the explicit capability and coverage contract for the project.
 | R059 | continuity | validated | M008/S03 | none | Validated by M008/S03 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k "retention or health or heartbeat" and npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'. Retention cleanup now runs as a lifecycle service wired into app startup, deletes expired ledger rows via persisted evidence_expires_at markers through GovernanceStore.delete_expired_usage_records(), exposes degraded/ready runtime health with last-run diagnostics, and preserves the hosted metadata-only dependency summary boundary. |
 | R060 | operability | validated | M008/S04 | M008/S02 | Validated by M008/S04 through passing console and hosted-contract verification: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`, `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`, and `./.venv/bin/pytest tests/test_hosted_contract.py`. The policy surface now renders an effective evidence boundary derived from retention/minimization controls, and request detail explains retained/suppressed/deleted semantics from persisted governance markers while the row exists. |
 | R061 | integration | validated | M008/S04 | M008/S05 | Validated by M008/S04 through passing focused hosted and console verification: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx` and `./.venv/bin/pytest tests/test_hosted_contract.py`. Hosted trust-boundary surfaces now reuse the same retained/suppressed/deleted/not-hosted vocabulary as policy and request detail while still excluding raw usage-ledger rows and runtime-authority claims. |
-| R062 | quality-attribute | active | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | mapped |
-| R063 | differentiator | active | M008/S05 | M008/S02, M008/S04 | mapped |
+| R062 | quality-attribute | validated | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | Validated by M008/S05 through the assembled integrated governance proof in `docs/m008-integrated-proof.md`, discoverability links in `README.md` and `docs/architecture.md`, and passing focused verification: `./.venv/bin/pytest tests/test_governance_api.py tests/test_retention_lifecycle_service.py tests/test_health.py tests/test_hosted_contract.py -k "usage_ledger or retention or lifecycle or health or heartbeat"` and `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx' src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`. The assembled path now proves tenant policy → persistence/deletion → operator evidence surface → hosted metadata-only boundary end to end. |
+| R063 | differentiator | validated | M008/S05 | M008/S02, M008/S04 | Validated by M008/S05 through the canonical pointer-only integrated proof (`docs/m008-integrated-proof.md`) and passing focused backend/console verification proving that request-led evidence remains primary while a row exists, deletion is governed by persisted `evidence_expires_at`, runtime health stays supporting context, and hosted surfaces remain metadata-only rather than a recovery or authority layer. |
 | R064 | constraint | active | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | mapped |
 | R065 | admin/support | deferred | none | none | unmapped |
 | R066 | compliance/security | deferred | none | none | unmapped |
@@ -881,7 +881,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 3
-- Mapped to slices: 3
-- Validated: 46 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061)
+- Active requirements: 1
+- Mapped to slices: 1
+- Validated: 48 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063)
 - Unmapped active requirements: 0

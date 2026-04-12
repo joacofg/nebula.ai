@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M008/S05/T02",
+  "timestamp": 1776014956110,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py tests/test_retention_lifecycle_service.py tests/test_health.py tests/test_hosted_contract.py -k \"usage_ledger or retention or lifecycle or health or heartbeat\"",
+      "exitCode": 0,
+      "durationMs": 2055,
+      "verdict": "pass"
+    },
+    {
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx' src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx",
+      "exitCode": 0,
+      "durationMs": 1042,
+      "verdict": "pass"
+    }
+  ]
+}
