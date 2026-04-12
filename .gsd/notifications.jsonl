@@ -49,3 +49,8 @@
 {"id":"4240afa0-6909-41b0-8935-685c0f52e037","ts":"2026-04-12T00:36:57.987Z","severity":"info","message":"Auto-mode paused (Escape). Type to interact, or /gsd auto to resume.","source":"notify","read":false}
 {"id":"5d87cc39-9f98-45ba-b5b5-58aef5869ce6","ts":"2026-04-12T00:49:32.837Z","severity":"info","message":"Auto-mode resumed.","source":"notify","read":false}
 {"id":"9827e7c1-d5bb-403d-b414-b1dbc5ea1651","ts":"2026-04-12T00:49:34.076Z","severity":"info","message":"Resume: applied 2 fix(es) to state.","source":"notify","read":false}
+{"id":"ba42b9a1-9a20-4b1d-8a8e-3608cbf96437","ts":"2026-04-12T00:53:54.792Z","severity":"info","message":"Committed: test: Added the retention cleanup lifecycle service with startup wiring…","source":"notify","read":false}
+{"id":"fd0e23e7-c636-4c21-8894-20a38bb4e00c","ts":"2026-04-12T00:53:54.800Z","severity":"warning","message":"[safety] file-change: src/nebula/services/runtime_health_service.py — Modified but not in task plan's expected output","source":"workflow-logger","read":false}
+{"id":"232bf98a-633f-4d3a-810c-e7f4ccfec6f9","ts":"2026-04-12T00:53:54.800Z","severity":"warning","message":"[safety] file-change: tests/test_health.py — Modified but not in task plan's expected output","source":"workflow-logger","read":false}
+{"id":"419cd846-cd8d-4714-9705-85d4e2304760","ts":"2026-04-12T00:53:54.800Z","severity":"warning","message":"Safety: 2 unexpected file change(s) outside task plan","source":"notify","read":false}
+{"id":"08fa5d58-9688-4ced-9649-c8291fafa83c","ts":"2026-04-12T00:53:56.304Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}

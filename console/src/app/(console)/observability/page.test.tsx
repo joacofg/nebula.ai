@@ -73,6 +73,12 @@ describe("observability-page", () => {
         route_reason: "direct_premium_model",
         policy_outcome: "allowed",
         route_signals: null,
+        message_type: "chat",
+        evidence_retention_window: "30d",
+        evidence_expires_at: "2026-04-15T22:00:00Z",
+        metadata_minimization_level: "standard",
+        metadata_fields_suppressed: [],
+        governance_source: "tenant_policy",
       },
     ]);
     adminApi.getTenantRecommendations.mockResolvedValue({
@@ -139,6 +145,17 @@ describe("observability-page", () => {
         json: async () => ({
           dependencies: {
             postgres: { status: "healthy", required: true, detail: "reachable" },
+            retention_lifecycle: {
+              status: "degraded",
+              required: false,
+              detail: "Retention lifecycle cleanup failed on its last attempt.",
+              last_status: "failed",
+              last_run_at: "2026-04-12T01:02:03Z",
+              last_attempted_run_at: "2026-04-12T01:05:00Z",
+              last_deleted_count: 2,
+              last_eligible_count: 2,
+              last_error: "cleanup query timed out",
+            },
           },
         }),
       }),
@@ -222,6 +239,13 @@ describe("observability-page", () => {
     expect(
       dependency.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),
     ).toBeInTheDocument();
+    expect(await dependency.findByText("retention_lifecycle")).toBeInTheDocument();
+    expect(dependency.getByText("Last status")).toBeInTheDocument();
+    expect(dependency.getByText("failed")).toBeInTheDocument();
+    expect(dependency.getByText("Deleted rows")).toBeInTheDocument();
+    expect(dependency.getAllByText("2")).toHaveLength(2);
+    expect(dependency.getByText("cleanup query timed out")).toBeInTheDocument();
+    expect(screen.queryByText(/retention dashboard/i)).not.toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });

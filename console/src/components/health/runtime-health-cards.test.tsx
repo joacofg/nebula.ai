@@ -38,4 +38,34 @@ describe("runtime-health-cards", () => {
       screen.getByText("Optional dependency degradation does not block gateway readiness."),
     ).toBeInTheDocument();
   });
+
+  it("renders retention lifecycle runtime metrics without introducing a dedicated dashboard", () => {
+    renderWithProviders(
+      <RuntimeHealthCards
+        isLoading={false}
+        dependencies={{
+          retention_lifecycle: {
+            status: "degraded",
+            required: false,
+            detail: "Retention lifecycle cleanup failed on its last attempt.",
+            last_status: "failed",
+            last_run_at: "2026-04-12T01:02:03Z",
+            last_attempted_run_at: "2026-04-12T01:05:00Z",
+            last_deleted_count: 4,
+            last_eligible_count: 4,
+            last_error: "cleanup query timed out",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.getByText("retention_lifecycle")).toBeInTheDocument();
+    expect(screen.getByText("Last status")).toBeInTheDocument();
+    expect(screen.getByText("failed")).toBeInTheDocument();
+    expect(screen.getByText("Deleted rows")).toBeInTheDocument();
+    expect(screen.getAllByText("4")).toHaveLength(2);
+    expect(screen.getByText("Last error")).toBeInTheDocument();
+    expect(screen.getByText("cleanup query timed out")).toBeInTheDocument();
+    expect(screen.queryByText(/retention dashboard/i)).not.toBeInTheDocument();
+  });
 });

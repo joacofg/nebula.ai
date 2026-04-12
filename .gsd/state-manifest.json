@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T00:53:46.981Z",
+  "exported_at": "2026-04-12T00:57:37.950Z",
   "milestones": [
     {
       "id": "M001",
@@ -4769,19 +4769,29 @@
       "milestone_id": "M008",
       "slice_id": "S03",
       "id": "T02",
-      "title": "Expose retention lifecycle health and prove end-to-end deletion through real seams",
-      "status": "pending",
-      "one_liner": "",
-      "narrative": "",
-      "verification_result": "",
+      "title": "Exposed truthful retention lifecycle health on existing observability seams and verified cleanup deletes expired ledger rows through the running app seam.",
+      "status": "complete",
+      "one_liner": "Exposed truthful retention lifecycle health on existing observability seams and verified cleanup deletes expired ledger rows through the running app seam.",
+      "narrative": "Extended the existing observability surfaces around the retention lifecycle introduced in T01 instead of creating any new retention dashboard. On the backend, I hardened end-to-end proof by updating the governance API test to seed expired, surviving, and no-expiration ledger rows through the normal app/admin path, invoke retention cleanup through the running container’s lifecycle service, and then verify `/v1/admin/usage/ledger` no longer returns the expired row while preserving future/null-expiration rows. I also added a hosted-contract regression test that drives `HeartbeatService._send_once()` with a real stored deployment credential and confirms the new `retention_lifecycle` dependency is summarized only as a coarse healthy/degraded/unavailable name set, with no detailed cleanup payload leaking into hosted metadata. On the console side, I widened the runtime-health dependency typing to accept richer dependency payloads, updated `RuntimeHealthCards` to render summary metrics like last status/run counts/error when present, and adjusted observability tests to confirm the existing dependency card area renders truthful retention lifecycle state without introducing a dedicated retention dashboard. During verification I hit two test-fixture mismatches: the hosted heartbeat test initially bypassed the real enrollment accessor incorrectly, and the observability fixture lacked newer ledger governance fields consumed by `LedgerRequestDetail`. I corrected both against the real seams and reran the full task verification successfully.",
+      "verification_result": "Ran the task-plan verification command exactly: `./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\" && npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'`. The final passing run verified that health endpoints expose retention lifecycle state truthfully, hosted heartbeat export remains metadata-only and coarse even with the extra dependency, governed cleanup removes only rows whose persisted expiration markers are expired through the lifecycle service seam, and the console observability/runtime-health cards render retention lifecycle status/count/error details on existing cards without adding a new dashboard surface.",
       "duration": "",
-      "completed_at": null,
+      "completed_at": "2026-04-12T00:57:37.926Z",
       "blocker_discovered": false,
-      "deviations": "",
-      "known_issues": "",
-      "key_files": [],
-      "key_decisions": [],
-      "full_summary_md": "",
+      "deviations": "Adjusted local test fixtures rather than production behavior in two places: the hosted-contract test had to persist a full local hosted identity via `_store_local_identity()` because `_send_once()` reads through `get_deployment_credential()`, and the observability page fixture needed the newer ledger governance fields expected by `LedgerRequestDetail`. These were local reality corrections, not contract changes.",
+      "known_issues": "None.",
+      "key_files": [
+        "tests/test_governance_api.py",
+        "tests/test_hosted_contract.py",
+        "console/src/components/health/runtime-health-cards.tsx",
+        "console/src/components/health/runtime-health-cards.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/lib/admin-api.ts"
+      ],
+      "key_decisions": [
+        "Kept retention lifecycle operator proof on the existing dependency health cards instead of adding a dedicated retention UI surface.",
+        "Locked hosted export behavior with a heartbeat summary test so retention lifecycle health remains coarse metadata-only when sent to the hosted plane."
+      ],
+      "full_summary_md": "---\nid: T02\nparent: S03\nmilestone: M008\nkey_files:\n  - tests/test_governance_api.py\n  - tests/test_hosted_contract.py\n  - console/src/components/health/runtime-health-cards.tsx\n  - console/src/components/health/runtime-health-cards.test.tsx\n  - console/src/app/(console)/observability/page.test.tsx\n  - console/src/lib/admin-api.ts\nkey_decisions:\n  - Kept retention lifecycle operator proof on the existing dependency health cards instead of adding a dedicated retention UI surface.\n  - Locked hosted export behavior with a heartbeat summary test so retention lifecycle health remains coarse metadata-only when sent to the hosted plane.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T00:57:37.926Z\nblocker_discovered: false\n---\n\n# T02: Exposed truthful retention lifecycle health on existing observability seams and verified cleanup deletes expired ledger rows through the running app seam.\n\n**Exposed truthful retention lifecycle health on existing observability seams and verified cleanup deletes expired ledger rows through the running app seam.**\n\n## What Happened\n\nExtended the existing observability surfaces around the retention lifecycle introduced in T01 instead of creating any new retention dashboard. On the backend, I hardened end-to-end proof by updating the governance API test to seed expired, surviving, and no-expiration ledger rows through the normal app/admin path, invoke retention cleanup through the running container’s lifecycle service, and then verify `/v1/admin/usage/ledger` no longer returns the expired row while preserving future/null-expiration rows. I also added a hosted-contract regression test that drives `HeartbeatService._send_once()` with a real stored deployment credential and confirms the new `retention_lifecycle` dependency is summarized only as a coarse healthy/degraded/unavailable name set, with no detailed cleanup payload leaking into hosted metadata. On the console side, I widened the runtime-health dependency typing to accept richer dependency payloads, updated `RuntimeHealthCards` to render summary metrics like last status/run counts/error when present, and adjusted observability tests to confirm the existing dependency card area renders truthful retention lifecycle state without introducing a dedicated retention dashboard. During verification I hit two test-fixture mismatches: the hosted heartbeat test initially bypassed the real enrollment accessor incorrectly, and the observability fixture lacked newer ledger governance fields consumed by `LedgerRequestDetail`. I corrected both against the real seams and reran the full task verification successfully.\n\n## Verification\n\nRan the task-plan verification command exactly: `./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\" && npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'`. The final passing run verified that health endpoints expose retention lifecycle state truthfully, hosted heartbeat export remains metadata-only and coarse even with the extra dependency, governed cleanup removes only rows whose persisted expiration markers are expired through the lifecycle service seam, and the console observability/runtime-health cards render retention lifecycle status/count/error details on existing cards without adding a new dashboard surface.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\"` | 0 | ✅ pass | 840ms |\n| 2 | `npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'` | 0 | ✅ pass | 605ms |\n\n## Deviations\n\nAdjusted local test fixtures rather than production behavior in two places: the hosted-contract test had to persist a full local hosted identity via `_store_local_identity()` because `_send_once()` reads through `get_deployment_credential()`, and the observability page fixture needed the newer ledger governance fields expected by `LedgerRequestDetail`. These were local reality corrections, not contract changes.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `tests/test_governance_api.py`\n- `tests/test_hosted_contract.py`\n- `console/src/components/health/runtime-health-cards.tsx`\n- `console/src/components/health/runtime-health-cards.test.tsx`\n- `console/src/app/(console)/observability/page.test.tsx`\n- `console/src/lib/admin-api.ts`\n",
       "description": "Extend runtime health to include a `retention_lifecycle` dependency payload with truthful readiness/degraded state, last-run timestamps/results, and last error details while keeping the hosted plane metadata-only and bounded to dependency summaries rather than raw cleanup payloads. Use the lifecycle service added in T01 as the single source for this health data. Add backend tests that seed expired and surviving governed rows through the normal ledger path, invoke lifecycle cleanup through the running app/container seam, and verify `/v1/admin/usage/ledger` no longer returns expired rows while surviving/no-expiration rows remain. Re-verify hosted heartbeat/dependency summary behavior so the extra dependency name does not widen the export contract, and add/update console runtime-health tests only as needed to confirm the new dependency renders truthfully in existing observability cards without creating a retention dashboard. Keep request-detail/operator proof on existing seams. Record expected executor skills in frontmatter as `fastapi-python`, `react-best-practices`, and `userinterface-wiki`. Include Failure Modes, Load Profile, and Negative Tests in the task plan because this task spans app health, hosted summarization, operator surfaces, and retention edge cases.",
       "estimate": "1h",
       "files": [
@@ -6642,6 +6652,28 @@
       "verdict": "✅ pass",
       "duration_ms": 2600,
       "created_at": "2026-04-12T00:53:46.960Z"
+    },
+    {
+      "id": 133,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\"",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 840,
+      "created_at": "2026-04-12T00:57:37.926Z"
+    },
+    {
+      "id": 134,
+      "task_id": "T02",
+      "slice_id": "S03",
+      "milestone_id": "M008",
+      "command": "npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 605,
+      "created_at": "2026-04-12T00:57:37.927Z"
     }
   ]
 }

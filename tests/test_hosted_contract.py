@@ -10,6 +10,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import httpx
+import pytest
 
 from nebula.models.hosted_contract import (
     HOSTED_EXCLUDED_DATA_CLASSES,
@@ -18,6 +20,7 @@ from nebula.models.hosted_contract import (
     HostedDeploymentMetadata,
     HostedRemoteActionSummary,
 )
+from tests.support import configured_app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -158,3 +161,48 @@ def test_remote_action_summary_has_expected_fields():
         "failed",
         "last_action_at",
     }
+
+
+@pytest.mark.asyncio
+async def test_heartbeat_dependency_summary_remains_coarse_when_retention_lifecycle_is_present() -> None:
+    captured: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        captured["url"] = str(request.url)
+        captured["body"] = request.read().decode("utf-8")
+        return httpx.Response(200, json={"acknowledged": True})
+
+    with configured_app(
+        NEBULA_HOSTED_PLANE_URL="http://hosted.invalid/v1",
+        NEBULA_PREMIUM_PROVIDER="mock",
+    ) as app:
+        async with app.router.lifespan_context(app):
+            app.state.container.gateway_enrollment_service._store_local_identity(
+                type(
+                    "Exchange",
+                    (),
+                    {
+                        "deployment_id": "dep-123",
+                        "display_name": "Retention Test Gateway",
+                        "environment": "development",
+                        "deployment_credential": "cred-123",
+                        "registered_at": None,
+                    },
+                )
+            )
+            app.state.container.heartbeat_service._http_transport = httpx.MockTransport(handler)
+            await app.state.container.retention_lifecycle_service.run_cleanup_once()
+            await app.state.container.heartbeat_service._send_once()
+
+    assert captured["url"] == "http://hosted.invalid/v1/v1/heartbeat"
+    body = json.loads(captured["body"])
+    assert set(body["dependency_summary"].keys()) == {"healthy", "degraded", "unavailable"}
+    summary_names = {
+        *body["dependency_summary"]["healthy"],
+        *body["dependency_summary"]["degraded"],
+        *body["dependency_summary"]["unavailable"],
+    }
+    assert "retention_lifecycle" in summary_names
+    assert "last_deleted_count" not in json.dumps(body["dependency_summary"])
+    assert "last_error" not in json.dumps(body["dependency_summary"])
+    assert "last_run_at" not in json.dumps(body["dependency_summary"])

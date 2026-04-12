@@ -243,6 +243,21 @@ export type PlaygroundCompletionResult = {
   policyOutcome: string;
 };
 
+export type RuntimeHealthDependency = {
+  status: string;
+  required: boolean;
+  detail: string;
+  enabled?: boolean;
+  interval_seconds?: number;
+  last_status?: string;
+  last_run_at?: string | null;
+  last_attempted_run_at?: string | null;
+  last_deleted_count?: number;
+  last_eligible_count?: number;
+  last_cutoff?: string | null;
+  last_error?: string | null;
+};
+
 export type UsageLedgerRecord = {
   request_id: string;
   tenant_id: string;

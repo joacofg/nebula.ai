@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-04-12T00:28:55Z | Files: 268 | Described: 0/268
-<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T00:28:55Z","fingerprint":"e1702b723c5697dfd3516828c101c10d713180bf","fileCount":268,"truncated":false} -->
+Generated: 2026-04-12T00:53:56Z | Files: 270 | Described: 0/270
+<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T00:53:56Z","fingerprint":"add3aad940923c206f3c4f1bce533b19270b19ae","fileCount":270,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
@@ -318,9 +318,10 @@ Generated: 2026-04-12T00:28:55Z | Files: 268 | Described: 0/268
 - `src/nebula/services/provider_registry.py`
 - `src/nebula/services/recommendation_service.py`
 - `src/nebula/services/remote_management_service.py`
+- `src/nebula/services/retention_lifecycle_service.py`
 - `src/nebula/services/router_service.py`
 - `src/nebula/services/runtime_health_service.py`
 - `src/nebula/services/semantic_cache_service.py`
 
 ### tests/
-- *(26 files: 26 .py)*
+- *(27 files: 27 .py)*

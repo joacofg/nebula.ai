@@ -593,7 +593,14 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
                 headers=admin_headers(),
             )
 
-            cleanup = store.delete_expired_usage_records(now=expired_record.evidence_expires_at)
+            cleanup = client.app.state.container
+            lifecycle_result = cleanup.retention_lifecycle_service
+            cleanup_result = client.app.state.container
+            cleanup = None
+            cleanup_run = client.app.state.container.retention_lifecycle_service.run_cleanup_once
+            import asyncio
+            cleanup = asyncio.run(cleanup_run(now=expired_record.evidence_expires_at))
+            lifecycle_health = asyncio.run(client.app.state.container.retention_lifecycle_service.health_status())
             ledger_after_cleanup = client.get(
                 "/v1/admin/usage/ledger?tenant_id=default&limit=10",
                 headers=admin_headers(),
