@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from fastapi.testclient import TestClient
 
+from nebula.db.models import UsageLedgerModel
 from nebula.models.governance import TenantPolicy
 from nebula.providers.base import CompletionResult
 from nebula.services.embeddings_service import EmbeddingsResult, EmbeddingVector
@@ -489,6 +490,173 @@ def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
     assert body[0]["evidence_expires_at"] is not None
     assert "input" not in body[0]
     assert "embedding" not in body[0]
+
+
+def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expiration_markers() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    evidence_retention_window="24h",
+                    metadata_minimization_level="strict",
+                ).model_dump(mode="json"),
+            )
+            expired_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "expired governed request"}],
+                },
+            )
+            expired_request_id = expired_response.headers["X-Request-ID"]
+            expired_before_cleanup = client.get(
+                f"/v1/admin/usage/ledger?request_id={expired_request_id}",
+                headers=admin_headers(),
+            )
+            store = app.state.container.governance_store
+            expired_record = store.list_usage_records(request_id=expired_request_id)[0]
+
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    evidence_retention_window="90d",
+                    metadata_minimization_level="standard",
+                ).model_dump(mode="json"),
+            )
+            surviving_response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "surviving governed request"}],
+                },
+            )
+            surviving_request_id = surviving_response.headers["X-Request-ID"]
+            surviving_before_cleanup = client.get(
+                f"/v1/admin/usage/ledger?request_id={surviving_request_id}",
+                headers=admin_headers(),
+            )
+
+            with store.session_factory() as session:
+                session.add(
+                    UsageLedgerModel(
+                        request_id="no-expiration-marker",
+                        tenant_id=expired_record.tenant_id,
+                        requested_model=expired_record.requested_model,
+                        final_route_target=expired_record.final_route_target,
+                        final_provider=expired_record.final_provider,
+                        fallback_used=expired_record.fallback_used,
+                        cache_hit=expired_record.cache_hit,
+                        response_model=expired_record.response_model,
+                        prompt_tokens=expired_record.prompt_tokens,
+                        completion_tokens=expired_record.completion_tokens,
+                        total_tokens=expired_record.total_tokens,
+                        estimated_cost=expired_record.estimated_cost,
+                        latency_ms=expired_record.latency_ms,
+                        timestamp=expired_record.timestamp,
+                        terminal_status=expired_record.terminal_status,
+                        route_reason=expired_record.route_reason,
+                        policy_outcome=expired_record.policy_outcome,
+                        route_signals=expired_record.route_signals,
+                        message_type=expired_record.message_type,
+                        evidence_retention_window=expired_record.evidence_retention_window,
+                        evidence_expires_at=None,
+                        metadata_minimization_level=expired_record.metadata_minimization_level,
+                        metadata_fields_suppressed_json=list(
+                            expired_record.metadata_fields_suppressed
+                        ),
+                        governance_source=expired_record.governance_source,
+                    )
+                )
+                session.commit()
+            no_expiration_before_cleanup = client.get(
+                "/v1/admin/usage/ledger?request_id=no-expiration-marker",
+                headers=admin_headers(),
+            )
+
+            cleanup = store.delete_expired_usage_records(now=expired_record.evidence_expires_at)
+            expired_after_cleanup = client.get(
+                f"/v1/admin/usage/ledger?request_id={expired_request_id}",
+                headers=admin_headers(),
+            )
+            surviving_after_cleanup = client.get(
+                f"/v1/admin/usage/ledger?request_id={surviving_request_id}",
+                headers=admin_headers(),
+            )
+            no_expiration_after_cleanup = client.get(
+                "/v1/admin/usage/ledger?request_id=no-expiration-marker",
+                headers=admin_headers(),
+            )
+            second_cleanup = store.delete_expired_usage_records(now=expired_record.evidence_expires_at)
+
+    assert expired_response.status_code == 200
+    assert surviving_response.status_code == 200
+    assert expired_before_cleanup.status_code == 200
+    assert surviving_before_cleanup.status_code == 200
+    assert no_expiration_before_cleanup.status_code == 200
+
+    expired_row = expired_before_cleanup.json()[0]
+    surviving_row = surviving_before_cleanup.json()[0]
+    no_expiration_row = no_expiration_before_cleanup.json()[0]
+
+    assert expired_row["request_id"] == expired_request_id
+    assert expired_row["evidence_retention_window"] == "24h"
+    assert expired_row["metadata_minimization_level"] == "strict"
+    assert expired_row["metadata_fields_suppressed"] == ["route_signals"]
+    assert expired_row["route_signals"] is None
+    assert expired_row["governance_source"] == "tenant_policy"
+    assert expired_row["evidence_expires_at"] is not None
+
+    assert surviving_row["request_id"] == surviving_request_id
+    assert surviving_row["evidence_retention_window"] == "90d"
+    assert surviving_row["metadata_minimization_level"] == "standard"
+    assert surviving_row["metadata_fields_suppressed"] == []
+    assert surviving_row["route_signals"] is not None
+    assert surviving_row["governance_source"] == "tenant_policy"
+    assert surviving_row["evidence_expires_at"] is not None
+
+    assert no_expiration_row["request_id"] == "no-expiration-marker"
+    assert no_expiration_row["evidence_expires_at"] is None
+    assert no_expiration_row["governance_source"] == "tenant_policy"
+
+    assert cleanup["eligible_count"] == 1
+    assert cleanup["deleted_count"] == 1
+    assert cleanup["cutoff"].isoformat() == store._normalize_comparable_datetime(
+        expired_record.evidence_expires_at
+    ).isoformat()
+    assert expired_after_cleanup.status_code == 200
+    assert expired_after_cleanup.json() == []
+    assert surviving_after_cleanup.status_code == 200
+    assert len(surviving_after_cleanup.json()) == 1
+    assert surviving_after_cleanup.json()[0]["request_id"] == surviving_request_id
+    assert no_expiration_after_cleanup.status_code == 200
+    assert len(no_expiration_after_cleanup.json()) == 1
+    assert no_expiration_after_cleanup.json()[0]["request_id"] == "no-expiration-marker"
+
+    assert second_cleanup["eligible_count"] == 0
+    assert second_cleanup["deleted_count"] == 0
+    assert second_cleanup["cutoff"].isoformat() == store._normalize_comparable_datetime(
+        expired_record.evidence_expires_at
+    ).isoformat()
 
 
 def test_tenant_policy_crud_and_governed_ledger_rows_apply_evidence_controls() -> None:

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T00:18:42.765Z",
+  "exported_at": "2026-04-12T00:28:50.118Z",
   "milestones": [
     {
       "id": "M001",
@@ -1036,14 +1036,14 @@
       "milestone_id": "M008",
       "id": "S01",
       "title": "S01",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [],
       "demo": "Operators can configure explicit tenant evidence-retention and metadata-minimization policy through the existing policy boundary, and backend/admin contracts treat those controls as runtime-enforced rather than advisory.",
       "created_at": "2026-04-11T23:45:07.519Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-12T00:22:35.879Z",
+      "full_summary_md": "---\nid: S01\nparent: M008\nmilestone: M008\nprovides:\n  - Typed tenant-policy fields for evidence retention and metadata minimization.\n  - A shared governed persistence seam for chat and embeddings usage writes.\n  - Per-row governance markers that later slices can use for historical explanation and retention enforcement.\n  - Operator-visible policy and request-detail surfaces already aligned to the new governed evidence contract.\nrequires:\n  []\naffects:\n  - S02\n  - S03\n  - S04\n  - S05\nkey_files:\n  - src/nebula/services/governance_store.py\n  - src/nebula/services/chat_service.py\n  - src/nebula/api/routes/embeddings.py\n  - tests/test_governance_api.py\n  - tests/test_chat_completions.py\n  - tests/test_embeddings_api.py\n  - console/src/lib/admin-api.ts\n  - console/src/components/policy/policy-form.tsx\n  - console/src/components/policy/policy-advanced-section.tsx\n  - console/src/components/ledger/ledger-request-detail.tsx\nkey_decisions:\n  - Preserved evidence governance as typed runtime-enforced tenant policy fields plus per-row usage-ledger markers on the existing persistence seam rather than introducing raw payload capture or a separate governance subsystem.\n  - Kept evidence-governance controls in the existing runtime-enforced policy surface so operators see retention/minimization as live write-time behavior, while prompt/response capture remains explicitly advisory and out of scope.\n  - Generated fallback request IDs for embeddings usage recording so request-to-ledger correlation stays truthful even when middleware state is absent.\n  - Preserved structured denied policy_outcome values in usage-ledger rows so operator inspection retains richer runtime context than the public error detail alone.\npatterns_established:\n  - Centralize evidence-governance enforcement in `GovernanceStore.record_usage()` so chat and embeddings cannot drift on retention/minimization behavior.\n  - Persist request-time governance markers on each usage-ledger row instead of inferring historical policy from current tenant configuration.\n  - Keep new governance controls inside existing policy and request-detail seams; expand explanation depth later without creating a separate governance dashboard.\n  - When close-out verification fails because `pytest` is missing from PATH, rerun the required suites with `./.venv/bin/pytest` before treating the failure as product breakage.\nobservability_surfaces:\n  - `/v1/admin/policy/options` now classifies evidence retention and metadata minimization as runtime-enforced controls rather than advisory settings.\n  - `/v1/admin/usage/ledger` rows carry governance markers including message type, evidence expiration, minimization level, suppressed metadata fields, and governance source.\n  - Console policy form and policy page expose the governed evidence controls and explain them as live write-time behavior.\n  - Console request-detail renders the governed ledger fields directly so operators can inspect the effective evidence boundary for a persisted row.\ndrill_down_paths:\n  - .gsd/milestones/M008/slices/S01/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M008/slices/S01/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-12T00:22:35.881Z\nblocker_discovered: false\n---\n\n# S01: Typed evidence governance policy\n\n**Established a typed, runtime-enforced evidence-governance contract across tenant policy, governed ledger persistence, and operator policy/request-detail surfaces without widening Nebula into payload capture or hosted-authority drift.**\n\n## What Happened\n\nS01 closed the first governance seam for M008 by turning evidence retention and metadata minimization into typed, runtime-enforced tenant policy rather than advisory settings. The assembled work now carries explicit `evidence_retention_window` and `metadata_minimization_level` fields through the backend governance contract, applies those controls centrally in `GovernanceStore.record_usage()` for both chat and embeddings writes, and persists request-time governance markers on usage-ledger rows so later slices can explain historical evidence truthfully. During close-out verification I confirmed the backend contract, admin policy/options classification, and hosted-boundary behavior through the targeted Python suites, and re-ran the console Vitest coverage to confirm operators can edit the new controls and inspect the resulting governed row fields. The slice also tightened local defects uncovered by verification: a blocking stray typo in `chat_service.py`, UTC normalization in governance-store calibration staleness handling, a malformed embeddings route boundary, and stale tests that no longer matched the intended structured denial and governance contract. The resulting slice establishes one bounded pattern for downstream work: use the existing tenant-policy and request-ledger boundaries, enforce governance at write time, persist historically truthful row markers, and keep raw prompt/response capture out of scope.\n\n## Verification\n\nSlice-level verification passed exactly against the planned checks after rerunning Python suites from the project virtualenv: `./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py` (59 passed), `./.venv/bin/pytest tests/test_chat_completions.py -k ledger && ./.venv/bin/pytest tests/test_embeddings_api.py` (1 chat ledger test passed, 5 embeddings tests passed), and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx` (31 Vitest assertions passed). These checks verified the runtime-enforced policy/options contract, governed chat and embeddings ledger persistence, request-detail/operator policy rendering, and the unchanged hosted metadata-only boundary.\n\n## Requirements Advanced\n\n- R056 — Implemented and verified explicit tenant policy control of evidence retention windows plus persisted expiration markers on usage-ledger rows.\n- R057 — Implemented and verified explicit tenant policy control of metadata minimization with governed suppression of non-essential metadata while keeping raw payload capture out of scope.\n- R058 — Established persisted governance markers on each ledger row as the historical truth source that later slices can explain more fully.\n- R061 — Preserved the hosted metadata-only trust boundary while making local evidence governance visibly runtime-enforced and bounded.\n- R062 — Advanced the end-to-end governance chain by closing the first leg: tenant policy to runtime persistence behavior to operator inspection surfaces.\n- R064 — Kept M008 bounded to policy/request/evidence governance by reusing existing policy and request-detail seams instead of introducing compliance-platform or hosted-authority expansion.\n\n## Requirements Validated\n\n- R056 — Passing targeted backend verification with ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py plus chat/embeddings ledger tests proved explicit tenant retention policy fields and persisted evidence expiration markers.\n- R057 — Passing backend and console verification proved metadata minimization is explicitly tenant-governed, enforced at write time, and rendered through existing operator surfaces without raw prompt/response capture.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nMost planned S01 feature surfaces were already present in the workspace before close-out, so the slice finish focused on verification-driven hardening and assembled proof rather than greenfield implementation. Verification uncovered and resolved local defects in chat-service importability, governance-store timestamp normalization, embeddings route structure, and stale test expectations.\n\n## Known Limitations\n\nS01 does not execute retention-driven deletion yet. It persists evidence expiration/minimization markers and enforces the write-time policy boundary, but real deletion remains deferred to S03. Request-detail compatibility was intentionally kept minimal; richer explanation of historical governance markers remains for later slices.\n\n## Follow-ups\n\n- S02 should build directly on the persisted row markers and make historical governance truth central to request evidence inspection, not re-derive policy from current tenant state.\n- S03 must execute actual evidence deletion using the persisted expiration markers introduced here; S01 only establishes retention metadata and write-time enforcement.\n- S04 should continue the bounded operator-surface approach by explaining effective evidence boundaries using existing policy and request-detail surfaces instead of adding a new governance dashboard.\n\n## Files Created/Modified\n\n- `src/nebula/services/governance_store.py` — Central governed persistence seam now normalizes calibration evidence timestamps and enforces typed evidence-governance markers on ledger writes.\n- `src/nebula/services/chat_service.py` — Removed blocking module-scope typo discovered during verification so governance suites could collect and run.\n- `src/nebula/api/routes/embeddings.py` — Embeddings writer now preserves request-to-ledger correlation through fallback request ID generation and governed usage recording.\n- `tests/test_governance_api.py` — Governance API tests now assert typed retention/minimization policy behavior, runtime-enforced options classification, and structured denied policy outcomes.\n- `tests/test_chat_completions.py` — Chat ledger coverage now proves governed retention/minimization markers persist on request evidence.\n- `tests/test_embeddings_api.py` — Embeddings API coverage now proves governed ledger persistence and request correlation under the shared seam.\n- `console/src/lib/admin-api.ts` — Console admin client types mirror the governed evidence policy and ledger row contract.\n- `console/src/components/policy/policy-form.tsx` — Policy editor exposes runtime-enforced evidence retention and metadata minimization controls with bounded copy.\n- `console/src/components/policy/policy-advanced-section.tsx` — Advanced policy copy now keeps prompt/response capture explicitly advisory and out of scope for M008/S01.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Request detail renders governed row markers so operators can inspect retention, minimization, suppression, and governance source without JSON digging.\n",
+      "full_uat_md": "# S01: Typed evidence governance policy — UAT\n\n**Milestone:** M008\n**Written:** 2026-04-12T00:22:35.881Z\n\n# UAT — M008/S01 Typed evidence governance policy\n\n## Preconditions\n- Nebula backend is running with the M008/S01 schema and code applied.\n- Operator can access the console policy page and request-detail surface.\n- A test tenant and API key exist.\n- The console test environment or a live local environment can issue one chat request and one embeddings request for the same tenant.\n\n## Test Case 1 — Operator can configure governed evidence controls from the existing policy boundary\n1. Open the tenant policy page for the test tenant.\n   - Expected: The existing runtime-enforced policy section includes controls for evidence retention window and metadata minimization level.\n2. Set evidence retention to a bounded non-default option and metadata minimization to a stricter option than the current value.\n   - Expected: The UI describes both settings as write-time/runtime-enforced evidence controls, not as future advisory capture settings.\n3. Review any advanced/deferred capture copy on the page.\n   - Expected: Prompt/response capture remains clearly described as advisory or out of scope; the page does not imply raw payload capture is part of this slice.\n4. Save the policy.\n   - Expected: The policy persists successfully and the saved state reflects the chosen retention/minimization settings.\n\n## Test Case 2 — Chat request persists governed evidence markers under the selected tenant policy\n1. With the updated tenant policy in place, send a chat completion request using the tenant API key.\n   - Expected: The request succeeds and returns a request identifier/header that can be used for ledger lookup.\n2. Open the matching request in the usage ledger / request-detail surface.\n   - Expected: The persisted row includes governed evidence markers such as message type, evidence retention window or expiration, metadata minimization level, any suppressed metadata fields, and governance source.\n3. Inspect the row for payload scope.\n   - Expected: The row does not imply raw prompt/response capture; only the bounded metadata contract is present.\n4. Compare the rendered request-detail values with the policy just saved.\n   - Expected: The persisted governance markers match the policy that was active when the request was written.\n\n## Test Case 3 — Embeddings request uses the same governed persistence seam and remains correlatable\n1. Send an embeddings request for the same tenant.\n   - Expected: The request succeeds even if middleware state is limited, and a request identifier is still available for correlation.\n2. Look up the embeddings row in the usage ledger.\n   - Expected: The embeddings row is present and includes the same governed evidence markers pattern as chat, adapted to the embeddings record shape.\n3. Inspect request-detail for that row.\n   - Expected: Governance markers are visible without needing to inspect raw JSON, and the row remains historically attributable to the policy active at write time.\n\n## Test Case 4 — Policy minimization is truthful in operator surfaces\n1. Change metadata minimization to a stricter level for the tenant.\n   - Expected: The policy save succeeds and the updated level is visible in the policy surface.\n2. Send another chat or embeddings request after the change.\n   - Expected: A new ledger row is created.\n3. Compare the new row to the earlier row.\n   - Expected: The new row shows the stricter minimization marker and any suppressed metadata field markers appropriate to that level, while the earlier row still reflects the older policy state.\n4. Re-open the first row.\n   - Expected: The first row remains historically truthful and does not retroactively adopt the new minimization settings.\n\n## Test Case 5 — Hosted boundary stays metadata-only\n1. Exercise the hosted-contract verification path or inspect the hosted export behavior relevant to request evidence.\n   - Expected: Hosted export remains metadata-only and does not include raw prompt/response payloads or new authority over local evidence governance.\n2. Compare the hosted boundary description with the local policy/request-detail surfaces.\n   - Expected: The product story is consistent: local tenant policy governs persistence boundaries, while hosted remains bounded and non-authoritative.\n\n## Edge Cases\n- If `pytest` is not available on PATH during local verification, rerun the Python checks with `./.venv/bin/pytest`; this is an environment issue, not a slice failure.\n- If a request is recorded when middleware request state is absent, embeddings evidence should still remain correlatable through a generated fallback request ID.\n- Historical rows created before a policy change should continue to show the governance markers that applied at write time rather than the tenant's current settings.\n",
       "goal": "Establish a typed evidence-governance contract across tenant policy, admin APIs, and persisted ledger rows so evidence retention and metadata minimization become runtime-enforced backend behavior with operator-visible policy controls and historically truthful request markers.",
       "success_criteria": "- Tenant policy, admin policy options, and mirrored console types expose explicit runtime-enforced fields for evidence retention and metadata minimization without widening into raw prompt/response capture.\n- Chat and embeddings ledger writes both pass through a single governed persistence seam that suppresses non-essential metadata according to policy and stamps each row with request-time governance markers.\n- The existing operator policy surface can edit the new governance fields and the request-detail surface remains compatible with the governed ledger contract, while hosted metadata-only tests still prove no trust-boundary widening.",
       "proof_level": "integration",
@@ -1055,22 +1055,20 @@
     {
       "milestone_id": "M008",
       "id": "S02",
-      "title": "Governed ledger persistence and request markers",
+      "title": "S02",
       "status": "pending",
       "risk": "high",
-      "depends": [
-        "S01"
-      ],
+      "depends": [],
       "demo": "New requests persist only the allowed evidence shape for the tenant and carry per-request governance markers so request detail can later show what policy applied at write time.",
       "created_at": "2026-04-11T23:45:07.519Z",
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Apply tenant governance policy to the usage-ledger write path and persist historical governance markers on each request row.",
-      "success_criteria": "- Governed request writes persist only the allowed metadata shape.\n- Each usage-ledger row records governance markers needed for historical explanation.\n- Request-detail/backend read contracts can distinguish current policy from row-time governance truth.",
-      "proof_level": "Runtime write-path + request-read verification",
-      "integration_closure": "Chat and embeddings evidence-write paths persist governed row shapes consistently, and request-evidence reads can explain what policy applied when the row was written.",
-      "observability_impact": "Adds row-level governance markers and suppression state that request-detail and backend verification can inspect directly.",
+      "goal": "Make governed usage-ledger evidence age out through an explicit store lifecycle path while preserving historically truthful request markers until deletion and keeping operator inspection surfaces aligned with that behavior.",
+      "success_criteria": "- Expired usage-ledger rows are actually deleted using the persisted `evidence_expires_at` marker rather than current tenant policy inference.\n- The existing admin ledger/read seams prove both sides of the contract: surviving rows still show write-time governance markers, and expired rows disappear after cleanup.\n- Request-detail/operator copy stays consistent with the bounded evidence story and does not imply soft-delete, hidden retention, or hosted export expansion.",
+      "proof_level": "integration",
+      "integration_closure": "`GovernanceStore.record_usage()` remains the sole write-time governance seam from S01, and this slice closes the next runtime leg by adding an explicit local cleanup lifecycle plus read-path verification through `/v1/admin/usage/ledger` and request-detail copy. After this slice, later milestone work can build richer operator explanation on top of a real persistence/deletion contract instead of inferred policy state.",
+      "observability_impact": "Future agents can inspect governed evidence state through `usage_ledger` rows returned by `GovernanceStore.list_usage_records()` / `/v1/admin/usage/ledger`, and diagnose retention behavior from cleanup return counts plus the continued presence or absence of row-level governance markers (`evidence_retention_window`, `evidence_expires_at`, `metadata_fields_suppressed`, `governance_source`). Redaction remains unchanged: no raw prompts, responses, embeddings, provider credentials, or hosted raw ledger export are introduced.",
       "sequence": 2,
       "replan_triggered_at": null
     },
@@ -4609,6 +4607,100 @@
       "observability_impact": "Touches runtime evidence writers and the operator inspection surface. Failures should be diagnosable via response/ledger correlation in chat+embeddings tests and via UI tests asserting runtime-enforced copy and governed-field rendering, not by manual DOM inspection.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S02",
+      "id": "T01",
+      "title": "Added explicit governance-store cleanup for expired usage ledger rows with retention lifecycle coverage tests.",
+      "status": "complete",
+      "one_liner": "Added explicit governance-store cleanup for expired usage ledger rows with retention lifecycle coverage tests.",
+      "narrative": "Implemented a store-level retention lifecycle seam in `src/nebula/services/governance_store.py:363` by adding `delete_expired_usage_records(now=...)`, which deletes only rows whose persisted `evidence_expires_at` is at or before the supplied cutoff, ignores rows with no expiration marker, and returns a deterministic diagnostic summary (`eligible_count`, `deleted_count`, `cutoff`). I kept the write-time governance seam centralized in `record_usage()` / `_apply_usage_governance()` and did not move policy stamping into chat or embeddings writers. In `tests/test_governance_api.py:495` I added an end-to-end retention test that seeds governed rows through the normal request path, verifies historical governance markers remain visible before cleanup, proves expired rows disappear after cleanup, proves rows without a persisted expiration marker survive cleanup, and proves a second cleanup pass is idempotent. During verification I found that re-seeding through `record_usage()` correctly reapplies governance markers, so I adjusted the null-expiration fixture to be inserted directly at the model layer in the test to preserve the central write seam while still exercising the cleanup edge case. I also normalized cutoff assertions to account for SQLite timezone representation while still validating the same cleanup instant semantically.",
+      "verification_result": "Ran the slice verification command set. `./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"` passed and covered the new cleanup behavior plus governed ledger marker visibility. `./.venv/bin/pytest tests/test_chat_completions.py -k ledger` passed, confirming chat ledger persistence still stamps the expected governed message markers through the shared seam. `./.venv/bin/pytest tests/test_embeddings_api.py` passed, confirming embeddings ledger persistence still stamps the expected governed message markers and cleanup work did not regress the shared persistence path. I also directly verified the new observability seam through the cleanup test by asserting the returned deleted-row counts and post-cleanup row absence/presence via `/v1/admin/usage/ledger`.",
+      "duration": "",
+      "completed_at": "2026-04-12T00:28:50.097Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "A non-essential helper command using `python` instead of `./.venv/bin/python` failed during file-line lookup; this did not affect implementation or verification.",
+      "key_files": [
+        "src/nebula/services/governance_store.py",
+        "tests/test_governance_api.py"
+      ],
+      "key_decisions": [
+        "Kept governance marker stamping centralized in `record_usage()` / `_apply_usage_governance()` and implemented retention cleanup as a separate store lifecycle seam.",
+        "Used direct model insertion only inside the test to create a row with no persisted expiration marker, because routing it through `record_usage()` would correctly restamp governance fields and invalidate the edge-case fixture."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S02\nmilestone: M008\nkey_files:\n  - src/nebula/services/governance_store.py\n  - tests/test_governance_api.py\nkey_decisions:\n  - Kept governance marker stamping centralized in `record_usage()` / `_apply_usage_governance()` and implemented retention cleanup as a separate store lifecycle seam.\n  - Used direct model insertion only inside the test to create a row with no persisted expiration marker, because routing it through `record_usage()` would correctly restamp governance fields and invalidate the edge-case fixture.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T00:28:50.096Z\nblocker_discovered: false\n---\n\n# T01: Added explicit governance-store cleanup for expired usage ledger rows with retention lifecycle coverage tests.\n\n**Added explicit governance-store cleanup for expired usage ledger rows with retention lifecycle coverage tests.**\n\n## What Happened\n\nImplemented a store-level retention lifecycle seam in `src/nebula/services/governance_store.py:363` by adding `delete_expired_usage_records(now=...)`, which deletes only rows whose persisted `evidence_expires_at` is at or before the supplied cutoff, ignores rows with no expiration marker, and returns a deterministic diagnostic summary (`eligible_count`, `deleted_count`, `cutoff`). I kept the write-time governance seam centralized in `record_usage()` / `_apply_usage_governance()` and did not move policy stamping into chat or embeddings writers. In `tests/test_governance_api.py:495` I added an end-to-end retention test that seeds governed rows through the normal request path, verifies historical governance markers remain visible before cleanup, proves expired rows disappear after cleanup, proves rows without a persisted expiration marker survive cleanup, and proves a second cleanup pass is idempotent. During verification I found that re-seeding through `record_usage()` correctly reapplies governance markers, so I adjusted the null-expiration fixture to be inserted directly at the model layer in the test to preserve the central write seam while still exercising the cleanup edge case. I also normalized cutoff assertions to account for SQLite timezone representation while still validating the same cleanup instant semantically.\n\n## Verification\n\nRan the slice verification command set. `./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"` passed and covered the new cleanup behavior plus governed ledger marker visibility. `./.venv/bin/pytest tests/test_chat_completions.py -k ledger` passed, confirming chat ledger persistence still stamps the expected governed message markers through the shared seam. `./.venv/bin/pytest tests/test_embeddings_api.py` passed, confirming embeddings ledger persistence still stamps the expected governed message markers and cleanup work did not regress the shared persistence path. I also directly verified the new observability seam through the cleanup test by asserting the returned deleted-row counts and post-cleanup row absence/presence via `/v1/admin/usage/ledger`.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"` | 0 | ✅ pass | 870ms |\n| 2 | `./.venv/bin/pytest tests/test_chat_completions.py -k ledger` | 0 | ✅ pass | 600ms |\n| 3 | `./.venv/bin/pytest tests/test_embeddings_api.py` | 0 | ✅ pass | 870ms |\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nA non-essential helper command using `python` instead of `./.venv/bin/python` failed during file-line lookup; this did not affect implementation or verification.\n\n## Files Created/Modified\n\n- `src/nebula/services/governance_store.py`\n- `tests/test_governance_api.py`\n",
+      "description": "Add a store-level lifecycle path that deletes expired governed ledger rows based on the persisted `evidence_expires_at` marker, not the tenant’s current policy. Executors should load the `debug-like-expert` and `test` skills before coding.\n\nSteps:\n1. Extend `GovernanceStore` with an explicit cleanup method such as `delete_expired_usage_records(now=...)` that removes rows whose persisted `evidence_expires_at` is at or before the cleanup timestamp, ignores rows with no expiration marker, and returns a small deterministic summary/count suitable for diagnostics and tests.\n2. Keep the write-time seam centralized: do not move governance logic into chat or embeddings writers, and preserve `record_usage()` / `_apply_usage_governance()` as the only place that stamps retention/minimization markers on new rows.\n3. Add or update targeted backend tests in `tests/test_governance_api.py` that seed governed rows through existing app/store seams, prove surviving rows still expose historical markers before cleanup, prove expired rows are actually removed after cleanup, and prove a second cleanup pass is idempotent.\n4. Re-run the chat and embeddings ledger tests that lock the shared persistence seam so cleanup work cannot regress message-type markers or per-request governance fields.\n\nAssumption to document in code/tests: M008/S02 needs an explicit callable lifecycle seam and proof of actual deletion, but not a background scheduler yet.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/services/governance_store.py",
+        "tests/test_governance_api.py",
+        "tests/test_chat_completions.py",
+        "tests/test_embeddings_api.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\" && ./.venv/bin/pytest tests/test_chat_completions.py -k ledger && ./.venv/bin/pytest tests/test_embeddings_api.py",
+      "inputs": [
+        "`src/nebula/services/governance_store.py`",
+        "`src/nebula/models/governance.py`",
+        "`src/nebula/db/models.py`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_chat_completions.py`",
+        "`tests/test_embeddings_api.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/services/governance_store.py`",
+        "`tests/test_governance_api.py`"
+      ],
+      "observability_impact": "Adds an explicit diagnostic seam for retention lifecycle behavior: the cleanup method’s deleted-row count plus post-cleanup absence from `/v1/admin/usage/ledger` give future agents a bounded way to confirm whether a row expired, was deleted, or never matched cleanup criteria.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S02",
+      "id": "T02",
+      "title": "Align admin and request-detail surfaces with real evidence aging semantics",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Carry the new retention lifecycle truth through the existing operator-facing read seams without inventing a new governance dashboard. Executors should load the `react-best-practices` and `test` skills before coding.\n\nSteps:\n1. If needed, expose a minimal admin/read-path seam that allows tests to prove cleanup effects through existing usage-ledger APIs rather than direct database inspection, keeping the surface local-authoritative and bounded.\n2. Update request-detail and any mirrored admin types only as far as needed to explain that a persisted row is authoritative while it exists and may later disappear when governed retention cleanup deletes expired evidence. Do not imply soft-delete, archival recovery, or hosted raw export.\n3. Add focused backend/UI verification covering the operator-facing contract: surviving rows still render persisted governance markers, and the request-detail copy remains consistent with actual deletion behavior introduced in T01.\n4. Re-run the hosted-boundary regression suite to prove the slice did not widen the metadata-only export contract.\n\nIf no new backend route is necessary after T01, keep this task limited to read-path tests and UI/copy alignment rather than inventing extra API surface.",
+      "estimate": "45m",
+      "files": [
+        "src/nebula/api/routes/admin.py",
+        "tests/test_governance_api.py",
+        "console/src/components/ledger/ledger-request-detail.tsx",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/lib/admin-api.ts",
+        "tests/test_hosted_contract.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\" && ./.venv/bin/pytest tests/test_hosted_contract.py && npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "inputs": [
+        "`src/nebula/api/routes/admin.py`",
+        "`tests/test_governance_api.py`",
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/lib/admin-api.ts`",
+        "`src/nebula/models/hosted_contract.py`",
+        "`tests/test_hosted_contract.py`"
+      ],
+      "expected_output": [
+        "`tests/test_governance_api.py`",
+        "`console/src/components/ledger/ledger-request-detail.tsx`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`"
+      ],
+      "observability_impact": "Preserves a trustworthy operator inspection path: `/v1/admin/usage/ledger` and request detail remain the places to determine whether governed evidence still exists, which write-time governance markers applied, and when disappearance is expected because retention cleanup has already removed the row.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -5137,6 +5229,18 @@
       "choice": "Dedupe verification_evidence rows by (task_id, slice_id, milestone_id, command, verdict) after taking a timestamped gsd.db backup, keeping the lowest-id row in each duplicate group.",
       "rationale": "The SQLite file passed integrity_check, but the GSD engine failed to open in degraded mode because bootstrap/migration hit duplicate verification_evidence groups that violate the stricter uniqueness expectation. Removing only duplicate groups restored DB-backed tool access without changing substantive project data.",
       "revisable": "Yes — if the GSD engine later ships an idempotent bootstrap fix, prefer that over manual DB repair.",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 52,
+      "id": "D045",
+      "when_context": "M008/S01",
+      "scope": "governance",
+      "decision": "How M008/S01 should expose evidence governance without widening the trust boundary",
+      "choice": "Keep evidence governance as typed runtime-enforced tenant policy fields plus per-row governance markers on the existing usage ledger, and render them through existing policy and request-detail surfaces rather than introducing raw payload capture or separate governance products.",
+      "rationale": "Task summaries show S01 completed by extending the current tenant-policy, ledger, and operator surfaces with retention/minimization controls and historically truthful row markers. This preserves Nebula’s bounded evidence story, keeps hosted export metadata-only, and gives downstream slices one shared governance vocabulary for persistence, deletion, and request-detail explanation.",
+      "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
     }
@@ -6318,6 +6422,39 @@
       "verdict": "✅ pass",
       "duration_ms": 3700,
       "created_at": "2026-04-12T00:18:42.741Z"
+    },
+    {
+      "id": 125,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 870,
+      "created_at": "2026-04-12T00:28:50.097Z"
+    },
+    {
+      "id": 126,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_chat_completions.py -k ledger",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 600,
+      "created_at": "2026-04-12T00:28:50.097Z"
+    },
+    {
+      "id": 127,
+      "task_id": "T01",
+      "slice_id": "S02",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_embeddings_api.py",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 870,
+      "created_at": "2026-04-12T00:28:50.097Z"
     }
   ]
 }

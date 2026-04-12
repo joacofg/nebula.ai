@@ -12,13 +12,17 @@ A team can adopt Nebula through a familiar inference path quickly, with minimal 
 
 Nebula already ships a FastAPI gateway, a Next.js operator console, PostgreSQL-backed governance, Qdrant-backed semantic cache, OpenAI-like chat completions, streaming support, embeddings, tenant and API-key management, policy management, usage ledger recording, runtime health, and an optional hosted control plane with a metadata-only default export contract.
 
-M001 through M007 are complete in the assembled worktree. M007 closed the operator-decision-clarity milestone: Observability is request-investigation-first, `ledger-request-detail` remains the authoritative persisted evidence seam for the selected request, and policy preview is a compare-before-save decision surface rather than a blended analytics/settings page. The current product can explain routed requests, policy outcomes, replay consequences, cache posture, calibration posture, and hosted deployment posture without widening into dashboard sprawl or hosted authority.
+M001 through M007 are complete in the assembled worktree. M007 closed the operator-decision-clarity milestone: Observability is request-investigation-first, `ledger-request-detail` remains the authoritative persisted evidence seam for the selected request, and policy preview is a compare-before-save decision surface rather than a blended analytics/settings page.
 
-What is still missing is explicit governance over Nebula’s evidence boundary. Tenant policy already contains advisory capture flags, the usage ledger persists request evidence, and the hosted plane already enforces a metadata-only allowlist contract, but operators still cannot deliberately govern evidence retention windows, metadata minimization, historical request-level governance markers, or real evidence deletion behavior through one bounded product story. M008 is the next planned milestone to close that gap.
+M008 is now in progress with S01 complete. S01 established the typed evidence-governance contract across backend persistence and operator policy surfaces: tenant policy now includes explicit `evidence_retention_window` and `metadata_minimization_level` fields, governed usage-ledger writes stamp each row with request-time governance markers such as message type, expiration, suppressed metadata fields, and governance source, and the console policy/request-detail surfaces expose those controls and markers as runtime-enforced evidence boundaries rather than advisory capture settings. Chat and embeddings now share the same governed persistence seam, while hosted export remains metadata-only and raw prompt/response capture remains out of scope.
+
+What remains for M008 is to build on that contract: S02 must make the historical governance markers fully central to persisted request evidence, S03 must enforce real retention-driven deletion, S04 must make the effective evidence boundary clearer in operator inspection surfaces, and S05 must assemble the end-to-end proof that tenant policy governs persistence/deletion without widening Nebula into payload capture, compliance-platform sprawl, or hosted authority.
 
 ## Architecture / Key Patterns
 
 Nebula routes `POST /v1/chat/completions` traffic across local, cache, premium, and fallback paths, returning `X-Nebula-*` metadata headers and persisting usage outcomes to the governance ledger. The backend is FastAPI with a service-container pattern; the operator console is Next.js and proxies same-origin admin traffic to gateway APIs. Governance is tenant-centric today. The hosted control plane is metadata-only by default and is not authoritative for local runtime enforcement. Existing decisioning work favors stable typed evidence, bounded operator-facing read models, request-led operator proof, and pointer-only integrated proof docs over duplicated contracts or opaque optimization claims.
+
+M008 extends those patterns by keeping evidence governance inside the existing policy and ledger boundaries. The central enforcement seam is `GovernanceStore.record_usage()`, which applies tenant retention/minimization policy at write time for both chat and embeddings and persists historically truthful governance markers on each ledger row for later inspection.
 
 ## Capability Contract
 
@@ -34,3 +38,8 @@ See `.gsd/REQUIREMENTS.md` for the explicit capability contract, requirement sta
 - [x] M006: Outcome-Aware Routing Calibration — Completed the calibrated-routing milestone with shared runtime/replay semantics, bounded rollout control, tenant-scoped ledger-backed calibration evidence, selected-request-first operator inspection, and a pointer-only close-out walkthrough that validates the assembled outcome-aware-routing proof.
 - [x] M007: Operator Decision Clarity — Clarified page identity, evidence hierarchy, and operator decision workflow across Observability, request detail, and policy preview without drifting into dashboard sprawl or a broad redesign.
 - [ ] M008: Evidence Governance and Privacy Controls — Make Nebula’s evidence layer tenant-governed, retention-aware, historically explainable, and visibly bounded without widening into payload capture, compliance-platform sprawl, or hosted authority.
+  - [x] S01: Typed evidence governance policy — Tenant policy, admin APIs, governed ledger persistence, and console policy/request-detail surfaces now share typed retention/minimization controls and request-time governance markers.
+  - [ ] S02: Governed ledger persistence and request markers
+  - [ ] S03: Retention lifecycle enforcement
+  - [ ] S04: Operator evidence-boundary surfaces
+  - [ ] S05: Integrated governance proof

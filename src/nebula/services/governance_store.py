@@ -8,7 +8,7 @@ from datetime import UTC, datetime, timedelta
 from threading import RLock
 from uuid import uuid4
 
-from sqlalchemy import func, inspect, select
+from sqlalchemy import delete, func, inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from nebula.core.config import Settings
@@ -359,6 +359,31 @@ class GovernanceStore:
                 stmt = stmt.where(UsageLedgerModel.timestamp <= to_timestamp)
             rows = session.scalars(stmt.order_by(UsageLedgerModel.timestamp.desc()).limit(limit)).all()
             return [self._usage_from_model(row) for row in rows]
+
+    def delete_expired_usage_records(self, *, now: datetime | None = None) -> dict[str, object]:
+        cleanup_time = self._normalize_comparable_datetime(now or self._now())
+        with self._session() as session:
+            expired_rows = session.scalar(
+                select(func.count())
+                .select_from(UsageLedgerModel)
+                .where(
+                    UsageLedgerModel.evidence_expires_at.is_not(None),
+                    UsageLedgerModel.evidence_expires_at <= cleanup_time,
+                )
+            )
+            delete_result = session.execute(
+                delete(UsageLedgerModel).where(
+                    UsageLedgerModel.evidence_expires_at.is_not(None),
+                    UsageLedgerModel.evidence_expires_at <= cleanup_time,
+                )
+            )
+            session.commit()
+
+        return {
+            "deleted_count": int(delete_result.rowcount or 0),
+            "eligible_count": int(expired_rows or 0),
+            "cutoff": cleanup_time,
+        }
 
     def summarize_calibration_evidence(
         self,
