@@ -65,3 +65,7 @@
 {"id":"7052678b-720c-4847-95de-7fa132b4518f","ts":"2026-04-12T17:01:03.097Z","severity":"info","message":"Resume: applied 3 fix(es) to state.","source":"notify","read":false}
 {"id":"646056e9-286a-48d4-b437-55ed9cf96747","ts":"2026-04-12T17:09:15.434Z","severity":"info","message":"Committed: feat: Added policy-side effective evidence boundary guidance driven by…","source":"notify","read":false}
 {"id":"8124a21f-ca17-4b60-8513-93bda9fb19ae","ts":"2026-04-12T17:09:16.974Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}
+{"id":"1f2d0d99-88a0-4226-8788-ab7ba4c801d8","ts":"2026-04-12T17:18:23.258Z","severity":"info","message":"Committed: feat: Aligned request-detail and hosted trust-boundary surfaces to the…","source":"notify","read":false}
+{"id":"721c32a4-6712-4997-a740-49c5351f5031","ts":"2026-04-12T17:18:23.266Z","severity":"warning","message":"[safety] file-change: console/src/lib/hosted-contract.test.ts — Modified but not in task plan's expected output","source":"workflow-logger","read":false}
+{"id":"1a8dbfeb-6bab-4dd4-b591-6b9ec94d7374","ts":"2026-04-12T17:18:23.266Z","severity":"warning","message":"Safety: 1 unexpected file change(s) outside task plan","source":"notify","read":false}
+{"id":"2e5e6439-111a-4271-8315-2e55df2ae304","ts":"2026-04-12T17:18:25.163Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}

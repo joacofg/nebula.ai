@@ -4,28 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R060 — Operators can inspect the effective evidence boundary in the policy surface and the request-detail evidence surface.
-- Class: operability
-- Status: active
-- Description: Operators can inspect the effective evidence boundary in the policy surface and the request-detail evidence surface.
-- Why it matters: Governance is only trustworthy if the configured and effective boundary are visible where operators make and inspect decisions.
-- Source: user
-- Primary owning slice: M008/S04
-- Supporting slices: M008/S02
-- Validation: mapped
-- Notes: Keep the UI footprint bounded to the existing policy and request-led operator surfaces.
-
-### R061 — Hosted export remains metadata-only by default and M008 makes any tenant-governed evidence boundary visibly consistent with that contract.
-- Class: integration
-- Status: active
-- Description: Hosted export remains metadata-only by default and M008 makes any tenant-governed evidence boundary visibly consistent with that contract.
-- Why it matters: The hosted trust boundary is one of Nebula’s strongest current product claims; governance work should strengthen it, not blur it.
-- Source: user
-- Primary owning slice: M008/S04
-- Supporting slices: M008/S05
-- Validation: mapped
-- Notes: M008 should clarify the relationship between tenant evidence governance and the existing hosted allowlist contract without making hosted authoritative.
-
 ### R062 — M008 proves the full governance chain end to end: tenant policy → persistence/export behavior → operator evidence surface → hosted trust boundary.
 - Class: quality-attribute
 - Status: active
@@ -545,6 +523,28 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M008/S03 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k "retention or health or heartbeat" and npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'. Retention cleanup now runs as a lifecycle service wired into app startup, deletes expired ledger rows via persisted evidence_expires_at markers through GovernanceStore.delete_expired_usage_records(), exposes degraded/ready runtime health with last-run diagnostics, and preserves the hosted metadata-only dependency summary boundary.
 - Notes: The proof bar for M008 requires actual deletion behavior.
 
+### R060 — Operators can inspect the effective evidence boundary in the policy surface and the request-detail evidence surface.
+- Class: operability
+- Status: validated
+- Description: Operators can inspect the effective evidence boundary in the policy surface and the request-detail evidence surface.
+- Why it matters: Governance is only trustworthy if the configured and effective boundary are visible where operators make and inspect decisions.
+- Source: user
+- Primary owning slice: M008/S04
+- Supporting slices: M008/S02
+- Validation: Validated by M008/S04 through passing console and hosted-contract verification: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`, `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`, and `./.venv/bin/pytest tests/test_hosted_contract.py`. The policy surface now renders an effective evidence boundary derived from retention/minimization controls, and request detail explains retained/suppressed/deleted semantics from persisted governance markers while the row exists.
+- Notes: S04 keeps the evidence story bounded to existing policy and request-detail seams rather than adding a separate governance dashboard.
+
+### R061 — Hosted export remains metadata-only by default and M008 makes any tenant-governed evidence boundary visibly consistent with that contract.
+- Class: integration
+- Status: validated
+- Description: Hosted export remains metadata-only by default and M008 makes any tenant-governed evidence boundary visibly consistent with that contract.
+- Why it matters: The hosted trust boundary is one of Nebula’s strongest current product claims; governance work should strengthen it, not blur it.
+- Source: user
+- Primary owning slice: M008/S04
+- Supporting slices: M008/S05
+- Validation: Validated by M008/S04 through passing focused hosted and console verification: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx` and `./.venv/bin/pytest tests/test_hosted_contract.py`. Hosted trust-boundary surfaces now reuse the same retained/suppressed/deleted/not-hosted vocabulary as policy and request detail while still excluding raw usage-ledger rows and runtime-authority claims.
+- Notes: S04 strengthens the hosted metadata-only claim by reusing one shared evidence vocabulary across local operator surfaces and the public trust-boundary page.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -865,8 +865,8 @@ This file is the explicit capability and coverage contract for the project.
 | R057 | compliance/security | validated | M008/S01 | M008/S02 | Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py; ./.venv/bin/pytest tests/test_chat_completions.py -k ledger; ./.venv/bin/pytest tests/test_embeddings_api.py; and npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx. Tenant policy now governs metadata_minimization_level and governed ledger writes suppress non-essential metadata while preserving the bounded no-raw-payload-capture contract. |
 | R058 | failure-visibility | validated | M008/S02 | M008/S04 | Validated by M008/S02 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired", ./.venv/bin/pytest tests/test_chat_completions.py -k ledger, ./.venv/bin/pytest tests/test_embeddings_api.py, ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or retention", ./.venv/bin/pytest tests/test_hosted_contract.py, and npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. Usage-ledger rows now retain write-time governance markers while present, expired rows are deleted via persisted evidence_expires_at cleanup rather than current-policy inference, and operator request detail explains that governed evidence disappears after cleanup instead of implying soft-delete or hosted export recovery. |
 | R059 | continuity | validated | M008/S03 | none | Validated by M008/S03 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k "retention or health or heartbeat" and npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx'. Retention cleanup now runs as a lifecycle service wired into app startup, deletes expired ledger rows via persisted evidence_expires_at markers through GovernanceStore.delete_expired_usage_records(), exposes degraded/ready runtime health with last-run diagnostics, and preserves the hosted metadata-only dependency summary boundary. |
-| R060 | operability | active | M008/S04 | M008/S02 | mapped |
-| R061 | integration | active | M008/S04 | M008/S05 | mapped |
+| R060 | operability | validated | M008/S04 | M008/S02 | Validated by M008/S04 through passing console and hosted-contract verification: `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`, `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`, and `./.venv/bin/pytest tests/test_hosted_contract.py`. The policy surface now renders an effective evidence boundary derived from retention/minimization controls, and request detail explains retained/suppressed/deleted semantics from persisted governance markers while the row exists. |
+| R061 | integration | validated | M008/S04 | M008/S05 | Validated by M008/S04 through passing focused hosted and console verification: `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx` and `./.venv/bin/pytest tests/test_hosted_contract.py`. Hosted trust-boundary surfaces now reuse the same retained/suppressed/deleted/not-hosted vocabulary as policy and request detail while still excluding raw usage-ledger rows and runtime-authority claims. |
 | R062 | quality-attribute | active | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | mapped |
 | R063 | differentiator | active | M008/S05 | M008/S02, M008/S04 | mapped |
 | R064 | constraint | active | M008/S05 | M008/S01, M008/S02, M008/S03, M008/S04 | mapped |
@@ -881,7 +881,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 5
-- Mapped to slices: 5
-- Validated: 44 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059)
+- Active requirements: 3
+- Mapped to slices: 3
+- Validated: 46 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061)
 - Unmapped active requirements: 0

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T17:18:19.744Z",
+  "exported_at": "2026-04-12T17:27:04.312Z",
   "milestones": [
     {
       "id": "M001",
@@ -1096,14 +1096,14 @@
       "milestone_id": "M008",
       "id": "S04",
       "title": "S04",
-      "status": "pending",
+      "status": "complete",
       "risk": "medium",
       "depends": [],
       "demo": "The policy page and request-detail surface clearly show the effective evidence boundary, including what is retained, suppressed, or no longer available due to policy.",
       "created_at": "2026-04-11T23:45:07.520Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-12T17:20:54.930Z",
+      "full_summary_md": "---\nid: S04\nparent: M008\nmilestone: M008\nprovides:\n  - A shared operator vocabulary for retained, suppressed, deleted, and not-hosted evidence states that downstream S05 can reuse in the integrated governance proof.\n  - Verified policy/request-detail/hosted seams that now tell one bounded evidence-governance story without introducing new APIs or dashboards.\nrequires:\n  []\naffects:\n  - S05\nkey_files:\n  - console/src/components/policy/policy-form.tsx\n  - console/src/lib/hosted-contract.ts\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/hosted/trust-boundary-card.tsx\n  - console/src/app/trust-boundary/page.tsx\n  - .gsd/DECISIONS.md\n  - .gsd/KNOWLEDGE.md\n  - .gsd/PROJECT.md\nkey_decisions:\n  - Reused one schema-backed hosted-contract module as the shared source for retained/suppressed/deleted/not-hosted evidence vocabulary and hosted raw-ledger exclusion wording across policy, request detail, and hosted trust-boundary surfaces.\n  - Kept the selected persisted ledger row authoritative while it exists and described deletion truthfully as full row removal at expiration rather than soft-delete, archive recovery, or hosted substitution.\npatterns_established:\n  - Keep evidence-governance wording centralized in `console/src/lib/hosted-contract.ts` and reuse it across local and hosted surfaces to prevent drift.\n  - Treat the selected persisted ledger row as the authoritative request-level evidence seam while it exists; tenant-wide or hosted summaries are supporting context, not substitutes.\n  - Use focused positive and negative copy assertions to prevent UI trust-boundary regressions such as soft-delete recovery claims, hosted raw-ledger export claims, or hosted runtime-authority drift.\nobservability_surfaces:\n  - Policy editor effective evidence-boundary panel in `console/src/components/policy/policy-form.tsx`.\n  - Request-detail effective evidence-boundary panel in `console/src/components/ledger/ledger-request-detail.tsx`.\n  - Hosted trust-boundary card/page shared evidence-vocabulary sections in `console/src/components/hosted/trust-boundary-card.tsx` and `console/src/app/trust-boundary/page.tsx`.\n  - Focused Vitest and hosted-contract regression suites as wording-drift failure signals.\ndrill_down_paths:\n  - .gsd/milestones/M008/slices/S04/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M008/slices/S04/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-12T17:20:54.932Z\nblocker_discovered: false\n---\n\n# S04: Operator evidence-boundary surfaces\n\n**S04 made Nebula’s effective evidence boundary explicit across policy, request-detail, and hosted trust-boundary surfaces using one shared retained/suppressed/deleted/not-hosted vocabulary.**\n\n## What Happened\n\nS04 completed the operator-facing evidence-governance story by aligning three existing seams around one bounded vocabulary instead of adding a new governance dashboard. On the policy page, Nebula now synthesizes an explicit effective evidence boundary from the runtime-enforced `evidence_retention_window` and `metadata_minimization_level` controls, explaining how long governed metadata remains inspectable, what strict minimization suppresses at write time, and that hosted export still excludes raw usage-ledger rows. On request detail, the selected persisted ledger row remains the authoritative request-level evidence while it exists, and the UI now states plainly what retained, suppressed, deleted, and not-hosted mean using the row’s persisted governance markers, without implying soft-delete recovery, archive lookup, or hosted raw export. On hosted surfaces, the public trust-boundary card and page now reuse the same shared evidence vocabulary and keep the metadata-only contract visibly aligned with local operator evidence language. The slice’s main implementation pattern was to centralize that vocabulary in `console/src/lib/hosted-contract.ts`, making hosted trust-boundary wording schema-backed and shared rather than duplicated. This gives S05 a coherent operator-readable chain from policy choice to persisted row truth to hosted boundary guardrail, while preserving M008’s scope constraint against compliance-platform sprawl, analytics drift, or hosted runtime authority.\n\n## Verification\n\nAll slice-plan verification passed. Ran `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx` (17/17 passing), `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx` (36/36 passing), and `./.venv/bin/pytest tests/test_hosted_contract.py` (11/11 passing). I also confirmed the slice observability surfaces exist in the assembled worktree by reviewing `console/src/components/policy/policy-form.tsx`, `console/src/components/ledger/ledger-request-detail.tsx`, `console/src/components/hosted/trust-boundary-card.tsx`, and `console/src/app/trust-boundary/page.tsx`: policy now derives an explicit evidence-boundary summary from retention/minimization controls, request detail explains retained/suppressed/deleted/not-hosted states from persisted row-level markers, and hosted trust surfaces reuse the same shared metadata-only vocabulary. This gives immediate failure visibility through focused Vitest assertions and hosted-contract regression instead of latent wording drift.\n\n## Requirements Advanced\n\n- R060 — Validated operator inspection of the effective evidence boundary on the policy and request-detail surfaces through shared copy and focused tests.\n- R061 — Validated that hosted trust-boundary wording stays metadata-only and visibly consistent with the new evidence vocabulary.\n- R062 — Materially advanced the end-to-end governance proof by aligning policy, request-detail, and hosted trust seams around one bounded story.\n- R063 — Strengthened operator trust by making retained vs suppressed vs deleted evidence legible while preserving the request-led debugging model.\n- R064 — Preserved milestone scope discipline by reusing existing surfaces and rejecting dashboard/compliance/hosted-authority drift.\n\n## Requirements Validated\n\n- R060 — Passing focused console verification (`policy-form.test.tsx`, `policy-page.test.tsx`, `ledger-request-detail.test.tsx`) proves operators can inspect the effective evidence boundary on policy and request-detail surfaces.\n- R061 — Passing hosted trust-boundary Vitest suites plus `./.venv/bin/pytest tests/test_hosted_contract.py` proves hosted export remains metadata-only and wording stays aligned with the shared evidence contract.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nExpanded verification slightly beyond the minimum listed commands by also reading the shared hosted-contract module and recording the new vocabulary pattern in KNOWLEDGE.md, because the shared copy contract is now the main drift-prevention seam for this slice. No product-scope deviation.\n\n## Known Limitations\n\nNone.\n\n## Follow-ups\n\nNone.\n\n## Files Created/Modified\n\n- `console/src/components/policy/policy-form.tsx` — Added effective evidence-boundary guidance derived from retention/minimization controls and reused shared hosted metadata-only exclusion copy.\n- `console/src/components/policy/policy-form.test.tsx` — Locked policy-side evidence-boundary wording, strict-minimization behavior, and runtime-enforced vs advisory framing.\n- `console/src/components/policy/policy-page.test.tsx` — Verified policy page still presents the new boundary vocabulary without drifting into a dashboard or advisory-only framing.\n- `console/src/lib/hosted-contract.ts` — Centralized shared hosted metadata-only contract and retained/suppressed/deleted/not-hosted evidence vocabulary.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Added an effective evidence boundary panel that explains row-level retained, suppressed, deleted, and not-hosted semantics from persisted governance markers.\n- `console/src/components/ledger/ledger-request-detail.test.tsx` — Locked request-detail evidence-boundary wording and guardrails against soft-delete recovery or hosted raw-export implications.\n- `console/src/components/hosted/trust-boundary-card.tsx` — Reused the shared evidence vocabulary on the hosted trust-boundary card while preserving metadata-only posture.\n- `console/src/components/hosted/trust-boundary-card.test.tsx` — Verified hosted trust card copy stays aligned to the shared contract and excludes hosted authority drift.\n- `console/src/app/trust-boundary/page.tsx` — Reinforced the public hosted trust-boundary page with the same shared evidence vocabulary and guardrails.\n- `console/src/app/trust-boundary/page.test.tsx` — Locked public trust-boundary copy against raw-ledger export and runtime-authority drift.\n- `console/src/lib/hosted-contract.test.ts` — Added contract-level tests for shared hosted evidence vocabulary and wording guardrails.\n- `.gsd/DECISIONS.md` — Recorded the slice-level copy-alignment decision.\n- `.gsd/KNOWLEDGE.md` — Captured the shared evidence vocabulary pattern for future slices.\n- `.gsd/PROJECT.md` — Refreshed project state to mark S04 complete and describe the new operator evidence-boundary surfaces.\n",
+      "full_uat_md": "# S04: Operator evidence-boundary surfaces — UAT\n\n**Milestone:** M008\n**Written:** 2026-04-12T17:20:54.932Z\n\n# UAT — S04 Operator evidence-boundary surfaces\n\n## Preconditions\n- Nebula console dependencies are installed (`npm --prefix console install` already satisfied in the working environment).\n- Python virtualenv is available at `./.venv` with backend test dependencies installed.\n- Use the current assembled worktree for Milestone M008/S04.\n\n## Test Case 1 — Policy page explains the effective evidence boundary from runtime controls\n1. Run `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx`.\n2. Open the policy form test expectations or render the policy page in local dev if desired.\n3. Confirm the policy surface shows an **Effective evidence boundary** panel inside the runtime-enforced controls section.\n4. Confirm the panel states:\n   - governed request metadata remains inspectable only for the configured retention window,\n   - strict minimization suppresses route signals and similar metadata at write time,\n   - hosted export still excludes raw usage-ledger rows.\n5. Switch the form state between `metadata_minimization_level=standard` and `strict` in the test fixtures or local UI.\n\nExpected outcome:\n- The boundary summary changes with the retention/minimization settings.\n- The panel remains subordinate to runtime-enforced controls and does not read like a second dashboard or advisory capture feature.\n- The focused Vitest suite passes.\n\n## Test Case 2 — Request detail explains retained, suppressed, deleted, and not-hosted semantics from the persisted row\n1. Run `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx`.\n2. Inspect the rendered request-detail component fixture or local UI for a selected ledger row.\n3. Confirm the request detail introduction identifies the persisted ledger row as the authoritative evidence seam **while the row still exists**.\n4. Confirm the **Effective evidence boundary** panel states:\n   - retained detail stays local to the persisted row,\n   - suppressed metadata is no longer available from the ledger later,\n   - deleted means governed retention removed the whole row at expiration,\n   - hosted does not receive raw usage-ledger rows and cannot replace local request evidence.\n5. Check that the copy does **not** imply archive recovery, soft-delete, or hosted raw export.\n\nExpected outcome:\n- Operators can read one selected row and understand exactly what evidence is still present, what was never retained, and what disappears after cleanup.\n- The focused Vitest suite passes without any wording drift.\n\n## Test Case 3 — Hosted trust boundary stays metadata-only while using the same evidence vocabulary\n1. Run `npm --prefix console run test -- --run src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx`.\n2. Run `./.venv/bin/pytest tests/test_hosted_contract.py`.\n3. Inspect the hosted trust-boundary card/page fixtures or local UI.\n4. Confirm the hosted surfaces reuse the retained/suppressed/deleted/not-hosted vocabulary and the hosted raw-ledger exclusion sentence.\n5. Confirm the hosted surfaces still present the contract as metadata-only, descriptive, and non-authoritative for local runtime enforcement.\n\nExpected outcome:\n- Hosted wording matches the shared evidence vocabulary without implying raw usage-ledger export, tenant-policy enforcement, or request-serving authority.\n- Both the focused Vitest suite and the backend hosted-contract regression pass.\n\n## Edge Case 1 — Strict minimization removes route-signal detail\n1. In the policy form fixture or local UI, set `metadata_minimization_level` to `strict`.\n2. Re-check the policy evidence-boundary panel.\n\nExpected outcome:\n- The copy explicitly says strict minimization suppresses route signals and similar metadata at write time, so that detail is not available later from the ledger.\n\n## Edge Case 2 — Expired evidence should not imply recoverability\n1. Review the request-detail tests for deletion language and the hosted-contract tests for prohibited wording.\n2. Confirm no surface uses phrases that suggest soft-delete, archives, recovery, or hosted substitution after expiration.\n\nExpected outcome:\n- Deletion is described as full row removal at retention expiry.\n- Hosted remains unable to replace local request-level evidence after deletion.\n\n",
       "goal": "Make the policy and request-detail console surfaces explain Nebula’s effective evidence boundary using the already-persisted governance fields, while keeping hosted trust-boundary wording visibly aligned with the metadata-only contract.",
       "success_criteria": "- The policy surface presents an explicit effective evidence boundary summary derived from `evidence_retention_window` and `metadata_minimization_level`, including what is retained while a row exists, what strict minimization suppresses today, and that hosted export stays metadata-only.\n- The request-detail surface explains the selected row’s retained, suppressed, and deletion semantics using persisted row-level governance markers without implying soft-delete, archive recovery, or hosted raw export.\n- Hosted trust-boundary wording remains schema-backed and visibly consistent with the operator evidence vocabulary introduced on the policy and request-detail seams.\n- Focused console tests and hosted-contract regression prove the copy matches real runtime behavior and does not widen scope into a dashboard, archive system, or hosted authority surface.",
       "proof_level": "integration",
@@ -1115,25 +1115,20 @@
     {
       "milestone_id": "M008",
       "id": "S05",
-      "title": "Integrated governance proof",
+      "title": "S05",
       "status": "pending",
       "risk": "medium",
-      "depends": [
-        "S01",
-        "S02",
-        "S03",
-        "S04"
-      ],
+      "depends": [],
       "demo": "Nebula proves end to end that tenant policy governs persistence and deletion, request detail explains historical evidence truthfully, and the hosted metadata-only boundary remains intact without payload-capture or hosted-authority drift.",
       "created_at": "2026-04-11T23:45:07.520Z",
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Assemble the full governance proof path across policy, persistence, retention, request inspection, and hosted trust boundary.",
-      "success_criteria": "- One integrated proof path covers policy → persistence/export behavior → request-detail evidence → retention deletion → hosted-boundary consistency.\n- Documentation points to the canonical evidence-governance story without duplicating drifting contract details.\n- The milestone closes without widening Nebula into compliance-platform, analytics, or hosted-authority scope.",
-      "proof_level": "Integrated end-to-end proof",
-      "integration_closure": "The assembled milestone proves one coherent request-led trust story rather than isolated policy, backend, or UI claims.",
-      "observability_impact": "Adds the integrated proof and close-out verification artifacts that downstream milestones can treat as the canonical evidence-governance story.",
+      "goal": "Assemble one canonical, reviewable proof path that shows tenant evidence policy governs persistence and deletion, request detail remains historically truthful while a row exists, and the hosted metadata-only boundary stays intact without new governance product scope.",
+      "success_criteria": "- `docs/m008-integrated-proof.md` exists and follows the established pointer-only integrated-proof pattern without duplicating backend or UI contracts.\n- The proof order is explicit and bounded: policy/options and policy form → persisted ledger row and request detail → retention lifecycle cleanup and health visibility → hosted metadata-only trust boundary.\n- Discoverability links to the new proof exist in `README.md` and `docs/architecture.md`.\n- Focused backend and console verification mechanically prove the assembled governance story and catch drift in deletion semantics, request-detail authority, observability support role, and hosted metadata-only wording.",
+      "proof_level": "final-assembly",
+      "integration_closure": "This slice closes milestone assembly by reusing the shipped S01–S04 seams without adding new APIs or dashboards. After these tasks, nothing should remain before M008 is reviewable end-to-end beyond executing the planned verification and milestone validation.",
+      "observability_impact": "- Runtime signals: usage-ledger row presence/disappearance, `retention_lifecycle` dependency status, and shared hosted evidence vocabulary remain the diagnostic signals for integrated-governance drift.\n- Inspection surfaces: `docs/m008-integrated-proof.md`, `/v1/admin/usage/ledger`, `/health/ready`, `/health/dependencies`, `console/src/components/ledger/ledger-request-detail.tsx`, and hosted trust-boundary surfaces.\n- Failure visibility: focused pytest/Vitest failures should localize whether drift is in persistence truth, deletion runtime health, supporting-context ordering, or hosted metadata-only wording.\n- Redaction constraints: no task may introduce raw prompt/response capture, hosted raw-ledger export, or wording that implies recovery/authority beyond the existing metadata-only contract.",
       "sequence": 5,
       "replan_triggered_at": null
     }
@@ -4939,6 +4934,117 @@
       "observability_impact": "Keeps the selected request-detail panel and hosted trust page as the two bounded inspection surfaces for runtime-evidence-vs-hosted-boundary diagnosis, with tests catching wording drift.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S05",
+      "id": "T01",
+      "title": "Added the canonical M008 integrated governance proof doc and linked it from the main documentation entrypoints.",
+      "status": "complete",
+      "one_liner": "Added the canonical M008 integrated governance proof doc and linked it from the main documentation entrypoints.",
+      "narrative": "I authored `docs/m008-integrated-proof.md` as a pointer-only integrated walkthrough that follows the established M006/M007 pattern and keeps each shipped seam in its canonical role. The new proof starts with tenant policy and runtime-enforced evidence options, moves through one persisted usage-ledger row and request detail as the primary historical evidence while the row exists, then points to persisted `evidence_expires_at`-driven retention cleanup plus `retention_lifecycle` health as supporting runtime context, and finishes with the hosted metadata-only trust boundary. I reused the shared retained/suppressed/deleted/not-hosted vocabulary from `console/src/lib/hosted-contract.ts` in the document framing so the proof does not imply recovery semantics, soft-delete archives, hosted raw-ledger export, or hosted runtime authority. I also added minimal discoverability links in `README.md` and `docs/architecture.md` so reviewers can find the new proof without expanding those docs into secondary explanation surfaces.",
+      "verification_result": "Ran the task’s required Python assertion script against `docs/m008-integrated-proof.md`, `README.md`, and `docs/architecture.md`. The check confirmed the new document exists, includes the required proof-order headings and required phrases (`tenant policy`, `evidence_expires_at`, `request detail`, `retention_lifecycle`, `metadata-only`), contains no `TBD`/`TODO` placeholders, and that both documentation entrypoints now reference `docs/m008-integrated-proof.md`.",
+      "duration": "",
+      "completed_at": "2026-04-12T17:27:04.284Z",
+      "blocker_discovered": false,
+      "deviations": "None.",
+      "known_issues": "None.",
+      "key_files": [
+        "docs/m008-integrated-proof.md",
+        "README.md",
+        "docs/architecture.md"
+      ],
+      "key_decisions": [
+        "Kept the M008 proof doc pointer-only and delegated detailed contracts back to policy/options, ledger, retention lifecycle, and hosted trust-boundary canonicals instead of duplicating them.",
+        "Reused the shared hosted-contract evidence vocabulary in the integrated proof so retained/suppressed/deleted/not-hosted wording stays aligned with shipped UI and test seams."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S05\nmilestone: M008\nkey_files:\n  - docs/m008-integrated-proof.md\n  - README.md\n  - docs/architecture.md\nkey_decisions:\n  - Kept the M008 proof doc pointer-only and delegated detailed contracts back to policy/options, ledger, retention lifecycle, and hosted trust-boundary canonicals instead of duplicating them.\n  - Reused the shared hosted-contract evidence vocabulary in the integrated proof so retained/suppressed/deleted/not-hosted wording stays aligned with shipped UI and test seams.\nduration: \nverification_result: passed\ncompleted_at: 2026-04-12T17:27:04.283Z\nblocker_discovered: false\n---\n\n# T01: Added the canonical M008 integrated governance proof doc and linked it from the main documentation entrypoints.\n\n**Added the canonical M008 integrated governance proof doc and linked it from the main documentation entrypoints.**\n\n## What Happened\n\nI authored `docs/m008-integrated-proof.md` as a pointer-only integrated walkthrough that follows the established M006/M007 pattern and keeps each shipped seam in its canonical role. The new proof starts with tenant policy and runtime-enforced evidence options, moves through one persisted usage-ledger row and request detail as the primary historical evidence while the row exists, then points to persisted `evidence_expires_at`-driven retention cleanup plus `retention_lifecycle` health as supporting runtime context, and finishes with the hosted metadata-only trust boundary. I reused the shared retained/suppressed/deleted/not-hosted vocabulary from `console/src/lib/hosted-contract.ts` in the document framing so the proof does not imply recovery semantics, soft-delete archives, hosted raw-ledger export, or hosted runtime authority. I also added minimal discoverability links in `README.md` and `docs/architecture.md` so reviewers can find the new proof without expanding those docs into secondary explanation surfaces.\n\n## Verification\n\nRan the task’s required Python assertion script against `docs/m008-integrated-proof.md`, `README.md`, and `docs/architecture.md`. The check confirmed the new document exists, includes the required proof-order headings and required phrases (`tenant policy`, `evidence_expires_at`, `request detail`, `retention_lifecycle`, `metadata-only`), contains no `TBD`/`TODO` placeholders, and that both documentation entrypoints now reference `docs/m008-integrated-proof.md`.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `python3 - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m008-integrated-proof.md')\nassert proof.exists(), 'missing docs/m008-integrated-proof.md'\ntext = proof.read_text()\nfor heading in [\n    '# M008 integrated governance proof',\n    '## What this integrated proof establishes',\n    '## Canonical proof order',\n    '## Minimal operator walkthrough',\n    '## Failure modes this integrated proof makes obvious',\n]:\n    assert heading in text, heading\nfor phrase in [\n    'tenant policy',\n    'evidence_expires_at',\n    'request detail',\n    'retention_lifecycle',\n    'metadata-only',\n]:\n    assert phrase in text, phrase\nfor path in ['README.md', 'docs/architecture.md']:\n    assert 'docs/m008-integrated-proof.md' in Path(path).read_text(), path\nassert 'TBD' not in text and 'TODO' not in text\nPY` | 0 | ✅ pass | 42ms |\n\n## Deviations\n\nNone.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `docs/m008-integrated-proof.md`\n- `README.md`\n- `docs/architecture.md`\n",
+      "description": "Create the canonical M008 integrated proof document as a pointer-only walkthrough that joins the shipped S01–S04 seams in the exact proof order this slice owns: policy/options and policy form, one persisted request row and request detail, retention lifecycle cleanup plus health visibility, and the hosted metadata-only trust boundary. Follow the established pattern in `docs/m006-integrated-proof.md` and `docs/m007-integrated-proof.md`: keep each seam in its canonical role, avoid restating backend/UI contracts, and make scope-drift failure modes explicit. Add only minimal discoverability links in `README.md` and `docs/architecture.md` so reviewers can find the new proof without turning those docs into a second explanation surface. Reuse the shared evidence vocabulary from `console/src/lib/hosted-contract.ts` and explicitly preserve the bounded story from requirements R062/R063/R064: request-led proof stays primary, deletion is driven by persisted `evidence_expires_at`, and hosted remains metadata-only rather than a recovery or authority layer.\n\nIf any wording or ordering in the current docs conflicts with the shipped seams, fix the integrated-proof framing in the new doc rather than expanding product scope. Keep the task implementation narrow and pointer-based.",
+      "estimate": "45m",
+      "files": [
+        "docs/m006-integrated-proof.md",
+        "docs/m007-integrated-proof.md",
+        "docs/m008-integrated-proof.md",
+        "README.md",
+        "docs/architecture.md",
+        "console/src/lib/hosted-contract.ts"
+      ],
+      "verify": "python3 - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m008-integrated-proof.md')\nassert proof.exists(), 'missing docs/m008-integrated-proof.md'\ntext = proof.read_text()\nfor heading in [\n    '# M008 integrated governance proof',\n    '## What this integrated proof establishes',\n    '## Canonical proof order',\n    '## Minimal operator walkthrough',\n    '## Failure modes this integrated proof makes obvious',\n]:\n    assert heading in text, heading\nfor phrase in [\n    'tenant policy',\n    'evidence_expires_at',\n    'request detail',\n    'retention_lifecycle',\n    'metadata-only',\n]:\n    assert phrase in text, phrase\nfor path in ['README.md', 'docs/architecture.md']:\n    assert 'docs/m008-integrated-proof.md' in Path(path).read_text(), path\nassert 'TBD' not in text and 'TODO' not in text\nPY",
+      "inputs": [
+        "`docs/m006-integrated-proof.md`",
+        "`docs/m007-integrated-proof.md`",
+        "`README.md`",
+        "`docs/architecture.md`",
+        "`console/src/lib/hosted-contract.ts`",
+        "`.gsd/milestones/M008/slices/S05/S05-RESEARCH.md`"
+      ],
+      "expected_output": [
+        "`docs/m008-integrated-proof.md`",
+        "`README.md`",
+        "`docs/architecture.md`"
+      ],
+      "observability_impact": "Future agents inspect `docs/m008-integrated-proof.md` first to follow the canonical review order, then open the linked runtime and UI seams in sequence. Failure is visible as missing proof-order sections, missing discoverability links, or wording that stops matching the shared hosted/evidence vocabulary.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S05",
+      "id": "T02",
+      "title": "Tighten executable proof seams for integrated governance ordering",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Use the new integrated proof doc to drive focused regression coverage across the shipped seams instead of broad feature churn. Run the targeted backend and console suites that already encode the M008 governance story, then only add or tighten assertions where integrated-proof drift is currently unguarded. Priority checks: request detail remains authoritative while a row exists; deletion semantics continue to reject soft-delete/recovery implications; observability/runtime-health stays supporting context rather than replacing ledger proof; and hosted trust-boundary surfaces keep the metadata-only evidence wording aligned with the shared contract. If the existing tests already cover a seam, keep it stable; if a missing order/copy expectation is needed to make the integrated proof executable, add the smallest focused assertion in the relevant test file.\n\nDo not add new endpoints, dashboards, or exported data. This task closes R062/R063/R064 by ensuring the assembled story is mechanically verifiable from the real backend, health, and console seams the doc points to.",
+      "estimate": "1h",
+      "files": [
+        "docs/m008-integrated-proof.md",
+        "tests/test_governance_api.py",
+        "tests/test_retention_lifecycle_service.py",
+        "tests/test_health.py",
+        "tests/test_hosted_contract.py",
+        "console/src/components/ledger/ledger-request-detail.test.tsx",
+        "console/src/components/health/runtime-health-cards.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx",
+        "console/src/components/hosted/trust-boundary-card.test.tsx",
+        "console/src/app/trust-boundary/page.test.tsx"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py tests/test_retention_lifecycle_service.py tests/test_health.py tests/test_hosted_contract.py -k \"usage_ledger or retention or lifecycle or health or heartbeat\" && npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx src/components/health/runtime-health-cards.test.tsx 'src/app/(console)/observability/page.test.tsx' src/components/hosted/trust-boundary-card.test.tsx src/app/trust-boundary/page.test.tsx",
+      "inputs": [
+        "`docs/m008-integrated-proof.md`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_retention_lifecycle_service.py`",
+        "`tests/test_health.py`",
+        "`tests/test_hosted_contract.py`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/health/runtime-health-cards.test.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/components/hosted/trust-boundary-card.test.tsx`",
+        "`console/src/app/trust-boundary/page.test.tsx`"
+      ],
+      "expected_output": [
+        "`tests/test_governance_api.py`",
+        "`tests/test_retention_lifecycle_service.py`",
+        "`tests/test_health.py`",
+        "`tests/test_hosted_contract.py`",
+        "`console/src/components/ledger/ledger-request-detail.test.tsx`",
+        "`console/src/components/health/runtime-health-cards.test.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`",
+        "`console/src/components/hosted/trust-boundary-card.test.tsx`",
+        "`console/src/app/trust-boundary/page.test.tsx`"
+      ],
+      "observability_impact": "This task preserves the real failure-diagnosis surfaces for the integrated proof: `/v1/admin/usage/ledger` visibility before/after cleanup, retention lifecycle health payloads, and console request-detail/hosted wording tests. Failures should surface as targeted test regressions that localize whether the drift is in persistence, deletion runtime state, or trust-boundary copy.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -5502,6 +5608,18 @@
       "decision": "How M008/S03 should operationalize governed evidence deletion and operator proof",
       "choice": "Run retention cleanup as a small background lifecycle service wired into FastAPI/container startup, expose only coarse runtime diagnostics through existing health/dependency and observability surfaces, and continue proving deletion through the existing usage-ledger seam rather than adding a retention-specific endpoint or dashboard.",
       "rationale": "S03 needed real bounded deletion execution that operators could inspect without widening Nebula into a compliance/analytics product or hosted authority. Reusing GovernanceStore.delete_expired_usage_records() plus existing health cards and /v1/admin/usage/ledger preserves one authoritative persistence/deletion seam, keeps hosted export metadata-only, and makes failures visible without blocking local serving.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 55,
+      "id": "D048",
+      "when_context": "M008/S04",
+      "scope": "console-copy",
+      "decision": "How M008/S04 should keep policy, request-detail, and hosted trust-boundary evidence language aligned",
+      "choice": "Centralize retained/suppressed/deleted/not-hosted evidence vocabulary and hosted raw-export exclusion copy in console/src/lib/hosted-contract.ts, then reuse that shared contract from policy, request-detail, and hosted trust-boundary surfaces.",
+      "rationale": "S04's main risk was wording drift across operator-facing seams. Reusing one schema-backed hosted-contract module keeps the local evidence boundary and hosted metadata-only boundary visibly consistent, prevents ad hoc copy from implying soft-delete recovery or hosted authority, and gives focused tests one contract point to guard.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -6827,6 +6945,17 @@
       "verdict": "✅ pass",
       "duration_ms": 760,
       "created_at": "2026-04-12T17:18:19.718Z"
+    },
+    {
+      "id": 138,
+      "task_id": "T01",
+      "slice_id": "S05",
+      "milestone_id": "M008",
+      "command": "python3 - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m008-integrated-proof.md')\nassert proof.exists(), 'missing docs/m008-integrated-proof.md'\ntext = proof.read_text()\nfor heading in [\n    '# M008 integrated governance proof',\n    '## What this integrated proof establishes',\n    '## Canonical proof order',\n    '## Minimal operator walkthrough',\n    '## Failure modes this integrated proof makes obvious',\n]:\n    assert heading in text, heading\nfor phrase in [\n    'tenant policy',\n    'evidence_expires_at',\n    'request detail',\n    'retention_lifecycle',\n    'metadata-only',\n]:\n    assert phrase in text, phrase\nfor path in ['README.md', 'docs/architecture.md']:\n    assert 'docs/m008-integrated-proof.md' in Path(path).read_text(), path\nassert 'TBD' not in text and 'TODO' not in text\nPY",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 42,
+      "created_at": "2026-04-12T17:27:04.284Z"
     }
   ]
 }
