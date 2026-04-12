@@ -58,7 +58,7 @@ for path in ['README.md', 'docs/architecture.md']:
 assert 'TBD' not in text and 'TODO' not in text
 PY
 
-- [ ] **T02: Tighten executable proof seams for integrated governance ordering** `est:1h`
+- [x] **T02: Tighten executable proof seams for integrated governance ordering** `est:1h`
   Use the new integrated proof doc to drive focused regression coverage across the shipped seams instead of broad feature churn. Run the targeted backend and console suites that already encode the M008 governance story, then only add or tighten assertions where integrated-proof drift is currently unguarded. Priority checks: request detail remains authoritative while a row exists; deletion semantics continue to reject soft-delete/recovery implications; observability/runtime-health stays supporting context rather than replacing ledger proof; and hosted trust-boundary surfaces keep the metadata-only evidence wording aligned with the shared contract. If the existing tests already cover a seam, keep it stable; if a missing order/copy expectation is needed to make the integrated proof executable, add the smallest focused assertion in the relevant test file.
 
 Do not add new endpoints, dashboards, or exported data. This task closes R062/R063/R064 by ensuring the assembled story is mechanically verifiable from the real backend, health, and console seams the doc points to.

@@ -40,6 +40,8 @@ def test_readiness_reports_degraded_optional_dependencies() -> None:
 
     ready_body = ready.json()
     dependencies_body = dependencies.json()
+    ready_dependency_names = list(ready_body["dependencies"].keys())
+    dependency_names = list(dependencies_body["dependencies"].keys())
 
     assert ready.status_code == 200
     assert ready_body["status"] == "degraded"
@@ -50,6 +52,10 @@ def test_readiness_reports_degraded_optional_dependencies() -> None:
     assert ready_body["dependencies"]["premium_provider"]["required"] is False
     assert ready_body["dependencies"]["retention_lifecycle"]["status"] == "ready"
     assert ready_body["dependencies"]["retention_lifecycle"]["required"] is False
+    assert ready_dependency_names.index("governance_store") < ready_dependency_names.index(
+        "retention_lifecycle"
+    )
+    assert dependency_names.index("governance_store") < dependency_names.index("retention_lifecycle")
     assert dependencies.status_code == 200
     assert dependencies_body["runtime_profile"] == "premium_first"
     assert dependencies_body["dependencies"]["premium_provider"]["detail"] == "Premium provider probe timed out."

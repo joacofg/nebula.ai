@@ -193,6 +193,15 @@ describe("observability-page", () => {
 
     const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
     expect(followUpSection).not.toBeNull();
+    expect(selectedRequestSection!.compareDocumentPosition(followUpSection!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    const selectedRequestText = selectedRequestSection!.textContent ?? "";
+    const followUpText = followUpSection!.textContent ?? "";
+    expect(selectedRequestText.indexOf("req-123")).toBeGreaterThanOrEqual(0);
+    expect(followUpText.indexOf("retention_lifecycle")).toBeGreaterThanOrEqual(0);
+    expect(selectedRequestText.indexOf("req-123")).toBeLessThan(
+      container.firstElementChild!.textContent!.indexOf("retention_lifecycle"),
+    );
+    expect(followUpSection).not.toBeNull();
     const followUp = within(followUpSection!);
     expect(followUp.getByText(/use these supporting cards to decide the next operator action/i)).toBeInTheDocument();
     expect(followUp.getByText(/point toward policy preview as the comparison surface before any save elsewhere in the console/i)).toBeInTheDocument();

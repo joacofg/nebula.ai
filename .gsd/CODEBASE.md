@@ -1,13 +1,14 @@
 # Codebase Map
 
-Generated: 2026-04-12T17:20:58Z | Files: 270 | Described: 0/270
-<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T17:20:58Z","fingerprint":"add3aad940923c206f3c4f1bce533b19270b19ae","fileCount":270,"truncated":false} -->
+Generated: 2026-04-12T17:27:10Z | Files: 272 | Described: 0/272
+<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T17:27:10Z","fingerprint":"3168970bf60672a78852474d63d772c99250ac96","fileCount":272,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
 - `.env.example`
 - `.gitignore`
 - `.python-version`
+- `.tmp_s05_research.md`
 - `alembic.ini`
 - `CLAUDE.md`
 - `docker-compose.selfhosted.yml`
@@ -228,7 +229,7 @@ Generated: 2026-04-12T17:20:58Z | Files: 270 | Described: 0/270
 - `deploy/selfhosted.env.example`
 
 ### docs/
-- *(22 files: 21 .md, 1 .json)*
+- *(23 files: 22 .md, 1 .json)*
 
 ### migrations/
 - `migrations/env.py`
