@@ -17,6 +17,7 @@ from nebula.models.governance import (
     ApiKeyRecord,
     CalibrationEvidenceSummary,
     CalibrationReasonCount,
+    MetadataMinimizationLevel,
     TenantPolicy,
     TenantRecord,
     UsageLedgerRecord,
@@ -59,6 +60,12 @@ class GovernanceStore:
     }
     _CALIBRATION_GATED_ROUTE_REASONS = {
         "calibrated_routing_disabled": "calibrated_routing_disabled",
+    }
+    _RETENTION_WINDOWS = {
+        "24h": timedelta(hours=24),
+        "7d": timedelta(days=7),
+        "30d": timedelta(days=30),
+        "90d": timedelta(days=90),
     }
 
     def __init__(self, settings: Settings, session_factory: sessionmaker[Session]) -> None:
@@ -201,6 +208,8 @@ class GovernanceStore:
             current.soft_budget_usd = policy.soft_budget_usd
             current.prompt_capture_enabled = policy.prompt_capture_enabled
             current.response_capture_enabled = policy.response_capture_enabled
+            current.evidence_retention_window = policy.evidence_retention_window
+            current.metadata_minimization_level = policy.metadata_minimization_level
             current.updated_at = self._now()
             session.commit()
         return self.get_policy(tenant_id)
@@ -290,31 +299,38 @@ class GovernanceStore:
             return self._stored_api_key_from_model(row) if row else None
 
     def record_usage(self, record: UsageLedgerRecord) -> UsageLedgerRecord:
+        governed_record = self._apply_usage_governance(record)
         with self._session() as session:
             session.add(
                 UsageLedgerModel(
-                    request_id=record.request_id,
-                    tenant_id=record.tenant_id,
-                    requested_model=record.requested_model,
-                    final_route_target=record.final_route_target,
-                    final_provider=record.final_provider,
-                    fallback_used=record.fallback_used,
-                    cache_hit=record.cache_hit,
-                    response_model=record.response_model,
-                    prompt_tokens=record.prompt_tokens,
-                    completion_tokens=record.completion_tokens,
-                    total_tokens=record.total_tokens,
-                    estimated_cost=record.estimated_cost,
-                    latency_ms=record.latency_ms,
-                    timestamp=record.timestamp,
-                    terminal_status=record.terminal_status,
-                    route_reason=record.route_reason,
-                    policy_outcome=record.policy_outcome,
-                    route_signals=record.route_signals,
+                    request_id=governed_record.request_id,
+                    tenant_id=governed_record.tenant_id,
+                    requested_model=governed_record.requested_model,
+                    final_route_target=governed_record.final_route_target,
+                    final_provider=governed_record.final_provider,
+                    fallback_used=governed_record.fallback_used,
+                    cache_hit=governed_record.cache_hit,
+                    response_model=governed_record.response_model,
+                    prompt_tokens=governed_record.prompt_tokens,
+                    completion_tokens=governed_record.completion_tokens,
+                    total_tokens=governed_record.total_tokens,
+                    estimated_cost=governed_record.estimated_cost,
+                    latency_ms=governed_record.latency_ms,
+                    timestamp=governed_record.timestamp,
+                    terminal_status=governed_record.terminal_status,
+                    route_reason=governed_record.route_reason,
+                    policy_outcome=governed_record.policy_outcome,
+                    route_signals=governed_record.route_signals,
+                    message_type=governed_record.message_type,
+                    evidence_retention_window=governed_record.evidence_retention_window,
+                    evidence_expires_at=governed_record.evidence_expires_at,
+                    metadata_minimization_level=governed_record.metadata_minimization_level,
+                    metadata_fields_suppressed_json=governed_record.metadata_fields_suppressed,
+                    governance_source=governed_record.governance_source,
                 )
             )
             session.commit()
-        return record
+        return governed_record
 
     def list_usage_records(
         self,
@@ -505,6 +521,12 @@ class GovernanceStore:
             route_reason=row.route_reason,
             policy_outcome=row.policy_outcome,
             route_signals=row.route_signals,
+            message_type=row.message_type,
+            evidence_retention_window=row.evidence_retention_window,
+            evidence_expires_at=row.evidence_expires_at,
+            metadata_minimization_level=row.metadata_minimization_level,
+            metadata_fields_suppressed=row.metadata_fields_suppressed_json,
+            governance_source=row.governance_source,
         )
 
     def _policy_from_model(self, row: TenantPolicyModel) -> TenantPolicy:
@@ -522,7 +544,49 @@ class GovernanceStore:
             soft_budget_usd=row.soft_budget_usd,
             prompt_capture_enabled=row.prompt_capture_enabled,
             response_capture_enabled=row.response_capture_enabled,
+            evidence_retention_window=row.evidence_retention_window,
+            metadata_minimization_level=row.metadata_minimization_level,
         )
+
+    def _apply_usage_governance(self, record: UsageLedgerRecord) -> UsageLedgerRecord:
+        policy = self.get_policy(record.tenant_id)
+        suppressed_fields = list(record.metadata_fields_suppressed)
+        route_signals = record.route_signals
+
+        if policy.metadata_minimization_level == "strict" and route_signals is not None:
+            route_signals = None
+            if "route_signals" not in suppressed_fields:
+                suppressed_fields.append("route_signals")
+
+        return record.model_copy(
+            update={
+                "message_type": record.message_type,
+                "evidence_retention_window": policy.evidence_retention_window,
+                "evidence_expires_at": self._evidence_expires_at(
+                    record.timestamp,
+                    policy.evidence_retention_window,
+                ),
+                "metadata_minimization_level": self._resolve_minimization_level(
+                    policy.metadata_minimization_level,
+                    route_signals,
+                ),
+                "metadata_fields_suppressed": suppressed_fields,
+                "governance_source": "tenant_policy",
+                "route_signals": route_signals,
+            }
+        )
+
+    def _resolve_minimization_level(
+        self,
+        policy_level: MetadataMinimizationLevel,
+        route_signals: dict[str, object] | None,
+    ) -> MetadataMinimizationLevel:
+        if policy_level == "strict" or route_signals is None:
+            return "strict"
+        return "standard"
+
+    def _evidence_expires_at(self, timestamp: datetime, retention_window: str) -> datetime:
+        return timestamp + self._RETENTION_WINDOWS[retention_window]
 
     def _hash_key(self, raw_key: str) -> str:
         return hashlib.sha256(raw_key.encode("utf-8")).hexdigest()
@@ -564,12 +628,21 @@ class GovernanceStore:
                 "Eligible calibrated routing evidence is still below the tenant sufficiency threshold.",
             )
         assert latest_eligible_request_at is not None
-        if current_time - latest_eligible_request_at > timedelta(hours=self.CALIBRATION_STALENESS_THRESHOLD_HOURS):
+        normalized_current_time = self._normalize_comparable_datetime(current_time)
+        normalized_latest_eligible = self._normalize_comparable_datetime(latest_eligible_request_at)
+        if normalized_current_time - normalized_latest_eligible > timedelta(
+            hours=self.CALIBRATION_STALENESS_THRESHOLD_HOURS
+        ):
             return (
                 "stale",
                 "Eligible calibrated routing evidence is older than the tenant staleness threshold.",
             )
         return "sufficient", "Eligible calibrated routing evidence meets the tenant sufficiency threshold."
+
+    def _normalize_comparable_datetime(self, value: datetime) -> datetime:
+        if value.tzinfo is None:
+            return value.replace(tzinfo=UTC)
+        return value.astimezone(UTC)
 
     def _reason_counts(self, counter: Counter[str]) -> list[CalibrationReasonCount]:
         return [

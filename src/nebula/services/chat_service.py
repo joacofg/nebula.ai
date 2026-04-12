@@ -873,6 +873,7 @@ class ChatService:
                 route_reason=metadata.route_reason,
                 policy_outcome=metadata.policy_outcome,
                 route_signals=metadata.route_signals,
+                message_type="chat",
             )
         )
 

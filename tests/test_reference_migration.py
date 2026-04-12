@@ -150,6 +150,12 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
     assert ledger_body[0]["terminal_status"] == "completed"
     assert ledger_body[0]["route_reason"] == public_evidence["route_reason"]
     assert ledger_body[0]["policy_outcome"] == public_evidence["policy_outcome"]
+    assert ledger_body[0]["message_type"] == "chat"
+    assert ledger_body[0]["evidence_retention_window"] == "30d"
+    assert ledger_body[0]["metadata_minimization_level"] == "standard"
+    assert ledger_body[0]["metadata_fields_suppressed"] == []
+    assert ledger_body[0]["governance_source"] == "tenant_policy"
+    assert ledger_body[0]["evidence_expires_at"] is not None
 
     assert playground.status_code == 200
     assert playground_request_id

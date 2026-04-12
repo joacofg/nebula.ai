@@ -26,6 +26,10 @@ CalibrationExcludedReason = Literal[
     "policy_forced_routing",
 ]
 CalibrationGatedReason = Literal["calibrated_routing_disabled"]
+EvidenceRetentionWindow = Literal["24h", "7d", "30d", "90d"]
+MetadataMinimizationLevel = Literal["standard", "strict"]
+GovernedMetadataField = Literal["route_signals"]
+GovernedMessageType = Literal["chat", "embeddings"]
 
 
 class TenantPolicy(BaseModel):
@@ -42,6 +46,8 @@ class TenantPolicy(BaseModel):
     soft_budget_usd: float | None = Field(default=None, ge=0)
     prompt_capture_enabled: bool = False
     response_capture_enabled: bool = False
+    evidence_retention_window: EvidenceRetentionWindow = "30d"
+    metadata_minimization_level: MetadataMinimizationLevel = "standard"
 
 
 class TenantRecord(BaseModel):
@@ -120,6 +126,12 @@ class UsageLedgerRecord(BaseModel):
     route_reason: str | None = None
     policy_outcome: str | None = None
     route_signals: dict[str, Any] | None = None
+    message_type: GovernedMessageType = "chat"
+    evidence_retention_window: EvidenceRetentionWindow = "30d"
+    evidence_expires_at: datetime | None = None
+    metadata_minimization_level: MetadataMinimizationLevel = "standard"
+    metadata_fields_suppressed: list[GovernedMetadataField] = Field(default_factory=list)
+    governance_source: Literal["tenant_policy"] = "tenant_policy"
 
 
 class CalibrationReasonCount(BaseModel):

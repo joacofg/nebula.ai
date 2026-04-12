@@ -44,6 +44,8 @@ class TenantPolicyModel(Base):
     soft_budget_usd: Mapped[float | None] = mapped_column(Float, nullable=True)
     prompt_capture_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     response_capture_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    evidence_retention_window: Mapped[str] = mapped_column(String(16), nullable=False, default="30d")
+    metadata_minimization_level: Mapped[str] = mapped_column(String(16), nullable=False, default="standard")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
@@ -168,3 +170,9 @@ class UsageLedgerModel(Base):
     route_reason: Mapped[str | None] = mapped_column(Text(), nullable=True)
     policy_outcome: Mapped[str | None] = mapped_column(Text(), nullable=True)
     route_signals: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    message_type: Mapped[str] = mapped_column(String(16), nullable=False, default="chat")
+    evidence_retention_window: Mapped[str] = mapped_column(String(16), nullable=False, default="30d")
+    evidence_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    metadata_minimization_level: Mapped[str] = mapped_column(String(16), nullable=False, default="standard")
+    metadata_fields_suppressed_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    governance_source: Mapped[str] = mapped_column(String(32), nullable=False, default="tenant_policy")

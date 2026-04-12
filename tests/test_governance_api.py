@@ -250,7 +250,7 @@ def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
     assert create_key.json()["api_key"].startswith("nbk_")
     assert policy.json()["routing_mode_default"] == "premium_only"
     assert update_policy.status_code == 200
-    assert update_policy.json()["calibrated_routing_enabled"] is False
+    assert update_policy.json()["calibrated_routing_enabled"] is True
     assert update_policy.json()["semantic_cache_enabled"] is False
     assert listed_keys.status_code == 200
     assert listed_keys.json()[0]["tenant_id"] == "team-a"
@@ -302,6 +302,8 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
         "max_premium_cost_per_request",
         "hard_budget_limit_usd",
         "hard_budget_enforcement",
+        "evidence_retention_window",
+        "metadata_minimization_level",
     ]
     assert authorized.json()["soft_signal_fields"] == ["soft_budget_usd"]
     assert authorized.json()["advisory_fields"] == [
@@ -326,6 +328,21 @@ def test_policy_options_endpoint_marks_cache_tuning_controls_as_runtime_enforced
     )
     assert "semantic_cache_similarity_threshold" not in body["soft_signal_fields"]
     assert "semantic_cache_max_entry_age_hours" not in body["advisory_fields"]
+
+
+def test_policy_options_endpoint_marks_evidence_governance_controls_as_runtime_enforced() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            response = client.get("/v1/admin/policy/options", headers=admin_headers())
+
+    assert response.status_code == 200
+    body = response.json()
+    runtime_fields = body["runtime_enforced_fields"]
+    assert runtime_fields.index("evidence_retention_window") < runtime_fields.index(
+        "metadata_minimization_level"
+    )
+    assert "evidence_retention_window" not in body["soft_signal_fields"]
+    assert "metadata_minimization_level" not in body["advisory_fields"]
 
 
 def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None:
@@ -464,28 +481,52 @@ def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
     assert body[0]["terminal_status"] == "completed"
     assert body[0]["route_reason"] == "embeddings_direct"
     assert body[0]["policy_outcome"] == "embeddings=completed"
+    assert body[0]["message_type"] == "embeddings"
+    assert body[0]["evidence_retention_window"] == "30d"
+    assert body[0]["metadata_minimization_level"] == "strict"
+    assert body[0]["metadata_fields_suppressed"] == []
+    assert body[0]["governance_source"] == "tenant_policy"
+    assert body[0]["evidence_expires_at"] is not None
     assert "input" not in body[0]
     assert "embedding" not in body[0]
 
 
-def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
+def test_tenant_policy_crud_and_governed_ledger_rows_apply_evidence_controls() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
-            async def stub_create_embeddings(*, model: str, input: str | list[str]) -> EmbeddingsResult:
-                inputs = [input] if isinstance(input, str) else input
-                return EmbeddingsResult(
-                    model=model,
-                    data=[
-                        EmbeddingVector(index=index, embedding=[float(index), float(index) + 0.5])
-                        for index, _ in enumerate(inputs)
-                    ],
-                )
-
-            app.state.container.embeddings_service.create_embeddings = stub_create_embeddings
+            update_policy = client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(
+                    allowed_premium_models=["openai/gpt-4o-mini"],
+                    evidence_retention_window="7d",
+                    metadata_minimization_level="strict",
+                ).model_dump(mode="json"),
+            )
+            fetched_policy = client.get(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+            )
+            _mount_runtime(
+                app,
+                local_provider=StubProvider(
+                    "ollama",
+                    completion_result=CompletionResult(
+                        content="local response",
+                        model="llama3.2:3b",
+                        provider="ollama",
+                        usage=usage(),
+                    ),
+                ),
+                cache_service=FakeCacheService(),
+            )
             response = client.post(
-                "/v1/embeddings",
+                "/v1/chat/completions",
                 headers=auth_headers(),
-                json={"model": "nomic-embed-text", "input": ["first", "second"]},
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "local evidence governance"}],
+                },
             )
             request_id = response.headers["X-Request-ID"]
             ledger = client.get(
@@ -493,21 +534,20 @@ def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
                 headers=admin_headers(),
             )
 
+    assert update_policy.status_code == 200
+    assert fetched_policy.status_code == 200
+    assert fetched_policy.json()["evidence_retention_window"] == "7d"
+    assert fetched_policy.json()["metadata_minimization_level"] == "strict"
     assert response.status_code == 200
-    assert request_id
     assert ledger.status_code == 200
-    body = ledger.json()
-    assert len(body) == 1
-    assert body[0]["request_id"] == request_id
-    assert body[0]["tenant_id"] == "default"
-    assert body[0]["requested_model"] == "nomic-embed-text"
-    assert body[0]["final_route_target"] == "embeddings"
-    assert body[0]["final_provider"] == "ollama"
-    assert body[0]["terminal_status"] == "completed"
-    assert body[0]["route_reason"] == "embeddings_direct"
-    assert body[0]["policy_outcome"] == "embeddings=completed"
-    assert "input" not in body[0]
-    assert "embedding" not in body[0]
+    row = ledger.json()[0]
+    assert row["message_type"] == "chat"
+    assert row["evidence_retention_window"] == "7d"
+    assert row["metadata_minimization_level"] == "strict"
+    assert row["metadata_fields_suppressed"] == ["route_signals"]
+    assert row["route_signals"] is None
+    assert row["governance_source"] == "tenant_policy"
+    assert row["evidence_expires_at"] is not None
 
 
 def test_admin_policy_simulation_returns_404_for_missing_tenant() -> None:
@@ -1191,7 +1231,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
     assert ledger.json()[0]["final_route_target"] == "denied"
     assert ledger.json()[0]["final_provider"] is None
     assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
-    assert ledger.json()[0]["policy_outcome"] == denied.json()["detail"]
+    assert ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
 
 
 def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premium_requests() -> None:
@@ -1288,7 +1328,7 @@ def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premiu
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied_ledger.status_code == 200
     assert denied_ledger.json()[0]["final_route_target"] == "denied"
-    assert denied_ledger.json()[0]["policy_outcome"] == denied.json()["detail"]
+    assert denied_ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
 
 
 def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -> None:

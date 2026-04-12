@@ -136,5 +136,6 @@ def _record_usage(
             terminal_status=terminal_status,
             route_reason=route_reason,
             policy_outcome=policy_outcome,
+            message_type="embeddings",
         )
     )

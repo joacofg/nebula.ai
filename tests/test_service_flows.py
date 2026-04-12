@@ -42,9 +42,39 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 class FakeGovernanceStore:
     def __init__(self) -> None:
         self.records = []
+        self.policies: dict[str, TenantPolicy] = {"default": TenantPolicy()}
 
     def record_usage(self, record) -> None:
-        self.records.append(record)
+        policy = self.get_policy(record.tenant_id)
+        governed_record = record.model_copy(
+            update={
+                "evidence_retention_window": policy.evidence_retention_window,
+                "metadata_minimization_level": (
+                    "strict"
+                    if policy.metadata_minimization_level == "strict" or record.route_signals is None
+                    else "standard"
+                ),
+                "metadata_fields_suppressed": (
+                    ["route_signals"]
+                    if policy.metadata_minimization_level == "strict" and record.route_signals is not None
+                    else []
+                ),
+                "route_signals": (
+                    None
+                    if policy.metadata_minimization_level == "strict"
+                    else record.route_signals
+                ),
+                "governance_source": "tenant_policy",
+            }
+        )
+        self.records.append(governed_record)
+
+    def get_policy(self, tenant_id: str) -> TenantPolicy:
+        return self.policies.get(tenant_id, TenantPolicy())
+
+    def upsert_policy(self, tenant_id: str, policy: TenantPolicy) -> TenantPolicy:
+        self.policies[tenant_id] = policy
+        return policy
 
 
 class StubAsyncResponse:
@@ -197,6 +227,14 @@ def build_service(
 @pytest.mark.asyncio
 async def test_create_completion_persists_calibrated_route_evidence_for_real_request() -> None:
     service, cache_service, local_provider, premium_provider, store = build_service()
+    store.upsert_policy(
+        "default",
+        TenantPolicy(
+            allowed_premium_models=["gpt-4o-mini", "openai/gpt-4o-mini"],
+            evidence_retention_window="7d",
+            metadata_minimization_level="strict",
+        ),
+    )
     request = ChatCompletionRequest(
         model="nebula-auto",
         messages=[{"role": "user", "content": "Please review this architecture tradeoff."}],
@@ -224,7 +262,12 @@ async def test_create_completion_persists_calibrated_route_evidence_for_real_req
     assert store.records[-1].request_id == "req-calibrated-evidence"
     assert store.records[-1].final_route_target == "premium"
     assert store.records[-1].route_reason == "token_complexity"
-    assert store.records[-1].route_signals == envelope.metadata.route_signals
+    assert store.records[-1].route_signals is None
+    assert store.records[-1].message_type == "chat"
+    assert store.records[-1].evidence_retention_window == "7d"
+    assert store.records[-1].metadata_minimization_level == "strict"
+    assert store.records[-1].metadata_fields_suppressed == ["route_signals"]
+    assert store.records[-1].governance_source == "tenant_policy"
 
 
 @pytest.mark.asyncio
