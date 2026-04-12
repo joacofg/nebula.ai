@@ -48,6 +48,8 @@ def test_readiness_reports_degraded_optional_dependencies() -> None:
     assert ready_body["dependencies"]["governance_store"]["status"] == "ready"
     assert ready_body["dependencies"]["premium_provider"]["status"] == "degraded"
     assert ready_body["dependencies"]["premium_provider"]["required"] is False
+    assert ready_body["dependencies"]["retention_lifecycle"]["status"] == "ready"
+    assert ready_body["dependencies"]["retention_lifecycle"]["required"] is False
     assert dependencies.status_code == 200
     assert dependencies_body["runtime_profile"] == "premium_first"
     assert dependencies_body["dependencies"]["premium_provider"]["detail"] == "Premium provider probe timed out."

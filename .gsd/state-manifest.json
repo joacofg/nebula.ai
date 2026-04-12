@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "exported_at": "2026-04-12T00:31:46.766Z",
+  "exported_at": "2026-04-12T00:53:46.981Z",
   "milestones": [
     {
       "id": "M001",
@@ -1056,14 +1056,14 @@
       "milestone_id": "M008",
       "id": "S02",
       "title": "S02",
-      "status": "pending",
+      "status": "complete",
       "risk": "high",
       "depends": [],
       "demo": "New requests persist only the allowed evidence shape for the tenant and carry per-request governance markers so request detail can later show what policy applied at write time.",
       "created_at": "2026-04-11T23:45:07.519Z",
-      "completed_at": null,
-      "full_summary_md": "",
-      "full_uat_md": "",
+      "completed_at": "2026-04-12T00:33:51.614Z",
+      "full_summary_md": "---\nid: S02\nparent: M008\nmilestone: M008\nprovides:\n  - A real local retention lifecycle seam for governed usage-ledger evidence.\n  - Verified row-level historical governance markers that remain inspectable while a row exists.\n  - A truthful operator explanation that expired evidence disappears after cleanup instead of being soft-deleted or exported elsewhere.\nrequires:\n  - slice: S01\n    provides: Typed tenant evidence-governance policy fields and write-time usage-ledger governance markers that this slice deletes and explains through persisted row-level markers.\naffects:\n  []\nkey_files:\n  - src/nebula/services/governance_store.py\n  - tests/test_governance_api.py\n  - tests/test_chat_completions.py\n  - tests/test_embeddings_api.py\n  - console/src/components/ledger/ledger-request-detail.tsx\n  - console/src/components/ledger/ledger-request-detail.test.tsx\n  - console/src/lib/admin-api.ts\n  - tests/test_hosted_contract.py\nkey_decisions:\n  - Kept governance marker stamping centralized in `GovernanceStore.record_usage()` / `_apply_usage_governance()` and added retention cleanup as a separate explicit lifecycle seam.\n  - Used the existing `/v1/admin/usage/ledger` seam as the authoritative operator read path for proving both surviving-row governance markers and expired-row disappearance rather than inventing a retention-specific endpoint.\n  - Framed request detail as authoritative only while the persisted ledger row still exists, explicitly rejecting soft-delete, archive recovery, and hosted raw export semantics.\npatterns_established:\n  - For evidence-governance work, preserve one write-time seam for stamping row-level markers and add lifecycle behavior separately rather than re-spreading policy logic across writers.\n  - When proving historical explainability, verify through the real operator read seam (`/v1/admin/usage/ledger` and request detail) instead of direct database inspection alone.\n  - Prefer persisted row markers such as `evidence_expires_at` over current tenant policy inference for deletion and historical explanation semantics.\nobservability_surfaces:\n  - `GovernanceStore.delete_expired_usage_records(now=...)` returns deterministic cleanup diagnostics (`eligible_count`, `deleted_count`, `cutoff`) suitable for tests and future operational hooks.\n  - `/v1/admin/usage/ledger` remains the bounded read seam for confirming surviving-row markers and post-cleanup disappearance.\n  - Request-detail evidence copy now communicates the truthful persistence/deletion boundary to operators.\ndrill_down_paths:\n  - .gsd/milestones/M008/slices/S02/tasks/T01-SUMMARY.md\n  - .gsd/milestones/M008/slices/S02/tasks/T02-SUMMARY.md\nduration: \"\"\nverification_result: passed\ncompleted_at: 2026-04-12T00:33:51.615Z\nblocker_discovered: false\n---\n\n# S02: Governed ledger persistence and request markers\n\n**Added explicit governed usage-ledger cleanup keyed by persisted evidence expiration markers, preserved write-time governance markers on surviving rows, and aligned request-detail/operator copy with real deletion semantics.**\n\n## What Happened\n\nS02 closed the next runtime leg of M008’s evidence-governance story without widening Nebula’s trust boundary. The slice kept `GovernanceStore.record_usage()` / `_apply_usage_governance()` as the sole write-time seam for stamping retention and minimization markers on new usage-ledger rows, then added an explicit lifecycle seam in `GovernanceStore.delete_expired_usage_records(now=...)` to delete only rows whose persisted `evidence_expires_at` is at or before the cleanup cutoff. That means retention cleanup now follows the historical marker written on the row, not the tenant’s current policy, which preserves truthful historical inspection while a row exists and prevents later policy edits from rewriting the evidence story.\n\nTask execution proved both sides of the contract through the existing operator read seam instead of new API surface. Backend tests seeded governed rows through the normal runtime/store path, confirmed surviving rows still expose persisted governance markers such as `evidence_retention_window`, `evidence_expires_at`, `metadata_fields_suppressed`, and `governance_source`, confirmed rows with no expiration marker are ignored by cleanup, confirmed expired rows disappear from `/v1/admin/usage/ledger` after cleanup, and confirmed a second cleanup pass is idempotent. Chat and embeddings ledger tests revalidated that the shared persistence seam still stamps governed markers for both request families after the cleanup work landed.\n\nOn the operator-facing side, the slice deliberately stayed bounded to the existing request-detail and admin ledger surfaces. `ledger-request-detail` copy now explains that the persisted row is authoritative only while it still exists and that governed cleanup removes expired evidence rather than soft-deleting it, hiding it for later recovery, or exporting it to a hosted plane. Console types were tightened to mirror the backend governance fields already used in the ledger contract. The hosted metadata-only boundary was reverified unchanged, so the slice improves evidence governance and historical explainability without introducing raw prompt/response capture, raw ledger export, or hosted authority drift.\n\nThe main implementation assumption is explicit and now documented by the slice: M008/S02 needed a callable cleanup lifecycle seam and proof of actual deletion, but not a background scheduler yet. That operationalization remains for later milestone work.\n\n## Verification\n\nAll slice-plan verification passed in the assembled worktree. Backend retention coverage passed with `./.venv/bin/pytest tests/test_governance_api.py -k \"ledger or retention or expired\"` (5 passed), proving explicit cleanup deletes expired rows by persisted `evidence_expires_at`, ignores rows with no expiration marker, and remains idempotent while surviving rows continue to expose historical governance markers. Shared persistence seam regressions were checked with `./.venv/bin/pytest tests/test_chat_completions.py -k ledger` (1 passed) and `./.venv/bin/pytest tests/test_embeddings_api.py` (5 passed), confirming governed chat and embeddings ledger writes still carry the expected request markers. Read-path and boundary verification passed with `./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"` (3 passed), `./.venv/bin/pytest tests/test_hosted_contract.py` (10 passed), and `npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx` (15 passed), confirming admin ledger visibility, deletion semantics, request-detail copy alignment, and unchanged hosted metadata-only export behavior. Observability/diagnostic surfaces for this slice are the cleanup return summary plus `/v1/admin/usage/ledger` visibility before and after cleanup; both were exercised and behaved as expected.\n\n## Requirements Advanced\n\n- R062 — Advances the end-to-end governance proof by closing the persistence-to-deletion runtime leg and keeping operator read seams aligned with actual cleanup behavior.\n- R063 — Improves operator trust by preserving useful request-level governance evidence while the row exists and by making deletion semantics explicit rather than ambiguous.\n- R064 — Keeps the milestone bounded by reusing existing ledger and request-detail surfaces instead of expanding into a compliance dashboard, archive system, or hosted authority surface.\n\n## Requirements Validated\n\n- R058 — Passing backend, hosted-boundary, and console verification proves request evidence remains historically explainable through persisted row-level governance markers while the row exists, and that later cleanup truthfully removes expired evidence by persisted expiration rather than current-policy inference.\n\n## New Requirements Surfaced\n\nNone.\n\n## Requirements Invalidated or Re-scoped\n\nNone.\n\n## Deviations\n\nNo new backend route was added. The existing `/v1/admin/usage/ledger` seam already provided the bounded operator read path needed to prove surviving-row visibility and expired-row disappearance, so the slice stayed focused on lifecycle cleanup, read-path verification, and request-detail copy alignment. One small TypeScript adaptation was made in `console/src/lib/admin-api.ts` to add literal aliases already referenced by the mirrored usage-ledger types.\n\n## Known Limitations\n\nThis slice adds an explicit callable cleanup lifecycle seam but does not schedule or automate cleanup execution yet. Operators and tests can prove actual deletion behavior now, but ongoing retention execution policy, cadence, and operational triggering remain future work. Historical request detail is truthful only while the row exists; once cleanup deletes it, there is intentionally no soft-delete or recovery surface.\n\n## Follow-ups\n\nS03 should operationalize the cleanup lifecycle beyond the callable store seam and define how retention execution is triggered, monitored, and recovered if it fails. S04 should continue the operator explanation work by making the effective evidence boundary and post-deletion absence more legible in the console. S05 should assemble the full end-to-end proof path from tenant policy to persistence to deletion to operator inspection while keeping the hosted plane metadata-only.\n\n## Files Created/Modified\n\n- `src/nebula/services/governance_store.py` — Added explicit `delete_expired_usage_records(now=...)` lifecycle cleanup keyed by persisted `evidence_expires_at`.\n- `tests/test_governance_api.py` — Added end-to-end retention cleanup coverage through the real admin ledger seam, including surviving-marker visibility, expired-row disappearance, no-expiration preservation, and idempotent cleanup.\n- `tests/test_chat_completions.py` — Reverified shared governed chat ledger persistence after cleanup work to ensure request markers still stamp correctly.\n- `tests/test_embeddings_api.py` — Reverified shared governed embeddings ledger persistence after cleanup work to ensure request markers still stamp correctly.\n- `console/src/components/ledger/ledger-request-detail.tsx` — Updated request-detail copy to explain that persisted evidence is authoritative only while the row exists and may disappear after governed cleanup.\n- `console/src/components/ledger/ledger-request-detail.test.tsx` — Locked the new request-detail evidence-aging semantics with focused UI assertions.\n- `console/src/lib/admin-api.ts` — Added missing evidence-governance literal aliases to keep the mirrored admin usage-ledger contract types aligned with backend fields.\n- `tests/test_hosted_contract.py` — Reverified that hosted export remains metadata-only after the retention-lifecycle and request-detail changes.\n",
+      "full_uat_md": "# S02: Governed ledger persistence and request markers — UAT\n\n**Milestone:** M008\n**Written:** 2026-04-12T00:33:51.615Z\n\n# UAT — Governed ledger persistence and request markers\n\n## Preconditions\n\n1. Nebula backend test environment is available with the project virtualenv provisioned.\n2. A tenant exists with M008 evidence governance enabled through tenant policy fields (`evidence_retention_window`, `metadata_minimization_level`).\n3. Operator access to the existing admin usage-ledger/read surfaces is available.\n4. No background retention scheduler is assumed; cleanup is exercised through the explicit local lifecycle seam introduced in this slice.\n\n## Test Case 1 — New governed requests persist historical governance markers\n\n1. Submit a new governed request for a tenant with evidence governance enabled.\n   - Expected: A usage-ledger row is created for the request.\n2. Open the request through `/v1/admin/usage/ledger` or the request-detail surface.\n   - Expected: The row shows persisted write-time markers such as `evidence_retention_window`, `evidence_expires_at`, `metadata_fields_suppressed`, and `governance_source`.\n3. Change the tenant policy after the request is written.\n   - Expected: The already-persisted row still shows the original row-level governance markers rather than being recomputed from the new policy.\n\n## Test Case 2 — Explicit cleanup deletes only expired governed rows\n\n1. Prepare one governed row whose persisted `evidence_expires_at` is in the past and one governed row whose persisted expiration is still in the future.\n   - Expected: Both rows are visible through `/v1/admin/usage/ledger` before cleanup.\n2. Run the explicit retention cleanup seam with `now` set at or after the expired row’s `evidence_expires_at`.\n   - Expected: Cleanup returns a deterministic summary showing one eligible expired row and one deleted row.\n3. Query `/v1/admin/usage/ledger` again.\n   - Expected: The expired row no longer appears.\n   - Expected: The surviving row is still present and still shows its persisted governance markers.\n\n## Test Case 3 — Rows without persisted expiration markers are preserved\n\n1. Prepare a usage-ledger row that has no persisted `evidence_expires_at` marker.\n   - Expected: The row is visible before cleanup.\n2. Run the explicit cleanup seam using the same cutoff that removed expired governed rows.\n   - Expected: The no-expiration row is ignored by cleanup.\n3. Query `/v1/admin/usage/ledger` again.\n   - Expected: The no-expiration row still exists and remains inspectable.\n\n## Test Case 4 — Cleanup is idempotent\n\n1. Run cleanup once for a set of already-expired rows.\n   - Expected: Eligible/deleted counts reflect the expired rows removed in that pass.\n2. Run cleanup again with the same cutoff.\n   - Expected: The second pass reports zero additional deletions.\n3. Query `/v1/admin/usage/ledger` after the second pass.\n   - Expected: No previously deleted row reappears, and no surviving row is removed unexpectedly.\n\n## Test Case 5 — Request detail explains real deletion semantics truthfully\n\n1. Open a surviving governed request in the console request-detail surface.\n   - Expected: The UI states that the persisted row is authoritative while it exists.\n2. Read the evidence-retention explanatory copy in request detail.\n   - Expected: The copy explains that governed cleanup can remove expired evidence later.\n   - Expected: The copy does not imply soft-delete, hidden archive recovery, or hosted raw export.\n3. After cleanup removes an expired row, attempt to find that request again in the operator ledger surface.\n   - Expected: The request is absent rather than shown as an archived or recoverable entry.\n\n## Edge Cases\n\n1. **Policy changed after write:** A row written under an earlier tenant policy must continue showing its original persisted governance markers until it is deleted.\n2. **No expiration marker:** Cleanup must not delete rows that lack `evidence_expires_at`.\n3. **Repeated cleanup:** Running cleanup multiple times at the same cutoff must be safe and produce zero additional deletions after the first successful pass.\n4. **Hosted boundary:** No UAT step should reveal raw prompts, raw responses, provider credentials, or any hosted raw ledger export path; hosted behavior remains metadata-only.\n5. **Shared persistence seam:** Both chat and embeddings request families must continue to produce governed ledger rows with the expected per-request markers after the cleanup lifecycle feature is added.\n",
       "goal": "Make governed usage-ledger evidence age out through an explicit store lifecycle path while preserving historically truthful request markers until deletion and keeping operator inspection surfaces aligned with that behavior.",
       "success_criteria": "- Expired usage-ledger rows are actually deleted using the persisted `evidence_expires_at` marker rather than current tenant policy inference.\n- The existing admin ledger/read seams prove both sides of the contract: surviving rows still show write-time governance markers, and expired rows disappear after cleanup.\n- Request-detail/operator copy stays consistent with the bounded evidence story and does not imply soft-delete, hidden retention, or hosted export expansion.",
       "proof_level": "integration",
@@ -1075,23 +1075,20 @@
     {
       "milestone_id": "M008",
       "id": "S03",
-      "title": "Retention lifecycle enforcement",
+      "title": "S03",
       "status": "pending",
       "risk": "high",
-      "depends": [
-        "S01",
-        "S02"
-      ],
+      "depends": [],
       "demo": "Expired evidence is actually deleted according to tenant policy, with a bounded retention execution path that can be exercised and verified rather than inferred.",
       "created_at": "2026-04-11T23:45:07.519Z",
       "completed_at": null,
       "full_summary_md": "",
       "full_uat_md": "",
-      "goal": "Enforce retention policy as real deletion of expired governed evidence.",
-      "success_criteria": "- Retention windows cause actual deletion of expired evidence rows.\n- Repeated cleanup is idempotent and verifiable.\n- No UI-only hiding path is mistaken for enforcement.",
-      "proof_level": "Operational lifecycle + deletion verification",
-      "integration_closure": "Retention execution consumes typed policy and governed ledger rows, deletes expired evidence deterministically, and leaves operator-visible proof of absence rather than hidden-but-stored state.",
-      "observability_impact": "Makes retention lifecycle behavior diagnosable and lets downstream surfaces speak truthfully about removed evidence.",
+      "goal": "Operationalize governed evidence retention as a running cleanup lifecycle that deletes expired usage-ledger rows by persisted expiration markers, exposes truthful runtime status through existing health surfaces, and keeps operator proof on the current ledger/observability seams.",
+      "success_criteria": "- Expired usage-ledger evidence is deleted by a running lifecycle service that calls the existing `GovernanceStore.delete_expired_usage_records()` seam rather than duplicating cleanup logic.\n- Cleanup eligibility remains keyed to persisted `evidence_expires_at` markers, not recomputed from current tenant policy.\n- Runtime health exposes retention lifecycle status and failure diagnostics through existing health/dependency surfaces.\n- `/v1/admin/usage/ledger` and existing observability surfaces provide the proof path before/after cleanup without adding a retention-specific endpoint or dashboard.\n- Hosted metadata-only summaries remain bounded after the new dependency is introduced.",
+      "proof_level": "operational",
+      "integration_closure": "Compose the new retention lifecycle service into `ServiceContainer` and FastAPI lifespan, surface it through `RuntimeHealthService` and heartbeat dependency summaries, and leave no separate cleanup trigger surface for later slices to wire.",
+      "observability_impact": "- Runtime signals: retention lifecycle last-run timestamp, deleted/eligible counts, status, and last error kept in memory by the lifecycle service.\n- Inspection surfaces: `/health/ready`, `/health/dependencies`, existing observability dependency cards, and `/v1/admin/usage/ledger` before/after cleanup.\n- Failure visibility: degraded/not_ready retention dependency state plus last failure detail and last attempted run time.\n- Redaction constraints: expose only summary counts/timestamps/errors; never raw request evidence or hosted-authority expansion.",
       "sequence": 3,
       "replan_triggered_at": null
     },
@@ -4709,6 +4706,121 @@
       "observability_impact": "Preserves a trustworthy operator inspection path: `/v1/admin/usage/ledger` and request detail remain the places to determine whether governed evidence still exists, which write-time governance markers applied, and when disappearance is expected because retention cleanup has already removed the row.",
       "full_plan_md": "",
       "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S03",
+      "id": "T01",
+      "title": "Added the retention cleanup lifecycle service with startup wiring, health visibility, and deterministic lifecycle tests.",
+      "status": "complete",
+      "one_liner": "Added the retention cleanup lifecycle service with startup wiring, health visibility, and deterministic lifecycle tests.",
+      "narrative": "Implemented `src/nebula/services/retention_lifecycle_service.py` as a lightweight background service following the same start/stop loop shape used by the existing heartbeat and remote-management services. The service periodically calls `GovernanceStore.delete_expired_usage_records()` against persisted `evidence_expires_at` markers, tracks in-memory runtime diagnostics (`last_run_at`, `last_attempted_run_at`, deleted/eligible counts, status, cutoff, and last error), and exposes a deterministic `run_cleanup_once()` helper so tests can exercise the real cleanup seam without sleeping. Added bounded configuration in `src/nebula/core/config.py` for enablement and cadence, registered the service in `src/nebula/core/container.py`, and started/stopped it from the FastAPI lifespan in `src/nebula/main.py`. Extended `RuntimeHealthService` so `/health/ready` and `/health/dependencies` now include a `retention_lifecycle` dependency payload that degrades on cleanup failure but does not make serving not-ready. Added `tests/test_retention_lifecycle_service.py` to verify expired-row deletion by persisted expiration marker, disabled-mode startup behavior, failure-state capture, and runtime-health exposure, and updated `tests/test_health.py` to assert the new dependency appears on readiness surfaces. During verification, I found my initial tests were incorrectly using `record_usage()`, which recomputes governance fields; I corrected them to insert exact ledger rows through `UsageLedgerModel`, matching the existing retention seam and preserving the intended persisted-marker behavior.",
+      "verification_result": "Ran `./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"`. The first run failed because the tests were creating records through `record_usage()`, which reapplies tenant policy and overwrites manually supplied expiration timestamps. After confirming that behavior against the existing governance retention tests, I updated the new lifecycle tests to insert exact `UsageLedgerModel` rows for persisted-marker assertions and reran the command successfully. The passing run verified: expired rows are deleted only when persisted `evidence_expires_at` is at or before the cleanup cutoff; rows with future or null expiration markers survive; failures are captured as degraded health state with last error and last attempted run time; disabled lifecycle mode does not start a background task; and the health surfaces expose the retention lifecycle dependency with truthful runtime state.",
+      "duration": "",
+      "completed_at": "2026-04-12T00:53:46.960Z",
+      "blocker_discovered": false,
+      "deviations": "Adjusted the new tests to insert `UsageLedgerModel` rows directly instead of using `GovernanceStore.record_usage()`. This was a local correction to honor the task’s requirement that cleanup use persisted expiration markers only, because `record_usage()` intentionally recomputes governance metadata from tenant policy.",
+      "known_issues": "None.",
+      "key_files": [
+        "src/nebula/services/retention_lifecycle_service.py",
+        "src/nebula/core/config.py",
+        "src/nebula/core/container.py",
+        "src/nebula/services/runtime_health_service.py",
+        "src/nebula/main.py",
+        "tests/test_retention_lifecycle_service.py",
+        "tests/test_health.py"
+      ],
+      "key_decisions": [
+        "Implemented retention cleanup as a small service following the existing heartbeat/remote-management background loop pattern instead of introducing a new abstraction.",
+        "Published retention lifecycle state through `RuntimeHealthService` as an optional dependency so failures degrade health visibility without blocking local serving.",
+        "Verified persisted expiration-marker behavior by inserting exact ledger rows in tests rather than using `record_usage()`, which intentionally reapplies governance policy."
+      ],
+      "full_summary_md": "---\nid: T01\nparent: S03\nmilestone: M008\nkey_files:\n  - src/nebula/services/retention_lifecycle_service.py\n  - src/nebula/core/config.py\n  - src/nebula/core/container.py\n  - src/nebula/services/runtime_health_service.py\n  - src/nebula/main.py\n  - tests/test_retention_lifecycle_service.py\n  - tests/test_health.py\nkey_decisions:\n  - Implemented retention cleanup as a small service following the existing heartbeat/remote-management background loop pattern instead of introducing a new abstraction.\n  - Published retention lifecycle state through `RuntimeHealthService` as an optional dependency so failures degrade health visibility without blocking local serving.\n  - Verified persisted expiration-marker behavior by inserting exact ledger rows in tests rather than using `record_usage()`, which intentionally reapplies governance policy.\nduration: \nverification_result: mixed\ncompleted_at: 2026-04-12T00:53:46.959Z\nblocker_discovered: false\n---\n\n# T01: Added the retention cleanup lifecycle service with startup wiring, health visibility, and deterministic lifecycle tests.\n\n**Added the retention cleanup lifecycle service with startup wiring, health visibility, and deterministic lifecycle tests.**\n\n## What Happened\n\nImplemented `src/nebula/services/retention_lifecycle_service.py` as a lightweight background service following the same start/stop loop shape used by the existing heartbeat and remote-management services. The service periodically calls `GovernanceStore.delete_expired_usage_records()` against persisted `evidence_expires_at` markers, tracks in-memory runtime diagnostics (`last_run_at`, `last_attempted_run_at`, deleted/eligible counts, status, cutoff, and last error), and exposes a deterministic `run_cleanup_once()` helper so tests can exercise the real cleanup seam without sleeping. Added bounded configuration in `src/nebula/core/config.py` for enablement and cadence, registered the service in `src/nebula/core/container.py`, and started/stopped it from the FastAPI lifespan in `src/nebula/main.py`. Extended `RuntimeHealthService` so `/health/ready` and `/health/dependencies` now include a `retention_lifecycle` dependency payload that degrades on cleanup failure but does not make serving not-ready. Added `tests/test_retention_lifecycle_service.py` to verify expired-row deletion by persisted expiration marker, disabled-mode startup behavior, failure-state capture, and runtime-health exposure, and updated `tests/test_health.py` to assert the new dependency appears on readiness surfaces. During verification, I found my initial tests were incorrectly using `record_usage()`, which recomputes governance fields; I corrected them to insert exact ledger rows through `UsageLedgerModel`, matching the existing retention seam and preserving the intended persisted-marker behavior.\n\n## Verification\n\nRan `./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"`. The first run failed because the tests were creating records through `record_usage()`, which reapplies tenant policy and overwrites manually supplied expiration timestamps. After confirming that behavior against the existing governance retention tests, I updated the new lifecycle tests to insert exact `UsageLedgerModel` rows for persisted-marker assertions and reran the command successfully. The passing run verified: expired rows are deleted only when persisted `evidence_expires_at` is at or before the cleanup cutoff; rows with future or null expiration markers survive; failures are captured as degraded health state with last error and last attempted run time; disabled lifecycle mode does not start a background task; and the health surfaces expose the retention lifecycle dependency with truthful runtime state.\n\n## Verification Evidence\n\n| # | Command | Exit Code | Verdict | Duration |\n|---|---------|-----------|---------|----------|\n| 1 | `./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"` | 1 | ❌ fail | 6500ms |\n| 2 | `./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"` | 0 | ✅ pass | 2600ms |\n\n## Deviations\n\nAdjusted the new tests to insert `UsageLedgerModel` rows directly instead of using `GovernanceStore.record_usage()`. This was a local correction to honor the task’s requirement that cleanup use persisted expiration markers only, because `record_usage()` intentionally recomputes governance metadata from tenant policy.\n\n## Known Issues\n\nNone.\n\n## Files Created/Modified\n\n- `src/nebula/services/retention_lifecycle_service.py`\n- `src/nebula/core/config.py`\n- `src/nebula/core/container.py`\n- `src/nebula/services/runtime_health_service.py`\n- `src/nebula/main.py`\n- `tests/test_retention_lifecycle_service.py`\n- `tests/test_health.py`\n",
+      "description": "Add a small retention lifecycle service that periodically invokes `GovernanceStore.delete_expired_usage_records()` using persisted `evidence_expires_at` markers only, tracks in-memory last-run diagnostics, and is started/stopped through the existing application lifecycle. Follow the existing background-service shape from `src/nebula/services/heartbeat_service.py` and `src/nebula/services/remote_management_service.py` rather than introducing a new framework abstraction. Add bounded settings in `src/nebula/core/config.py` for cleanup cadence and optional enablement, register the service in `src/nebula/core/container.py`, and start it from `src/nebula/main.py` alongside the current background services. Keep failures non-fatal to local serving but make them capturable for health inspection, and expose a deterministic single-run helper (for example `run_cleanup_once()`) so tests can exercise the real lifecycle seam without sleeping. Record expected executor skills in frontmatter as `fastapi-python`, `sqlalchemy-orm`, and `best-practices`. Include Failure Modes, Load Profile, and Negative Tests in the task plan because this task touches the database, background execution, app startup, and malformed/failing runtime states.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/core/config.py",
+        "src/nebula/core/container.py",
+        "src/nebula/main.py",
+        "src/nebula/services/governance_store.py",
+        "src/nebula/services/retention_lifecycle_service.py"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"",
+      "inputs": [
+        "`src/nebula/services/governance_store.py`",
+        "`src/nebula/services/heartbeat_service.py`",
+        "`src/nebula/services/remote_management_service.py`",
+        "`src/nebula/core/config.py`",
+        "`src/nebula/core/container.py`",
+        "`src/nebula/main.py`"
+      ],
+      "expected_output": [
+        "`src/nebula/services/retention_lifecycle_service.py`",
+        "`src/nebula/core/config.py`",
+        "`src/nebula/core/container.py`",
+        "`src/nebula/main.py`",
+        "`tests/test_retention_lifecycle_service.py`"
+      ],
+      "observability_impact": "Adds lifecycle status and failure-state data that later health/hosted verification can inspect instead of inferring cleanup from code paths alone.",
+      "full_plan_md": "",
+      "sequence": 0
+    },
+    {
+      "milestone_id": "M008",
+      "slice_id": "S03",
+      "id": "T02",
+      "title": "Expose retention lifecycle health and prove end-to-end deletion through real seams",
+      "status": "pending",
+      "one_liner": "",
+      "narrative": "",
+      "verification_result": "",
+      "duration": "",
+      "completed_at": null,
+      "blocker_discovered": false,
+      "deviations": "",
+      "known_issues": "",
+      "key_files": [],
+      "key_decisions": [],
+      "full_summary_md": "",
+      "description": "Extend runtime health to include a `retention_lifecycle` dependency payload with truthful readiness/degraded state, last-run timestamps/results, and last error details while keeping the hosted plane metadata-only and bounded to dependency summaries rather than raw cleanup payloads. Use the lifecycle service added in T01 as the single source for this health data. Add backend tests that seed expired and surviving governed rows through the normal ledger path, invoke lifecycle cleanup through the running app/container seam, and verify `/v1/admin/usage/ledger` no longer returns expired rows while surviving/no-expiration rows remain. Re-verify hosted heartbeat/dependency summary behavior so the extra dependency name does not widen the export contract, and add/update console runtime-health tests only as needed to confirm the new dependency renders truthfully in existing observability cards without creating a retention dashboard. Keep request-detail/operator proof on existing seams. Record expected executor skills in frontmatter as `fastapi-python`, `react-best-practices`, and `userinterface-wiki`. Include Failure Modes, Load Profile, and Negative Tests in the task plan because this task spans app health, hosted summarization, operator surfaces, and retention edge cases.",
+      "estimate": "1h",
+      "files": [
+        "src/nebula/services/runtime_health_service.py",
+        "src/nebula/services/heartbeat_service.py",
+        "tests/test_governance_api.py",
+        "tests/test_health.py",
+        "tests/test_hosted_contract.py",
+        "console/src/components/health/runtime-health-cards.tsx",
+        "console/src/components/health/runtime-health-cards.test.tsx",
+        "console/src/app/(console)/observability/page.test.tsx"
+      ],
+      "verify": "./.venv/bin/pytest tests/test_governance_api.py tests/test_health.py tests/test_hosted_contract.py -k \"retention or health or heartbeat\" && npm --prefix console run test -- --run src/components/health/runtime-health-cards.test.tsx src/app/(console)/observability/page.test.tsx",
+      "inputs": [
+        "`src/nebula/services/retention_lifecycle_service.py`",
+        "`src/nebula/services/runtime_health_service.py`",
+        "`src/nebula/services/heartbeat_service.py`",
+        "`src/nebula/api/routes/admin.py`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_health.py`",
+        "`tests/test_hosted_contract.py`",
+        "`console/src/components/health/runtime-health-cards.tsx`",
+        "`console/src/components/health/runtime-health-cards.test.tsx`",
+        "`console/src/app/(console)/observability/page.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`"
+      ],
+      "expected_output": [
+        "`src/nebula/services/runtime_health_service.py`",
+        "`src/nebula/services/heartbeat_service.py`",
+        "`tests/test_governance_api.py`",
+        "`tests/test_health.py`",
+        "`tests/test_hosted_contract.py`",
+        "`console/src/components/health/runtime-health-cards.tsx`",
+        "`console/src/components/health/runtime-health-cards.test.tsx`",
+        "`console/src/app/(console)/observability/page.test.tsx`"
+      ],
+      "observability_impact": "Makes cleanup execution, last result, and failure state inspectable through runtime health and existing observability cards; validates that hosted only sees summarized dependency state.",
+      "full_plan_md": "",
+      "sequence": 0
     }
   ],
   "decisions": [
@@ -5248,6 +5360,18 @@
       "decision": "How M008/S01 should expose evidence governance without widening the trust boundary",
       "choice": "Keep evidence governance as typed runtime-enforced tenant policy fields plus per-row governance markers on the existing usage ledger, and render them through existing policy and request-detail surfaces rather than introducing raw payload capture or separate governance products.",
       "rationale": "Task summaries show S01 completed by extending the current tenant-policy, ledger, and operator surfaces with retention/minimization controls and historically truthful row markers. This preserves Nebula’s bounded evidence story, keeps hosted export metadata-only, and gives downstream slices one shared governance vocabulary for persistence, deletion, and request-detail explanation.",
+      "revisable": "Yes",
+      "made_by": "agent",
+      "superseded_by": null
+    },
+    {
+      "seq": 53,
+      "id": "D046",
+      "when_context": "M008/S02",
+      "scope": "governance",
+      "decision": "How M008/S02 should prove evidence aging and historical request governance without widening APIs",
+      "choice": "Keep evidence aging on the existing usage-ledger seam: add an explicit GovernanceStore cleanup lifecycle keyed by persisted evidence_expires_at and explain request detail as authoritative only while the row still exists, without adding a retention-specific admin endpoint.",
+      "rationale": "S02 needed real deletion proof and historically truthful request inspection, but the existing /v1/admin/usage/ledger seam already provides the bounded operator read path. Centralizing cleanup in GovernanceStore preserves the write-time governance seam from S01, lets tests prove surviving-row markers and expired-row disappearance through the real admin contract, and avoids soft-delete, archive-recovery, or hosted-boundary drift.",
       "revisable": "Yes",
       "made_by": "agent",
       "superseded_by": null
@@ -6496,6 +6620,28 @@
       "verdict": "✅ pass",
       "duration_ms": 525,
       "created_at": "2026-04-12T00:31:46.746Z"
+    },
+    {
+      "id": 131,
+      "task_id": "T01",
+      "slice_id": "S03",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"",
+      "exit_code": 1,
+      "verdict": "❌ fail",
+      "duration_ms": 6500,
+      "created_at": "2026-04-12T00:53:46.960Z"
+    },
+    {
+      "id": 132,
+      "task_id": "T01",
+      "slice_id": "S03",
+      "milestone_id": "M008",
+      "command": "./.venv/bin/pytest tests/test_retention_lifecycle_service.py tests/test_health.py -k \"retention or lifecycle\"",
+      "exit_code": 0,
+      "verdict": "✅ pass",
+      "duration_ms": 2600,
+      "created_at": "2026-04-12T00:53:46.960Z"
     }
   ]
 }

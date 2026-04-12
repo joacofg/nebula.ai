@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M008/S02/T02",
+  "timestamp": 1775953910653,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"usage_ledger or retention\"",
+      "exitCode": 0,
+      "durationMs": 1009,
+      "verdict": "pass"
+    },
+    {
+      "command": "./.venv/bin/pytest tests/test_hosted_contract.py",
+      "exitCode": 0,
+      "durationMs": 185,
+      "verdict": "pass"
+    },
+    {
+      "command": "npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx",
+      "exitCode": 0,
+      "durationMs": 857,
+      "verdict": "pass"
+    }
+  ]
+}

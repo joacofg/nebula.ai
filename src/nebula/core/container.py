@@ -20,6 +20,7 @@ from nebula.services.premium_provider_health_service import PremiumProviderHealt
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.recommendation_service import RecommendationService
 from nebula.services.remote_management_service import RemoteManagementService
+from nebula.services.retention_lifecycle_service import RetentionLifecycleService
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
@@ -74,12 +75,18 @@ class ServiceContainer:
             policy_simulation_service=self.policy_simulation_service,
             semantic_cache_service=self.cache_service,
         )
+        self.retention_lifecycle_service = RetentionLifecycleService(
+            enabled=settings.retention_cleanup_enabled,
+            interval_seconds=settings.retention_cleanup_interval_seconds,
+            governance_store=self.governance_store,
+        )
         self.runtime_health_service = RuntimeHealthService(
             settings=settings,
             governance_store=self.governance_store,
             semantic_cache=self.cache_service,
             embeddings_service=self.embeddings_service,
             premium_provider_health=self.premium_provider_health_service,
+            retention_lifecycle=self.retention_lifecycle_service,
         )
         self.heartbeat_service = HeartbeatService(
             settings=settings,
@@ -106,6 +113,7 @@ class ServiceContainer:
     async def shutdown(self) -> None:
         await self.remote_management_service.stop()
         await self.heartbeat_service.stop()
+        await self.retention_lifecycle_service.stop()
         await self.provider_registry.close()
         await self.premium_provider_health_service.close()
         await self.embeddings_service.close()

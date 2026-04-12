@@ -4,6 +4,7 @@ from nebula.core.config import Settings
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
+from nebula.services.retention_lifecycle_service import RetentionLifecycleService
 from nebula.services.semantic_cache_service import SemanticCacheService
 
 
@@ -15,12 +16,14 @@ class RuntimeHealthService:
         semantic_cache: SemanticCacheService,
         embeddings_service: OllamaEmbeddingsService,
         premium_provider_health: PremiumProviderHealthService,
+        retention_lifecycle: RetentionLifecycleService,
     ) -> None:
         self.settings = settings
         self.governance_store = governance_store
         self.semantic_cache = semantic_cache
         self.embeddings_service = embeddings_service
         self.premium_provider_health = premium_provider_health
+        self.retention_lifecycle = retention_lifecycle
 
     async def readiness(self) -> dict[str, object]:
         dependencies = await self.dependencies()
@@ -42,6 +45,7 @@ class RuntimeHealthService:
             "semantic_cache": await self.semantic_cache.health_status(),
             "local_ollama": await self.embeddings_service.health_status(),
             "premium_provider": await self.premium_provider_health.health_status(),
+            "retention_lifecycle": await self.retention_lifecycle.health_status(),
         }
 
     def _overall_status(self, dependencies: dict[str, dict[str, object]]) -> str:

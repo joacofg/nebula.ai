@@ -43,3 +43,9 @@
 {"id":"eb2fb61f-773a-4607-85ef-385ccbcf81ba","ts":"2026-04-12T00:19:54.860Z","severity":"warning","message":"[manifest] Seeding 43 requirements from REQUIREMENTS.md into DB (first update triggers import)","source":"workflow-logger","read":false}
 {"id":"a669e47d-768d-4add-a46f-8215533380be","ts":"2026-04-12T00:28:52.553Z","severity":"info","message":"Committed: test: Added explicit governance-store cleanup for expired usage ledger…","source":"notify","read":false}
 {"id":"9841156b-0c94-4bc5-854e-d38764e36d7b","ts":"2026-04-12T00:28:55.794Z","severity":"info","message":"Verification gate: 3/3 checks passed","source":"notify","read":false}
+{"id":"9d55f67b-0aaf-453f-919f-c6fe9b93014f","ts":"2026-04-12T00:31:50.646Z","severity":"info","message":"Committed: test: Aligned admin ledger tests and request-detail copy with governed…","source":"notify","read":false}
+{"id":"748575f1-4e03-4b89-b13c-95af6d0adfee","ts":"2026-04-12T00:31:52.713Z","severity":"info","message":"Verification gate: 3/3 checks passed","source":"notify","read":false}
+{"id":"5e3eade0-c99d-41ed-882f-7d90d46da62b","ts":"2026-04-12T00:36:57.984Z","severity":"error","message":"Pre-execution checks failed: 1 blocking issue found","source":"notify","read":false}
+{"id":"4240afa0-6909-41b0-8935-685c0f52e037","ts":"2026-04-12T00:36:57.987Z","severity":"info","message":"Auto-mode paused (Escape). Type to interact, or /gsd auto to resume.","source":"notify","read":false}
+{"id":"5d87cc39-9f98-45ba-b5b5-58aef5869ce6","ts":"2026-04-12T00:49:32.837Z","severity":"info","message":"Auto-mode resumed.","source":"notify","read":false}
+{"id":"9827e7c1-d5bb-403d-b414-b1dbc5ea1651","ts":"2026-04-12T00:49:34.076Z","severity":"info","message":"Resume: applied 2 fix(es) to state.","source":"notify","read":false}

@@ -67,6 +67,16 @@ class Settings(BaseSettings):
         default=60,
         alias="NEBULA_REMOTE_MANAGEMENT_POLL_INTERVAL_SECONDS",
     )
+    retention_cleanup_enabled: bool = Field(
+        default=True,
+        alias="NEBULA_RETENTION_CLEANUP_ENABLED",
+    )
+    retention_cleanup_interval_seconds: int = Field(
+        default=300,
+        alias="NEBULA_RETENTION_CLEANUP_INTERVAL_SECONDS",
+        ge=5,
+        le=86400,
+    )
 
     @model_validator(mode="after")
     def validate_premium_provider_settings(self) -> "Settings":

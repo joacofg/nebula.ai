@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R058 — Request evidence remains historically explainable after policy changes by persisting governance markers on each ledger row.
-- Class: failure-visibility
-- Status: active
-- Description: Request evidence remains historically explainable after policy changes by persisting governance markers on each ledger row.
-- Why it matters: Operators cannot trust historical request detail if the console can only show the current tenant policy and force users to infer what applied at write time.
-- Source: inferred
-- Primary owning slice: M008/S02
-- Supporting slices: M008/S04
-- Validation: mapped
-- Notes: Request detail should show what governance boundary applied to the selected persisted row, not just what the tenant policy says now.
-
 ### R059 — Retention policy is enforced as real evidence deletion, not UI-only hiding.
 - Class: continuity
 - Status: active
@@ -545,6 +534,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py; ./.venv/bin/pytest tests/test_chat_completions.py -k ledger; ./.venv/bin/pytest tests/test_embeddings_api.py; and npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx. Tenant policy now governs metadata_minimization_level and governed ledger writes suppress non-essential metadata while preserving the bounded no-raw-payload-capture contract.
 - Notes: This milestone governs metadata richness only; raw prompt and raw response capture remain out of scope.
 
+### R058 — Request evidence remains historically explainable after policy changes by persisting governance markers on each ledger row.
+- Class: failure-visibility
+- Status: validated
+- Description: Request evidence remains historically explainable after policy changes by persisting governance markers on each ledger row.
+- Why it matters: Operators cannot trust historical request detail if the console can only show the current tenant policy and force users to infer what applied at write time.
+- Source: inferred
+- Primary owning slice: M008/S02
+- Supporting slices: M008/S04
+- Validation: Validated by M008/S02 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired", ./.venv/bin/pytest tests/test_chat_completions.py -k ledger, ./.venv/bin/pytest tests/test_embeddings_api.py, ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or retention", ./.venv/bin/pytest tests/test_hosted_contract.py, and npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. Usage-ledger rows now retain write-time governance markers while present, expired rows are deleted via persisted evidence_expires_at cleanup rather than current-policy inference, and operator request detail explains that governed evidence disappears after cleanup instead of implying soft-delete or hosted export recovery.
+- Notes: S02 closes the historical explainability requirement by proving both the surviving-row contract and the expired-row disappearance contract through the existing admin ledger seam and request-detail copy.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -863,7 +863,7 @@ This file is the explicit capability and coverage contract for the project.
 | R055 | constraint | validated | M007/S05 | M007/S01, M007/S02, M007/S03, M007/S04 | Validated by M007/S05 and milestone close-out. `docs/m007-integrated-proof.md`, discoverability links in `README.md` and `docs/architecture.md`, and the passing focused six-file console Vitest bundle prove page identity was clarified without widening Nebula into a dashboard, routing studio, analytics product, redesign-sprawl effort, or parallel operator workflow. |
 | R056 | compliance/security | validated | M008/S01 | M008/S03 | Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py and ./.venv/bin/pytest tests/test_chat_completions.py -k ledger && ./.venv/bin/pytest tests/test_embeddings_api.py, plus console Vitest coverage for policy surfaces. Tenant policy now carries explicit evidence_retention_window and usage-ledger rows persist request-time retention/expiration markers via the centralized governed persistence seam. |
 | R057 | compliance/security | validated | M008/S01 | M008/S02 | Validated by M008/S01 through passing targeted verification: ./.venv/bin/pytest tests/test_governance_api.py tests/test_service_flows.py tests/test_hosted_contract.py; ./.venv/bin/pytest tests/test_chat_completions.py -k ledger; ./.venv/bin/pytest tests/test_embeddings_api.py; and npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx src/components/policy/policy-page.test.tsx src/components/ledger/ledger-request-detail.test.tsx. Tenant policy now governs metadata_minimization_level and governed ledger writes suppress non-essential metadata while preserving the bounded no-raw-payload-capture contract. |
-| R058 | failure-visibility | active | M008/S02 | M008/S04 | mapped |
+| R058 | failure-visibility | validated | M008/S02 | M008/S04 | Validated by M008/S02 through passing slice verification: ./.venv/bin/pytest tests/test_governance_api.py -k "ledger or retention or expired", ./.venv/bin/pytest tests/test_chat_completions.py -k ledger, ./.venv/bin/pytest tests/test_embeddings_api.py, ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or retention", ./.venv/bin/pytest tests/test_hosted_contract.py, and npm --prefix console run test -- --run src/components/ledger/ledger-request-detail.test.tsx. Usage-ledger rows now retain write-time governance markers while present, expired rows are deleted via persisted evidence_expires_at cleanup rather than current-policy inference, and operator request detail explains that governed evidence disappears after cleanup instead of implying soft-delete or hosted export recovery. |
 | R059 | continuity | active | M008/S03 | none | mapped |
 | R060 | operability | active | M008/S04 | M008/S02 | mapped |
 | R061 | integration | active | M008/S04 | M008/S05 | mapped |
@@ -881,7 +881,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 7
-- Mapped to slices: 7
-- Validated: 42 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057)
+- Active requirements: 6
+- Mapped to slices: 6
+- Validated: 43 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058)
 - Unmapped active requirements: 0
