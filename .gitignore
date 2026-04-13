@@ -108,3 +108,8 @@ vendor/
 
 # --- Misc logs ---
 *.log
+
+# --- Local AI tooling / agent config ---
+.codex/
+.claude/
+CLAUDE.md
