@@ -135,6 +135,83 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
     assert fallback_response.headers["X-Nebula-Fallback-Used"] == "true"
 
 
+def test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_parity() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="seed local",
+                    model=container.settings.local_model,
+                    provider="ollama",
+                    usage=usage(12, 4),
+                ),
+            )
+            premium_provider = StubProvider(
+                "mock-premium",
+                completion_result=CompletionResult(
+                    content="premium outcome grounded response",
+                    model=container.settings.premium_model,
+                    provider="mock-premium",
+                    usage=usage(20, 6),
+                ),
+            )
+            container.local_provider = local_provider
+            container.provider_registry.local_provider = local_provider
+            container.premium_provider = premium_provider
+            container.provider_registry.premium_provider = premium_provider
+            container.cache_service = FakeCacheService()
+            container.chat_service.cache_service = container.cache_service
+
+            for index in range(5):
+                seeded = client.post(
+                    "/v1/chat/completions",
+                    headers=auth_headers(),
+                    json={
+                        "model": "nebula-auto",
+                        "messages": [{"role": "user", "content": f"seed route evidence {index}"}],
+                    },
+                )
+                assert seeded.status_code == 200
+
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "Analyze a short routing answer."}],
+                },
+            )
+            request_id = response.headers["X-Request-ID"]
+            ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={request_id}",
+                headers=admin_headers(),
+            )
+
+    assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert response.headers["X-Nebula-Route-Mode"] == "calibrated"
+    assert response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert "outcome_evidence=sufficient" in response.headers["X-Nebula-Policy-Outcome"]
+    assert float(response.headers["X-Nebula-Route-Score"]) == 0.466
+
+    assert ledger.status_code == 200
+    row = ledger.json()[0]
+    assert row["request_id"] == request_id
+    assert row["final_route_target"] == response.headers["X-Nebula-Route-Target"]
+    assert row["final_provider"] == response.headers["X-Nebula-Provider"]
+    assert row["route_reason"] == response.headers["X-Nebula-Route-Reason"]
+    assert row["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
+    assert row["route_signals"]["route_mode"] == response.headers["X-Nebula-Route-Mode"]
+    assert row["route_signals"]["score_components"]["total_score"] == float(
+        response.headers["X-Nebula-Route-Score"]
+    )
+    assert row["route_signals"]["outcome_evidence"]["state"] == "sufficient"
+    assert row["route_signals"]["outcome_evidence"]["sufficient_request_count"] == 5
+
+
 def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> None:
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         with TestClient(app) as client:

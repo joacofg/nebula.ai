@@ -29,7 +29,7 @@ This slice closes the runtime composition seam between `GovernanceStore.summariz
   - Files: `src/nebula/services/router_service.py`, `src/nebula/services/policy_service.py`, `src/nebula/models/governance.py`, `tests/test_router_signals.py`, `tests/test_service_flows.py`
   - Verify: ./.venv/bin/pytest tests/test_router_signals.py -k "outcome or evidence or route" && ./.venv/bin/pytest tests/test_service_flows.py -k "outcome_grounded or policy_service_live_evidence or hard_budget"
 
-- [ ] **T02: Prove request-to-ledger persistence for outcome-grounded live routing** `est:90m`
+- [x] **T02: Prove request-to-ledger persistence for outcome-grounded live routing** `est:90m`
   Close the slice on the real request path by proving a live `/v1/chat/completions` call can route differently because of seeded tenant evidence and that the correlated usage-ledger row records the actual outcome-grounded route factors used. Cover both happy-path persistence and honest degraded/minimized behavior so downstream replay and operator slices can trust the stored seam. Record installed skills in frontmatter as `verify-before-complete` and `test` because this task must finish with executable evidence from tracked backend tests.
   - Files: `tests/test_chat_completions.py`, `tests/test_response_headers.py`, `tests/test_governance_api.py`, `tests/support.py`
   - Verify: ./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route" && ./.venv/bin/pytest tests/test_response_headers.py -k "Route-Mode or route_signals" && ./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"

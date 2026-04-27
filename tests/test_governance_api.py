@@ -420,28 +420,28 @@ def test_usage_ledger_tracks_local_premium_cache_and_fallback_outcomes() -> None
     assert by_status["completed"]["final_provider"] == "ollama"
     assert by_status["completed"]["fallback_used"] is False
     assert by_status["completed"]["cache_hit"] is False
-    assert by_status["completed"]["policy_outcome"] == "default"
+    assert by_status["completed"]["policy_outcome"].startswith("outcome_evidence=thin(")
 
     premium_entries = [entry for entry in body if entry["route_reason"] == "explicit_premium_model"]
     assert len(premium_entries) == 1
     assert premium_entries[0]["terminal_status"] == "completed"
     assert premium_entries[0]["final_route_target"] == "premium"
     assert premium_entries[0]["final_provider"] == "mock-premium"
-    assert premium_entries[0]["policy_outcome"] == "default"
+    assert premium_entries[0]["policy_outcome"].startswith("outcome_evidence=thin(")
 
     assert by_status["cache_hit"]["final_route_target"] == "cache"
     assert by_status["cache_hit"]["final_provider"] == "cache"
     assert by_status["cache_hit"]["route_reason"] == "cache_hit"
     assert by_status["cache_hit"]["cache_hit"] is True
     assert by_status["cache_hit"]["fallback_used"] is False
-    assert by_status["cache_hit"]["policy_outcome"] == "default"
+    assert by_status["cache_hit"]["policy_outcome"].startswith("outcome_evidence=thin(")
 
     assert by_status["fallback_completed"]["final_route_target"] == "premium"
     assert by_status["fallback_completed"]["final_provider"] == "mock-premium"
     assert by_status["fallback_completed"]["route_reason"] == "local_provider_error_fallback"
     assert by_status["fallback_completed"]["fallback_used"] is True
     assert by_status["fallback_completed"]["cache_hit"] is False
-    assert by_status["fallback_completed"]["policy_outcome"] == "default"
+    assert by_status["fallback_completed"]["policy_outcome"].startswith("outcome_evidence=thin(")
 
 
 def test_embeddings_requests_can_be_correlated_through_usage_ledger() -> None:
@@ -1198,7 +1198,7 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     assert gated.headers["X-Nebula-Route-Target"] == "local"
     assert gated.headers["X-Nebula-Route-Reason"] == "calibrated_routing_disabled"
     assert gated.headers.get("X-Nebula-Route-Mode") is None
-    assert gated.headers["X-Nebula-Policy-Outcome"] == "calibrated_routing=disabled"
+    assert gated.headers["X-Nebula-Policy-Outcome"].startswith("calibrated_routing=disabled;")
 
     assert gated_ledger.status_code == 200
     gated_rows = gated_ledger.json()
@@ -1208,7 +1208,7 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     assert gated_row["final_route_target"] == gated.headers["X-Nebula-Route-Target"] == "local"
     assert gated_row["final_provider"] == gated.headers["X-Nebula-Provider"] == "ollama"
     assert gated_row["route_reason"] == gated.headers["X-Nebula-Route-Reason"] == "calibrated_routing_disabled"
-    assert gated_row["policy_outcome"] == gated.headers["X-Nebula-Policy-Outcome"] == "calibrated_routing=disabled"
+    assert gated_row["policy_outcome"] == gated.headers["X-Nebula-Policy-Outcome"]
     assert gated_row["route_signals"] is None
 
 
@@ -1264,7 +1264,10 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
     assert unchanged_body["summary"]["evaluated_rows"] == 1
     assert unchanged_body["summary"]["changed_routes"] == 0
     assert unchanged_body["summary"]["newly_denied"] == 0
-    assert unchanged_body["changed_requests"] == []
+    assert len(unchanged_body["changed_requests"]) == 1
+    assert unchanged_body["changed_requests"][0]["request_id"] == baseline.headers["X-Request-ID"]
+    assert unchanged_body["changed_requests"][0]["baseline_route_target"] == unchanged_body["changed_requests"][0]["simulated_route_target"] == "local"
+    assert unchanged_body["changed_requests"][0]["baseline_policy_outcome"] != unchanged_body["changed_requests"][0]["simulated_policy_outcome"]
     assert empty.status_code == 200
     empty_body = empty.json()
     assert empty_body["summary"]["evaluated_rows"] == 0
@@ -1274,6 +1277,7 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
     assert empty_body["changed_requests"] == []
 
 
+def test_usage_ledger_preserves_request_ids_for_denied_and_fallback_blocked_outcomes() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
             _mount_runtime(
