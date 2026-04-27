@@ -386,6 +386,66 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText(/Missing Route Signals \(4\)/i)).toBeInTheDocument();
   });
 
+  it("keeps degraded row-level routing authoritative over supporting tenant summaries", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          request_id: "req-degraded-authoritative",
+          route_reason: "token_complexity",
+          route_signals: {
+            token_count: 300,
+            complexity_tier: "low",
+            keyword_match: false,
+            model_constraint: false,
+            route_mode: "degraded",
+            calibrated_routing: false,
+            degraded_routing: true,
+            score_components: {
+              token_score: 0.6,
+              keyword_bonus: 0,
+              policy_bonus: 0,
+              budget_penalty: 0,
+              total_score: 0.6,
+            },
+          },
+        }}
+        calibrationSummary={{
+          ...sufficientCalibration,
+          state: "degraded",
+          state_reason: "Recent eligible traffic degraded because calibrated factors were incomplete.",
+          eligible_request_count: 2,
+          sufficient_request_count: 2,
+          degraded_request_count: 4,
+          degraded_reasons: [{ reason: "missing_route_signals", count: 4 }],
+          excluded_request_count: 0,
+          excluded_reasons: [],
+          gated_request_count: 0,
+          gated_reasons: [],
+        }}
+      />,
+    );
+
+    const detailText = screen.getByText(
+      "This selected request used degraded routing because replay-critical calibrated inputs were incomplete on the persisted row. Treat any tenant summary as supporting context only.",
+    );
+    const calibrationText = screen.getByText(
+      "Recent traffic produced degraded evidence instead of a fully grounded window. Keep the selected request row authoritative and treat this tenant summary as a partial explanation of why broader calibrated evidence is limited.",
+    );
+
+    expect(screen.getAllByText("degraded (score 0.60)")).toHaveLength(2);
+    expect(screen.getByText("Calibration evidence")).toBeInTheDocument();
+    expect(screen.getByText("Degraded")).toBeInTheDocument();
+    expect(screen.getByText(/Missing Route Signals \(4\)/i)).toBeInTheDocument();
+
+    const pageText = screen.getByText("Request detail").closest("section")?.textContent ?? "";
+    expect(pageText.indexOf("Request detail")).toBeGreaterThanOrEqual(0);
+    expect(pageText.indexOf("Calibration evidence")).toBeGreaterThan(pageText.indexOf("Request detail"));
+    expect(pageText.indexOf("Routing inspection")).toBeGreaterThan(pageText.indexOf("Request detail"));
+    expect(pageText).toContain("Treat any tenant summary as supporting context only.");
+    expect(pageText).toContain("Keep the selected request row authoritative");
+  });
+
 
   it("renders structured hard-budget downgrade evidence instead of forcing raw policy_outcome inspection", () => {
     renderWithProviders(

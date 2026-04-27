@@ -58,7 +58,7 @@ PY
   - Files: `tests/test_chat_completions.py`, `tests/test_response_headers.py`, `tests/test_governance_api.py`
   - Verify: ./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or policy_denied" && ./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals" && ./.venv/bin/pytest tests/test_governance_api.py -k "policy_simulation and (outcome_grounded or degraded or parity or usage_ledger)"
 
-- [ ] **T03: Harden request-first console proof for degraded inspection** `est:45m`
+- [x] **T03: Harden request-first console proof for degraded inspection** `est:45m`
   Tighten the request-first console proof so the final walkthrough can point to exact operator seams for both grounded and degraded review paths. Reuse the current request-detail and Observability suites; add only the assertions needed to prove the degraded path still keeps the selected request row authoritative while tenant calibration summary remains supporting context. Do not add a new dashboard/workflow or browser-only proof path.
   - Files: `console/src/components/ledger/ledger-request-detail.test.tsx`, `console/src/app/(console)/observability/page.test.tsx`, `console/src/app/(console)/observability/observability-page.test.tsx`
   - Verify: npm --prefix console run test -- --run 'src/components/ledger/ledger-request-detail.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'
