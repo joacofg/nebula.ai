@@ -463,55 +463,48 @@ describe("policy-form", () => {
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
-  it("renders malformed and rollout-disabled routing parity without crashing", () => {
+  it("renders degraded calibration evidence without crashing or hiding replay clues", () => {
     renderPolicyForm({
       simulationResult: {
         ...baseSimulationResult,
-        summary: {
-          ...baseSimulationResult.summary,
-          changed_routes: 0,
-          newly_denied: 0,
-          premium_cost_delta: 0.025,
+        calibration_summary: {
+          ...baseSimulationResult.calibration_summary,
+          state: "degraded",
+          state_reason: "Replay evidence is degraded because persisted route signals are incomplete.",
+          degraded_request_count: 1,
+          degraded_reasons: [{ reason: "missing_route_signals", count: 1 }],
         },
         changed_requests: [
           {
             ...baseSimulationResult.changed_requests[0],
-            request_id: "req-rollout-disabled",
+            request_id: "req-degraded",
             baseline_route_mode: null,
             baseline_calibrated_routing: null,
             baseline_degraded_routing: null,
             baseline_route_score: null,
-            baseline_route_reason: "calibrated_routing_disabled",
             simulated_route_mode: null,
             simulated_calibrated_routing: null,
-            simulated_degraded_routing: true,
+            simulated_degraded_routing: null,
             simulated_route_score: null,
-            simulated_route_reason: null,
-            baseline_route_target: "local",
-            simulated_route_target: "local",
+            baseline_route_target: "premium",
+            simulated_route_target: "premium",
+            baseline_route_reason: "token_complexity",
+            simulated_route_reason: "token_complexity",
             baseline_terminal_status: "completed",
             simulated_terminal_status: "completed",
-            baseline_policy_outcome: "default",
-            simulated_policy_outcome: "soft_budget_warning",
-            baseline_estimated_cost: 0.05,
-            simulated_estimated_cost: 0.075,
+            baseline_policy_outcome: "outcome_evidence=sufficient(route_mode=calibrated)",
+            simulated_policy_outcome: "outcome_evidence=degraded(route_mode=unscored reason=missing_route_signals)",
+            baseline_estimated_cost: 0.1,
+            simulated_estimated_cost: 0.1,
           },
         ],
       },
     });
 
-    expect(
-      screen.getByText(
-        "Compared with the current baseline, this draft would change 1 sampled request.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Operator consequence: premium spend would increase by \$0\.0250\./i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/routing parity: rollout disabled → unscored \(degraded\)/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/policy default → soft_budget_warning/i)).toBeInTheDocument();
+    expect(screen.getByText(/Compared with the current baseline, this draft would change 1 sampled request\./i)).toBeInTheDocument();
+    expect(screen.getByText(/req-degraded/i)).toBeInTheDocument();
+    expect(screen.getByText(/policy outcome_evidence=sufficient\(route_mode=calibrated\) → outcome_evidence=degraded\(route_mode=unscored reason=missing_route_signals\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/routing parity: unscored → unscored/i)).toBeInTheDocument();
   });
 
   it("derives runtime-enforced controls from policy options and keeps soft budget outside that section", () => {

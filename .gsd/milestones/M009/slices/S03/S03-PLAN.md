@@ -42,7 +42,7 @@ Steps:
   - Files: `src/nebula/services/policy_service.py`, `src/nebula/services/policy_simulation_service.py`, `tests/test_service_flows.py`
   - Verify: ./.venv/bin/pytest tests/test_service_flows.py -k "policy_simulation and (outcome or replay or degraded or parity or hard_budget)"
 
-- [ ] **T02: Prove admin replay parity and repair console type drift** `est:1h`
+- [x] **T02: Prove admin replay parity and repair console type drift** `est:1h`
   Close the public replay boundary and keep the request-first console contract aligned with the backend semantics.
 
 Steps:

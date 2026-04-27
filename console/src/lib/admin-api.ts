@@ -128,7 +128,7 @@ export type CalibrationReasonCount = {
 export type CalibrationEvidenceSummary = {
   tenant_id: string;
   scope: "tenant" | "tenant_window";
-  state: "sufficient" | "thin" | "stale";
+  state: "sufficient" | "thin" | "stale" | "degraded";
   state_reason: string;
   generated_at: string;
   latest_eligible_request_at: string | null;

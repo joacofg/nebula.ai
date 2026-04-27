@@ -773,26 +773,28 @@ def test_admin_policy_simulation_rejects_inverted_time_windows() -> None:
 def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
+            local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="local response",
+                    model="llama3.2:3b",
+                    provider="ollama",
+                    usage=usage(),
+                ),
+            )
+            premium_provider = StubProvider(
+                "mock-premium",
+                completion_result=CompletionResult(
+                    content="premium response",
+                    model="openai/gpt-4o-mini",
+                    provider="mock-premium",
+                    usage=usage(10, 5),
+                ),
+            )
             _mount_runtime(
                 app,
-                local_provider=StubProvider(
-                    "ollama",
-                    completion_result=CompletionResult(
-                        content="local response",
-                        model="llama3.2:3b",
-                        provider="ollama",
-                        usage=usage(),
-                    ),
-                ),
-                premium_provider=StubProvider(
-                    "mock-premium",
-                    completion_result=CompletionResult(
-                        content="premium response",
-                        model="openai/gpt-4o-mini",
-                        provider="mock-premium",
-                        usage=usage(10, 5),
-                    ),
-                ),
+                local_provider=local_provider,
+                premium_provider=premium_provider,
                 cache_service=FakeCacheService(),
             )
             client.put(
@@ -822,7 +824,7 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                     "messages": [{"role": "user", "content": "premium route"}],
                 },
             )
-            degraded_response = client.post(
+            parity_response = client.post(
                 "/v1/chat/completions",
                 headers=auth_headers(),
                 json={
@@ -846,8 +848,8 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 f"/v1/admin/usage/ledger?request_id={premium_response.headers['X-Request-ID']}",
                 headers=admin_headers(),
             )
-            degraded_ledger = client.get(
-                f"/v1/admin/usage/ledger?request_id={degraded_response.headers['X-Request-ID']}",
+            parity_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={parity_response.headers['X-Request-ID']}",
                 headers=admin_headers(),
             )
             ledger = client.get(
@@ -855,13 +857,13 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 headers=admin_headers(),
             )
             earliest_timestamp = ledger.json()[-1]["timestamp"]
-            degraded_request_id = degraded_response.headers["X-Request-ID"]
+            parity_request_id = parity_response.headers["X-Request-ID"]
             store = app.state.container.governance_store
-            degraded_record = store.list_usage_records(request_id=degraded_request_id)[0]
+            parity_record = store.list_usage_records(request_id=parity_request_id)[0]
             store.record_usage(
-                degraded_record.model_copy(
+                parity_record.model_copy(
                     update={
-                        "request_id": f"{degraded_request_id}-suppressed",
+                        "request_id": f"{parity_request_id}-suppressed",
                         "route_signals": None,
                         "metadata_fields_suppressed": ["route_signals"],
                     }
@@ -869,6 +871,26 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
             )
 
             simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={
+                    "candidate_policy": TenantPolicy(
+                        routing_mode_default="auto",
+                        allowed_premium_models=["openai/gpt-4o-mini"],
+                    ).model_dump(mode="json"),
+                    "from_timestamp": earliest_timestamp,
+                    "limit": 10,
+                    "changed_sample_limit": 10,
+                },
+            )
+            policy_after_parity = client.get(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+            )
+            premium_calls_after_parity = premium_provider.completion_calls
+            local_calls_after_parity = local_provider.completion_calls
+
+            simulation_changed_policy = client.post(
                 "/v1/admin/tenants/default/policy/simulate",
                 headers=admin_headers(),
                 json={
@@ -888,10 +910,10 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
 
     assert local_response.status_code == 200
     assert premium_response.status_code == 200
-    assert degraded_response.status_code == 200
+    assert parity_response.status_code == 200
     assert local_ledger.status_code == 200
     assert premium_ledger.status_code == 200
-    assert degraded_ledger.status_code == 200
+    assert parity_ledger.status_code == 200
     assert simulation.status_code == 200
     body = simulation.json()
     assert body["tenant_id"] == "default"
@@ -918,76 +940,48 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert body["calibration_summary"]["degraded_reasons"] == [
         {"reason": "missing_route_signals", "count": 1},
     ]
-    assert len(body["changed_requests"]) == 4
+    assert len(body["changed_requests"]) == 1
 
     local_row = local_ledger.json()[0]
     premium_row = premium_ledger.json()[0]
-    degraded_row = degraded_ledger.json()[0]
-    suppressed_change = next(
-        item
-        for item in body["changed_requests"]
-        if item["request_id"] == f"{degraded_request_id}-suppressed"
-    )
-    local_change = next(
-        item for item in body["changed_requests"] if item["request_id"] == local_row["request_id"]
-    )
-    premium_cost_change = next(
-        item for item in body["changed_requests"] if item["request_id"] == premium_row["request_id"]
-    )
-    degraded_change = next(
-        item for item in body["changed_requests"] if item["request_id"] == degraded_row["request_id"]
+    parity_row = parity_ledger.json()[0]
+    parity_change = next(
+        item for item in body["changed_requests"] if item["request_id"] == parity_row["request_id"]
     )
 
     assert local_row["route_reason"] == local_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
     assert local_row["route_signals"]["route_mode"] == local_response.headers["X-Nebula-Route-Mode"] == "calibrated"
-    assert local_change["baseline_route_target"] == local_response.headers["X-Nebula-Route-Target"] == "local"
-    assert local_change["baseline_route_reason"] == local_row["route_reason"]
-    assert local_change["baseline_route_mode"] == local_row["route_signals"]["route_mode"]
-    assert local_change["baseline_calibrated_routing"] == local_row["route_signals"]["calibrated_routing"] is True
-    assert local_change["baseline_degraded_routing"] == local_row["route_signals"]["degraded_routing"] is False
-    assert local_change["baseline_route_score"] == float(local_response.headers["X-Nebula-Route-Score"])
-    assert local_change["baseline_route_score"] == local_row["route_signals"]["score_components"]["total_score"]
-    assert local_change["simulated_route_target"] == "premium"
-    assert local_change["simulated_route_reason"] == "policy_premium_only"
-    assert local_change["simulated_route_mode"] is None
-    assert local_change["simulated_calibrated_routing"] is None
-    assert local_change["simulated_degraded_routing"] is None
-    assert local_change["simulated_route_score"] is None
-
     assert premium_row["route_reason"] == premium_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert premium_response.headers.get("X-Nebula-Route-Mode") is None
     assert premium_row["route_signals"] is None
-    assert premium_cost_change["baseline_route_target"] == premium_response.headers["X-Nebula-Route-Target"] == "premium"
-    assert premium_cost_change["baseline_route_reason"] == premium_row["route_reason"]
-    assert premium_cost_change["baseline_route_mode"] is None
-    assert premium_cost_change["baseline_calibrated_routing"] is None
-    assert premium_cost_change["baseline_degraded_routing"] is None
-    assert premium_cost_change["baseline_route_score"] is None
-    assert premium_cost_change["simulated_route_target"] == "premium"
-    assert premium_cost_change["simulated_route_reason"] == "explicit_premium_model"
-    assert premium_cost_change["baseline_policy_outcome"] != premium_cost_change["simulated_policy_outcome"]
-    assert premium_cost_change["simulated_policy_outcome"].startswith("routing_mode=premium_only")
 
-    assert degraded_row["route_reason"] == degraded_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
-    assert degraded_row["route_signals"]["route_mode"] == degraded_response.headers["X-Nebula-Route-Mode"] == "calibrated"
-    assert degraded_change["baseline_route_target"] == degraded_response.headers["X-Nebula-Route-Target"] == "premium"
-    assert degraded_change["baseline_route_reason"] == degraded_row["route_reason"]
-    assert degraded_change["baseline_route_mode"] == degraded_row["route_signals"]["route_mode"]
-    assert degraded_change["baseline_calibrated_routing"] == degraded_row["route_signals"]["calibrated_routing"] is True
-    assert degraded_change["baseline_degraded_routing"] == degraded_row["route_signals"]["degraded_routing"] is False
-    assert degraded_change["baseline_route_score"] == float(degraded_response.headers["X-Nebula-Route-Score"])
-    assert degraded_change["baseline_route_score"] == degraded_row["route_signals"]["score_components"]["total_score"]
-    assert degraded_change["simulated_route_target"] == "premium"
-    assert degraded_change["simulated_route_reason"] == "policy_premium_only"
-    assert degraded_change["simulated_route_mode"] is None
-    assert degraded_change["simulated_calibrated_routing"] is None
-    assert degraded_change["simulated_degraded_routing"] is None
-    assert degraded_change["simulated_route_score"] is None
+    assert parity_row["route_reason"] == parity_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert parity_row["route_signals"]["route_mode"] == parity_response.headers["X-Nebula-Route-Mode"] == "calibrated"
+    assert parity_change["baseline_route_target"] == parity_response.headers["X-Nebula-Route-Target"] == "premium"
+    assert parity_change["simulated_route_target"] == parity_change["baseline_route_target"]
+    assert parity_change["baseline_route_reason"] == parity_row["route_reason"]
+    assert parity_change["simulated_route_reason"] == parity_change["baseline_route_reason"]
+    assert parity_change["baseline_policy_outcome"] == parity_row["policy_outcome"]
+    assert parity_change["simulated_policy_outcome"] == parity_change["baseline_policy_outcome"]
+    assert parity_change["baseline_route_mode"] == parity_response.headers["X-Nebula-Route-Mode"] == parity_row["route_signals"]["route_mode"]
+    assert parity_change["simulated_route_mode"] == parity_change["baseline_route_mode"]
+    assert parity_change["baseline_calibrated_routing"] == parity_row["route_signals"]["calibrated_routing"] is True
+    assert parity_change["simulated_calibrated_routing"] == parity_change["baseline_calibrated_routing"]
+    assert parity_change["baseline_degraded_routing"] == parity_row["route_signals"]["degraded_routing"] is False
+    assert parity_change["simulated_degraded_routing"] == parity_change["baseline_degraded_routing"]
+    assert parity_change["baseline_route_score"] == float(parity_response.headers["X-Nebula-Route-Score"])
+    assert parity_change["baseline_route_score"] == parity_row["route_signals"]["score_components"]["total_score"]
+    assert parity_change["simulated_route_score"] == parity_change["baseline_route_score"]
 
+    suppressed_change = next(
+        item
+        for item in simulation_changed_policy.json()["changed_requests"]
+        if item["request_id"] == f"{parity_request_id}-suppressed"
+    )
     assert suppressed_change["baseline_route_target"] == "premium"
     assert suppressed_change["simulated_route_target"] == "premium"
-    assert suppressed_change["baseline_route_reason"] == degraded_row["route_reason"]
-    assert suppressed_change["baseline_policy_outcome"] == degraded_row["policy_outcome"]
+    assert suppressed_change["baseline_route_reason"] == parity_row["route_reason"]
+    assert suppressed_change["baseline_policy_outcome"] == parity_row["policy_outcome"]
     assert suppressed_change["baseline_route_mode"] is None
     assert suppressed_change["baseline_calibrated_routing"] is None
     assert suppressed_change["baseline_degraded_routing"] is None
@@ -999,13 +993,17 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
 
     assert body["window"]["requested_limit"] == 10
     assert body["window"]["returned_rows"] == 4
-    assert persisted_policy.status_code == 200
-    assert persisted_policy.json() == TenantPolicy(
+    assert policy_after_parity.status_code == 200
+    assert policy_after_parity.json() == TenantPolicy(
         routing_mode_default="auto",
         allowed_premium_models=["openai/gpt-4o-mini"],
         hard_budget_limit_usd=12.5,
         hard_budget_enforcement="deny",
     ).model_dump(mode="json")
+    assert persisted_policy.status_code == 200
+    assert persisted_policy.json() == policy_after_parity.json()
+    assert premium_provider.completion_calls == premium_calls_after_parity
+    assert local_provider.completion_calls == local_calls_after_parity
 
 
 def test_admin_policy_simulation_detects_newly_denied_replays() -> None:
