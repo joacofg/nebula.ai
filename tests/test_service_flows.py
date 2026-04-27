@@ -913,6 +913,12 @@ async def test_policy_simulation_exposes_window_calibration_summary_with_gated_a
                 timestamp=now.replace(microsecond=11),
                 route_signals={"route_mode": "degraded", "token_count": 650, "complexity_tier": "medium", "keyword_match": True},
             ),
+            _ledger_record(
+                request_id="req-suppressed",
+                timestamp=now.replace(microsecond=12),
+                route_signals=None,
+                policy_outcome="metadata_minimization=strict",
+            ),
         ]
     )
     store = FakeSimulationGovernanceStore(records)
@@ -933,14 +939,19 @@ async def test_policy_simulation_exposes_window_calibration_summary_with_gated_a
 
     assert response.calibration_summary.scope == "tenant"
     assert response.calibration_summary.state == "thin"
+    assert response.calibration_summary.state_reason == (
+        "Eligible calibrated routing evidence is still below the tenant sufficiency threshold."
+    )
     assert response.calibration_summary.sufficient_request_count == 4
-    assert response.calibration_summary.eligible_request_count == 5
+    assert response.calibration_summary.eligible_request_count == 6
     assert response.calibration_summary.gated_request_count == 1
-    assert response.calibration_summary.degraded_request_count == 1
+    assert response.calibration_summary.degraded_request_count == 2
     assert response.calibration_summary.gated_reasons[0].reason == "calibrated_routing_disabled"
     assert response.calibration_summary.gated_reasons[0].count == 1
-    assert response.calibration_summary.degraded_reasons[0].reason == "degraded_replay_signals"
-    assert response.calibration_summary.degraded_reasons[0].count == 1
+    assert response.calibration_summary.degraded_reasons == [
+        CalibrationReasonCount(reason="degraded_replay_signals", count=1),
+        CalibrationReasonCount(reason="missing_route_signals", count=1),
+    ]
 
 
 def _ledger_record(

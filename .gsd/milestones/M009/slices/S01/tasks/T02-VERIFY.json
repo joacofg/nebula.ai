@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M009/S01/T02",
+  "timestamp": 1777301397292,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "pytest tests/test_service_flows.py -k \"governance_store_calibration_summary or calibration_summary\"",
+      "exitCode": 127,
+      "durationMs": 3,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

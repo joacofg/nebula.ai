@@ -827,7 +827,15 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 headers=auth_headers(),
                 json={
                     "model": "nebula-auto",
-                    "messages": [{"role": "user", "content": "degraded replay evidence"}],
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": "Need a deliberately complex architecture analysis "
+                            "covering orchestrator routing safeguards, fallback tradeoffs, "
+                            "tenant governance, replay visibility, policy simulation parity, "
+                            "observability seams, and premium escalation handling.",
+                        }
+                    ],
                 },
             )
             local_ledger = client.get(
@@ -847,6 +855,18 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 headers=admin_headers(),
             )
             earliest_timestamp = ledger.json()[-1]["timestamp"]
+            degraded_request_id = degraded_response.headers["X-Request-ID"]
+            store = app.state.container.governance_store
+            degraded_record = store.list_usage_records(request_id=degraded_request_id)[0]
+            store.record_usage(
+                degraded_record.model_copy(
+                    update={
+                        "request_id": f"{degraded_request_id}-suppressed",
+                        "route_signals": None,
+                        "metadata_fields_suppressed": ["route_signals"],
+                    }
+                )
+            )
 
             simulation = client.post(
                 "/v1/admin/tenants/default/policy/simulate",
@@ -875,26 +895,39 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert simulation.status_code == 200
     body = simulation.json()
     assert body["tenant_id"] == "default"
-    assert body["summary"]["evaluated_rows"] == 3
-    assert body["summary"]["changed_routes"] == 2
+    assert body["summary"]["evaluated_rows"] == 4
+    assert body["summary"]["changed_routes"] == 1
     assert body["summary"]["newly_denied"] == 0
     assert body["calibration_summary"]["tenant_id"] == "default"
     assert body["calibration_summary"]["scope"] == "tenant_window"
     # Payloads keep calibration_summary for compatibility, but the state carries outcome-evidence semantics.
     assert body["calibration_summary"]["state"] == "thin"
-    assert body["calibration_summary"]["eligible_request_count"] == 2
+    assert body["calibration_summary"]["state_reason"] == (
+        "Eligible calibrated routing evidence is still below the tenant sufficiency threshold."
+    )
+    assert body["calibration_summary"]["eligible_request_count"] == 3
     assert body["calibration_summary"]["sufficient_request_count"] == 2
     assert body["calibration_summary"]["excluded_request_count"] == 1
-    assert body["calibration_summary"]["degraded_request_count"] == 0
+    assert body["calibration_summary"]["gated_request_count"] == 0
+    assert body["calibration_summary"]["degraded_request_count"] == 1
+    assert body["calibration_summary"]["thin_request_threshold"] == 5
     assert body["calibration_summary"]["excluded_reasons"] == [
         {"reason": "explicit_model_override", "count": 1}
     ]
-    assert body["calibration_summary"]["degraded_reasons"] == []
-    assert len(body["changed_requests"]) == 3
+    assert body["calibration_summary"]["gated_reasons"] == []
+    assert body["calibration_summary"]["degraded_reasons"] == [
+        {"reason": "missing_route_signals", "count": 1},
+    ]
+    assert len(body["changed_requests"]) == 4
 
     local_row = local_ledger.json()[0]
     premium_row = premium_ledger.json()[0]
     degraded_row = degraded_ledger.json()[0]
+    suppressed_change = next(
+        item
+        for item in body["changed_requests"]
+        if item["request_id"] == f"{degraded_request_id}-suppressed"
+    )
     local_change = next(
         item for item in body["changed_requests"] if item["request_id"] == local_row["request_id"]
     )
@@ -937,7 +970,7 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
 
     assert degraded_row["route_reason"] == degraded_response.headers["X-Nebula-Route-Reason"] == "token_complexity"
     assert degraded_row["route_signals"]["route_mode"] == degraded_response.headers["X-Nebula-Route-Mode"] == "calibrated"
-    assert degraded_change["baseline_route_target"] == degraded_response.headers["X-Nebula-Route-Target"] == "local"
+    assert degraded_change["baseline_route_target"] == degraded_response.headers["X-Nebula-Route-Target"] == "premium"
     assert degraded_change["baseline_route_reason"] == degraded_row["route_reason"]
     assert degraded_change["baseline_route_mode"] == degraded_row["route_signals"]["route_mode"]
     assert degraded_change["baseline_calibrated_routing"] == degraded_row["route_signals"]["calibrated_routing"] is True
@@ -951,8 +984,21 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert degraded_change["simulated_degraded_routing"] is None
     assert degraded_change["simulated_route_score"] is None
 
+    assert suppressed_change["baseline_route_target"] == "premium"
+    assert suppressed_change["simulated_route_target"] == "premium"
+    assert suppressed_change["baseline_route_reason"] == degraded_row["route_reason"]
+    assert suppressed_change["baseline_policy_outcome"] == degraded_row["policy_outcome"]
+    assert suppressed_change["baseline_route_mode"] is None
+    assert suppressed_change["baseline_calibrated_routing"] is None
+    assert suppressed_change["baseline_degraded_routing"] is None
+    assert suppressed_change["baseline_route_score"] is None
+    assert suppressed_change["simulated_route_mode"] is None
+    assert suppressed_change["simulated_calibrated_routing"] is None
+    assert suppressed_change["simulated_degraded_routing"] is None
+    assert suppressed_change["simulated_route_score"] is None
+
     assert body["window"]["requested_limit"] == 10
-    assert body["window"]["returned_rows"] == 3
+    assert body["window"]["returned_rows"] == 4
     assert persisted_policy.status_code == 200
     assert persisted_policy.json() == TenantPolicy(
         routing_mode_default="auto",

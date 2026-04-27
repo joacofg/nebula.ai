@@ -45,7 +45,7 @@ Steps:
   - Files: `src/nebula/services/governance_store.py`, `tests/test_service_flows.py`, `tests/test_governance_api.py`
   - Verify: pytest tests/test_service_flows.py -k "governance_store_calibration_summary or calibration_summary"
 
-- [ ] **T03: Prove replay-facing and admin summary consumers honor the new contract** `est:45m`
+- [x] **T03: Prove replay-facing and admin summary consumers honor the new contract** `est:45m`
   Close the slice by proving that the richer evidence contract survives through existing backend consumers without changing live route choice yet. This gives S02/S03 a stable integration seam and catches accidental drift between typed models, summary derivation, and simulation/admin responses.
 
 Steps:
