@@ -205,11 +205,21 @@ def test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_p
     assert row["route_reason"] == response.headers["X-Nebula-Route-Reason"]
     assert row["policy_outcome"] == response.headers["X-Nebula-Policy-Outcome"]
     assert row["route_signals"]["route_mode"] == response.headers["X-Nebula-Route-Mode"]
+    assert row["route_signals"]["replay"] is False
+    assert row["route_signals"]["calibrated_routing"] is True
+    assert row["route_signals"]["degraded_routing"] is False
     assert row["route_signals"]["score_components"]["total_score"] == float(
         response.headers["X-Nebula-Route-Score"]
     )
-    assert row["route_signals"]["outcome_evidence"]["state"] == "sufficient"
-    assert row["route_signals"]["outcome_evidence"]["sufficient_request_count"] == 5
+    assert row["route_signals"]["outcome_evidence"] == {
+        "state": "sufficient",
+        "state_reason": "Eligible calibrated routing evidence meets the tenant sufficiency threshold.",
+        "eligible_request_count": 5,
+        "sufficient_request_count": 5,
+        "degraded_request_count": 0,
+        "gated_request_count": 0,
+        "excluded_request_count": 0,
+    }
 
 
 def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> None:

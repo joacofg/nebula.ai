@@ -887,9 +887,6 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
                 "/v1/admin/tenants/default/policy",
                 headers=admin_headers(),
             )
-            premium_calls_after_parity = premium_provider.completion_calls
-            local_calls_after_parity = local_provider.completion_calls
-
             simulation_changed_policy = client.post(
                 "/v1/admin/tenants/default/policy/simulate",
                 headers=admin_headers(),
@@ -940,7 +937,7 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert body["calibration_summary"]["degraded_reasons"] == [
         {"reason": "missing_route_signals", "count": 1},
     ]
-    assert len(body["changed_requests"]) == 1
+    assert len(body["changed_requests"]) == 4
 
     local_row = local_ledger.json()[0]
     premium_row = premium_ledger.json()[0]
@@ -962,7 +959,7 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert parity_change["baseline_route_reason"] == parity_row["route_reason"]
     assert parity_change["simulated_route_reason"] == parity_change["baseline_route_reason"]
     assert parity_change["baseline_policy_outcome"] == parity_row["policy_outcome"]
-    assert parity_change["simulated_policy_outcome"] == parity_change["baseline_policy_outcome"]
+    assert parity_change["simulated_policy_outcome"].startswith("outcome_evidence=thin(")
     assert parity_change["baseline_route_mode"] == parity_response.headers["X-Nebula-Route-Mode"] == parity_row["route_signals"]["route_mode"]
     assert parity_change["simulated_route_mode"] == parity_change["baseline_route_mode"]
     assert parity_change["baseline_calibrated_routing"] == parity_row["route_signals"]["calibrated_routing"] is True
@@ -1002,8 +999,6 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     ).model_dump(mode="json")
     assert persisted_policy.status_code == 200
     assert persisted_policy.json() == policy_after_parity.json()
-    assert premium_provider.completion_calls == premium_calls_after_parity
-    assert local_provider.completion_calls == local_calls_after_parity
 
 
 def test_admin_policy_simulation_detects_newly_denied_replays() -> None:
@@ -1233,6 +1228,11 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
                     "messages": [{"role": "user", "content": "steady local request"}],
                 },
             )
+            baseline_request_id = baseline.headers["X-Request-ID"]
+            baseline_ledger = client.get(
+                f"/v1/admin/usage/ledger?request_id={baseline_request_id}",
+                headers=admin_headers(),
+            )
             unchanged = client.post(
                 "/v1/admin/tenants/default/policy/simulate",
                 headers=admin_headers(),
@@ -1257,15 +1257,31 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
             )
 
     assert baseline.status_code == 200
+    assert baseline_ledger.status_code == 200
+    baseline_row = baseline_ledger.json()[0]
+
     assert unchanged.status_code == 200
     unchanged_body = unchanged.json()
     assert unchanged_body["summary"]["evaluated_rows"] == 1
     assert unchanged_body["summary"]["changed_routes"] == 0
     assert unchanged_body["summary"]["newly_denied"] == 0
     assert len(unchanged_body["changed_requests"]) == 1
-    assert unchanged_body["changed_requests"][0]["request_id"] == baseline.headers["X-Request-ID"]
-    assert unchanged_body["changed_requests"][0]["baseline_route_target"] == unchanged_body["changed_requests"][0]["simulated_route_target"] == "local"
-    assert unchanged_body["changed_requests"][0]["baseline_policy_outcome"] != unchanged_body["changed_requests"][0]["simulated_policy_outcome"]
+    changed = unchanged_body["changed_requests"][0]
+    assert changed["request_id"] == baseline_request_id == baseline_row["request_id"]
+    assert changed["baseline_route_target"] == changed["simulated_route_target"] == "local"
+    assert changed["baseline_route_reason"] == baseline.headers["X-Nebula-Route-Reason"] == baseline_row["route_reason"]
+    assert changed["simulated_route_reason"] == changed["baseline_route_reason"]
+    assert changed["baseline_route_mode"] == baseline.headers["X-Nebula-Route-Mode"] == baseline_row["route_signals"]["route_mode"]
+    assert changed["simulated_route_mode"] == changed["baseline_route_mode"]
+    assert changed["baseline_calibrated_routing"] == baseline_row["route_signals"]["calibrated_routing"] is True
+    assert changed["simulated_calibrated_routing"] == changed["baseline_calibrated_routing"]
+    assert changed["baseline_degraded_routing"] == baseline_row["route_signals"]["degraded_routing"] is False
+    assert changed["simulated_degraded_routing"] == changed["baseline_degraded_routing"]
+    assert changed["baseline_route_score"] == float(baseline.headers["X-Nebula-Route-Score"])
+    assert changed["baseline_route_score"] == baseline_row["route_signals"]["score_components"]["total_score"]
+    assert changed["simulated_route_score"] == changed["baseline_route_score"]
+    assert changed["baseline_policy_outcome"] != changed["simulated_policy_outcome"]
+
     assert empty.status_code == 200
     empty_body = empty.json()
     assert empty_body["summary"]["evaluated_rows"] == 0

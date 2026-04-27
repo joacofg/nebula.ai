@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-04-27T21:31:55Z | Files: 242 | Described: 0/242
-<!-- gsd:codebase-meta {"generatedAt":"2026-04-27T21:31:55Z","fingerprint":"38dda27523c597e2f46037a3ad619ce720ede8b7","fileCount":242,"truncated":false} -->
+Generated: 2026-04-27T21:36:28Z | Files: 243 | Described: 0/243
+<!-- gsd:codebase-meta {"generatedAt":"2026-04-27T21:36:28Z","fingerprint":"a03d1ed87fc403c1244f0367eeff4e90d437a43d","fileCount":243,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
@@ -191,7 +191,7 @@ Generated: 2026-04-27T21:31:55Z | Files: 242 | Described: 0/242
 - `deploy/selfhosted.env.example`
 
 ### docs/
-- *(23 files: 22 .md, 1 .json)*
+- *(24 files: 23 .md, 1 .json)*
 
 ### migrations/
 - `migrations/env.py`

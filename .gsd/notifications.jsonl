@@ -135,3 +135,5 @@
 {"id":"59047c0f-5757-4056-8996-d22a3298254d","ts":"2026-04-27T21:21:32.647Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}
 {"id":"bac41b0b-9e57-4b66-b8f2-257bce53a5ec","ts":"2026-04-27T21:26:51.716Z","severity":"info","message":"Committed: feat: Repaired observability page fixtures and proved selected-request-…","source":"notify","read":false}
 {"id":"ede87c79-fce3-467e-a304-4bd6016d09c3","ts":"2026-04-27T21:26:53.842Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}
+{"id":"b4327f88-13ab-4551-a07c-3b69b03ef019","ts":"2026-04-27T21:36:28.686Z","severity":"info","message":"Committed: docs: Added the M009 integrated proof doc and linked shared vocabulary…","source":"notify","read":false}
+{"id":"8ac9bbab-d324-40d2-b441-b5638105e434","ts":"2026-04-27T21:36:28.748Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}

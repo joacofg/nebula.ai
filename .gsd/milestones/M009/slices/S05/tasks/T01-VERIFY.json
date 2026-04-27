@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T01",
+  "unitId": "M009/S05/T01",
+  "timestamp": 1777325788699,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "python - <<'PY'\nfrom pathlib import Path\nproof = Path('docs/m009-integrated-proof.md')\ntext = proof.read_text()\nassert proof.exists()\nassert text.count('## ') >= 6\nfor needle in [\n    'POST /v1/chat/completions',\n    'GET /v1/admin/usage/ledger?request_id=...',\n    'POST /v1/admin/tenants/{tenant_id}/policy/simulate',\n    'happy path',\n    'degraded path',\n    'selected-request-first',\n]:\n    assert needle in text, needle\nvocab = Path('docs/route-decision-vocabulary.md').read_text()\nfor needle in ['outcome_bonus', 'evidence_penalty', 'outcome_evidence']:\n    assert needle in vocab, needle\narch = Path('docs/architecture.md').read_text()\nassert 'docs/m009-integrated-proof.md' in arch\nassert 'TODO' not in text and 'TBD' not in text\nPY",
+      "exitCode": 0,
+      "durationMs": 40,
+      "verdict": "pass"
+    }
+  ]
+}

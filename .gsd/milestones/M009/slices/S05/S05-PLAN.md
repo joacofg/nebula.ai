@@ -53,7 +53,7 @@ assert 'docs/m009-integrated-proof.md' in arch
 assert 'TODO' not in text and 'TBD' not in text
 PY
 
-- [ ] **T02: Lock the happy-path and degraded backend proof chain** `est:1h`
+- [x] **T02: Lock the happy-path and degraded backend proof chain** `est:1h`
   Tighten the backend proof seams so one happy-path scenario and one degraded-path scenario each explicitly support the final integrated walkthrough. Reuse the existing request, header, ledger, and simulation tests rather than adding a new orchestration API or synthetic proof harness. Happy-path assertions should bind live response headers, persisted `route_signals.outcome_evidence`, and unchanged-policy replay parity for the same request shape. Degraded-path assertions should keep replay honesty explicit when persisted route signals are incomplete and preserve the anti-sprawl boundary by proving missing-route-signal handling rather than adding a replay-only contract.
   - Files: `tests/test_chat_completions.py`, `tests/test_response_headers.py`, `tests/test_governance_api.py`
   - Verify: ./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or policy_denied" && ./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals" && ./.venv/bin/pytest tests/test_governance_api.py -k "policy_simulation and (outcome_grounded or degraded or parity or usage_ledger)"
