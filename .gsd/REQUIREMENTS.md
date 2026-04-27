@@ -2,19 +2,6 @@
 
 This file is the explicit capability and coverage contract for the project.
 
-## Active
-
-### R078 — M009 proves live routing improvement, replay credibility, and request-level evidence integrity without turning Nebula into a dashboard-heavy analytics product, a black-box optimizer, or a hosted-authoritative decision layer.
-- Class: constraint
-- Status: active
-- Description: M009 proves live routing improvement, replay credibility, and request-level evidence integrity without turning Nebula into a dashboard-heavy analytics product, a black-box optimizer, or a hosted-authoritative decision layer.
-- Why it matters: This is the milestone’s anti-sprawl guardrail; the work can succeed technically while still failing product-wise if this boundary drifts.
-- Source: user
-- Primary owning slice: M009/S05
-- Supporting slices: M009/S01, M009/S02, M009/S03, M009/S04
-- Validation: mapped
-- Notes: Keep the public API narrow, operator surfaces request-first, and hosted state non-authoritative.
-
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -611,6 +598,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M009/S01 through deterministic `GovernanceStore.summarize_calibration_evidence()` classification and backend tests covering no-evidence, thin, stale, degraded, sufficient, tenant/window scoping, and governance-suppressed route-signal cases. Verified with `./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or outcome or governance_store_calibration_summary or policy_simulation_exposes_window_calibration_summary"` and `./.venv/bin/pytest tests/test_governance_api.py -k "calibration_summary or policy_simulation"`.
 - Notes: S01 validates the explicit fail-safe evidence-state contract and degraded honesty seam; later slices still need to consume this contract in live routing, replay parity, and operator surfaces.
 
+### R078 — M009 proves live routing improvement, replay credibility, and request-level evidence integrity without turning Nebula into a dashboard-heavy analytics product, a black-box optimizer, or a hosted-authoritative decision layer.
+- Class: constraint
+- Status: validated
+- Description: M009 proves live routing improvement, replay credibility, and request-level evidence integrity without turning Nebula into a dashboard-heavy analytics product, a black-box optimizer, or a hosted-authoritative decision layer.
+- Why it matters: This is the milestone’s anti-sprawl guardrail; the work can succeed technically while still failing product-wise if this boundary drifts.
+- Source: user
+- Primary owning slice: M009/S05
+- Supporting slices: M009/S01, M009/S02, M009/S03, M009/S04
+- Validation: Validated by M009/S05 integrated close-out evidence: docs/m009-integrated-proof.md stays pointer-first on existing request, ledger, simulation, and Observability seams; backend verification passed for the happy-path and degraded-path proof chain (pytest: 3 chat tests, 1 response-headers test, 2 governance simulation tests); console verification passed for request-first degraded inspection (Vitest: 16 ledger-detail tests, 1 observability page test, 4 observability composition tests). This demonstrates routing-quality proof without adding a new API surface, dashboard-heavy analytics flow, black-box optimizer, or hosted-authoritative decision layer.
+- Notes: S05 closed the milestone anti-sprawl guardrail by locking final proof into additive docs and focused tests only.
+
 ## Deferred
 
 ### R011 — Nebula supports a clearly documented public embeddings adoption path if ICP demand justifies it.
@@ -1026,7 +1024,7 @@ This file is the explicit capability and coverage contract for the project.
 | R075 | failure-visibility | validated | M009/S02 | M009/S04 | Validated by M009/S02 through end-to-end request-path and governance tests asserting that the correlated usage-ledger row records the actual live outcome-grounded route factors, evidence state, and additive score components used for the decision, or honestly records policy_denied with no route_signals when routing is blocked. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, and `./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"`. |
 | R076 | operability | validated | M009/S04 | M009/S02, M009/S03 | Validated by M009/S04 through focused console coverage proving operators can inspect whether a selected request used grounded, thin, stale, degraded, rollout-disabled, or unscored outcome-informed routing on the existing request-first Observability and request-detail surfaces. Verified with `npm --prefix console run test -- --run 'src/components/ledger/ledger-request-detail.test.tsx'`, `npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx'`, and `npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'`. |
 | R077 | continuity | validated | M009/S01 | M009/S02, M009/S03, M009/S04 | Validated by M009/S01 through deterministic `GovernanceStore.summarize_calibration_evidence()` classification and backend tests covering no-evidence, thin, stale, degraded, sufficient, tenant/window scoping, and governance-suppressed route-signal cases. Verified with `./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or outcome or governance_store_calibration_summary or policy_simulation_exposes_window_calibration_summary"` and `./.venv/bin/pytest tests/test_governance_api.py -k "calibration_summary or policy_simulation"`. |
-| R078 | constraint | active | M009/S05 | M009/S01, M009/S02, M009/S03, M009/S04 | mapped |
+| R078 | constraint | validated | M009/S05 | M009/S01, M009/S02, M009/S03, M009/S04 | Validated by M009/S05 integrated close-out evidence: docs/m009-integrated-proof.md stays pointer-first on existing request, ledger, simulation, and Observability seams; backend verification passed for the happy-path and degraded-path proof chain (pytest: 3 chat tests, 1 response-headers test, 2 governance simulation tests); console verification passed for request-first degraded inspection (Vitest: 16 ledger-detail tests, 1 observability page test, 4 observability composition tests). This demonstrates routing-quality proof without adding a new API surface, dashboard-heavy analytics flow, black-box optimizer, or hosted-authoritative decision layer. |
 | R079 | admin/support | deferred | none | none | unmapped |
 | R080 | differentiator | deferred | none | none | unmapped |
 | R081 | integration | deferred | none | none | unmapped |
@@ -1037,7 +1035,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 1
-- Mapped to slices: 1
-- Validated: 54 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R074, R075, R076, R077)
+- Active requirements: 0
+- Mapped to slices: 0
+- Validated: 55 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R074, R075, R076, R077, R078)
 - Unmapped active requirements: 0
