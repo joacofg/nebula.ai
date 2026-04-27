@@ -15,10 +15,10 @@
 - [x] **S01: S01** `risk:high` `depends:[]`
   > After this: After this: one tenant’s recent ledger-backed outcome evidence can be derived deterministically with explicit sufficient/thin/stale/degraded states and proved through backend tests and typed artifacts.
 
-- [ ] **S02: S02** `risk:high` `depends:[]`
+- [x] **S02: S02** `risk:high` `depends:[]`
   > After this: After this: a real `POST /v1/chat/completions` request can route differently because of recent tenant-scoped outcome evidence, and the correlated persisted ledger row records the actual route factors used.
 
-- [ ] **S03: Replay parity for outcome-grounded routing** `risk:medium` `depends:[S01,S02]`
+- [ ] **S03: S03** `risk:medium` `depends:[]`
   > After this: After this: `POST /v1/admin/tenants/{tenant_id}/policy/simulate` replays the same outcome-grounded semantics as runtime, including honest degraded behavior when evidence is incomplete.
 
 - [ ] **S04: Request-first operator evidence** `risk:medium` `depends:[S02,S03]`

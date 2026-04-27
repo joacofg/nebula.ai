@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R073 — Nebula’s live routing decisions use bounded recent tenant-scoped outcome evidence to improve local-vs-premium choices rather than relying only on prompt-complexity heuristics.
-- Class: core-capability
-- Status: active
-- Description: Nebula’s live routing decisions use bounded recent tenant-scoped outcome evidence to improve local-vs-premium choices rather than relying only on prompt-complexity heuristics.
-- Why it matters: This is the central product move of M009; without it, the milestone is mostly explanation and replay work layered over the same old routing core.
-- Source: user
-- Primary owning slice: M009/S02
-- Supporting slices: M009/S01
-- Validation: mapped
-- Notes: The routing model must remain bounded, additive, and interpretable.
-
 ### R074 — Policy simulation replay uses the same outcome-grounded routing evidence and scoring semantics as live runtime for the same tenant traffic class.
 - Class: integration
 - Status: active
@@ -25,17 +14,6 @@ This file is the explicit capability and coverage contract for the project.
 - Supporting slices: M009/S01, M009/S02
 - Validation: mapped
 - Notes: Replay must remain deterministic, non-mutating, and explicit about approximation or degraded behavior.
-
-### R075 — The usage-ledger row for a request records the actual outcome-grounded route factors that influenced the live route decision.
-- Class: failure-visibility
-- Status: active
-- Description: The usage-ledger row for a request records the actual outcome-grounded route factors that influenced the live route decision.
-- Why it matters: Nebula’s operator story depends on request-level evidence remaining authoritative and reconstructible after the response is gone.
-- Source: inferred
-- Primary owning slice: M009/S02
-- Supporting slices: M009/S04
-- Validation: mapped
-- Notes: Request evidence must stay primary while the row exists; this does not justify a separate analytics surface.
 
 ### R076 — Operators can inspect whether a selected request used grounded, thin, stale, or degraded outcome-informed routing on the existing request-first Observability and request-detail surfaces.
 - Class: operability
@@ -600,6 +578,28 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M008/S05 through the bounded integrated-governance walkthrough in `docs/m008-integrated-proof.md`, its discoverability links, and focused pytest/Vitest coverage that explicitly rejects drift into payload capture, soft-delete recovery semantics, retention-dashboard sprawl, or hosted authority. The assembled milestone story stays inside request/policy/evidence governance only.
 - Notes: This is the main anti-sprawl guardrail for M008.
 
+### R073 — Nebula’s live routing decisions use bounded recent tenant-scoped outcome evidence to improve local-vs-premium choices rather than relying only on prompt-complexity heuristics.
+- Class: core-capability
+- Status: validated
+- Description: Nebula’s live routing decisions use bounded recent tenant-scoped outcome evidence to improve local-vs-premium choices rather than relying only on prompt-complexity heuristics.
+- Why it matters: This is the central product move of M009; without it, the milestone is mostly explanation and replay work layered over the same old routing core.
+- Source: user
+- Primary owning slice: M009/S02
+- Supporting slices: M009/S01
+- Validation: Validated by M009/S02 through live backend routing tests that show bounded recent tenant-scoped outcome evidence can change a real POST /v1/chat/completions route and persist matching outcome-grounded score factors on the correlated usage-ledger row. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, `./.venv/bin/pytest tests/test_router_signals.py -k "outcome or evidence or route"`, and `./.venv/bin/pytest tests/test_service_flows.py -k "outcome_grounded or policy_service_live_evidence or hard_budget"`.
+- Notes: S02 closes the live runtime seam by consuming GovernanceStore.summarize_calibration_evidence() during policy evaluation and routing without duplicating evidence classification.
+
+### R075 — The usage-ledger row for a request records the actual outcome-grounded route factors that influenced the live route decision.
+- Class: failure-visibility
+- Status: validated
+- Description: The usage-ledger row for a request records the actual outcome-grounded route factors that influenced the live route decision.
+- Why it matters: Nebula’s operator story depends on request-level evidence remaining authoritative and reconstructible after the response is gone.
+- Source: inferred
+- Primary owning slice: M009/S02
+- Supporting slices: M009/S04
+- Validation: Validated by M009/S02 through end-to-end request-path and governance tests asserting that the correlated usage-ledger row records the actual live outcome-grounded route factors, evidence state, and additive score components used for the decision, or honestly records policy_denied with no route_signals when routing is blocked. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, and `./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"`.
+- Notes: S02 proves request-first evidence integrity by keeping headers, policy_outcome, and persisted route_signals aligned for the same request across grounded, denied, and degraded paths.
+
 ### R077 — When outcome evidence is missing, stale, thin, or inconsistent, Nebula falls back to explicit simpler behavior and records that degraded state honestly.
 - Class: continuity
 - Status: validated
@@ -1021,9 +1021,9 @@ This file is the explicit capability and coverage contract for the project.
 | R070 | anti-feature | out-of-scope | none | none | n/a |
 | R071 | anti-feature | out-of-scope | none | none | n/a |
 | R072 | anti-feature | out-of-scope | none | none | n/a |
-| R073 | core-capability | active | M009/S02 | M009/S01 | mapped |
+| R073 | core-capability | validated | M009/S02 | M009/S01 | Validated by M009/S02 through live backend routing tests that show bounded recent tenant-scoped outcome evidence can change a real POST /v1/chat/completions route and persist matching outcome-grounded score factors on the correlated usage-ledger row. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, `./.venv/bin/pytest tests/test_router_signals.py -k "outcome or evidence or route"`, and `./.venv/bin/pytest tests/test_service_flows.py -k "outcome_grounded or policy_service_live_evidence or hard_budget"`. |
 | R074 | integration | active | M009/S03 | M009/S01, M009/S02 | mapped |
-| R075 | failure-visibility | active | M009/S02 | M009/S04 | mapped |
+| R075 | failure-visibility | validated | M009/S02 | M009/S04 | Validated by M009/S02 through end-to-end request-path and governance tests asserting that the correlated usage-ledger row records the actual live outcome-grounded route factors, evidence state, and additive score components used for the decision, or honestly records policy_denied with no route_signals when routing is blocked. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, and `./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"`. |
 | R076 | operability | active | M009/S04 | M009/S02, M009/S03 | mapped |
 | R077 | continuity | validated | M009/S01 | M009/S02, M009/S03, M009/S04 | Validated by M009/S01 through deterministic `GovernanceStore.summarize_calibration_evidence()` classification and backend tests covering no-evidence, thin, stale, degraded, sufficient, tenant/window scoping, and governance-suppressed route-signal cases. Verified with `./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or outcome or governance_store_calibration_summary or policy_simulation_exposes_window_calibration_summary"` and `./.venv/bin/pytest tests/test_governance_api.py -k "calibration_summary or policy_simulation"`. |
 | R078 | constraint | active | M009/S05 | M009/S01, M009/S02, M009/S03, M009/S04 | mapped |
@@ -1037,7 +1037,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 5
-- Mapped to slices: 5
-- Validated: 50 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R077)
+- Active requirements: 3
+- Mapped to slices: 3
+- Validated: 52 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R075, R077)
 - Unmapped active requirements: 0

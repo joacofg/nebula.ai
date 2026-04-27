@@ -104,10 +104,11 @@ class PolicyService:
         prompt: str | None = None,
         replay_context: ReplayRouteContext | None = None,
         before_timestamp: datetime | None = None,
+        evidence_summary_override: CalibrationEvidenceSummary | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
-        evidence_summary: CalibrationEvidenceSummary | None = None
-        if replay_context is None:
+        evidence_summary = evidence_summary_override
+        if evidence_summary is None and replay_context is None:
             evidence_summary = self.store.summarize_calibration_evidence(tenant_id=tenant_context.tenant.id)
         if replay_context is not None:
             route_decision = await router_service.choose_target_for_replay(

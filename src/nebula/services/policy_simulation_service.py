@@ -62,6 +62,12 @@ class PolicySimulationService:
         records = list(reversed(records))
 
         replay_inputs = [self._build_replay_input(record) for record in records]
+        calibration_summary = self.governance_store.summarize_calibration_evidence(
+            tenant_id=tenant_context.tenant.id,
+            from_timestamp=payload.from_timestamp,
+            to_timestamp=payload.to_timestamp,
+            limit=payload.limit,
+        )
         changed: list[PolicySimulationChangedRequest] = []
         evaluated_count = 0
         changed_routes = 0
@@ -88,6 +94,7 @@ class PolicySimulationService:
                 router_service=self.router_service,
                 replay_context=replay_input.replay_context,
                 before_timestamp=replay_input.record.timestamp,
+                evidence_summary_override=calibration_summary,
             )
 
             simulated_target = self._simulation_target(evaluation)
@@ -133,12 +140,6 @@ class PolicySimulationService:
 
         sampled_changed = changed[: payload.changed_sample_limit]
         window = self._build_window(payload, records)
-        calibration_summary = self.governance_store.summarize_calibration_evidence(
-            tenant_id=tenant_context.tenant.id,
-            from_timestamp=payload.from_timestamp,
-            to_timestamp=payload.to_timestamp,
-            limit=payload.limit,
-        )
         return PolicySimulationResponse(
             tenant_id=tenant_context.tenant.id,
             candidate_policy=payload.candidate_policy,

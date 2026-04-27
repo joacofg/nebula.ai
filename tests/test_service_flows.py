@@ -490,6 +490,7 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
         self.policy_updates: list[tuple[str, TenantPolicy]] = []
         self.list_usage_records_calls: list[dict[str, object]] = []
         self.calibration_summary_calls: list[dict[str, object]] = []
+        self.calibration_summary_results: list[CalibrationEvidenceSummary] = []
 
     def list_usage_records(
         self,
@@ -547,7 +548,7 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
                 "now": now,
             }
         )
-        return GovernanceStore.summarize_calibration_evidence(
+        summary = GovernanceStore.summarize_calibration_evidence(
             self,
             tenant_id=tenant_id,
             from_timestamp=from_timestamp,
@@ -555,6 +556,8 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
             limit=limit,
             now=now,
         )
+        self.calibration_summary_results.append(summary)
+        return summary
 
     def _calibration_excluded_reason(self, record: UsageLedgerRecord) -> str | None:
         return GovernanceStore._calibration_excluded_reason(self, record)
@@ -975,6 +978,142 @@ async def test_governance_store_calibration_summary_is_tenant_and_window_scoped(
     assert summary.sufficient_request_count == 5
     assert summary.degraded_request_count == 0
     assert summary.latest_any_request_at == max(record.timestamp for record in records[:5])
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_uses_shared_tenant_window_outcome_evidence_for_replay_parity() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-calibrated-{index}",
+            timestamp=now.replace(microsecond=index),
+            final_route_target=("premium" if index == 0 else "local"),
+            requested_model="nebula-auto",
+            estimated_cost=(0.002 if index == 0 else 0.0),
+            route_signals={
+                "route_mode": "calibrated",
+                "token_count": (410 if index == 0 else 120),
+                "complexity_tier": "low",
+                "keyword_match": False,
+                "score_components": {"total_score": (0.82 if index == 0 else 0.24)},
+            },
+        )
+        for index in range(5)
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(
+            settings,
+            store,
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        ),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert len(store.calibration_summary_calls) == 1
+    assert response.calibration_summary is store.calibration_summary_results[0]
+    assert response.calibration_summary.scope == "tenant"
+    assert response.calibration_summary.state == "sufficient"
+    assert response.summary.evaluated_rows == 5
+    assert response.summary.changed_routes == 1
+    assert [item.request_id for item in response.changed_requests] == [
+        "req-calibrated-0",
+        "req-calibrated-1",
+        "req-calibrated-2",
+        "req-calibrated-3",
+        "req-calibrated-4",
+    ]
+    route_flip = response.changed_requests[0]
+    assert route_flip.baseline_route_target == "premium"
+    assert route_flip.simulated_route_target == "local"
+    assert route_flip.simulated_route_reason == "token_complexity"
+    assert route_flip.simulated_route_mode == "calibrated"
+    assert route_flip.simulated_calibrated_routing is True
+    assert route_flip.simulated_degraded_routing is False
+    assert route_flip.baseline_route_score == 0.82
+    assert route_flip.simulated_route_score == 0.97
+    assert route_flip.simulated_policy_outcome == (
+        "outcome_evidence=sufficient(eligible=5,sufficient=5,degraded=0,gated=0,excluded=0)"
+    )
+    assert all(
+        item.simulated_policy_outcome
+        == "outcome_evidence=sufficient(eligible=5,sufficient=5,degraded=0,gated=0,excluded=0)"
+        for item in response.changed_requests
+    )
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_preserves_honest_degraded_replay_mode_under_shared_summary() -> None:
+    settings = Settings()
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-window-{index}",
+            timestamp=now.replace(microsecond=index),
+            final_route_target=("premium" if index == 5 else "local"),
+            requested_model="nebula-auto",
+            prompt_tokens=(400 if index == 5 else 80),
+            completion_tokens=256 if index == 5 else 40,
+            estimated_cost=(0.002 if index == 5 else 0.0),
+            route_signals=(
+                None
+                if index == 5
+                else {
+                    "route_mode": "calibrated",
+                    "token_count": 120,
+                    "complexity_tier": "low",
+                    "keyword_match": False,
+                    "score_components": {"total_score": 0.24},
+                }
+            ),
+        )
+        for index in range(6)
+    ]
+    store = FakeSimulationGovernanceStore(records)
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(
+            settings,
+            store,
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        ),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(),
+            limit=10,
+            changed_sample_limit=10,
+        ),
+    )
+
+    assert len(store.calibration_summary_calls) == 1
+    assert response.calibration_summary is store.calibration_summary_results[0]
+    assert response.calibration_summary.state == "degraded"
+    changed = next(item for item in response.changed_requests if item.request_id == "req-window-5")
+    assert changed.baseline_route_target == "premium"
+    assert changed.simulated_route_target == "local"
+    assert changed.simulated_route_reason == "token_complexity"
+    assert changed.simulated_route_mode == "degraded"
+    assert changed.simulated_calibrated_routing is False
+    assert changed.simulated_degraded_routing is True
+    assert changed.simulated_route_score == 0.6
+    assert changed.simulated_policy_outcome == (
+        "outcome_evidence=degraded(eligible=6,sufficient=5,degraded=1,gated=0,excluded=0)"
+    )
 
 
 @pytest.mark.asyncio
