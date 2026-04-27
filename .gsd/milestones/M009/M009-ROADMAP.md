@@ -12,10 +12,10 @@
 
 ## Slices
 
-- [ ] **S01: S01** `risk:high` `depends:[]`
+- [x] **S01: S01** `risk:high` `depends:[]`
   > After this: After this: one tenant’s recent ledger-backed outcome evidence can be derived deterministically with explicit sufficient/thin/stale/degraded states and proved through backend tests and typed artifacts.
 
-- [ ] **S02: Live outcome-grounded routing** `risk:high` `depends:[S01]`
+- [ ] **S02: S02** `risk:high` `depends:[]`
   > After this: After this: a real `POST /v1/chat/completions` request can route differently because of recent tenant-scoped outcome evidence, and the correlated persisted ledger row records the actual route factors used.
 
 - [ ] **S03: Replay parity for outcome-grounded routing** `risk:medium` `depends:[S01,S02]`

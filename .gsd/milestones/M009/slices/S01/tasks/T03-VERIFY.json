@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T03",
+  "unitId": "M009/S01/T03",
+  "timestamp": 1777302011226,
+  "passed": false,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "pytest tests/test_governance_api.py -k \"calibration_summary or policy_simulation\"",
+      "exitCode": 127,
+      "durationMs": 3,
+      "verdict": "fail"
+    },
+    {
+      "command": "pytest tests/test_service_flows.py -k \"policy_simulation_exposes_window_calibration_summary\"",
+      "exitCode": 127,
+      "durationMs": 3,
+      "verdict": "fail"
+    }
+  ],
+  "retryAttempt": 1,
+  "maxRetries": 2
+}

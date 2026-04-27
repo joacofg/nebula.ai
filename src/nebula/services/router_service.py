@@ -5,13 +5,12 @@ from typing import Any, Literal
 from pydantic import BaseModel
 
 from nebula.core.config import Settings
-from nebula.models.governance import RoutingMode, TenantPolicy
+from nebula.models.governance import CalibrationEvidenceSummary, RoutingMode, TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
 
 RouteTarget = Literal["local", "premium"]
 ComplexityTier = Literal["low", "medium", "high"]
 RouteMode = Literal["calibrated", "heuristic_override", "degraded"]
-OutcomeEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
 OutcomeEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
 
 
@@ -36,6 +35,15 @@ class CalibratedScoreBreakdown:
     keyword_bonus: float
     policy_bonus: float
     budget_penalty: float
+    outcome_bonus: float
+    evidence_penalty: float
+    outcome_evidence_state: OutcomeEvidenceState | None
+    outcome_evidence_reason: str | None
+    outcome_evidence_eligible_requests: int | None
+    outcome_evidence_sufficient_requests: int | None
+    outcome_evidence_degraded_requests: int | None
+    outcome_evidence_gated_requests: int | None
+    outcome_evidence_excluded_requests: int | None
     total_score: float
 
 
@@ -65,12 +73,18 @@ class RouterService:
         replay_context: ReplayRouteContext,
         routing_mode: RoutingMode = "auto",
         policy: TenantPolicy | None = None,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
     ) -> RouteDecision:
         explicit_override = self._explicit_override_decision(request=request, routing_mode=routing_mode)
         if explicit_override is not None:
             return explicit_override
 
-        breakdown = self._build_replay_breakdown(request=request, replay_context=replay_context, policy=policy)
+        breakdown = self._build_replay_breakdown(
+            request=request,
+            replay_context=replay_context,
+            policy=policy,
+            evidence_summary=evidence_summary,
+        )
         return self._decision_from_breakdown(breakdown)
 
     async def choose_target_with_reason(
@@ -79,12 +93,13 @@ class RouterService:
         request: ChatCompletionRequest,
         routing_mode: RoutingMode = "auto",
         policy: TenantPolicy | None = None,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
     ) -> RouteDecision:
         explicit_override = self._explicit_override_decision(request=request, routing_mode=routing_mode)
         if explicit_override is not None:
             return explicit_override
 
-        breakdown = self._build_live_breakdown(prompt=prompt, policy=policy)
+        breakdown = self._build_live_breakdown(prompt=prompt, policy=policy, evidence_summary=evidence_summary)
         return self._decision_from_breakdown(breakdown)
 
     def resolve_model(self, target: RouteTarget) -> str:
@@ -114,6 +129,7 @@ class RouterService:
         *,
         prompt: str,
         policy: TenantPolicy | None,
+        evidence_summary: CalibrationEvidenceSummary | None,
     ) -> CalibratedScoreBreakdown:
         token_count = _estimate_token_count(prompt)
         complexity_tier = self._complexity_tier_from_token_count(token_count)
@@ -123,6 +139,7 @@ class RouterService:
             complexity_tier=complexity_tier,
             keyword_match=keyword_match,
             policy=policy,
+            evidence_summary=evidence_summary,
             replay=False,
             route_mode="calibrated",
         )
@@ -133,6 +150,7 @@ class RouterService:
         request: ChatCompletionRequest,
         replay_context: ReplayRouteContext,
         policy: TenantPolicy | None,
+        evidence_summary: CalibrationEvidenceSummary | None,
     ) -> CalibratedScoreBreakdown:
         prompt = self._serialize_request_messages(request)
         token_count = replay_context.token_count or _estimate_token_count(prompt)
@@ -155,6 +173,7 @@ class RouterService:
             complexity_tier=complexity_tier,
             keyword_match=keyword_match,
             policy=policy,
+            evidence_summary=evidence_summary,
             replay=True,
             route_mode="degraded" if degraded else "calibrated",
         )
@@ -166,17 +185,34 @@ class RouterService:
         complexity_tier: ComplexityTier,
         keyword_match: bool,
         policy: TenantPolicy | None,
+        evidence_summary: CalibrationEvidenceSummary | None,
         replay: bool,
         route_mode: RouteMode,
     ) -> CalibratedScoreBreakdown:
         budget_proximity: float | None = None
         model_constraint = bool(policy is not None and policy.allowed_premium_models)
+        outcome_bonus = self._outcome_bonus(evidence_summary)
+        evidence_penalty = self._evidence_penalty(evidence_summary)
 
         token_score = min(token_count / 500, 1.0)
         keyword_bonus = 0.2 if keyword_match else 0.0
         policy_bonus = 0.1 if model_constraint else 0.0
         budget_penalty = 0.0
-        total_score = round(min(max(token_score + keyword_bonus + policy_bonus - budget_penalty, 0.0), 1.0), 4)
+        total_score = round(
+            min(
+                max(
+                    token_score
+                    + keyword_bonus
+                    + policy_bonus
+                    + outcome_bonus
+                    - budget_penalty
+                    - evidence_penalty,
+                    0.0,
+                ),
+                1.0,
+            ),
+            4,
+        )
 
         return CalibratedScoreBreakdown(
             token_count=token_count,
@@ -190,6 +226,25 @@ class RouterService:
             keyword_bonus=round(keyword_bonus, 4),
             policy_bonus=round(policy_bonus, 4),
             budget_penalty=round(budget_penalty, 4),
+            outcome_bonus=round(outcome_bonus, 4),
+            evidence_penalty=round(evidence_penalty, 4),
+            outcome_evidence_state=(evidence_summary.state if evidence_summary is not None else None),
+            outcome_evidence_reason=(evidence_summary.state_reason if evidence_summary is not None else None),
+            outcome_evidence_eligible_requests=(
+                evidence_summary.eligible_request_count if evidence_summary is not None else None
+            ),
+            outcome_evidence_sufficient_requests=(
+                evidence_summary.sufficient_request_count if evidence_summary is not None else None
+            ),
+            outcome_evidence_degraded_requests=(
+                evidence_summary.degraded_request_count if evidence_summary is not None else None
+            ),
+            outcome_evidence_gated_requests=(
+                evidence_summary.gated_request_count if evidence_summary is not None else None
+            ),
+            outcome_evidence_excluded_requests=(
+                evidence_summary.excluded_request_count if evidence_summary is not None else None
+            ),
             total_score=total_score,
         )
 
@@ -226,10 +281,41 @@ class RouterService:
                 "keyword_bonus": breakdown.keyword_bonus,
                 "policy_bonus": breakdown.policy_bonus,
                 "budget_penalty": breakdown.budget_penalty,
+                "outcome_bonus": breakdown.outcome_bonus,
+                "evidence_penalty": breakdown.evidence_penalty,
                 "total_score": breakdown.total_score,
+            },
+            "outcome_evidence": {
+                "state": breakdown.outcome_evidence_state,
+                "state_reason": breakdown.outcome_evidence_reason,
+                "eligible_request_count": breakdown.outcome_evidence_eligible_requests,
+                "sufficient_request_count": breakdown.outcome_evidence_sufficient_requests,
+                "degraded_request_count": breakdown.outcome_evidence_degraded_requests,
+                "gated_request_count": breakdown.outcome_evidence_gated_requests,
+                "excluded_request_count": breakdown.outcome_evidence_excluded_requests,
             },
             "replay": breakdown.replay,
         }
+
+    def _outcome_bonus(self, evidence_summary: CalibrationEvidenceSummary | None) -> float:
+        if evidence_summary is None:
+            return 0.0
+        if evidence_summary.state == "sufficient":
+            return 0.15
+        if evidence_summary.state == "stale":
+            return 0.05
+        return 0.0
+
+    def _evidence_penalty(self, evidence_summary: CalibrationEvidenceSummary | None) -> float:
+        if evidence_summary is None:
+            return 0.0
+        if evidence_summary.state == "thin":
+            return 0.05
+        if evidence_summary.state == "stale":
+            return 0.1
+        if evidence_summary.state == "degraded":
+            return 0.2
+        return 0.0
 
     def _complexity_tier_from_token_count(self, token_count: int) -> ComplexityTier:
         if token_count < 500:

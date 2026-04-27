@@ -1,0 +1,1652 @@
+{
+  "nodes": [
+    {
+      "id": "milestone:M009",
+      "label": "M009: Outcome-Grounded Routing Quality",
+      "type": "milestone",
+      "description": "Active milestone: M009",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    },
+    {
+      "id": "concept:phase:planning",
+      "label": "Phase: planning",
+      "type": "concept",
+      "confidence": "EXTRACTED",
+      "sourceFile": "STATE.md"
+    },
+    {
+      "id": "milestone:M001",
+      "label": "M001: API Adoption Happy Path",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/M001-ROADMAP.md"
+    },
+    {
+      "id": "slice:M001:S01",
+      "label": "S01: Adoption API contract and compatibility boundary",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M001:S01:T01",
+      "label": "T01: Harden contract tests around the public adoption boundary",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S01:T02",
+      "label": "T02: Publish the canonical adoption contract and align entry docs",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M001:S02",
+      "label": "S02: Happy-path quickstart and production model",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M001:S02:T01",
+      "label": "T01: Author the production model and happy-path quickstart docs",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S02:T02",
+      "label": "T02: Wire entry docs to the new canonical adoption story and lock verification to existing evidence",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M001:S03",
+      "label": "S03: Reference migration integration",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M001:S03:T01",
+      "label": "T01: Add a focused reference-migration proof harness",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S03:T02",
+      "label": "T02: Publish and wire the canonical migration guide",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M001:S04",
+      "label": "S04: Day-1 value proof surface",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M001:S04:T01",
+      "label": "T01: Publish the canonical day-1 value proof path",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S04:T02",
+      "label": "T02: Expand Playground and Observability proof surfaces for day-1 trust",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S04:T03",
+      "label": "T03: Lock the day-1 value story with backend and console proof tests",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M001:S05",
+      "label": "S05: Final integrated adoption proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M001/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M001:S05:T01",
+      "label": "T01: Compose the canonical integrated adoption walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S05:T02",
+      "label": "T02: Extend executable public-to-operator integration proof",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M001:S05:T03",
+      "label": "T03: Align console proof surfaces and close requirement evidence",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M002",
+      "label": "M002: Production Structuring Model",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M002/M002-ROADMAP.md"
+    },
+    {
+      "id": "slice:M002:S01",
+      "label": "S01: Operator structuring truth surface",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M002/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M002:S01:T01",
+      "label": "T01: Clarify API key scope and tenant-header consequences in console key surfaces",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M002:S01:T02",
+      "label": "T02: Reframe Playground and Observability as operator evidence surfaces",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M002:S02",
+      "label": "S02: App/workload guidance without fake runtime entities",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M002/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M002:S02:T01",
+      "label": "T01: Reframe tenant surfaces around runtime-truth app/workload guidance",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M002:S02:T02",
+      "label": "T02: Add tenant-surface regression tests for app/workload truth boundaries",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M002:S03",
+      "label": "S03: Integrated production-structuring walkthrough",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M002/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M002:S03:T01",
+      "label": "T01: Tighten the canonical integrated walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M002:S03:T02",
+      "label": "T02: Lock the integrated story with focused proof and operator UAT",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M003",
+      "label": "M003: Broader Adoption Surface",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/M003-ROADMAP.md"
+    },
+    {
+      "id": "slice:M003:S01",
+      "label": "S01: Public embeddings endpoint",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M003:S01:T01",
+      "label": "T01: Extend embeddings internals for the public narrow contract",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S01:T02",
+      "label": "T02: Wire the authenticated public endpoint and ledger correlation",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S02",
+      "label": "S02: Canonical embeddings contract docs",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M003:S02:T01",
+      "label": "T01: Author the canonical embeddings contract document",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S02:T02",
+      "label": "T02: Link entry docs back to the canonical embeddings contract",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S03",
+      "label": "S03: Realistic migration proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M003:S03:T01",
+      "label": "T01: Add executable embeddings migration proof coverage",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S03:T02",
+      "label": "T02: Publish the embeddings migration guide and wire discoverability",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S04",
+      "label": "S04: Durable evidence correlation",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M003:S04:T01",
+      "label": "T01: Make embeddings ledger rows intentionally discoverable in Observability",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S04:T02",
+      "label": "T02: Expose embeddings request explanation fields in the ledger detail surface",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S04:T03",
+      "label": "T03: Add end-to-end operator proof for embeddings evidence correlation",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M003:S05",
+      "label": "S05: Final adoption assembly",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M003/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M003:S05:T01",
+      "label": "T01: Author the embeddings integrated adoption walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M003:S05:T02",
+      "label": "T02: Wire discoverability and close out R024 evidence",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M004",
+      "label": "M004: Hosted Adoption Reinforcement",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/M004-ROADMAP.md"
+    },
+    {
+      "id": "slice:M004:S01",
+      "label": "S01: Hosted reinforcement boundary",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M004:S01:T01",
+      "label": "T01: Lock shared hosted reinforcement guardrails in the canonical content module",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T02",
+      "label": "T02: Render the canonical trust-boundary guardrails on hosted public surfaces",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S01:T03",
+      "label": "T03: Align deployment-facing hosted action copy and publish the slice boundary artifact",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M004:S02",
+      "label": "S02: Fleet posture UX",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M004:S02:T01",
+      "label": "T01: Extract shared fleet posture and bounded-action derivation",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S02:T02",
+      "label": "T02: Add the deployments fleet posture summary surface",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S02:T03",
+      "label": "T03: Make deployment scan-time state legible in the inventory table",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M004:S03",
+      "label": "S03: Confidence proof and trust walkthrough",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M004:S03:T01",
+      "label": "T01: Author the canonical hosted integrated proof walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S03:T02",
+      "label": "T02: Lock integrated hosted trust and evidence mapping in focused tests",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S03:T03",
+      "label": "T03: Add browser proof for the hosted trust walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M004:S04",
+      "label": "S04: Targeted reinforcement refinements",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M004/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M004:S04:T01",
+      "label": "T01: Tighten shared hosted wording and the narrowest UI seam",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M004:S04:T02",
+      "label": "T02: Re-lock the integrated proof and regression coverage",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M005",
+      "label": "M005: M005: Adaptive Decisioning Control Plane",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/M005-ROADMAP.md"
+    },
+    {
+      "id": "slice:M005:S01",
+      "label": "S01: Adaptive routing model",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M005:S01:T01",
+      "label": "T01: Added scored route-signal metadata to heuristic routing decisions and threaded tenant policy through router resolution.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S01:T02",
+      "label": "T02: Added route-score header and route-signals schema wiring across the backend ledger path and admin contract, with remaining route_signals persistence follow-up documented.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S01:T03",
+      "label": "T03: Added route-signal visibility to the observability drawer and documented the stable route-decision vocabulary.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M005:S02",
+      "label": "S02: Policy simulation loop",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M005:S02:T01",
+      "label": "T01: Added typed policy simulation models and a replay-only service that re-evaluates recent tenant ledger traffic without mutating policy or usage state.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S02:T02",
+      "label": "T02: Added an admin policy simulation endpoint that replays tenant ledger traffic against a candidate policy without mutating saved policy state.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S02:T03",
+      "label": "T03: Added preview-before-save policy simulation to the console policy editor with explicit non-save feedback and changed-request replay summaries.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M005:S03",
+      "label": "S03: Hard budget guardrails",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M005:S03:T01",
+      "label": "T01: Added explicit hard cumulative budget policy fields across backend persistence, admin metadata, and console policy contracts while keeping soft budget advisory-only.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S03:T02",
+      "label": "T02: Centralized hard-budget downgrade and denial behavior in PolicyService and aligned simulation replay semantics.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S03:T03",
+      "label": "T03: Exposed hard-budget guardrail explanations across the policy editor, ledger request detail, and operator docs while keeping soft budget advisory-only.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M005:S04",
+      "label": "S04: Recommendations and cache controls",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M005:S04:T01",
+      "label": "T01: Added typed recommendation and cache-summary backend contracts with deterministic read-only service coverage.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S04:T02",
+      "label": "T02: Added a tenant-scoped admin recommendations endpoint, shared console contract typings, and focused governance API coverage for bounded cache evidence.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S04:T03",
+      "label": "T03: Rendered grounded observability recommendations and semantic-cache tuning controls inside the existing console surfaces.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M005:S05",
+      "label": "S05: Integrated v4 proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M005/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M005:S05:T01",
+      "label": "T01: Added a pointer-only v4 integrated proof walkthrough that ties together the shipped decisioning seams without expanding Nebula beyond operator-driven scope.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M005:S05:T02",
+      "label": "T02: Added pointer-only README and architecture links for the v4 integrated proof and verified the end-to-end decisioning story across backend, admin API, console, and docs.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M006",
+      "label": "M006: ## Vision",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/M006-ROADMAP.md"
+    },
+    {
+      "id": "slice:M006:S01",
+      "label": "S01: Calibrated routing core",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M006:S01:T01",
+      "label": "T01: Replaced duplicated router branches with a shared calibrated scoring contract and locked the additive route-signal vocabulary in tests and docs.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S01:T02",
+      "label": "T02: Wired calibrated routing metadata through policy resolution, error headers, and usage-ledger evidence.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S01:T03",
+      "label": "T03: Added the bounded tenant calibrated-routing rollout control across governance persistence, admin APIs, runtime/simulation evaluation, and the policy editor.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M006:S02",
+      "label": "S02: Ledger-backed calibration evidence",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M006:S02:T01",
+      "label": "T01: Added tenant-scoped calibration evidence summaries backed by existing ledger metadata and verified sufficient, thin, stale, gated, and degraded classification rules.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S02:T02",
+      "label": "T02: Added shared calibration evidence summaries to admin policy simulation responses and aligned backend/console typing around the replay-window contract.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S02:T03",
+      "label": "T03: Rendered shared ledger-backed calibration evidence on Observability and request detail surfaces without displacing the persisted request-proof story.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M006:S03",
+      "label": "S03: Runtime / simulation parity",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M006:S03:T01",
+      "label": "T01: Extended simulation changed-request samples with route parity fields and null-safe gated semantics aligned to runtime routing signals.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S03:T02",
+      "label": "T02: Added runtime-to-replay parity tests that lock calibrated, degraded, and gated simulation semantics against live headers and usage-ledger evidence.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S03:T03",
+      "label": "T03: Added compact routing parity cues to policy preview changed-request cards, including explicit rollout-disabled rendering when calibrated routing is gated.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M006:S04",
+      "label": "S04: Operator inspection surfaces",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M006:S04:T01",
+      "label": "T01: Added bounded routing-state inspection to ledger request detail, including calibrated, degraded, rollout-disabled, and unscored persisted rows.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S04:T02",
+      "label": "T02: Composed Observability around a selected-request-first inspection flow, with calibration, recommendation, cache, and dependency cards framed as supporting context rather than replacement evidence.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M006:S05",
+      "label": "S05: Integrated proof and close-out",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M006/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M006:S05:T01",
+      "label": "T01: Added the pointer-only M006 integrated proof and linked it from README and architecture.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M006:S05:T02",
+      "label": "T02: Locked the assembled M006 proof path with focused backend and console verification.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M007",
+      "label": "M007: ## Vision",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/M007-ROADMAP.md"
+    },
+    {
+      "id": "slice:M007:S01",
+      "label": "S01: Define page roles and evidence boundaries",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M007:S01:T01",
+      "label": "T01: Reordered Observability so selected-request investigation leads the page and added hierarchy guardrails in focused tests.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M007:S01:T02",
+      "label": "T02: Locked request-detail authority copy and hardened policy preview guardrails with focused boundary tests.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M007:S02",
+      "label": "S02: Tighten supporting evidence and preview contracts",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M007:S02:T01",
+      "label": "T01: Aligned admin policy options with cache tuning controls and tightened bounded simulation contract coverage.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M007:S02:T02",
+      "label": "T02: Tightened policy preview comparison wording and request-first Observability seams with scoped console tests.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M007:S03",
+      "label": "S03: Rework Observability around a primary investigation flow",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M007:S03:T01",
+      "label": "T01: Reworked Observability into a selected-request-first investigation flow with explicit policy-preview follow-up sections and hierarchy-locking tests.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M007:S03:T02",
+      "label": "T02: Made the selected ledger row read as the current investigation target without expanding the table beyond a bounded request selector.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M007:S04",
+      "label": "S04: Rework policy preview into a comparison-and-decision flow",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M007:S04:T01",
+      "label": "T01: Restructured the policy preview into a decision-first baseline-versus-draft review with explicit next-step guidance and bounded evidence.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M007:S04:T02",
+      "label": "T02: Locked the policy page into a compare-before-save flow with baseline-versus-draft framing and page-level reset tests.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M007:S05",
+      "label": "S05: Integrated operator proof and close-out",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M007/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M007:S05:T01",
+      "label": "T01: Added the pointer-only M007 integrated proof and linked it from README and architecture docs.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M007:S05:T02",
+      "label": "T02: Confirmed the assembled M007 operator proof with the focused six-file Vitest bundle and left the guard tests unchanged.",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "milestone:M008",
+      "label": "M008: Evidence Governance and Privacy Controls",
+      "type": "milestone",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/M008-ROADMAP.md"
+    },
+    {
+      "id": "slice:M008:S01",
+      "label": "S01: Typed evidence governance policy",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M008:S01:T01",
+      "label": "T01: Add typed evidence governance schema and backend persistence contract",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M008:S01:T02",
+      "label": "T02: Wire chat, embeddings, and console policy surfaces to the governed evidence contract",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M008:S02",
+      "label": "S02: Governed ledger persistence and request markers",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M008:S02:T01",
+      "label": "T01: Implement explicit ledger retention cleanup in the governance store",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M008:S02:T02",
+      "label": "T02: Align admin and request-detail surfaces with real evidence aging semantics",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M008:S03",
+      "label": "S03: Retention lifecycle enforcement",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M008:S03:T01",
+      "label": "T01: Wire the retention cleanup lifecycle into the running gateway",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M008:S03:T02",
+      "label": "T02: Expose retention lifecycle health and prove end-to-end deletion through real seams",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M008:S04",
+      "label": "S04: Operator evidence-boundary surfaces",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M008:S04:T01",
+      "label": "T01: Add policy-side effective evidence boundary guidance",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M008:S04:T02",
+      "label": "T02: Align request-detail and hosted trust-boundary copy with the same evidence vocabulary",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M008:S05",
+      "label": "S05: Integrated governance proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M008/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M008:S05:T01",
+      "label": "T01: Author the M008 integrated governance proof and wire doc discoverability",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M008:S05:T02",
+      "label": "T02: Tighten executable proof seams for integrated governance ordering",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M009:S01",
+      "label": "S01: Outcome evidence contract",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M009/slices/S01/S01-PLAN.md"
+    },
+    {
+      "id": "task:M009:S01:T01",
+      "label": "T01: Define the outcome-evidence contract and state precedence",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M009:S01:T02",
+      "label": "T02: Implement deterministic ledger summarization for sufficient/thin/stale/degraded evidence",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M009:S01:T03",
+      "label": "T03: Prove replay-facing and admin summary consumers honor the new contract",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "edges": [
+    {
+      "from": "milestone:M001",
+      "to": "slice:M001:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S01",
+      "to": "task:M001:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S01",
+      "to": "task:M001:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M001",
+      "to": "slice:M001:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S02",
+      "to": "task:M001:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S02",
+      "to": "task:M001:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M001",
+      "to": "slice:M001:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S03",
+      "to": "task:M001:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S03",
+      "to": "task:M001:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M001",
+      "to": "slice:M001:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S04",
+      "to": "task:M001:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S04",
+      "to": "task:M001:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S04",
+      "to": "task:M001:S04:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M001",
+      "to": "slice:M001:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S05",
+      "to": "task:M001:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S05",
+      "to": "task:M001:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M001:S05",
+      "to": "task:M001:S05:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M002",
+      "to": "slice:M002:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S01",
+      "to": "task:M002:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S01",
+      "to": "task:M002:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M002",
+      "to": "slice:M002:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S02",
+      "to": "task:M002:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S02",
+      "to": "task:M002:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M002",
+      "to": "slice:M002:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S03",
+      "to": "task:M002:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M002:S03",
+      "to": "task:M002:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S01",
+      "to": "task:M003:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S02",
+      "to": "task:M003:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S03",
+      "to": "task:M003:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S04",
+      "to": "task:M003:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S04",
+      "to": "task:M003:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S04",
+      "to": "task:M003:S04:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M003",
+      "to": "slice:M003:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S05",
+      "to": "task:M003:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M003:S05",
+      "to": "task:M003:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M004",
+      "to": "slice:M004:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S01",
+      "to": "task:M004:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M004",
+      "to": "slice:M004:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S02",
+      "to": "task:M004:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S02",
+      "to": "task:M004:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S02",
+      "to": "task:M004:S02:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M004",
+      "to": "slice:M004:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S03",
+      "to": "task:M004:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S03",
+      "to": "task:M004:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S03",
+      "to": "task:M004:S03:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M004",
+      "to": "slice:M004:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S04",
+      "to": "task:M004:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M004:S04",
+      "to": "task:M004:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M005",
+      "to": "slice:M005:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S01",
+      "to": "task:M005:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S01",
+      "to": "task:M005:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S01",
+      "to": "task:M005:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M005",
+      "to": "slice:M005:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S02",
+      "to": "task:M005:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S02",
+      "to": "task:M005:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S02",
+      "to": "task:M005:S02:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M005",
+      "to": "slice:M005:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S03",
+      "to": "task:M005:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S03",
+      "to": "task:M005:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S03",
+      "to": "task:M005:S03:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M005",
+      "to": "slice:M005:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S04",
+      "to": "task:M005:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S04",
+      "to": "task:M005:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S04",
+      "to": "task:M005:S04:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M005",
+      "to": "slice:M005:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S05",
+      "to": "task:M005:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M005:S05",
+      "to": "task:M005:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M006",
+      "to": "slice:M006:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S01",
+      "to": "task:M006:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S01",
+      "to": "task:M006:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S01",
+      "to": "task:M006:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M006",
+      "to": "slice:M006:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S02",
+      "to": "task:M006:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S02",
+      "to": "task:M006:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S02",
+      "to": "task:M006:S02:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M006",
+      "to": "slice:M006:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S03",
+      "to": "task:M006:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S03",
+      "to": "task:M006:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S03",
+      "to": "task:M006:S03:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M006",
+      "to": "slice:M006:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S04",
+      "to": "task:M006:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S04",
+      "to": "task:M006:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M006",
+      "to": "slice:M006:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S05",
+      "to": "task:M006:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M006:S05",
+      "to": "task:M006:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M007",
+      "to": "slice:M007:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S01",
+      "to": "task:M007:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S01",
+      "to": "task:M007:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M007",
+      "to": "slice:M007:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S02",
+      "to": "task:M007:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S02",
+      "to": "task:M007:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M007",
+      "to": "slice:M007:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S03",
+      "to": "task:M007:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S03",
+      "to": "task:M007:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M007",
+      "to": "slice:M007:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S04",
+      "to": "task:M007:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S04",
+      "to": "task:M007:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M007",
+      "to": "slice:M007:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S05",
+      "to": "task:M007:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M007:S05",
+      "to": "task:M007:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M008",
+      "to": "slice:M008:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S01",
+      "to": "task:M008:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S01",
+      "to": "task:M008:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M008",
+      "to": "slice:M008:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S02",
+      "to": "task:M008:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S02",
+      "to": "task:M008:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M008",
+      "to": "slice:M008:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S03",
+      "to": "task:M008:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S03",
+      "to": "task:M008:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M008",
+      "to": "slice:M008:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S04",
+      "to": "task:M008:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S04",
+      "to": "task:M008:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M008",
+      "to": "slice:M008:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S05",
+      "to": "task:M008:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M008:S05",
+      "to": "task:M008:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M009",
+      "to": "slice:M009:S01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M009:S01",
+      "to": "task:M009:S01:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M009:S01",
+      "to": "task:M009:S01:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M009:S01",
+      "to": "task:M009:S01:T03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    }
+  ],
+  "builtAt": "2026-04-27T15:01:47.743Z"
+}

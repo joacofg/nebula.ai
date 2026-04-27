@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 from fastapi.testclient import TestClient
 
 from nebula.core.config import Settings
-from nebula.models.governance import TenantPolicy
+from nebula.models.governance import CalibrationEvidenceSummary, TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
 from nebula.services.router_service import ReplayRouteContext, RouteDecision, RouterService
 from tests.support import admin_headers, auth_headers, configured_app
@@ -44,14 +46,58 @@ async def test_live_routing_signals_include_calibrated_breakdown() -> None:
     assert decision.signals["calibrated_routing"] is True
     assert decision.signals["degraded_routing"] is False
     assert decision.signals["replay"] is False
+    assert decision.signals["outcome_evidence"] == {
+        "state": None,
+        "state_reason": None,
+        "eligible_request_count": None,
+        "sufficient_request_count": None,
+        "degraded_request_count": None,
+        "gated_request_count": None,
+        "excluded_request_count": None,
+    }
     assert decision.signals["score_components"] == {
         "token_score": 0.06,
         "keyword_bonus": 0.0,
         "policy_bonus": 0.0,
         "budget_penalty": 0.0,
+        "outcome_bonus": 0.0,
+        "evidence_penalty": 0.0,
         "total_score": 0.06,
     }
     assert decision.score == 0.06
+
+
+@pytest.mark.asyncio
+async def test_live_routing_signals_include_outcome_evidence_summary_when_available() -> None:
+    router = RouterService(Settings())
+
+    decision = await router.choose_target_with_reason(
+        "a" * 120,
+        _request(prompt="a" * 120),
+        evidence_summary=CalibrationEvidenceSummary(
+            tenant_id="default",
+            scope="tenant",
+            state="sufficient",
+            state_reason="Eligible calibrated routing evidence meets the tenant sufficiency threshold.",
+            generated_at=datetime.now(UTC),
+            latest_eligible_request_at=datetime.now(UTC),
+            latest_any_request_at=datetime.now(UTC),
+            eligible_request_count=8,
+            sufficient_request_count=8,
+            thin_request_threshold=5,
+            staleness_threshold_hours=24,
+            excluded_request_count=1,
+            gated_request_count=0,
+            degraded_request_count=0,
+        ),
+    )
+
+    assert decision.target == "local"
+    assert decision.signals["outcome_evidence"]["state"] == "sufficient"
+    assert decision.signals["outcome_evidence"]["eligible_request_count"] == 8
+    assert decision.signals["score_components"]["outcome_bonus"] == 0.15
+    assert decision.signals["score_components"]["evidence_penalty"] == 0.0
+    assert decision.score == 0.21
 
 
 @pytest.mark.asyncio
@@ -69,6 +115,8 @@ async def test_keyword_bonus_can_raise_low_token_prompt_to_premium() -> None:
     assert decision.signals["keyword_match"] is True
     assert decision.signals["route_mode"] == "calibrated"
     assert decision.signals["score_components"]["keyword_bonus"] == 0.2
+    assert decision.signals["score_components"]["outcome_bonus"] == 0.0
+    assert decision.signals["score_components"]["evidence_penalty"] == 0.0
     assert decision.score == decision.signals["score_components"]["total_score"]
 
 
@@ -122,11 +170,22 @@ async def test_replay_uses_persisted_signals_without_degradation() -> None:
     assert decision.signals["calibrated_routing"] is True
     assert decision.signals["degraded_routing"] is False
     assert decision.signals["replay"] is True
+    assert decision.signals["outcome_evidence"] == {
+        "state": None,
+        "state_reason": None,
+        "eligible_request_count": None,
+        "sufficient_request_count": None,
+        "degraded_request_count": None,
+        "gated_request_count": None,
+        "excluded_request_count": None,
+    }
     assert decision.signals["score_components"] == {
         "token_score": 0.24,
         "keyword_bonus": 0.0,
         "policy_bonus": 0.0,
         "budget_penalty": 0.0,
+        "outcome_bonus": 0.0,
+        "evidence_penalty": 0.0,
         "total_score": 0.24,
     }
 
@@ -155,6 +214,8 @@ async def test_replay_marks_degraded_when_signals_are_missing() -> None:
         "keyword_bonus": 0.2,
         "policy_bonus": 0.0,
         "budget_penalty": 0.0,
+        "outcome_bonus": 0.0,
+        "evidence_penalty": 0.0,
         "total_score": 0.3,
     }
 
@@ -189,11 +250,22 @@ def test_route_signals_persisted_in_ledger() -> None:
         "degraded_routing": False,
         "keyword_match": False,
         "model_constraint": True,
+        "outcome_evidence": {
+            "degraded_request_count": 0,
+            "eligible_request_count": 0,
+            "excluded_request_count": 0,
+            "gated_request_count": 0,
+            "state": "thin",
+            "state_reason": "No eligible calibrated routing evidence is available yet.",
+            "sufficient_request_count": 0,
+        },
         "replay": False,
         "route_mode": "calibrated",
         "score_components": {
             "budget_penalty": 0.0,
+            "evidence_penalty": 0.05,
             "keyword_bonus": 0.0,
+            "outcome_bonus": 0.0,
             "policy_bonus": 0.1,
             "token_score": 1.0,
             "total_score": 1.0,

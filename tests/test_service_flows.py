@@ -440,14 +440,41 @@ async def test_policy_can_disable_cache_and_block_fallback() -> None:
 
 
 class RuntimePolicyStore:
-    def __init__(self, *, spend_total: float = 0.0) -> None:
+    def __init__(
+        self,
+        *,
+        spend_total: float = 0.0,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
+    ) -> None:
         self.spend_total = spend_total
+        self.evidence_summary = evidence_summary
         self.calls: list[tuple[str, datetime | None]] = []
+        self.evidence_summary_calls: list[str] = []
 
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
         self.calls.append((tenant_id, before_timestamp))
         return self.spend_total
+
+    def summarize_calibration_evidence(self, *, tenant_id: str) -> CalibrationEvidenceSummary:
+        assert tenant_id == "default"
+        self.evidence_summary_calls.append(tenant_id)
+        return self.evidence_summary or CalibrationEvidenceSummary(
+            tenant_id=tenant_id,
+            scope="tenant",
+            state="thin",
+            state_reason="No eligible calibrated routing evidence is available yet.",
+            generated_at=datetime.now(UTC),
+            latest_eligible_request_at=None,
+            latest_any_request_at=None,
+            eligible_request_count=0,
+            sufficient_request_count=0,
+            thin_request_threshold=GovernanceStore.CALIBRATION_THIN_REQUEST_THRESHOLD,
+            staleness_threshold_hours=GovernanceStore.CALIBRATION_STALENESS_THRESHOLD_HOURS,
+            excluded_request_count=0,
+            gated_request_count=0,
+            degraded_request_count=0,
+        )
 
 
 class FakeSimulationGovernanceStore(RuntimePolicyStore):
@@ -601,7 +628,69 @@ async def test_runtime_policy_resolution_enforces_toggles_and_soft_budget_signal
     assert resolution.cache_enabled is False
     assert resolution.fallback_enabled is False
     assert resolution.soft_budget_exceeded is True
-    assert resolution.policy_outcome == "cache=disabled;fallback=disabled;soft_budget=exceeded"
+    assert resolution.policy_outcome == (
+        "cache=disabled;fallback=disabled;soft_budget=exceeded;"
+        "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
+    )
+
+
+@pytest.mark.asyncio
+async def test_runtime_policy_resolution_applies_live_outcome_evidence_to_route_signals_and_score() -> None:
+    settings = Settings()
+    evidence_summary = CalibrationEvidenceSummary(
+        tenant_id="default",
+        scope="tenant",
+        state="sufficient",
+        state_reason="Eligible calibrated routing evidence meets the tenant sufficiency threshold.",
+        generated_at=datetime.now(UTC),
+        latest_eligible_request_at=datetime.now(UTC),
+        latest_any_request_at=datetime.now(UTC),
+        eligible_request_count=7,
+        sufficient_request_count=7,
+        thin_request_threshold=GovernanceStore.CALIBRATION_THIN_REQUEST_THRESHOLD,
+        staleness_threshold_hours=GovernanceStore.CALIBRATION_STALENESS_THRESHOLD_HOURS,
+        excluded_request_count=1,
+        gated_request_count=0,
+        degraded_request_count=0,
+    )
+    store = RuntimePolicyStore(spend_total=0.0, evidence_summary=evidence_summary)
+    policy_service = PolicyService(
+        settings,
+        store,
+        PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+    )
+    request = ChatCompletionRequest(
+        model="nebula-auto",
+        messages=[{"role": "user", "content": "a" * 120}],
+    )
+
+    resolution = await policy_service.resolve(
+        prompt="a" * 120,
+        request=request,
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(),
+        ),
+        router_service=RouterService(settings),
+    )
+
+    assert store.evidence_summary_calls == ["default"]
+    assert resolution.route_decision.target == "local"
+    assert resolution.route_decision.reason == "token_complexity"
+    assert resolution.route_decision.signals["outcome_evidence"] == {
+        "state": "sufficient",
+        "state_reason": "Eligible calibrated routing evidence meets the tenant sufficiency threshold.",
+        "eligible_request_count": 7,
+        "sufficient_request_count": 7,
+        "degraded_request_count": 0,
+        "gated_request_count": 0,
+        "excluded_request_count": 1,
+    }
+    assert resolution.route_decision.signals["score_components"]["outcome_bonus"] == 0.15
+    assert resolution.route_decision.signals["score_components"]["evidence_penalty"] == 0.0
+    assert resolution.route_decision.score == 0.39
+    assert "outcome_evidence=sufficient(eligible=7,sufficient=7,degraded=0,gated=0,excluded=1)" in resolution.policy_outcome
 
 
 @pytest.mark.asyncio

@@ -8,7 +8,7 @@ from fastapi import HTTPException, status
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
-from nebula.models.governance import RoutingMode
+from nebula.models.governance import CalibrationEvidenceSummary, RoutingMode
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionUsage
 from nebula.services.auth_service import AuthenticatedTenantContext
@@ -27,6 +27,7 @@ class PolicyEvaluation:
     projected_premium_cost: float | None
     hard_budget_exceeded: bool = False
     tenant_spend_total: float | None = None
+    evidence_summary: CalibrationEvidenceSummary | None = None
     denied: bool = False
     denial_detail: str | None = None
 
@@ -105,12 +106,16 @@ class PolicyService:
         before_timestamp: datetime | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
+        evidence_summary: CalibrationEvidenceSummary | None = None
+        if replay_context is None:
+            evidence_summary = self.store.summarize_calibration_evidence(tenant_id=tenant_context.tenant.id)
         if replay_context is not None:
             route_decision = await router_service.choose_target_for_replay(
                 request,
                 replay_context,
                 routing_mode=policy.routing_mode_default,
                 policy=policy,
+                evidence_summary=evidence_summary,
             )
         else:
             route_decision = await router_service.choose_target_with_reason(
@@ -118,6 +123,7 @@ class PolicyService:
                 request,
                 routing_mode=policy.routing_mode_default,
                 policy=policy,
+                evidence_summary=evidence_summary,
             )
 
         calibrated_routing_gated = False
@@ -196,6 +202,16 @@ class PolicyService:
                 outcome_parts.append("budget_action=downgraded_to_local")
         if denial_detail is not None:
             outcome_parts.append(f"denied={denial_detail}")
+        if evidence_summary is not None:
+            outcome_parts.append(
+                "outcome_evidence="
+                f"{evidence_summary.state}"
+                f"(eligible={evidence_summary.eligible_request_count},"
+                f"sufficient={evidence_summary.sufficient_request_count},"
+                f"degraded={evidence_summary.degraded_request_count},"
+                f"gated={evidence_summary.gated_request_count},"
+                f"excluded={evidence_summary.excluded_request_count})"
+            )
         if not outcome_parts:
             outcome_parts.append("default")
 
@@ -209,6 +225,7 @@ class PolicyService:
             projected_premium_cost=projected_premium_cost,
             hard_budget_exceeded=hard_budget_exceeded,
             tenant_spend_total=tenant_spend_total,
+            evidence_summary=evidence_summary,
             denied=denial_detail is not None,
             denial_detail=denial_detail,
         )
