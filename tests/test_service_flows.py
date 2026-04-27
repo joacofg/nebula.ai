@@ -13,6 +13,7 @@ from nebula.core.config import Settings
 from nebula.models.governance import (
     ApiKeyRecord,
     CalibrationEvidenceSummary,
+    CalibrationReasonCount,
     PolicySimulationRequest,
     RecommendationBundle,
     TenantPolicy,
@@ -29,6 +30,7 @@ from nebula.services.embeddings_service import (
     EmbeddingsValidationError,
     OllamaEmbeddingsService,
 )
+from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
@@ -449,6 +451,11 @@ class RuntimePolicyStore:
 
 
 class FakeSimulationGovernanceStore(RuntimePolicyStore):
+    CALIBRATION_THIN_REQUEST_THRESHOLD = GovernanceStore.CALIBRATION_THIN_REQUEST_THRESHOLD
+    CALIBRATION_STALENESS_THRESHOLD_HOURS = GovernanceStore.CALIBRATION_STALENESS_THRESHOLD_HOURS
+    _CALIBRATION_EXCLUDED_ROUTE_REASONS = GovernanceStore._CALIBRATION_EXCLUDED_ROUTE_REASONS
+    _CALIBRATION_GATED_ROUTE_REASONS = GovernanceStore._CALIBRATION_GATED_ROUTE_REASONS
+
     def __init__(self, records: list[UsageLedgerRecord], *, spend_total: float = 0.0) -> None:
         super().__init__(spend_total=spend_total)
         self.records = list(records)
@@ -513,79 +520,48 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
                 "now": now,
             }
         )
-        current_time = now or datetime.now(UTC)
-        rows = self.list_usage_records(
+        return GovernanceStore.summarize_calibration_evidence(
+            self,
             tenant_id=tenant_id,
             from_timestamp=from_timestamp,
             to_timestamp=to_timestamp,
             limit=limit,
+            now=now,
         )
-        latest_any_request_at = rows[0].timestamp if rows else None
-        excluded_rows = [
-            row for row in rows if row.route_reason in {"explicit_local_model", "explicit_premium_model", "policy_local_only", "policy_premium_only"}
-        ]
-        gated_rows = [row for row in rows if row.route_reason == "calibrated_routing_disabled"]
-        eligible_rows = [row for row in rows if row not in excluded_rows and row not in gated_rows]
-        sufficient_rows = [
-            row
-            for row in eligible_rows
-            if row.route_signals and row.route_signals.get("route_mode") == "calibrated"
-        ]
-        degraded_rows = [row for row in eligible_rows if row not in sufficient_rows]
-        latest_eligible_request_at = eligible_rows[0].timestamp if eligible_rows else None
-        if len(sufficient_rows) >= 5 and degraded_rows:
-            state = "degraded"
-            reason = (
-                "Eligible calibrated routing evidence meets the sufficiency threshold, "
-                "but degraded outcome evidence is still present in the summary window."
-            )
-        elif len(sufficient_rows) >= 5 and latest_eligible_request_at is not None and (current_time - latest_eligible_request_at).total_seconds() <= 24 * 3600:
-            state = "sufficient"
-            reason = "Eligible calibrated routing evidence meets the tenant sufficiency threshold."
-        elif len(sufficient_rows) >= 5:
-            state = "stale"
-            reason = "Eligible calibrated routing evidence is older than the tenant staleness threshold."
-        else:
-            state = "thin"
-            reason = (
-                "No eligible calibrated routing evidence is available yet."
-                if len(sufficient_rows) == 0
-                else "Eligible calibrated routing evidence is still below the tenant sufficiency threshold."
-            )
-        degraded_reason_counts: dict[str, int] = {}
-        for row in degraded_rows:
-            reason_key = (
-                "degraded_replay_signals"
-                if row.route_signals and row.route_signals.get("route_mode") == "degraded"
-                else "missing_route_signals"
-            )
-            degraded_reason_counts[reason_key] = degraded_reason_counts.get(reason_key, 0) + 1
-        return CalibrationEvidenceSummary(
-            tenant_id=tenant_id,
-            scope="tenant_window" if from_timestamp is not None or to_timestamp is not None else "tenant",
-            state=state,
-            state_reason=reason,
-            generated_at=current_time,
+
+    def _calibration_excluded_reason(self, record: UsageLedgerRecord) -> str | None:
+        return GovernanceStore._calibration_excluded_reason(self, record)
+
+    def _calibration_gated_reason(self, record: UsageLedgerRecord) -> str | None:
+        return GovernanceStore._calibration_gated_reason(self, record)
+
+    def _calibration_degraded_reason(self, record: UsageLedgerRecord) -> str | None:
+        return GovernanceStore._calibration_degraded_reason(self, record)
+
+    def _calibration_state(
+        self,
+        *,
+        current_time: datetime,
+        latest_eligible_request_at: datetime | None,
+        sufficient_request_count: int,
+        degraded_request_count: int,
+    ) -> tuple[str, str]:
+        return GovernanceStore._calibration_state(
+            self,
+            current_time=current_time,
             latest_eligible_request_at=latest_eligible_request_at,
-            latest_any_request_at=latest_any_request_at,
-            eligible_request_count=len(eligible_rows),
-            sufficient_request_count=len(sufficient_rows),
-            thin_request_threshold=5,
-            staleness_threshold_hours=24,
-            excluded_request_count=len(excluded_rows),
-            gated_request_count=len(gated_rows),
-            degraded_request_count=len(degraded_rows),
-            excluded_reasons=[
-                {"reason": "explicit_model_override", "count": len(excluded_rows)}
-            ] if excluded_rows else [],
-            gated_reasons=[
-                {"reason": "calibrated_routing_disabled", "count": len(gated_rows)}
-            ] if gated_rows else [],
-            degraded_reasons=[
-                {"reason": reason_key, "count": count}
-                for reason_key, count in sorted(degraded_reason_counts.items())
-            ],
+            sufficient_request_count=sufficient_request_count,
+            degraded_request_count=degraded_request_count,
         )
+
+    def _reason_counts(self, counter):
+        return GovernanceStore._reason_counts(self, counter)
+
+    def _now(self) -> datetime:
+        return datetime.now(UTC)
+
+    def _normalize_comparable_datetime(self, value: datetime) -> datetime:
+        return GovernanceStore._normalize_comparable_datetime(self, value)
 
     def record_usage(self, record: UsageLedgerRecord) -> None:
         self.record_usage_calls.append(record)
@@ -858,6 +834,58 @@ async def test_governance_store_calibration_summary_reports_stale_and_distinguis
     assert summary.eligible_request_count == 7
     assert summary.gated_request_count == 1
     assert summary.degraded_request_count == 2
+    assert summary.gated_reasons == [CalibrationReasonCount(reason="calibrated_routing_disabled", count=1)]
+    assert summary.degraded_reasons == [
+        CalibrationReasonCount(reason="degraded_replay_signals", count=1),
+        CalibrationReasonCount(reason="missing_route_signals", count=1),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_governance_store_calibration_summary_is_tenant_and_window_scoped() -> None:
+    now = datetime.now(UTC)
+    in_window = now.replace(microsecond=10)
+    out_of_window = now.replace(year=now.year - 1, microsecond=11)
+    records = [
+        _ledger_record(
+            request_id=f"req-default-{index}",
+            tenant_id="default",
+            timestamp=in_window.replace(microsecond=10 + index),
+            route_signals={"route_mode": "calibrated", "token_count": 500, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+    records.extend(
+        [
+            _ledger_record(
+                request_id="req-default-old",
+                tenant_id="default",
+                timestamp=out_of_window,
+                route_signals={"route_mode": "degraded", "token_count": 500, "complexity_tier": "medium", "keyword_match": True},
+            ),
+            _ledger_record(
+                request_id="req-other-tenant",
+                tenant_id="other",
+                timestamp=in_window.replace(microsecond=99),
+                route_signals={"route_mode": "degraded", "token_count": 500, "complexity_tier": "medium", "keyword_match": True},
+            ),
+        ]
+    )
+    store = FakeSimulationGovernanceStore(records)
+
+    summary = store.summarize_calibration_evidence(
+        tenant_id="default",
+        from_timestamp=now.replace(second=max(0, now.second - 1)),
+        to_timestamp=now.replace(second=min(59, now.second + 1)),
+        now=now,
+    )
+
+    assert summary.scope == "tenant_window"
+    assert summary.state == "sufficient"
+    assert summary.eligible_request_count == 5
+    assert summary.sufficient_request_count == 5
+    assert summary.degraded_request_count == 0
+    assert summary.latest_any_request_at == max(record.timestamp for record in records[:5])
 
 
 @pytest.mark.asyncio

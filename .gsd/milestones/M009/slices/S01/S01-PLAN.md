@@ -34,7 +34,7 @@ Steps:
   - Files: `src/nebula/models/governance.py`, `src/nebula/services/router_service.py`, `tests/test_service_flows.py`, `tests/test_governance_api.py`
   - Verify: pytest tests/test_service_flows.py -k "calibration_summary or outcome"
 
-- [ ] **T02: Implement deterministic ledger summarization for sufficient/thin/stale/degraded evidence** `est:1h`
+- [x] **T02: Implement deterministic ledger summarization for sufficient/thin/stale/degraded evidence** `est:1h`
   Move the highest-risk ambiguity into one authoritative derivation path. This task should make `GovernanceStore.summarize_calibration_evidence()` the fail-safe truth seam for M009 by encoding bounded-window classification, summary-state precedence, and honest handling of governance-suppressed or replay-degraded rows.
 
 Steps:

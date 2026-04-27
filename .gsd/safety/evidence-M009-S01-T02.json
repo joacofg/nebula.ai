@@ -1,0 +1,92 @@
+[
+  {
+    "kind": "bash",
+    "toolCallId": "call_ntoeKWtrabvs697mDHpUHv4h|fc_0f6cb99c3f03675e0169ef76b2167c819bb04a481d730c59d8",
+    "command": "rg -n \"degraded_replay_signals|missing_route_signals|summarize_calibration_evidence\\(|calibration_summary\" src tests/test_service_flows.py tests/test_governance_api.py",
+    "exitCode": 0,
+    "outputSnippet": "tests/test_service_flows.py:458:        self.calibration_summary_calls: list[dict[str, object]] = []\ntests/test_service_flows.py:498:    def summarize_calibration_evidence(\ntests/test_service_flows.py:507:        self.calibration_summary_calls.append(\ntests/test_service_flows.py:558:                \"degraded_replay_signals\"\ntests/test_service_flows.py:560:                else \"missing_route_signals\"\ntests/test_service_flows.py:723:async def test_governance_store_calibration_summary_reports_suffi",
+    "timestamp": 1777301171488
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_O4VVxP9ZijRkEn7Ur9mxBwk8|fc_0f6cb99c3f03675e0169ef76b8b1e0819bad61dcd51add8d25",
+    "path": "src/nebula/services/governance_store.py",
+    "timestamp": 1777301200594
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_4QgBXU8CMzV9cCqGW8uSs3K2|fc_0f6cb99c3f03675e0169ef76d347dc819bac6db77ec7154f1e",
+    "path": "src/nebula/services/governance_store.py",
+    "timestamp": 1777301215438
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_LJsBTrFgtVvcWoxAucXqblE2|fc_0f6cb99c3f03675e0169ef76e16c54819bbc5812c42531535f",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301266420
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_ABTars2NLsExATExR2jlHdhh|fc_0f6cb99c3f03675e0169ef7718112c819b88c0ba8383aa7944",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301305213
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_ucu0iYHeUWC2Ux14Jad7EnGs|fc_0f6cb99c3f03675e0169ef773dcd68819b9feab754315f9101",
+    "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"governance_store_calibration_summary or calibration_summary\"",
+    "exitCode": 1,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 27 items / 21 deselected / 6 selected\n\ntests/test_service_flows.py FFFFFF                                      ",
+    "timestamp": 1777301311489
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_8WCqAa4XSVrmcqXiQQME8Rn4|fc_0f6cb99c3f03675e0169ef7743ca9c819b9c9e4002b141adeb",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301320956
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_UBWrt7FAKwxFZwaKPhEkGQkH|fc_0f6cb99c3f03675e0169ef774acc4c819b8017c309df4eacbe",
+    "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"governance_store_calibration_summary or calibration_summary\"",
+    "exitCode": 1,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 27 items / 21 deselected / 6 selected\n\ntests/test_service_flows.py FFFFFF                                      ",
+    "timestamp": 1777301327828
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_lAeAEkhd2K8y47Lg7jJZsg6C|fc_0f6cb99c3f03675e0169ef775407a0819b8f71f30195ab7cae",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301335965
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_l70EMN9tasSYx53XjN8k09DY|fc_0f6cb99c3f03675e0169ef7759d4c0819bb39df46b39da82fa",
+    "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"governance_store_calibration_summary or calibration_summary\"",
+    "exitCode": 1,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 27 items / 21 deselected / 6 selected\n\ntests/test_service_flows.py ...F..                                      ",
+    "timestamp": 1777301344596
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_yS6fo1YKgD5nD9t0LYJZhldv|fc_0f6cb99c3f03675e0169ef7764ed68819bab98f9efc2da26a8",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301351522
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_MOsK73QGy6SbTe13sCp3Oz0E|fc_0f6cb99c3f03675e0169ef7769a700819bb71b13b961785f96",
+    "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"governance_store_calibration_summary or calibration_summary\"",
+    "exitCode": 0,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 27 items / 21 deselected / 6 selected\n\ntests/test_service_flows.py ......                                      ",
+    "timestamp": 1777301354585
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_qVQ5VKiAIuMhd82er6FrcD2c|fc_0f6cb99c3f03675e0169ef776dadc0819b8cb428cfcfc7c881",
+    "command": "./.venv/bin/pytest tests/test_governance_api.py -k \"calibration_summary or policy_simulation_returns_summary\"",
+    "exitCode": 0,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 25 items / 24 deselected / 1 selected\n\ntests/test_governance_api.py .                                          ",
+    "timestamp": 1777301358732
+  }
+]

@@ -423,14 +423,16 @@ class GovernanceStore:
             degraded_reason = self._calibration_degraded_reason(record)
             if degraded_reason is not None:
                 degraded_counter[degraded_reason] += 1
-            else:
-                sufficient_records.append(record)
+                continue
+
+            sufficient_records.append(record)
 
         latest_eligible_request_at = eligible_records[0].timestamp if eligible_records else None
         state, state_reason = self._calibration_state(
             current_time=current_time,
             latest_eligible_request_at=latest_eligible_request_at,
             sufficient_request_count=len(sufficient_records),
+            degraded_request_count=sum(degraded_counter.values()),
         )
 
         return CalibrationEvidenceSummary(
@@ -644,6 +646,7 @@ class GovernanceStore:
         current_time: datetime,
         latest_eligible_request_at: datetime | None,
         sufficient_request_count: int,
+        degraded_request_count: int,
     ) -> tuple[str, str]:
         if sufficient_request_count == 0:
             return "thin", "No eligible calibrated routing evidence is available yet."
@@ -651,6 +654,14 @@ class GovernanceStore:
             return (
                 "thin",
                 "Eligible calibrated routing evidence is still below the tenant sufficiency threshold.",
+            )
+        # Precedence is explicit: once the tenant has enough sufficient rows, any degraded
+        # eligible evidence in the same bounded window outranks freshness so operators and
+        # replay consumers diagnose trust erosion before reasoning about stale age.
+        if degraded_request_count > 0:
+            return (
+                "degraded",
+                "Eligible calibrated routing evidence meets the tenant sufficiency threshold, but the same summary window still contains degraded outcome evidence.",
             )
         assert latest_eligible_request_at is not None
         normalized_current_time = self._normalize_comparable_datetime(current_time)
