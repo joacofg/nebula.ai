@@ -1,0 +1,122 @@
+[
+  {
+    "kind": "bash",
+    "toolCallId": "call_YtfSyflKL7lbKv0FSCgVBWp6|fc_08f0866b251267db0169ef75d16dd0819aa8ed160d5c5646c6",
+    "command": "rg -n \"CalibrationEvidenceState|CalibrationEvidenceSummary|degraded_reasons|route_mode|calibration_summary|summarize_calibration_evidence|outcome evidence|OutcomeEvidence|degraded_request_count\" src tests",
+    "exitCode": 0,
+    "outputSnippet": "tests/test_retention_lifecycle_service.py:39:                route_signals={\"route_mode\": \"auto\"},\ntests/test_service_flows.py:15:    CalibrationEvidenceSummary,\ntests/test_service_flows.py:252:    assert envelope.metadata.route_signals[\"route_mode\"] == \"calibrated\"\ntests/test_service_flows.py:458:        self.calibration_summary_calls: list[dict[str, object]] = []\ntests/test_service_flows.py:498:    def summarize_calibration_evidence(\ntests/test_service_flows.py:506:    ) -> CalibrationEvidence",
+    "timestamp": 1777300947054
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_E2BPujiWKJM1S8mYilY3YuFW|fc_08f0866b251267db0169ef75dbf060819ab8c7379a682d2272",
+    "path": "src/nebula/models/governance.py",
+    "timestamp": 1777300959708
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_bnsqjbn3TyT2eeFgmIhEklqo|fc_08f0866b251267db0169ef75e1bbec819a92f6b1f5f38d3ea3",
+    "path": "src/nebula/models/governance.py",
+    "timestamp": 1777300972537
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_bVhupOPOMObsfteEJzT74jRy|fc_08f0866b251267db0169ef75ee3fa8819a8ed0c03211a48ec5",
+    "path": "src/nebula/services/router_service.py",
+    "timestamp": 1777300976122
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_3OOSJHEvVV131R99B6Hqrz8W|fc_08f0866b251267db0169ef75f28308819a9ec9b9dafc882b21",
+    "path": "src/nebula/services/router_service.py",
+    "timestamp": 1777300980914
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_1D3HeisL6i5lj2ZcFWtuwZvQ|fc_08f0866b251267db0169ef75f727a8819aad432c803c7c9798",
+    "path": "src/nebula/services/router_service.py",
+    "timestamp": 1777300988545
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_HOt2m9dkp0uMNHnEf49P4VN4|fc_08f0866b251267db0169ef75ff587c819a89905edb7a2a8fad",
+    "path": "src/nebula/services/router_service.py",
+    "timestamp": 1777301001076
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_ACX62ML8arNQf7lUBFLlVA1a|fc_08f0866b251267db0169ef760b02e4819a93222a218f484bce",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301010928
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_vbTN720Sh7VouNJt9lHWYwVZ|fc_08f0866b251267db0169ef7614d9e4819a88737124becbd8fb",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301021131
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_fPhmz0PKjleBUcjM18KXGiM2|fc_08f0866b251267db0169ef761f22a4819aa1b5dab2854655a8",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301026753
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_oyv3G61uXM0p2NxQ7pAehrpL|fc_08f0866b251267db0169ef76282e24819aa79c384aaeb93c97",
+    "path": "tests/test_governance_api.py",
+    "timestamp": 1777301036448
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_tOFvqT6onaWjW4loNwKQWCjh|fc_08f0866b251267db0169ef762fc5f4819a90b53e82529660f5",
+    "command": "pytest tests/test_service_flows.py -k \"calibration_summary or outcome\"",
+    "exitCode": 127,
+    "outputSnippet": "/bin/bash: pytest: command not found\n\n\nCommand exited with code 127",
+    "timestamp": 1777301040594
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_yTdq4FlBJvdvhbTm7EPthQ0V|fc_08f0866b251267db0169ef76380ed0819ab4a884eee058ed51",
+    "command": "ls",
+    "exitCode": 0,
+    "outputSnippet": "CLAUDE.md\nDockerfile\nMakefile\nREADME.md\nalembic.ini\nartifacts\nbenchmarks\nconsole\ndeploy\ndocker-compose.selfhosted.yml\ndocker-compose.yml\ndocs\nmigrations\npyproject.toml\nscripts\nsrc\ntests\n",
+    "timestamp": 1777301048825
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_FexAZtEFWSDaA0xHA7xyLzRi|fc_08f0866b251267db0169ef76380f2c819aae93aca958c855d5",
+    "command": "make test TEST='tests/test_service_flows.py -k \"calibration_summary or outcome\"'",
+    "exitCode": 2,
+    "outputSnippet": ".venv/bin/pytest\n============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 179 items\n\ntests/test_admin_playground_api.py ......                                [  3%]\ntes",
+    "timestamp": 1777301048825
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_zkZ2zlXmlAWJNzVcOTRPGO3T|fc_08f0866b251267db0169ef765e8b10819a8903725483fd1f41",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301088378
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_aQOJ5VNDb9hbv6yJg2RuYlXp|fc_08f0866b251267db0169ef7662156c819a926e5e506e9a6bf8",
+    "path": "tests/test_service_flows.py",
+    "timestamp": 1777301091754
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_E0wbXiOkvAHQ9FJYKs9rTGnb|fc_08f0866b251267db0169ef766562ec819a99e3b0d9f378d1b4",
+    "command": "./.venv/bin/pytest tests/test_service_flows.py -k \"calibration_summary or outcome\"",
+    "exitCode": 0,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 26 items / 21 deselected / 5 selected\n\ntests/test_service_flows.py .....                                       ",
+    "timestamp": 1777301094298
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_dXm3a21dtDPblnSNQO6COq2N|fc_08f0866b251267db0169ef766ac140819a9911f27c1cc50c95",
+    "command": "./.venv/bin/pytest tests/test_governance_api.py tests/test_router_signals.py tests/test_service_flows.py",
+    "exitCode": 0,
+    "outputSnippet": "============================= test session starts ==============================\nplatform darwin -- Python 3.12.13, pytest-8.4.2, pluggy-1.6.0\nrootdir: /Users/joaquinfernandezdegamboa/Proj/nebula\nconfigfile: pyproject.toml\nplugins: anyio-4.12.1, cov-5.0.0, asyncio-0.26.0\nasyncio: mode=Mode.AUTO, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function\ncollected 60 items\n\ntests/test_governance_api.py .........................                   [ 41%]\ntests/test_router_sig",
+    "timestamp": 1777301099821
+  }
+]

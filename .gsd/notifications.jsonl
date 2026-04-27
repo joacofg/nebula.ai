@@ -76,3 +76,19 @@
 {"id":"0631e67e-f3fb-407b-9f3e-7975023fe7e4","ts":"2026-04-12T17:29:16.103Z","severity":"info","message":"Committed: test: Tightened integrated-governance proof tests to lock request-evide…","source":"notify","read":false}
 {"id":"d1746123-5cac-4198-87ce-9ac83e0ce4e0","ts":"2026-04-12T17:29:19.217Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}
 {"id":"38fe5582-4a50-48ba-b8d6-10a4826a86a2","ts":"2026-04-12T17:34:15.436Z","severity":"warning","message":"[dispatch] Implementation artifact check inconclusive for M008 — proceeding (git context unavailable)","source":"workflow-logger","read":false}
+{"id":"0ebb9a09-20e4-4194-8e52-3c8fc929859b","ts":"2026-04-12T17:38:03.565Z","severity":"info","message":"Committed: chore: auto-commit after complete-milestone","source":"notify","read":false}
+{"id":"92e8ee07-72a9-482d-b8c6-85336fcf7112","ts":"2026-04-12T17:38:03.796Z","severity":"info","message":"Auto-mode stopped — All milestones complete. Session: $78.56 · 148.88M tokens · 114 units","source":"notify","read":false}
+{"id":"e4254f0f-4167-4f97-8a35-67f9fd8e7825","ts":"2026-04-12T17:38:03.796Z","severity":"warning","message":"[state] DB unavailable — using filesystem state derivation (degraded mode)","source":"workflow-logger","read":false}
+{"id":"12c93634-dcc8-4b93-832f-e556d4bc7cc9","ts":"2026-04-27T14:17:57.585Z","severity":"info","message":"Current version: v2.70.1\nChecking npm registry...","source":"notify","read":false}
+{"id":"1fb8e15c-b505-46a9-a1e9-eacef107500a","ts":"2026-04-27T14:17:57.715Z","severity":"info","message":"Updating: v2.70.1 → v2.78.1...","source":"notify","read":false}
+{"id":"e061a8c1-a0d5-456f-addb-6aca4b483837","ts":"2026-04-27T14:18:45.627Z","severity":"info","message":"Updated to v2.78.1. Restart your GSD session to use the new version.","source":"notify","read":false}
+{"id":"b55cd695-b081-49e5-bd10-46349c9bb1c5","ts":"2026-04-27T14:21:52.476Z","severity":"info","message":"GSD: backfilled 48 decisions into the memory store (ADR-013).","source":"notify","read":false}
+{"id":"139c39be-8cb5-499a-9c53-47fa7944b724","ts":"2026-04-27T14:25:30.290Z","severity":"info","message":"Analyzing codebase...","source":"notify","read":false}
+{"id":"cce236e1-d9da-4c55-bcb3-45e70116f699","ts":"2026-04-27T14:25:30.306Z","severity":"success","message":"✓ Analyzed codebase","source":"notify","read":false}
+{"id":"7dcbcb3f-f343-43e0-aaea-4095b6ff2b7b","ts":"2026-04-27T14:25:30.307Z","severity":"info","message":"Reviewing prior context...","source":"notify","read":false}
+{"id":"bf8b6fdc-a9fb-4e00-b068-1d449f33da49","ts":"2026-04-27T14:25:30.312Z","severity":"success","message":"✓ Reviewed prior context","source":"notify","read":false}
+{"id":"92d9d640-3da4-4d06-bf64-f019c953d28d","ts":"2026-04-27T14:37:23.588Z","severity":"success","message":"Milestone M009 ready.","source":"notify","read":false}
+{"id":"7b47f8a6-cb7b-434f-8d9c-b5ee5368fd96","ts":"2026-04-27T14:37:23.811Z","severity":"info","message":"Auto-mode started. Will loop until milestone complete.","source":"notify","read":false}
+{"id":"8679af83-d6b2-4a72-af02-18e49cc85c4d","ts":"2026-04-27T14:37:23.812Z","severity":"info","message":"Dynamic routing: enabled — simple tasks may use cheaper models (ceiling: openai-codex/gpt-5.4)","source":"notify","read":false}
+{"id":"aabc8437-85dd-4cc3-bbc3-23eacde8e729","ts":"2026-04-27T14:37:23.813Z","severity":"info","message":"Pre-flight: 9 milestones queued. All have full context.","source":"notify","read":false}
+{"id":"d653e0b2-c8e5-410c-9af4-17426e550e0c","ts":"2026-04-27T14:37:24.039Z","severity":"info","message":"Pre-dispatch: pre-dispatch: created gsd snapshot after 19618m of uncommitted changes","source":"notify","read":false}

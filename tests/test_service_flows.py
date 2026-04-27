@@ -533,7 +533,13 @@ class FakeSimulationGovernanceStore(RuntimePolicyStore):
         ]
         degraded_rows = [row for row in eligible_rows if row not in sufficient_rows]
         latest_eligible_request_at = eligible_rows[0].timestamp if eligible_rows else None
-        if len(sufficient_rows) >= 5 and latest_eligible_request_at is not None and (current_time - latest_eligible_request_at).total_seconds() <= 24 * 3600:
+        if len(sufficient_rows) >= 5 and degraded_rows:
+            state = "degraded"
+            reason = (
+                "Eligible calibrated routing evidence meets the sufficiency threshold, "
+                "but degraded outcome evidence is still present in the summary window."
+            )
+        elif len(sufficient_rows) >= 5 and latest_eligible_request_at is not None and (current_time - latest_eligible_request_at).total_seconds() <= 24 * 3600:
             state = "sufficient"
             reason = "Eligible calibrated routing evidence meets the tenant sufficiency threshold."
         elif len(sufficient_rows) >= 5:
@@ -778,6 +784,38 @@ async def test_governance_store_calibration_summary_reports_thin_evidence_and_ex
 
 
 @pytest.mark.asyncio
+async def test_governance_store_calibration_summary_reports_degraded_state_precedence_over_sufficient() -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-calibrated-{index}",
+            timestamp=now.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 700, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+    records.append(
+        _ledger_record(
+            request_id="req-degraded-precedence",
+            timestamp=now.replace(microsecond=99),
+            route_signals={"route_mode": "degraded", "token_count": 650, "complexity_tier": "medium", "keyword_match": True},
+        )
+    )
+    store = FakeSimulationGovernanceStore(records)
+
+    summary = store.summarize_calibration_evidence(tenant_id="default", now=now)
+
+    # Compatibility note: downstream code still reads calibration_summary, but degraded is a
+    # summary-state outcome, not only a per-row reason, so it takes precedence over sufficient.
+    assert summary.state == "degraded"
+    assert summary.sufficient_request_count == 5
+    assert summary.eligible_request_count == 6
+    assert summary.degraded_request_count == 1
+    assert summary.degraded_reasons[0].reason == "degraded_replay_signals"
+    assert summary.degraded_reasons[0].count == 1
+
+
+@pytest.mark.asyncio
 async def test_governance_store_calibration_summary_reports_stale_and_distinguishes_gated_from_degraded() -> None:
     now = datetime.now(UTC)
     stale_base = now.replace(day=max(1, now.day - 2))
@@ -813,7 +851,9 @@ async def test_governance_store_calibration_summary_reports_stale_and_distinguis
 
     summary = store.summarize_calibration_evidence(tenant_id="default", now=now)
 
-    assert summary.state == "stale"
+    # Once enough sufficient rows exist, degraded evidence takes summary precedence over stale so
+    # operator/replay consumers can diagnose the weakened window before reasoning about freshness.
+    assert summary.state == "degraded"
     assert summary.sufficient_request_count == 5
     assert summary.eligible_request_count == 7
     assert summary.gated_request_count == 1

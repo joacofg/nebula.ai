@@ -15,7 +15,10 @@ TerminalStatus = Literal[
     "policy_denied",
     "provider_error",
 ]
-CalibrationEvidenceState = Literal["sufficient", "thin", "stale"]
+CalibrationEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
+# M009 keeps the externally-visible calibration_summary field name for compatibility,
+# but downstream slices should treat it as the shared outcome-evidence summary seam.
+OutcomeEvidenceState = CalibrationEvidenceState
 CalibrationEvidenceScope = Literal["tenant", "tenant_window"]
 CalibrationDegradedReason = Literal[
     "missing_route_signals",
@@ -142,7 +145,9 @@ class CalibrationReasonCount(BaseModel):
 class CalibrationEvidenceSummary(BaseModel):
     tenant_id: str = Field(min_length=1)
     scope: CalibrationEvidenceScope = "tenant"
-    state: CalibrationEvidenceState
+    # Compatibility note: keep calibration_summary naming on admin/replay payloads,
+    # but the state now represents the shared outcome-evidence contract.
+    state: OutcomeEvidenceState
     state_reason: str = Field(min_length=1, max_length=280)
     generated_at: datetime
     latest_eligible_request_at: datetime | None = None

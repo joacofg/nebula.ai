@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-04-12T17:27:10Z | Files: 272 | Described: 0/272
-<!-- gsd:codebase-meta {"generatedAt":"2026-04-12T17:27:10Z","fingerprint":"3168970bf60672a78852474d63d772c99250ac96","fileCount":272,"truncated":false} -->
+Generated: 2026-04-27T14:41:02Z | Files: 242 | Described: 0/242
+<!-- gsd:codebase-meta {"generatedAt":"2026-04-27T14:41:02Z","fingerprint":"38dda27523c597e2f46037a3ad619ce720ede8b7","fileCount":242,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
@@ -10,49 +10,12 @@ Generated: 2026-04-12T17:27:10Z | Files: 272 | Described: 0/272
 - `.python-version`
 - `.tmp_s05_research.md`
 - `alembic.ini`
-- `CLAUDE.md`
 - `docker-compose.selfhosted.yml`
 - `docker-compose.yml`
 - `Dockerfile`
 - `Makefile`
 - `pyproject.toml`
 - `README.md`
-
-### .codex/skills/ui-ux-pro-max/
-- `.codex/skills/ui-ux-pro-max/SKILL.md`
-
-### .codex/skills/ui-ux-pro-max/data/
-- `.codex/skills/ui-ux-pro-max/data/charts.csv`
-- `.codex/skills/ui-ux-pro-max/data/colors.csv`
-- `.codex/skills/ui-ux-pro-max/data/icons.csv`
-- `.codex/skills/ui-ux-pro-max/data/landing.csv`
-- `.codex/skills/ui-ux-pro-max/data/products.csv`
-- `.codex/skills/ui-ux-pro-max/data/react-performance.csv`
-- `.codex/skills/ui-ux-pro-max/data/styles.csv`
-- `.codex/skills/ui-ux-pro-max/data/typography.csv`
-- `.codex/skills/ui-ux-pro-max/data/ui-reasoning.csv`
-- `.codex/skills/ui-ux-pro-max/data/ux-guidelines.csv`
-- `.codex/skills/ui-ux-pro-max/data/web-interface.csv`
-
-### .codex/skills/ui-ux-pro-max/data/stacks/
-- `.codex/skills/ui-ux-pro-max/data/stacks/astro.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/flutter.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/html-tailwind.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/jetpack-compose.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/nextjs.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/nuxt-ui.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/nuxtjs.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/react-native.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/react.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/shadcn.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/svelte.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/swiftui.csv`
-- `.codex/skills/ui-ux-pro-max/data/stacks/vue.csv`
-
-### .codex/skills/ui-ux-pro-max/scripts/
-- `.codex/skills/ui-ux-pro-max/scripts/core.py`
-- `.codex/skills/ui-ux-pro-max/scripts/design_system.py`
-- `.codex/skills/ui-ux-pro-max/scripts/search.py`
 
 ### .tmp/
 - `.tmp/M006-S02-RESEARCH.md`
@@ -77,7 +40,6 @@ Generated: 2026-04-12T17:27:10Z | Files: 272 | Described: 0/272
 - `console/postcss.config.mjs`
 - `console/tailwind.config.ts`
 - `console/tsconfig.json`
-- `console/tsconfig.tsbuildinfo`
 - `console/vitest.config.ts`
 
 ### console/e2e/

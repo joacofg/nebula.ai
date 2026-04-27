@@ -880,6 +880,7 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert body["summary"]["newly_denied"] == 0
     assert body["calibration_summary"]["tenant_id"] == "default"
     assert body["calibration_summary"]["scope"] == "tenant_window"
+    # Payloads keep calibration_summary for compatibility, but the state carries outcome-evidence semantics.
     assert body["calibration_summary"]["state"] == "thin"
     assert body["calibration_summary"]["eligible_request_count"] == 2
     assert body["calibration_summary"]["sufficient_request_count"] == 2

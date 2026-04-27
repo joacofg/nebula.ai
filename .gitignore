@@ -113,3 +113,7 @@ vendor/
 .codex/
 .claude/
 CLAUDE.md
+
+# ── GSD baseline (auto-generated) ──
+.mcp.json
+*.pyc

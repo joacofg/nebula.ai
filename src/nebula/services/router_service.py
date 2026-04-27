@@ -11,6 +11,8 @@ from nebula.models.openai import ChatCompletionRequest
 RouteTarget = Literal["local", "premium"]
 ComplexityTier = Literal["low", "medium", "high"]
 RouteMode = Literal["calibrated", "heuristic_override", "degraded"]
+OutcomeEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
+OutcomeEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
 
 
 @dataclass(slots=True, frozen=True)
@@ -208,6 +210,8 @@ class RouterService:
         )
 
     def _signals_from_breakdown(self, breakdown: CalibratedScoreBreakdown) -> dict[str, Any]:
+        # Keep route_mode for request-level parity and replay; M009 derives the summary-level
+        # outcome-evidence state separately so degraded can win as a tenant summary outcome.
         return {
             "token_count": breakdown.token_count,
             "complexity_tier": breakdown.complexity_tier,
