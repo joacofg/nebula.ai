@@ -18,10 +18,10 @@
 - [x] **S02: S02** `risk:high` `depends:[]`
   > After this: After this: a real `POST /v1/chat/completions` request can route differently because of recent tenant-scoped outcome evidence, and the correlated persisted ledger row records the actual route factors used.
 
-- [ ] **S03: S03** `risk:medium` `depends:[]`
+- [x] **S03: S03** `risk:medium` `depends:[]`
   > After this: After this: `POST /v1/admin/tenants/{tenant_id}/policy/simulate` replays the same outcome-grounded semantics as runtime, including honest degraded behavior when evidence is incomplete.
 
-- [ ] **S04: Request-first operator evidence** `risk:medium` `depends:[S02,S03]`
+- [ ] **S04: S04** `risk:medium` `depends:[]`
   > After this: After this: the selected request in Observability and request detail explains whether routing was grounded, thin, stale, or degraded using the existing request-first evidence surfaces.
 
 - [ ] **S05: Integrated proof and close-out** `risk:low` `depends:[S02,S03,S04]`

@@ -79,8 +79,8 @@ function titleCaseToken(value: string) {
     .join(" ");
 }
 
-function formatReasonCounts(items: CalibrationEvidenceSummary["excluded_reasons"]) {
-  if (items.length === 0) {
+function formatReasonCounts(items: CalibrationEvidenceSummary["excluded_reasons"] | null | undefined) {
+  if (!items || items.length === 0) {
     return "None";
   }
   return items.map((item) => `${titleCaseToken(item.reason)} (${item.count})`).join(", ");
@@ -90,46 +90,52 @@ function buildCalibrationExplanation(summary: CalibrationEvidenceSummary): Calib
   const latestEligible =
     summary.latest_eligible_request_at !== null
       ? formatTimestamp(summary.latest_eligible_request_at)
-      : "No eligible calibrated rows yet";
+      : "No eligible grounded rows yet";
+
+  const eligibleRequestCount = summary.eligible_request_count ?? 0;
+  const thinRequestThreshold = summary.thin_request_threshold ?? 0;
+  const gatedRequestCount = summary.gated_request_count ?? 0;
+  const degradedRequestCount = summary.degraded_request_count ?? 0;
+  const excludedRequestCount = summary.excluded_request_count ?? 0;
 
   const fields: Array<{ label: string; value: string }> = [
     {
-      label: "Eligible calibrated rows",
-      value: `${summary.eligible_request_count} of ${summary.thin_request_threshold} needed`,
+      label: "Eligible grounded rows",
+      value: `${eligibleRequestCount} of ${thinRequestThreshold} needed`,
     },
     {
-      label: "Latest eligible row",
+      label: "Latest eligible grounded row",
       value: latestEligible,
     },
   ];
 
-  if (summary.gated_request_count > 0) {
+  if (gatedRequestCount > 0) {
     fields.push({
       label: "Rollout-disabled rows",
-      value: `${summary.gated_request_count} (${formatReasonCounts(summary.gated_reasons)})`,
+      value: `${gatedRequestCount} (${formatReasonCounts(summary.gated_reasons)})`,
     });
   }
 
-  if (summary.degraded_request_count > 0) {
+  if (degradedRequestCount > 0) {
     fields.push({
       label: "Degraded rows",
-      value: `${summary.degraded_request_count} (${formatReasonCounts(summary.degraded_reasons)})`,
+      value: `${degradedRequestCount} (${formatReasonCounts(summary.degraded_reasons)})`,
     });
   }
 
-  if (summary.excluded_request_count > 0) {
+  if (excludedRequestCount > 0) {
     fields.push({
       label: "Excluded rows",
-      value: `${summary.excluded_request_count} (${formatReasonCounts(summary.excluded_reasons)})`,
+      value: `${excludedRequestCount} (${formatReasonCounts(summary.excluded_reasons)})`,
     });
   }
 
   if (summary.state === "sufficient") {
     return {
-      badge: "Sufficient",
-      summary: "Tenant evidence is ready for calibrated routing and replay checks.",
+      badge: "Grounded",
+      summary: "Tenant evidence is grounded enough to support calibrated routing and replay checks.",
       detail:
-        "Recent ledger-backed rows meet the tenant sufficiency threshold. This supports replay readiness and explains the broader routing posture without replacing the persisted story for this request.",
+        "Recent ledger-backed rows meet the grounded evidence threshold. Use that tenant summary only as supporting context for this selected request, whose persisted row remains the authoritative proof surface.",
       fields,
     };
   }
@@ -141,19 +147,29 @@ function buildCalibrationExplanation(summary: CalibrationEvidenceSummary): Calib
     });
     return {
       badge: "Stale",
-      summary: "Tenant evidence exists, but the eligible calibrated window is stale.",
+      summary: "Tenant evidence was grounded, but the eligible evidence window is now stale.",
       detail:
-        "The ledger has enough historical calibrated rows, but the newest eligible evidence is older than the allowed freshness window. Treat this as context for operator review, not as fresh proof for current routing behavior.",
+        "The ledger has enough historical grounded rows, but the newest eligible evidence is older than the allowed freshness window. Treat this as supporting context only and anchor investigation to the persisted request row.",
       fields,
     };
   }
 
-  if (summary.gated_request_count > 0 && summary.eligible_request_count === 0) {
+  if (summary.state === "degraded") {
+    return {
+      badge: "Degraded",
+      summary: "Tenant evidence is degraded, so supporting context stays partial for calibrated routing review.",
+      detail:
+        "Recent traffic produced degraded evidence instead of a fully grounded window. Keep the selected request row authoritative and treat this tenant summary as a partial explanation of why broader calibrated evidence is limited.",
+      fields,
+    };
+  }
+
+  if (gatedRequestCount > 0 && eligibleRequestCount === 0) {
     return {
       badge: "Rollout disabled",
       summary: "Tenant traffic is visible, but calibrated routing rollout is still operator-gated.",
       detail:
-        "Recent rows show traffic while calibrated routing remained disabled. Operators can inspect this request and replay posture, but the ledger does not yet provide enough eligible calibrated evidence for live calibration decisions.",
+        "Recent rows show traffic while calibrated routing remained disabled. Operators can inspect this request and its persisted routing outcome, but the tenant summary has not accumulated grounded evidence for live calibration decisions yet.",
       fields,
     };
   }
@@ -162,7 +178,7 @@ function buildCalibrationExplanation(summary: CalibrationEvidenceSummary): Calib
     badge: "Thin",
     summary: "Tenant evidence is still thin for calibrated routing and replay checks.",
     detail:
-      "The ledger does not yet have enough eligible calibrated rows to treat tenant-level evidence as sufficient. Keep using the persisted request record as the primary proof surface while the evidence window fills in.",
+      "The ledger does not yet have enough eligible grounded rows to treat tenant-level evidence as sufficient. Keep using the persisted request record as the primary proof surface while the supporting evidence window fills in.",
     fields,
   };
 }
@@ -245,25 +261,21 @@ function formatRoutingState(
     return "rollout disabled";
   }
 
-  const markers: string[] = [];
-  if (calibratedRouting === true) {
-    markers.push("calibrated");
-  }
-  if (degradedRouting === true) {
-    markers.push("degraded");
-  }
-
   const routeScoreLabel = routeScore === null ? null : routeScore.toFixed(2);
-  const detailParts = markers.join(" / ");
-  const detail = [detailParts, routeScoreLabel === null ? null : `score ${routeScoreLabel}`]
-    .filter((value): value is string => Boolean(value))
-    .join(", ");
 
-  if (routeMode === null) {
-    return detail.length > 0 ? `unscored (${detail})` : "unscored";
+  if (degradedRouting === true || routeMode === "degraded") {
+    return routeScoreLabel === null ? "degraded" : `degraded (score ${routeScoreLabel})`;
   }
 
-  return detail.length > 0 ? `${routeMode} (${detail})` : routeMode;
+  if (calibratedRouting === true || routeMode === "calibrated") {
+    return routeScoreLabel === null ? "grounded" : `grounded (score ${routeScoreLabel})`;
+  }
+
+  if (routeMode !== null) {
+    return routeScoreLabel === null ? routeMode : `${routeMode} (score ${routeScoreLabel})`;
+  }
+
+  return routeScoreLabel === null ? "unscored" : `unscored (score ${routeScoreLabel})`;
 }
 
 function buildRoutingInspection(
@@ -302,19 +314,19 @@ function buildRoutingInspection(
   );
 
   let detail =
-    "This request detail shows the persisted routing state for the selected ledger row only.";
+    "This selected request row is the authoritative routing evidence for this request ID. Supporting tenant summaries can clarify broader posture, but they do not override the persisted route_signals recorded on this row.";
   if (summary === "rollout disabled") {
     detail =
-      "Calibrated routing was intentionally disabled for this request, so the row stays explicit about rollout state instead of looking like missing routing data.";
+      "This selected request shows rollout disabled at the row level, so operators can distinguish intentional gating from missing routing data without relying on tenant-level summaries.";
   } else if (summary.startsWith("degraded")) {
     detail =
-      "Routing fell back to degraded scoring because replay-critical calibrated inputs were incomplete for this persisted row.";
-  } else if (summary.startsWith("calibrated")) {
+      "This selected request used degraded routing because replay-critical calibrated inputs were incomplete on the persisted row. Treat any tenant summary as supporting context only.";
+  } else if (summary.startsWith("grounded")) {
     detail =
-      "Routing used the full calibrated signal set recorded for this request, including the additive score breakdown when present.";
+      "This selected request used grounded routing from the full calibrated signal set recorded on the persisted row, including the additive score breakdown when present.";
   } else if (summary.startsWith("unscored")) {
     detail =
-      "This row did not carry a calibrated score path. That is explicit request-level state, not a generic analytics gap.";
+      "This selected request did not carry a grounded or degraded score path. That is explicit row-level evidence, not a generic analytics gap or missing tenant summary.";
   }
 
   const fields: Array<{ label: string; value: string }> = [
@@ -398,7 +410,10 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <DetailRow label="Evidence retention" value={entry.evidence_retention_window} />
         <DetailRow label="Evidence expires at" value={valueOrFallback(entry.evidence_expires_at)} />
         <DetailRow label="Metadata minimization" value={entry.metadata_minimization_level} />
-        <DetailRow label="Suppressed metadata fields" value={formatSuppressedFields(entry.metadata_fields_suppressed)} />
+        <DetailRow
+          label="Suppressed metadata fields"
+          value={formatSuppressedFields(entry.metadata_fields_suppressed ?? [])}
+        />
         <DetailRow label="Governance source" value={entry.governance_source} />
         <DetailRow label="Fallback used" value={boolLabel(entry.fallback_used)} />
         <DetailRow label="Cache hit" value={boolLabel(entry.cache_hit)} />

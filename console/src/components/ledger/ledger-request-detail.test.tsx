@@ -157,15 +157,18 @@ describe("ledger-request-detail", () => {
           latency_ms: null,
           route_reason: null,
           policy_outcome: null,
+          metadata_fields_suppressed: undefined as unknown as string[],
         }}
       />,
     );
 
     expect(screen.getByText("Response model")).toBeInTheDocument();
     expect(screen.getAllByText("N/A")).toHaveLength(4);
+    expect(screen.getByText("Suppressed metadata fields")).toBeInTheDocument();
+    expect(screen.getByText("None")).toBeInTheDocument();
   });
 
-  it("renders calibrated routing inspection with additive score components", () => {
+  it("renders grounded routing inspection with additive score components", () => {
     const entryWithSignals: UsageLedgerRecord = {
       ...mockEntry,
       route_reason: "token_complexity",
@@ -191,10 +194,10 @@ describe("ledger-request-detail", () => {
     renderWithProviders(<LedgerRequestDetail entry={entryWithSignals} />);
 
     expect(screen.getByText("Routing inspection")).toBeInTheDocument();
-    expect(screen.getAllByText("calibrated (calibrated, score 1.00)")).toHaveLength(2);
+    expect(screen.getAllByText("grounded (score 1.00)")).toHaveLength(2);
     expect(
       screen.getByText(
-        "Routing used the full calibrated signal set recorded for this request, including the additive score breakdown when present.",
+        "This selected request used grounded routing from the full calibrated signal set recorded on the persisted row, including the additive score breakdown when present.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Route mode")).toBeInTheDocument();
@@ -239,10 +242,10 @@ describe("ledger-request-detail", () => {
       />,
     );
 
-    expect(screen.getAllByText("degraded (degraded, score 0.60)")).toHaveLength(2);
+    expect(screen.getAllByText("degraded (score 0.60)")).toHaveLength(2);
     expect(
       screen.getByText(
-        "Routing fell back to degraded scoring because replay-critical calibrated inputs were incomplete for this persisted row.",
+        "This selected request used degraded routing because replay-critical calibrated inputs were incomplete on the persisted row. Treat any tenant summary as supporting context only.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Route mode")).toBeInTheDocument();
@@ -271,7 +274,7 @@ describe("ledger-request-detail", () => {
     expect(screen.getAllByText("rollout disabled")).toHaveLength(2);
     expect(
       screen.getByText(
-        "Calibrated routing was intentionally disabled for this request, so the row stays explicit about rollout state instead of looking like missing routing data.",
+        "This selected request shows rollout disabled at the row level, so operators can distinguish intentional gating from missing routing data without relying on tenant-level summaries.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Route mode")).not.toBeInTheDocument();
@@ -297,7 +300,7 @@ describe("ledger-request-detail", () => {
     expect(screen.getAllByText("unscored")).toHaveLength(2);
     expect(
       screen.getByText(
-        "This row did not carry a calibrated score path. That is explicit request-level state, not a generic analytics gap.",
+        "This selected request did not carry a grounded or degraded score path. That is explicit row-level evidence, not a generic analytics gap or missing tenant summary.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Route mode")).not.toBeInTheDocument();
@@ -308,12 +311,12 @@ describe("ledger-request-detail", () => {
     renderWithProviders(<LedgerRequestDetail entry={mockEntry} calibrationSummary={sufficientCalibration} />);
 
     expect(screen.getByText("Calibration evidence")).toBeInTheDocument();
-    expect(screen.getByText("Sufficient")).toBeInTheDocument();
-    expect(screen.getByText("Tenant evidence is ready for calibrated routing and replay checks.")).toBeInTheDocument();
+    expect(screen.getByText("Grounded")).toBeInTheDocument();
+    expect(screen.getByText("Tenant evidence is grounded enough to support calibrated routing and replay checks.")).toBeInTheDocument();
     expect(
-      screen.getByText(/This supports replay readiness and explains the broader routing posture without replacing the persisted story for this request/i),
+      screen.getByText(/Use that tenant summary only as supporting context for this selected request, whose persisted row remains the authoritative proof surface/i),
     ).toBeInTheDocument();
-    expect(screen.getByText("Eligible calibrated rows")).toBeInTheDocument();
+    expect(screen.getByText("Eligible grounded rows")).toBeInTheDocument();
     expect(screen.getByText("7 of 5 needed")).toBeInTheDocument();
     expect(screen.getByText("Degraded rows")).toBeInTheDocument();
     expect(screen.getByText(/Missing Route Signals \(1\)/i)).toBeInTheDocument();
@@ -346,23 +349,43 @@ describe("ledger-request-detail", () => {
     expect(screen.getByText(/Calibrated Routing Disabled \(3\)/i)).toBeInTheDocument();
   });
 
-  it("renders stale calibration messaging when evidence is old", () => {
+  it("renders degraded calibration messaging when supporting evidence is partial", () => {
     renderWithProviders(
       <LedgerRequestDetail
         entry={mockEntry}
         calibrationSummary={{
           ...sufficientCalibration,
-          state: "stale",
-          state_reason: "Eligible calibrated evidence exists but is older than the freshness window.",
+          state: "degraded",
+          state_reason: "Recent eligible traffic degraded because calibrated factors were incomplete.",
+          eligible_request_count: 2,
+          sufficient_request_count: 2,
+          degraded_request_count: 4,
+          degraded_reasons: [{ reason: "missing_route_signals", count: 4 }],
+          excluded_request_count: 0,
+          excluded_reasons: [],
+          gated_request_count: 0,
+          gated_reasons: [],
         }}
       />,
     );
 
-    expect(screen.getByText("Stale")).toBeInTheDocument();
-    expect(screen.getByText("Tenant evidence exists, but the eligible calibrated window is stale.")).toBeInTheDocument();
-    expect(screen.getByText("Staleness threshold")).toBeInTheDocument();
-    expect(screen.getByText("24 hours")).toBeInTheDocument();
+    expect(screen.getByText("Degraded")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Tenant evidence is degraded, so supporting context stays partial for calibrated routing review.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "Recent traffic produced degraded evidence instead of a fully grounded window. Keep the selected request row authoritative and treat this tenant summary as a partial explanation of why broader calibrated evidence is limited.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Eligible grounded rows")).toBeInTheDocument();
+    expect(screen.getByText("2 of 5 needed")).toBeInTheDocument();
+    expect(screen.getByText("Degraded rows")).toBeInTheDocument();
+    expect(screen.getByText(/Missing Route Signals \(4\)/i)).toBeInTheDocument();
   });
+
 
   it("renders structured hard-budget downgrade evidence instead of forcing raw policy_outcome inspection", () => {
     renderWithProviders(

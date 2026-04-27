@@ -129,3 +129,5 @@
 {"id":"860ebe44-f2f6-4270-bc2a-b2796550fcfa","ts":"2026-04-27T20:55:20.863Z","severity":"info","message":"Resume: applied 3 fix(es) to state.","source":"notify","read":false}
 {"id":"49dfd29d-024b-4e8e-ab90-7ea504ccfcdc","ts":"2026-04-27T21:06:10.642Z","severity":"info","message":"Committed: feat: Reused one tenant-window outcome evidence summary across policy s…","source":"notify","read":false}
 {"id":"f2b3712d-7dac-4a29-b698-bd1e7634ba19","ts":"2026-04-27T21:06:11.772Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}
+{"id":"e521b291-109a-4fa9-9bb9-dc806e4b9483","ts":"2026-04-27T21:10:04.181Z","severity":"info","message":"Committed: test: Proved admin replay parity with non-mutating API coverage and ali…","source":"notify","read":false}
+{"id":"bc1259d0-6f32-4ca2-89aa-b9aca5ed0064","ts":"2026-04-27T21:10:07.437Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}
