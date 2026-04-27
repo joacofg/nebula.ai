@@ -914,6 +914,25 @@
       "label": "T02: Prove admin replay parity and repair console type drift",
       "type": "task",
       "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M009:S04",
+      "label": "S04: Request-first operator evidence",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M009/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M009:S04:T01",
+      "label": "T01: Align selected-request evidence wording with grounded/thin/stale/degraded states",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M009:S04:T02",
+      "label": "T02: Prove request-first observability hierarchy with repaired page-level fixtures",
+      "type": "task",
+      "confidence": "EXTRACTED"
     }
   ],
   "edges": [
@@ -1720,7 +1739,25 @@
       "to": "task:M009:S03:T02",
       "type": "contains",
       "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M009",
+      "to": "slice:M009:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M009:S04",
+      "to": "task:M009:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M009:S04",
+      "to": "task:M009:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
     }
   ],
-  "builtAt": "2026-04-27T21:12:03.077Z"
+  "builtAt": "2026-04-27T21:28:42.881Z"
 }

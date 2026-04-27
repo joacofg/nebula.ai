@@ -133,3 +133,5 @@
 {"id":"bc1259d0-6f32-4ca2-89aa-b9aca5ed0064","ts":"2026-04-27T21:10:07.437Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}
 {"id":"9b855fc6-5563-472d-a00a-1f68ddd4a3fd","ts":"2026-04-27T21:21:31.381Z","severity":"info","message":"Committed: feat: Aligned request-detail routing evidence to grounded/thin/stale/de…","source":"notify","read":false}
 {"id":"59047c0f-5757-4056-8996-d22a3298254d","ts":"2026-04-27T21:21:32.647Z","severity":"info","message":"Verification gate: 1/1 checks passed","source":"notify","read":false}
+{"id":"bac41b0b-9e57-4b66-b8f2-257bce53a5ec","ts":"2026-04-27T21:26:51.716Z","severity":"info","message":"Committed: feat: Repaired observability page fixtures and proved selected-request-…","source":"notify","read":false}
+{"id":"ede87c79-fce3-467e-a304-4bd6016d09c3","ts":"2026-04-27T21:26:53.842Z","severity":"info","message":"Verification gate: 2/2 checks passed","source":"notify","read":false}

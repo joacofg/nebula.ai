@@ -21,10 +21,10 @@
 - [x] **S03: S03** `risk:medium` `depends:[]`
   > After this: After this: `POST /v1/admin/tenants/{tenant_id}/policy/simulate` replays the same outcome-grounded semantics as runtime, including honest degraded behavior when evidence is incomplete.
 
-- [ ] **S04: S04** `risk:medium` `depends:[]`
+- [x] **S04: S04** `risk:medium` `depends:[]`
   > After this: After this: the selected request in Observability and request detail explains whether routing was grounded, thin, stale, or degraded using the existing request-first evidence surfaces.
 
-- [ ] **S05: Integrated proof and close-out** `risk:low` `depends:[S02,S03,S04]`
+- [ ] **S05: S05** `risk:low` `depends:[]`
   > After this: After this: one review path proves public request → persisted request evidence → replay parity → request-first operator inspection for both a happy path and a degraded path, with anti-drift boundaries locked in docs and tests.
 
 ## Boundary Map

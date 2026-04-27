@@ -20,6 +20,8 @@ Stable replay-critical keys remain unchanged: `token_count`, `keyword_match`, an
 | `score_components.token_score` | float | `min(token_count / 500, 1.0)` | Additive base contribution from token volume |
 | `score_components.keyword_bonus` | float | `0.2` when `keyword_match`, else `0.0` | Additive complexity bump for hint keywords |
 | `score_components.policy_bonus` | float | `0.1` when `model_constraint`, else `0.0` | Additive bump showing policy-constrained premium selection context |
+| `score_components.outcome_bonus` | float | Outcome-grounded additive factor when recent request evidence favors the same route | Shared pointer-first explanation term for positive outcome evidence; see `outcome_evidence` |
+| `score_components.evidence_penalty` | float | Outcome-grounded subtractive factor when recent request evidence weakens confidence in the same route | Shared pointer-first explanation term for degraded or cautionary evidence pressure; see `outcome_evidence` |
 | `score_components.budget_penalty` | float | Reserved for future advisory spend shaping | Additive budget penalty (`0.0` in the current shipped contract) |
 | `score_components.total_score` | float | Clamped sum of additive components | Final route score exposed in runtime evidence and headers |
 
@@ -34,6 +36,8 @@ The route score is a normalized float in the `0.0–1.0` range. The shipped cali
 - `total_score = clamp(token_score + keyword_bonus + policy_bonus - budget_penalty, 0.0, 1.0)`
 
 `X-Nebula-Route-Score` and persisted `route_score` both expose `total_score`. The named components exist so later slices can reason about the additive explanation without reverse-engineering the implementation.
+
+For M009's pointer-first close-out proof, `outcome_bonus`, `evidence_penalty`, and `outcome_evidence` are shared discoverability terms rather than a second scoring spec: runtime headers, persisted ledger rows, replay output, and request detail should all point back to these names instead of redefining them inline.
 
 ## Route mode semantics
 
@@ -58,6 +62,8 @@ Explicit model overrides and policy-forced routing remain override paths with em
 | `policy_premium_only` | Signals empty (override path) | Routing mode is `premium_only` |
 
 ## Policy outcome vocabulary
+
+`outcome_evidence` is the shared pointer-first umbrella term for the bounded request evidence that informs route explanation across runtime headers, persisted ledger rows, replay output, and selected request detail. It is intentionally discoverability-oriented: later docs may point here instead of restating field-by-field outcome-grounded semantics inline.
 
 These values are operator-facing explanation strings carried through headers, simulation diffs, and the usage ledger. They stay within decisioning scope: they explain why routing changed, but they do not create a separate analytics or billing subsystem.
 

@@ -4,17 +4,6 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Active
 
-### R076 — Operators can inspect whether a selected request used grounded, thin, stale, or degraded outcome-informed routing on the existing request-first Observability and request-detail surfaces.
-- Class: operability
-- Status: active
-- Description: Operators can inspect whether a selected request used grounded, thin, stale, or degraded outcome-informed routing on the existing request-first Observability and request-detail surfaces.
-- Why it matters: Better routing only becomes trustworthy if operators can see the evidence state for the same request they are investigating.
-- Source: user
-- Primary owning slice: M009/S04
-- Supporting slices: M009/S02, M009/S03
-- Validation: mapped
-- Notes: Keep request evidence primary and tenant summary context secondary.
-
 ### R078 — M009 proves live routing improvement, replay credibility, and request-level evidence integrity without turning Nebula into a dashboard-heavy analytics product, a black-box optimizer, or a hosted-authoritative decision layer.
 - Class: constraint
 - Status: active
@@ -600,6 +589,17 @@ This file is the explicit capability and coverage contract for the project.
 - Validation: Validated by M009/S02 through end-to-end request-path and governance tests asserting that the correlated usage-ledger row records the actual live outcome-grounded route factors, evidence state, and additive score components used for the decision, or honestly records policy_denied with no route_signals when routing is blocked. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, and `./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"`.
 - Notes: S02 proves request-first evidence integrity by keeping headers, policy_outcome, and persisted route_signals aligned for the same request across grounded, denied, and degraded paths.
 
+### R076 — Operators can inspect whether a selected request used grounded, thin, stale, or degraded outcome-informed routing on the existing request-first Observability and request-detail surfaces.
+- Class: operability
+- Status: validated
+- Description: Operators can inspect whether a selected request used grounded, thin, stale, or degraded outcome-informed routing on the existing request-first Observability and request-detail surfaces.
+- Why it matters: Better routing only becomes trustworthy if operators can see the evidence state for the same request they are investigating.
+- Source: user
+- Primary owning slice: M009/S04
+- Supporting slices: M009/S02, M009/S03
+- Validation: Validated by M009/S04 through focused console coverage proving operators can inspect whether a selected request used grounded, thin, stale, degraded, rollout-disabled, or unscored outcome-informed routing on the existing request-first Observability and request-detail surfaces. Verified with `npm --prefix console run test -- --run 'src/components/ledger/ledger-request-detail.test.tsx'`, `npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx'`, and `npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'`.
+- Notes: Selected-request wording is anchored to persisted route_signals while calibration_summary, cache, and dependency cards remain supporting context only; stale observability fixtures were repaired to include current UsageLedgerRecord governed metadata fields.
+
 ### R077 — When outcome evidence is missing, stale, thin, or inconsistent, Nebula falls back to explicit simpler behavior and records that degraded state honestly.
 - Class: continuity
 - Status: validated
@@ -1024,7 +1024,7 @@ This file is the explicit capability and coverage contract for the project.
 | R073 | core-capability | validated | M009/S02 | M009/S01 | Validated by M009/S02 through live backend routing tests that show bounded recent tenant-scoped outcome evidence can change a real POST /v1/chat/completions route and persist matching outcome-grounded score factors on the correlated usage-ledger row. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, `./.venv/bin/pytest tests/test_router_signals.py -k "outcome or evidence or route"`, and `./.venv/bin/pytest tests/test_service_flows.py -k "outcome_grounded or policy_service_live_evidence or hard_budget"`. |
 | R074 | integration | validated | M009/S03 | M009/S01, M009/S02 | Validated by M009/S03 through shared replay/runtime outcome-grounded scoring semantics in policy simulation, including tenant-window calibration_summary reuse, unchanged-policy route score/mode parity, and honest degraded replay behavior. Verified with `./.venv/bin/pytest tests/test_service_flows.py -k "policy_simulation and (outcome or replay or degraded or parity or hard_budget)"`, `./.venv/bin/pytest tests/test_governance_api.py -k "policy_simulation and (outcome_grounded or degraded or parity or hard_budget)"`, and `npm --prefix console run test -- --run src/components/policy/policy-form.test.tsx`. |
 | R075 | failure-visibility | validated | M009/S02 | M009/S04 | Validated by M009/S02 through end-to-end request-path and governance tests asserting that the correlated usage-ledger row records the actual live outcome-grounded route factors, evidence state, and additive score components used for the decision, or honestly records policy_denied with no route_signals when routing is blocked. Verified with `./.venv/bin/pytest tests/test_chat_completions.py -k "outcome_grounded or ledger or route"`, `./.venv/bin/pytest tests/test_response_headers.py -k "route_mode or route_signals"`, and `./.venv/bin/pytest tests/test_governance_api.py -k "usage_ledger or outcome_grounded or policy_simulation"`. |
-| R076 | operability | active | M009/S04 | M009/S02, M009/S03 | mapped |
+| R076 | operability | validated | M009/S04 | M009/S02, M009/S03 | Validated by M009/S04 through focused console coverage proving operators can inspect whether a selected request used grounded, thin, stale, degraded, rollout-disabled, or unscored outcome-informed routing on the existing request-first Observability and request-detail surfaces. Verified with `npm --prefix console run test -- --run 'src/components/ledger/ledger-request-detail.test.tsx'`, `npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx'`, and `npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'`. |
 | R077 | continuity | validated | M009/S01 | M009/S02, M009/S03, M009/S04 | Validated by M009/S01 through deterministic `GovernanceStore.summarize_calibration_evidence()` classification and backend tests covering no-evidence, thin, stale, degraded, sufficient, tenant/window scoping, and governance-suppressed route-signal cases. Verified with `./.venv/bin/pytest tests/test_service_flows.py -k "calibration_summary or outcome or governance_store_calibration_summary or policy_simulation_exposes_window_calibration_summary"` and `./.venv/bin/pytest tests/test_governance_api.py -k "calibration_summary or policy_simulation"`. |
 | R078 | constraint | active | M009/S05 | M009/S01, M009/S02, M009/S03, M009/S04 | mapped |
 | R079 | admin/support | deferred | none | none | unmapped |
@@ -1037,7 +1037,7 @@ This file is the explicit capability and coverage contract for the project.
 
 ## Coverage Summary
 
-- Active requirements: 2
-- Mapped to slices: 2
-- Validated: 53 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R074, R075, R077)
+- Active requirements: 1
+- Mapped to slices: 1
+- Validated: 54 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R074, R075, R076, R077)
 - Unmapped active requirements: 0
