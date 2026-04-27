@@ -105,7 +105,7 @@ R076 is fulfilled only if the selected request itself explains outcome-informed 
   - Files: `console/src/components/ledger/ledger-request-detail.tsx`, `console/src/components/ledger/ledger-request-detail.test.tsx`, `console/src/lib/admin-api.ts`, `.gsd/DECISIONS.md`
   - Verify: npm --prefix console run test -- --run 'src/components/ledger/ledger-request-detail.test.tsx'
 
-- [ ] **T02: Prove request-first observability hierarchy with repaired page-level fixtures** `est:45m`
+- [x] **T02: Prove request-first observability hierarchy with repaired page-level fixtures** `est:45m`
   ---
 estimated_steps: 5
 estimated_files: 4

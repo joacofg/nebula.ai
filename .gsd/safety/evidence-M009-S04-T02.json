@@ -1,0 +1,142 @@
+[
+  {
+    "kind": "bash",
+    "toolCallId": "call_1LgWks2MXTVSGaTDhxarYZTX|fc_09ff7e17af6750460169efd39660fc8197941533cb007c81f7",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 93ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:22:32\n   Duration  959ms (transform 69ms, setup 42ms, collect 118ms, tests 93ms, environment 266ms, prepare 42ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777324952020
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_RFnF881HdVBi6dLhDBRt1YCx|fc_09ff7e17af6750460169efd3ab615481978c0df43a2f01a82f",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777324978553
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_sls7UWVeVi1eoAXqYBjaXs19|fc_09ff7e17af6750460169efd3b74ee08197ba0b03ab3a544f9b",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325003298
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_SVOrGW7eYGJRCPuIi68Rwg7z|fc_09ff7e17af6750460169efd3d048a4819784115783a728e078",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 103ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:23:30\n   Duration  965ms (transform 74ms, setup 43ms, collect 122ms, tests 103ms, environment 276ms, prepare 43ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-pag",
+    "timestamp": 1777325010407
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_0KsdWAutFCoEL7e5MdwfC9c1|fc_09ff7e17af6750460169efd3df492c8197a75cd6a67e11a3cc",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325052999
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_IJh4DiLMegRhjNJPPMdVxOFA|fc_09ff7e17af6750460169efd402351881978d961a4826279446",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 97ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:24:20\n   Duration  916ms (transform 73ms, setup 51ms, collect 114ms, tests 97ms, environment 272ms, prepare 45ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325060268
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_8AfUgCcxldfcv8I30EVIxj9e|fc_09ff7e17af6750460169efd40bb0688197b475ea811d37475a",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325070333
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_GcuUjmZdGcxMtDLORVA8dgu9|fc_09ff7e17af6750460169efd41251cc8197ab7f36684656a5fb",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 93ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:24:36\n   Duration  717ms (transform 75ms, setup 35ms, collect 117ms, tests 93ms, environment 250ms, prepare 61ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325076601
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_WhTnIBH4cooYE0g4O14DjdfI|fc_09ff7e17af6750460169efd41af8b481979b37b8c4d93fd8b3",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325087674
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_4dVn2pht7Ziyl0PB9awUYGpU|fc_09ff7e17af6750460169efd42340e0819785e65d27e8a31d2f",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 95ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:24:53\n   Duration  613ms (transform 66ms, setup 37ms, collect 115ms, tests 95ms, environment 160ms, prepare 26ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325093464
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_Ffuf7IqHpvb5Pma0dG4O2dzS|fc_09ff7e17af6750460169efd42cc5b081978c0be3ba90b1150f",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325105391
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_w7UtfXREOxJNL82MBA3MGi8u|fc_09ff7e17af6750460169efd435e10881978c40a27d3fc12a21",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 108ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:25:12\n   Duration  809ms (transform 94ms, setup 39ms, collect 137ms, tests 108ms, environment 241ms, prepare 40ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-pag",
+    "timestamp": 1777325111944
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_19iam4gbwFhNcETBaTSLOvhb|fc_09ff7e17af6750460169efd44132e08197863e9f83c9893704",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325124710
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_QYhRQlQ1nzxqWhozJ7NgCVdb|fc_09ff7e17af6750460169efd448ee648197af88862c0c8d9dd3",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 96ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:25:31\n   Duration  670ms (transform 74ms, setup 34ms, collect 121ms, tests 96ms, environment 217ms, prepare 33ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325131145
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_cTnNeWZAhZ6rVdKCYjoqwR6J|fc_09ff7e17af6750460169efd4516e708197bd93d1a6437a41ba",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325141063
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_Igc7fxSGH7fOF5SMWl0uBhK3|fc_09ff7e17af6750460169efd4593f288197b897358f46deefe7",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 105ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:25:47\n   Duration  722ms (transform 75ms, setup 35ms, collect 125ms, tests 105ms, environment 218ms, prepare 35ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-pag",
+    "timestamp": 1777325147290
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_zrHeSBq5wRQr98K1UZzlsEMX|fc_09ff7e17af6750460169efd46335488197b2f38d6f8c603a68",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325162140
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_2fZQxnOrNQCuSSdo3mAZGYjH|fc_09ff7e17af6750460169efd47017548197a80e10d4a75bb077",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 1,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 95ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:26:10\n   Duration  741ms (transform 63ms, setup 36ms, collect 112ms, tests 95ms, environment 243ms, prepare 39ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325170454
+  },
+  {
+    "kind": "edit",
+    "toolCallId": "call_WMu70UgtVMr9ekHOFBQGT6ck|fc_09ff7e17af6750460169efd478d9688197b2ec0d6273577915",
+    "path": "console/src/app/(console)/observability/observability-page.test.tsx",
+    "timestamp": 1777325181015
+  },
+  {
+    "kind": "bash",
+    "toolCallId": "call_xr6KRz15qrO7VzjjyAA7GBAP|fc_09ff7e17af6750460169efd480e63c81978921263c36ca35ef",
+    "command": "npm --prefix console run test -- --run 'src/app/(console)/observability/page.test.tsx' && npm --prefix console run test -- --run 'src/app/(console)/observability/observability-page.test.tsx'",
+    "exitCode": 0,
+    "outputSnippet": "\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/page.test.tsx\n\n\n RUN  v3.2.4 /Users/joaquinfernandezdegamboa/Proj/nebula/console\n\n ✓ src/app/(console)/observability/page.test.tsx (1 test) 96ms\n\n Test Files  1 passed (1)\n      Tests  1 passed (1)\n   Start at  18:26:27\n   Duration  546ms (transform 61ms, setup 24ms, collect 100ms, tests 96ms, environment 122ms, prepare 29ms)\n\n\n> nebula-console@0.1.0 test\n> vitest --run src/app/(console)/observability/observability-page.",
+    "timestamp": 1777325186925
+  }
+]

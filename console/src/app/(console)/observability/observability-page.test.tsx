@@ -76,7 +76,30 @@ describe("ObservabilityPage", () => {
         terminal_status: "completed",
         route_reason: "complexity_high",
         policy_outcome: "allowed",
-        route_signals: null,
+        route_signals: {
+          route_mode: "calibrated",
+          calibrated_routing: true,
+          degraded_routing: false,
+          route_score: 0.91,
+          token_count: 30,
+          complexity_tier: "high",
+          keyword_match: true,
+          model_constraint: false,
+          budget_proximity: 0.33,
+          score_components: {
+            total_score: 0.91,
+            token_score: 0.66,
+            keyword_bonus: 0.15,
+            policy_bonus: 0.1,
+            budget_penalty: 0,
+          },
+        },
+        message_type: "chat",
+        evidence_retention_window: "30d",
+        evidence_expires_at: "2026-04-22T18:00:00Z",
+        metadata_minimization_level: "standard",
+        metadata_fields_suppressed: ["request_body", "response_body"],
+        governance_source: "tenant_policy",
       },
     ]);
     getTenantRecommendations.mockResolvedValue({
@@ -170,18 +193,52 @@ describe("ObservabilityPage", () => {
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
 
-    expect(await screen.findByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeInTheDocument();
-    expect(screen.getByText(/Pick the request first\./i)).toBeInTheDocument();
-    expect(screen.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
-    expect(screen.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
+    const selectedRequestSection = screen
+      .getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })
+      .closest("section");
+    expect(selectedRequestSection).not.toBeNull();
+    const selectedRequest = within(selectedRequestSection!);
+    expect(selectedRequest.getByText(/Pick the request first\./i)).toBeInTheDocument();
+    expect(selectedRequest.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
+    expect(selectedRequest.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
 
     const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
     expect(followUpSection).not.toBeNull();
+    expect(selectedRequestSection!.compareDocumentPosition(followUpSection!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+
+    await screen.findByText("Request detail");
+    const requestDetailSection = within(selectedRequestSection!);
+    expect((await requestDetailSection.findAllByText("req-integrated-001")).length).toBeGreaterThanOrEqual(2);
+    expect(requestDetailSection.getByText("Request detail")).toBeInTheDocument();
+    expect(requestDetailSection.getAllByText("req-integrated-001").length).toBeGreaterThanOrEqual(2);
+    expect(requestDetailSection.getByText("Calibration evidence")).toBeInTheDocument();
+    expect(
+      requestDetailSection.getByText("Tenant evidence is grounded enough to support calibrated routing and replay checks."),
+    ).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Grounded")).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Routing inspection")).toBeInTheDocument();
+    expect(requestDetailSection.getAllByText("grounded (score 0.91)")).toHaveLength(2);
+    expect(requestDetailSection.getByText("Suppressed metadata fields")).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Request Body, Response Body")).toBeInTheDocument();
+    expect(requestDetailSection.getByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toBeInTheDocument();
+
+    const selectedRequestText = selectedRequestSection!.textContent ?? "";
+    const followUpText = followUpSection!.textContent ?? "";
+    expect(selectedRequestText.indexOf("req-integrated-001")).toBeGreaterThanOrEqual(0);
+    expect(selectedRequestText.indexOf("Routing inspection")).toBeGreaterThanOrEqual(0);
+    expect(followUpText.indexOf("Review cache aging window")).toBeGreaterThanOrEqual(0);
+    expect(followUpText.indexOf("Dependency health context")).toBeGreaterThanOrEqual(0);
+    expect(selectedRequestText.indexOf("req-integrated-001")).toBeLessThan(
+      (container.firstElementChild?.textContent ?? "").indexOf("Dependency health context"),
+    );
+
     const followUp = within(followUpSection!);
     expect(followUp.getByText(/use these supporting cards to decide the next operator action/i)).toBeInTheDocument();
     expect(followUp.getByText(/point toward policy preview as the comparison surface before any save elsewhere in the console/i)).toBeInTheDocument();
 
-    const guidanceCard = followUp.getByRole("heading", { name: "Grounded follow-up guidance for the selected request" }).closest("article");
+    const guidanceCard = followUp
+      .getByRole("heading", { name: "Grounded follow-up guidance for the selected request" })
+      .closest("article");
     expect(guidanceCard).not.toBeNull();
     const guidance = within(guidanceCard!);
     expect(guidance.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
@@ -206,14 +263,6 @@ describe("ObservabilityPage", () => {
     expect(replayReadiness.getByText("Sufficiency threshold")).toBeInTheDocument();
     expect(replayReadiness.getByText("5")).toBeInTheDocument();
     expect(replayReadiness.getByText(/Keep using the ledger row and request ID correlation as the primary proof\./i)).toBeInTheDocument();
-
-    const requestDetail = screen.getByText("Request detail").closest("section");
-    expect(requestDetail).not.toBeNull();
-    const requestDetailSection = within(requestDetail!);
-    expect(requestDetailSection.getAllByText("req-integrated-001").length).toBeGreaterThanOrEqual(2);
-    expect(requestDetailSection.getByText("Calibration evidence")).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Tenant evidence is ready for calibrated routing and replay checks.")).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toBeInTheDocument();
 
     expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
     expect(await followUp.findByText("Review cache aging window")).toBeInTheDocument();
