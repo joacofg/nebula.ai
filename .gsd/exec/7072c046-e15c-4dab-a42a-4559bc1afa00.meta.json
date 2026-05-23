@@ -1,0 +1,18 @@
+{
+  "id": "7072c046-e15c-4dab-a42a-4559bc1afa00",
+  "runtime": "python",
+  "purpose": "Summarize outage-related tests and likely S02 seams",
+  "script_chars": 789,
+  "started_at": "2026-05-23T19:50:35.031Z",
+  "finished_at": "2026-05-23T19:50:35.080Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 49,
+  "stdout_bytes": 1920,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/7072c046-e15c-4dab-a42a-4559bc1afa00.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/7072c046-e15c-4dab-a42a-4559bc1afa00.stderr"
+}

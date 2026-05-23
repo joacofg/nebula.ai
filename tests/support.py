@@ -12,6 +12,7 @@ from alembic.config import Config
 
 from nebula.core.config import get_settings
 from nebula.main import create_app
+from nebula.models.resilience import build_dependency_health
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
 
@@ -69,12 +70,15 @@ class FakeCacheService:
         self.lookup_calls: list[str] = []
         self.stored_entries: list[tuple[str, str, str]] = []
         self.enabled = True
-        self.health_status_payload = health_status_payload or {
-            "status": "ready",
-            "required": False,
-            "detail": "Semantic cache collection is reachable.",
-            "enabled": True,
-        }
+        self.health_status_payload = health_status_payload or build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="ready",
+            serving_effect="continuity_limited",
+            reason_code="semantic_cache_ready",
+            detail="Semantic cache collection is reachable.",
+            required=False,
+            extra={"enabled": True},
+        )
 
     async def initialize(self) -> None:
         return None

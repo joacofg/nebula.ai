@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health, iso_or_none
 from nebula.services.governance_store import GovernanceStore
 
 logger = logging.getLogger(__name__)
@@ -25,27 +26,37 @@ class RetentionLifecycleSnapshot:
 
     def to_health_payload(self) -> dict[str, Any]:
         detail = self._detail()
-        payload: dict[str, Any] = {
-            "status": self._dependency_status(),
-            "required": False,
-            "detail": detail,
-            "enabled": self.enabled,
-            "interval_seconds": self.interval_seconds,
-            "last_status": self.last_status,
-            "last_run_at": self._iso(self.last_run_at),
-            "last_attempted_run_at": self._iso(self.last_attempted_run_at),
-            "last_deleted_count": self.last_deleted_count,
-            "last_eligible_count": self.last_eligible_count,
-            "last_cutoff": self._iso(self.last_cutoff),
-            "last_error": self.last_error,
-        }
-        return payload
+        status = self._dependency_status()
+        return build_dependency_health(
+            dependency_class="metadata_only",
+            lifecycle_state=status,
+            serving_effect="unaffected",
+            reason_code=self._reason_code(),
+            detail=detail,
+            required=False,
+            recovering=status == "recovering",
+            last_failure_at=self.last_attempted_run_at if self.last_status == "failed" else None,
+            last_recovery_at=self.last_run_at if self.last_status == "ok" else None,
+            extra={
+                "enabled": self.enabled,
+                "interval_seconds": self.interval_seconds,
+                "last_status": self.last_status,
+                "last_run_at": iso_or_none(self.last_run_at),
+                "last_attempted_run_at": iso_or_none(self.last_attempted_run_at),
+                "last_deleted_count": self.last_deleted_count,
+                "last_eligible_count": self.last_eligible_count,
+                "last_cutoff": iso_or_none(self.last_cutoff),
+                "last_error": self.last_error,
+            },
+        )
 
     def _dependency_status(self) -> str:
         if not self.enabled:
             return "ready"
         if self.last_status == "failed":
             return "degraded"
+        if self.last_status == "running":
+            return "recovering"
         return "ready"
 
     def _detail(self) -> str:
@@ -59,13 +70,16 @@ class RetentionLifecycleSnapshot:
             return "Retention lifecycle cleanup failed on its last attempt."
         return "Retention lifecycle cleanup completed successfully."
 
-    @staticmethod
-    def _iso(value: datetime | None) -> str | None:
-        if value is None:
-            return None
-        if value.tzinfo is None:
-            value = value.replace(tzinfo=UTC)
-        return value.astimezone(UTC).isoformat()
+    def _reason_code(self) -> str:
+        if not self.enabled:
+            return DependencyHealthReason.RETENTION_DISABLED
+        if self.last_status == "idle":
+            return DependencyHealthReason.RETENTION_IDLE
+        if self.last_status == "running":
+            return DependencyHealthReason.RETENTION_RUNNING
+        if self.last_status == "failed":
+            return DependencyHealthReason.RETENTION_FAILED
+        return DependencyHealthReason.RETENTION_OK
 
 
 class RetentionLifecycleService:

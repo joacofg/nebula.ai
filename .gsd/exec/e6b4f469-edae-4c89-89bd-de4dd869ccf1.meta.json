@@ -1,0 +1,18 @@
+{
+  "id": "e6b4f469-edae-4c89-89bd-de4dd869ccf1",
+  "runtime": "bash",
+  "purpose": "T01 required verification after import cleanup",
+  "script_chars": 90,
+  "started_at": "2026-05-23T19:39:20.583Z",
+  "finished_at": "2026-05-23T19:39:21.738Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1155,
+  "stdout_bytes": 98,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/e6b4f469-edae-4c89-89bd-de4dd869ccf1.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/e6b4f469-edae-4c89-89bd-de4dd869ccf1.stderr"
+}

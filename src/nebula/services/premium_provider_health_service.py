@@ -3,6 +3,7 @@ from __future__ import annotations
 import httpx
 
 from nebula.core.config import Settings
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 
 
 class PremiumProviderHealthService:
@@ -12,11 +13,14 @@ class PremiumProviderHealthService:
 
     async def health_status(self) -> dict[str, object]:
         if self.settings.premium_provider == "mock":
-            return {
-                "status": "ready",
-                "required": False,
-                "detail": "Mock premium provider configured for local development.",
-            }
+            return build_dependency_health(
+                dependency_class="serving_optional",
+                lifecycle_state="ready",
+                serving_effect="continuity_limited",
+                reason_code=DependencyHealthReason.PREMIUM_PROVIDER_MOCK,
+                detail="Mock premium provider configured for local development.",
+                required=False,
+            )
 
         try:
             client = self._client or httpx.AsyncClient(
@@ -33,17 +37,23 @@ class PremiumProviderHealthService:
             )
             response.raise_for_status()
         except Exception as exc:  # noqa: BLE001
-            return {
-                "status": "degraded",
-                "required": False,
-                "detail": str(exc),
-            }
+            return build_dependency_health(
+                dependency_class="serving_optional",
+                lifecycle_state="degraded",
+                serving_effect="continuity_limited",
+                reason_code=DependencyHealthReason.PREMIUM_PROVIDER_UNAVAILABLE,
+                detail=str(exc),
+                required=False,
+            )
 
-        return {
-            "status": "ready",
-            "required": False,
-            "detail": "Premium provider responded to GET /models.",
-        }
+        return build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="ready",
+            serving_effect="continuity_limited",
+            reason_code=DependencyHealthReason.PREMIUM_PROVIDER_READY,
+            detail="Premium provider responded to GET /models.",
+            required=False,
+        )
 
     async def close(self) -> None:
         if self._client is not None:

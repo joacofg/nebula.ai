@@ -1,4 +1,4 @@
-# M004: Hosted Adoption Reinforcement
+# M004: M004: Hosted Adoption Reinforcement
 
 **Vision:** Improve Nebula’s hosted and control-plane adoption touches only where they make onboarding, fleet understanding, and operator confidence materially better, while preserving the metadata-only trust boundary and keeping local runtime enforcement authoritative. The milestone should focus on reinforcement, not authority: hosted surfaces become clearer, more confidence-building, and more useful for evaluators and operators across one or more deployments without becoming the serving-time source of truth.
 
@@ -9,43 +9,6 @@
 - The metadata-only trust boundary is clearer after the milestone, not blurrier, and the hosted console never reads as authoritative for local runtime enforcement.
 - At least one integrated proof shows how hosted surfaces reinforce adoption and operator confidence without becoming authoritative for local enforcement.
 - The resulting hosted experience materially helps multi-deployment evaluators and operators, not just a single-node demo.
-
-## Key Risks / Unknowns
-
-- Clearer fleet summaries may accidentally imply hosted authority over runtime truth — that would undermine the milestone even if the UX becomes easier to read.
-- The current hosted deployment model may not expose enough descriptive signal for a truthful fleet posture layer — pushing too far could create pressure for scope drift.
-- More status cues could turn the hosted console into a noisy dashboard instead of a confidence-building adoption surface.
-
-## Proof Strategy
-
-- Hosted-authority drift risk → retire in S01 by proving the allowed reinforcement scope, vocabulary, and trust-boundary guardrails are explicit enough that downstream UI work stays descriptive.
-- Fleet-posture truthfulness risk → retire in S02 by proving a real hosted console posture layer can be built from existing deployment, freshness, dependency, and bounded-action facts without faking authority.
-- Confidence-story credibility risk → retire in S03 by proving one integrated walkthrough and focused validation show hosted reinforcement helping onboarding and fleet understanding while local runtime enforcement remains authoritative.
-- Noise/regression risk → retire in S04 by proving any issues discovered during integrated proof are closed with targeted refinements rather than broader expansion.
-
-## Verification Classes
-
-- Contract verification: focused Vitest coverage for new hosted posture summaries, deployment interpretation components, and trust-boundary wording; artifact checks for docs and proof files; source checks for schema/model alignment where relevant.
-- Integration verification: real console wiring across deployment inventory, detail interpretation, trust-boundary module, and bounded remote-action surfaces, backed by the existing admin/deployment API shapes.
-- Operational verification: hosted freshness and outage semantics remain visibility-only; local serving authority is still explained as local even when hosted data is stale or offline.
-- UAT / human verification: confirm the hosted console now reads as a clear non-authoritative fleet posture surface for a multi-deployment evaluator.
-
-## Milestone Definition of Done
-
-This milestone is complete only when all are true:
-
-- All slice deliverables are complete and the hosted console exposes a real fleet posture reading surface, not just isolated deployment details.
-- The hosted posture summaries, trust-boundary wording, and bounded remote-action framing are actually wired together.
-- The real hosted console entrypoint exists and is exercised through the deployment-management workflow and integrated proof.
-- The success criteria are re-checked against live behavior and proof artifacts, not just static copy changes.
-- Final integrated acceptance passes without making the hosted plane feel authoritative for serving-time health, routing, fallback, or policy enforcement.
-
-## Requirement Coverage
-
-- Covers: R032, R033, R034, R035, R036, R037, R038
-- Partially covers: R014
-- Leaves for later: R039, R040
-- Orphan risks: none
 
 ## Slices
 
@@ -60,6 +23,8 @@ This milestone is complete only when all are true:
 
 - [x] **S04: Targeted reinforcement refinements** `risk:low` `depends:[S02,S03]`
   > After this: Any wording, evidence-mapping, or interpretation gaps found during the integrated proof are closed without widening hosted scope.
+
+## Boundary Map
 
 ## Boundary Map
 

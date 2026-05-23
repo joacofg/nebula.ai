@@ -167,5 +167,9 @@ def test_health_dependencies_endpoint_exposes_retention_lifecycle_dependency() -
     dependency = response.json()["dependencies"]["retention_lifecycle"]
     assert dependency["status"] == "ready"
     assert dependency["required"] is False
+    assert dependency["dependency_class"] == "metadata_only"
+    assert dependency["lifecycle_state"] == "ready"
+    assert dependency["serving_effect"] == "unaffected"
+    assert dependency["reason_code"] == "retention_idle"
     assert dependency["enabled"] is True
     assert dependency["last_status"] == "idle"

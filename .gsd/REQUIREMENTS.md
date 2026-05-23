@@ -2,6 +2,35 @@
 
 This file is the explicit capability and coverage contract for the project.
 
+## Active
+
+### R086 — Nebula proves core serving and operator workflows remain trustworthy under dependency outages, degraded infrastructure, and recovery scenarios.
+- Class: quality-attribute
+- Status: active
+- Description: Nebula proves core serving and operator workflows remain trustworthy under dependency outages, degraded infrastructure, and recovery scenarios.
+- Why it matters: The product now has rich routing and operator control, but teams will only trust it in production if failure behavior and recovery paths are explicit, testable, and operator-visible.
+- Source: M010
+- Validation: Milestone proof covers dependency outage, degraded serving continuity, operator-visible failure state, and recovery verification across runtime, admin, and console surfaces.
+- Notes: Production resilience milestone anchor requirement.
+
+### R087 — Gateway serving degrades explicitly and safely when PostgreSQL, Qdrant, premium providers, or hosted metadata services are unavailable, without inventing false success or blocking unrelated healthy paths.
+- Class: continuity
+- Status: active
+- Description: Gateway serving degrades explicitly and safely when PostgreSQL, Qdrant, premium providers, or hosted metadata services are unavailable, without inventing false success or blocking unrelated healthy paths.
+- Why it matters: Production trust depends on fail-safe behavior that preserves continuity where possible and tells the truth when it cannot.
+- Source: M010
+- Validation: Focused integration tests prove dependency-specific degraded behavior and truthful evidence persistence/response semantics for each outage class.
+- Notes: Covers bounded dependency failure behavior rather than broad chaos engineering.
+
+### R088 — Operators can see current dependency degradation, last known failure state, and recovery status through existing health and observability surfaces without digging through logs.
+- Class: failure-visibility
+- Status: active
+- Description: Operators can see current dependency degradation, last known failure state, and recovery status through existing health and observability surfaces without digging through logs.
+- Why it matters: A resilient system is only usable in production if operators can quickly see what failed, whether service degraded safely, and when it recovered.
+- Source: M010
+- Validation: Runtime health/admin/console proof shows dependency-specific failure and recovery state transitions are visible and historically interpretable.
+- Notes: Keeps operator proof on existing surfaces instead of adding a separate NOC dashboard.
+
 ## Validated
 
 ### R001 — A developer can point a common chat-completions-style application at Nebula through a stable inference entry path without redesigning the app first.
@@ -1032,10 +1061,13 @@ This file is the explicit capability and coverage contract for the project.
 | R083 | anti-feature | out-of-scope | none | none | n/a |
 | R084 | anti-feature | out-of-scope | none | none | n/a |
 | R085 | anti-feature | out-of-scope | none | none | n/a |
+| R086 | quality-attribute | active | none | none | Milestone proof covers dependency outage, degraded serving continuity, operator-visible failure state, and recovery verification across runtime, admin, and console surfaces. |
+| R087 | continuity | active | none | none | Focused integration tests prove dependency-specific degraded behavior and truthful evidence persistence/response semantics for each outage class. |
+| R088 | failure-visibility | active | none | none | Runtime health/admin/console proof shows dependency-specific failure and recovery state transitions are visible and historically interpretable. |
 
 ## Coverage Summary
 
-- Active requirements: 0
-- Mapped to slices: 0
+- Active requirements: 3
+- Mapped to slices: 3
 - Validated: 55 (R001, R002, R003, R004, R005, R006, R007, R008, R009, R010, R014, R020, R021, R022, R023, R024, R032, R033, R034, R035, R036, R037, R038, R039, R040, R041, R042, R043, R044, R045, R046, R047, R048, R049, R050, R051, R052, R053, R054, R055, R056, R057, R058, R059, R060, R061, R062, R063, R064, R073, R074, R075, R076, R077, R078)
 - Unmapped active requirements: 0

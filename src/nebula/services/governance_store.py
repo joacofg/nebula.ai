@@ -22,6 +22,7 @@ from nebula.models.governance import (
     TenantRecord,
     UsageLedgerRecord,
 )
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 
 
 @dataclass(slots=True, frozen=True)
@@ -479,22 +480,31 @@ class GovernanceStore:
                 session.execute(select(1)).scalar_one()
             table_names = set(inspect(self.engine).get_table_names())
         except Exception as exc:
-            return {
-                "status": "not_ready",
-                "required": True,
-                "detail": f"Governance store query failed: {exc}",
-            }
+            return build_dependency_health(
+                dependency_class="serving_critical",
+                lifecycle_state="not_ready",
+                serving_effect="fail_closed",
+                reason_code=DependencyHealthReason.GOVERNANCE_QUERY_FAILED,
+                detail=f"Governance store query failed: {exc}",
+                required=True,
+            )
         if {"tenants", "tenant_policies", "api_keys", "usage_ledger"} - table_names:
-            return {
-                "status": "not_ready",
-                "required": True,
-                "detail": "Governance schema is incomplete.",
-            }
-        return {
-            "status": "ready",
-            "required": True,
-            "detail": "Governance store is connected and schema is present.",
-        }
+            return build_dependency_health(
+                dependency_class="serving_critical",
+                lifecycle_state="not_ready",
+                serving_effect="fail_closed",
+                reason_code=DependencyHealthReason.GOVERNANCE_SCHEMA_INCOMPLETE,
+                detail="Governance schema is incomplete.",
+                required=True,
+            )
+        return build_dependency_health(
+            dependency_class="serving_critical",
+            lifecycle_state="ready",
+            serving_effect="fail_closed",
+            reason_code=DependencyHealthReason.GOVERNANCE_READY,
+            detail="Governance store is connected and schema is present.",
+            required=True,
+        )
 
     def list_known_premium_models(self) -> list[str]:
         models = {self.settings.premium_model}

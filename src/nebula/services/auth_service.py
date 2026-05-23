@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 
 from fastapi import HTTPException, status
 
@@ -11,6 +12,8 @@ from nebula.services.governance_store import GovernanceStore
 API_KEY_HEADER = "X-Nebula-API-Key"
 TENANT_HEADER = "X-Nebula-Tenant-ID"
 ADMIN_API_KEY_HEADER = "X-Nebula-Admin-Key"
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(slots=True, frozen=True)
@@ -44,42 +47,51 @@ class AuthService:
                 detail="Missing client API key.",
             )
 
-        stored_key = self.store.find_api_key(raw_api_key)
-        if stored_key is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid client API key.",
-            )
+        try:
+            stored_key = self.store.find_api_key(raw_api_key)
+            if stored_key is None:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Invalid client API key.",
+                )
 
-        resolved_tenant_id = explicit_tenant_id
-        if resolved_tenant_id:
-            if resolved_tenant_id not in stored_key.allowed_tenant_ids:
+            resolved_tenant_id = explicit_tenant_id
+            if resolved_tenant_id:
+                if resolved_tenant_id not in stored_key.allowed_tenant_ids:
+                    raise HTTPException(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        detail="API key is not authorized for the requested tenant.",
+                    )
+            elif stored_key.tenant_id:
+                resolved_tenant_id = stored_key.tenant_id
+            elif len(stored_key.allowed_tenant_ids) == 1:
+                resolved_tenant_id = stored_key.allowed_tenant_ids[0]
+            else:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
-                    detail="API key is not authorized for the requested tenant.",
+                    detail="Tenant header is required for this API key.",
                 )
-        elif stored_key.tenant_id:
-            resolved_tenant_id = stored_key.tenant_id
-        elif len(stored_key.allowed_tenant_ids) == 1:
-            resolved_tenant_id = stored_key.allowed_tenant_ids[0]
-        else:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Tenant header is required for this API key.",
-            )
 
-        tenant = self.store.get_tenant(resolved_tenant_id)
-        if tenant is None or not tenant.active:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Resolved tenant is inactive or does not exist.",
-            )
+            tenant = self.store.get_tenant(resolved_tenant_id)
+            if tenant is None or not tenant.active:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Resolved tenant is inactive or does not exist.",
+                )
 
-        return AuthenticatedTenantContext(
-            tenant=tenant,
-            api_key=stored_key.to_record(),
-            policy=self.store.get_policy(tenant.id),
-        )
+            return AuthenticatedTenantContext(
+                tenant=tenant,
+                api_key=stored_key.to_record(),
+                policy=self.store.get_policy(tenant.id),
+            )
+        except HTTPException:
+            raise
+        except Exception as exc:
+            logger.warning("governance_store_unavailable_during_auth: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Governance store unavailable.",
+            ) from exc
 
     def resolve_playground_context(self, tenant_id: str) -> AuthenticatedTenantContext:
         tenant = self.store.get_tenant(tenant_id)

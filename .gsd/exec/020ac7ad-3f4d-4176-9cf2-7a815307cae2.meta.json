@@ -1,0 +1,18 @@
+{
+  "id": "020ac7ad-3f4d-4176-9cf2-7a815307cae2",
+  "runtime": "bash",
+  "purpose": "T01 required verification rerun using repo venv pytest",
+  "script_chars": 90,
+  "started_at": "2026-05-23T19:38:04.431Z",
+  "finished_at": "2026-05-23T19:38:06.593Z",
+  "exit_code": 1,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 2162,
+  "stdout_bytes": 21284,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/020ac7ad-3f4d-4176-9cf2-7a815307cae2.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/020ac7ad-3f4d-4176-9cf2-7a815307cae2.stderr"
+}

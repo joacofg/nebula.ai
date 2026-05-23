@@ -1,0 +1,18 @@
+{
+  "id": "598c836c-3509-450d-9da9-c5f50997f9ac",
+  "runtime": "bash",
+  "purpose": "T01 required verification final rerun",
+  "script_chars": 90,
+  "started_at": "2026-05-23T19:38:42.091Z",
+  "finished_at": "2026-05-23T19:38:43.589Z",
+  "exit_code": 1,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 1498,
+  "stdout_bytes": 35344,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/598c836c-3509-450d-9da9-c5f50997f9ac.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/598c836c-3509-450d-9da9-c5f50997f9ac.stderr"
+}

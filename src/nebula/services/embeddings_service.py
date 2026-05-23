@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import httpx
 
 from nebula.core.config import Settings
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 
 
 class EmbeddingsServiceError(Exception):
@@ -130,13 +131,19 @@ class OllamaEmbeddingsService:
             response = await self.client.get("/api/tags")
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            return {
-                "status": "degraded",
-                "required": False,
-                "detail": f"Local Ollama unavailable: {exc}",
-            }
-        return {
-            "status": "ready",
-            "required": False,
-            "detail": "Local Ollama endpoint is reachable.",
-        }
+            return build_dependency_health(
+                dependency_class="serving_optional",
+                lifecycle_state="degraded",
+                serving_effect="continuity_limited",
+                reason_code=DependencyHealthReason.LOCAL_OLLAMA_UNAVAILABLE,
+                detail=f"Local Ollama unavailable: {exc}",
+                required=False,
+            )
+        return build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="ready",
+            serving_effect="continuity_limited",
+            reason_code=DependencyHealthReason.LOCAL_OLLAMA_READY,
+            detail="Local Ollama endpoint is reachable.",
+            required=False,
+        )

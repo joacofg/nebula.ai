@@ -8,6 +8,7 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qdrant_models
 
 from nebula.core.config import Settings
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 from nebula.observability.metrics import CACHE_LOOKUPS
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 
@@ -114,22 +115,31 @@ class SemanticCacheService:
         try:
             exists = await self.client.collection_exists(self.settings.semantic_cache_collection)
         except Exception as exc:
-            return {
-                "status": "degraded",
-                "required": False,
-                "detail": f"Qdrant unavailable: {exc}",
-                "enabled": self.enabled,
-            }
+            return build_dependency_health(
+                dependency_class="serving_optional",
+                lifecycle_state="degraded",
+                serving_effect="continuity_limited",
+                reason_code=DependencyHealthReason.SEMANTIC_CACHE_UNAVAILABLE,
+                detail=f"Qdrant unavailable: {exc}",
+                required=False,
+                extra={"enabled": self.enabled},
+            )
         if exists:
-            return {
-                "status": "ready",
-                "required": False,
-                "detail": "Semantic cache collection is reachable.",
-                "enabled": self.enabled,
-            }
-        return {
-            "status": "degraded",
-            "required": False,
-            "detail": self.degraded_reason or "Semantic cache collection is missing.",
-            "enabled": self.enabled,
-        }
+            return build_dependency_health(
+                dependency_class="serving_optional",
+                lifecycle_state="ready",
+                serving_effect="continuity_limited",
+                reason_code=DependencyHealthReason.SEMANTIC_CACHE_READY,
+                detail="Semantic cache collection is reachable.",
+                required=False,
+                extra={"enabled": self.enabled},
+            )
+        return build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="degraded",
+            serving_effect="continuity_limited",
+            reason_code=DependencyHealthReason.SEMANTIC_CACHE_COLLECTION_MISSING,
+            detail=self.degraded_reason or "Semantic cache collection is missing.",
+            required=False,
+            extra={"enabled": self.enabled},
+        )

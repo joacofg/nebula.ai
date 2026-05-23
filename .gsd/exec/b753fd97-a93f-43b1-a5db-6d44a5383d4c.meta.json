@@ -1,0 +1,18 @@
+{
+  "id": "b753fd97-a93f-43b1-a5db-6d44a5383d4c",
+  "runtime": "bash",
+  "purpose": "T01 required verification pytest tests/test_health.py -q",
+  "script_chars": 80,
+  "started_at": "2026-05-23T19:37:43.734Z",
+  "finished_at": "2026-05-23T19:37:43.749Z",
+  "exit_code": 127,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 15,
+  "stdout_bytes": 0,
+  "stderr_bytes": 32,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/b753fd97-a93f-43b1-a5db-6d44a5383d4c.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/b753fd97-a93f-43b1-a5db-6d44a5383d4c.stderr"
+}

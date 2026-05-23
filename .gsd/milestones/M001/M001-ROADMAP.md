@@ -1,4 +1,4 @@
-# M001: API Adoption Happy Path
+# M001: M001: API Adoption Happy Path
 
 **Vision:** Make Nebula easy to plug into for common chat-completions usage, define the compatibility boundary clearly, and prove migration with a real reference integration that shows routing, policy, observability, and provider abstraction value on day 1.
 
@@ -11,44 +11,6 @@
 - The tenant / app / workload / operator model is explicit enough that teams know how to structure production usage.
 - The adoption story is credible for startup product teams, platform teams, and enterprise/self-hosted operators.
 - Routing, policy, observability, and provider abstraction value are visible immediately during adoption, not buried behind later setup.
-
-## Key Risks / Unknowns
-
-- Compatibility sprawl — a broad promise would create implementation and maintenance drag that weakens the milestone.
-- Weak reference proof — a toy integration would undercut the whole adoption claim.
-- Production-model ambiguity — unclear tenant / app / workload framing would leave serious teams unsure how to structure usage.
-- Docs/product mismatch — if the live API contract and the written story diverge, adoption trust collapses.
-
-## Proof Strategy
-
-- Compatibility sprawl → retire in S01 by proving the supported contract is explicit, narrow, and grounded in the live product behavior.
-- Weak reference proof → retire in S03 by proving a realistic app or service migrates with minimal code changes.
-- Production-model ambiguity → retire in S02 by proving the quickstart and operating model are concrete enough for a team to follow without guessing.
-- Docs/product mismatch → retire in S05 by proving the assembled docs, reference flow, and operator-visible evidence all align in one end-to-end adoption walkthrough.
-
-## Verification Classes
-
-- Contract verification: tests, artifact checks, and documentation-to-live-contract reconciliation against the existing gateway behavior
-- Integration verification: real reference app or service calls Nebula through the live gateway path and produces operator-visible evidence
-- Operational verification: self-hosted production-like Compose path proves the adoption story in a real environment with real subsystem boundaries
-- UAT / human verification: judgment on clarity, credibility, and whether the reference path actually feels adoptable in practice
-
-## Milestone Definition of Done
-
-This milestone is complete only when all are true:
-
-- all slice deliverables are complete
-- shared components are actually wired together
-- the real entrypoint exists and is exercised
-- success criteria are re-checked against live behavior, not just artifacts
-- final integrated acceptance scenarios pass
-
-## Requirement Coverage
-
-- Covers: R001, R002, R003, R004, R005, R006, R007, R008, R009, R010
-- Partially covers: R011, R012
-- Leaves for later: R013, R014
-- Orphan risks: none
 
 ## Slices
 
@@ -66,6 +28,8 @@ This milestone is complete only when all are true:
 
 - [x] **S05: Final integrated adoption proof** `risk:medium` `depends:[S02,S03,S04]`
   > After this: The complete v3.0 adoption story is exercised as one joined system: docs, migration path, live reference flow, and operator-visible value all align.
+
+## Boundary Map
 
 ## Boundary Map
 

@@ -49,16 +49,39 @@ class RuntimeHealthService:
         }
 
     def _overall_status(self, dependencies: dict[str, dict[str, object]]) -> str:
-        required_failures = [
-            component
-            for component, payload in dependencies.items()
-            if payload["required"] and payload["status"] != "ready"
-        ]
-        if required_failures:
-            return "not_ready"
-        degraded_optional = [
-            component for component, payload in dependencies.items() if payload["status"] == "degraded"
-        ]
-        if degraded_optional:
+        has_degradation = False
+        for payload in dependencies.values():
+            status = str(payload.get("lifecycle_state") or payload.get("status") or "not_ready")
+            dependency_class = payload.get("dependency_class")
+            serving_effect = payload.get("serving_effect")
+            required = bool(payload.get("required", False))
+
+            if self._is_serving_critical_failure(
+                status=status,
+                dependency_class=dependency_class,
+                serving_effect=serving_effect,
+                required=required,
+            ):
+                return "not_ready"
+            if status in {"degraded", "recovering"}:
+                has_degradation = True
+
+        if has_degradation:
             return "degraded"
         return "ready"
+
+    @staticmethod
+    def _is_serving_critical_failure(
+        *,
+        status: str,
+        dependency_class: object,
+        serving_effect: object,
+        required: bool,
+    ) -> bool:
+        if status == "ready":
+            return False
+        if dependency_class == "serving_critical":
+            return True
+        if serving_effect == "fail_closed":
+            return True
+        return required

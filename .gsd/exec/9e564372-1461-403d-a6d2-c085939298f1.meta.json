@@ -1,0 +1,18 @@
+{
+  "id": "9e564372-1461-403d-a6d2-c085939298f1",
+  "runtime": "bash",
+  "purpose": "scan S01-related backend contract and tests",
+  "script_chars": 659,
+  "started_at": "2026-05-23T19:32:44.002Z",
+  "finished_at": "2026-05-23T19:32:44.049Z",
+  "exit_code": 0,
+  "signal": null,
+  "timed_out": false,
+  "duration_ms": 47,
+  "stdout_bytes": 758,
+  "stderr_bytes": 0,
+  "stdout_truncated": false,
+  "stderr_truncated": false,
+  "stdout_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/9e564372-1461-403d-a6d2-c085939298f1.stdout",
+  "stderr_path": "/Users/joaquinfernandezdegamboa/Proj/nebula/.gsd/exec/9e564372-1461-403d-a6d2-c085939298f1.stderr"
+}

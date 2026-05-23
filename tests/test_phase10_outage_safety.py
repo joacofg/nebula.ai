@@ -7,6 +7,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 from fastapi import FastAPI
+from nebula.models.resilience import build_dependency_health
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -102,6 +103,24 @@ def _install_serving_stubs(app: FastAPI) -> None:
     container.chat_service.cache_service = container.cache_service
 
 
+class FailingGovernanceStore:
+    def __init__(self, detail: str = "Governance store query failed: injected outage") -> None:
+        self.detail = detail
+
+    def find_api_key(self, raw_key: str):
+        raise RuntimeError("injected governance auth outage")
+
+    def health_status(self) -> dict[str, object]:
+        return build_dependency_health(
+            dependency_class="serving_critical",
+            lifecycle_state="not_ready",
+            serving_effect="fail_closed",
+            reason_code="governance_query_failed",
+            detail=self.detail,
+            required=True,
+        )
+
+
 def _session_factory(app: FastAPI) -> sessionmaker:
     engine = create_engine(
         app.state.container.settings.database_url,
@@ -117,6 +136,52 @@ def _set_last_seen_at(app: FastAPI, deployment_id: str, last_seen_at: datetime) 
         assert deployment is not None
         deployment.last_seen_at = last_seen_at
         session.commit()
+
+
+@pytest.mark.asyncio
+async def test_governance_outage_fails_closed_across_request_and_health() -> None:
+    async with configured_outage_client() as (app, client, _deployment_id):
+        failing_store = FailingGovernanceStore()
+        app.state.container.auth_service.store = failing_store
+        app.state.container.runtime_health_service.governance_store = failing_store
+
+        response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Governance outage must fail closed",
+                    }
+                ],
+            },
+        )
+        readiness = await client.get("/health/ready")
+        dependencies = await client.get("/health/dependencies")
+
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Governance store unavailable."}
+
+    assert readiness.status_code == 503
+    assert readiness.json()["status"] == "not_ready"
+
+    dependency_payload = dependencies.json()
+    assert dependencies.status_code == 200
+    assert dependency_payload["status"] == "not_ready"
+    assert dependency_payload["dependencies"]["governance_store"] == {
+        "status": "not_ready",
+        "required": True,
+        "detail": "Governance store query failed: injected outage",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "not_ready",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_query_failed",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+    }
 
 
 @pytest.mark.asyncio
