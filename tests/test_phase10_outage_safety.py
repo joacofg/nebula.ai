@@ -115,28 +115,143 @@ def _semantic_cache_outage_payload(detail: str = "Qdrant unavailable: injected s
     )
 
 
-class FailingSemanticCacheService(FakeCacheService):
-    def __init__(self, detail: str = "Qdrant unavailable: injected semantic cache outage") -> None:
-        super().__init__(
-            health_status_payload=_semantic_cache_outage_payload(detail),
+class StatefulSemanticCacheService(FakeCacheService):
+    def __init__(self) -> None:
+        super().__init__()
+
+    def set_outage(
+        self,
+        detail: str = "Qdrant unavailable: injected semantic cache outage",
+    ) -> None:
+        self.health_status_payload = _semantic_cache_outage_payload(detail)
+
+    def set_recovering(
+        self,
+        *,
+        detail: str = "Qdrant recovered and warming semantic cache availability.",
+        last_failure_at: datetime | None,
+        last_recovery_at: datetime | None,
+    ) -> None:
+        self.health_status_payload = build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="recovering",
+            serving_effect="continuity_limited",
+            reason_code="semantic_cache_ready",
+            detail=detail,
+            required=False,
+            recovering=True,
+            last_failure_at=last_failure_at,
+            last_recovery_at=last_recovery_at,
+            extra={"enabled": True},
+        )
+
+    def set_ready(
+        self,
+        *,
+        detail: str = "Semantic cache collection is reachable.",
+        last_failure_at: datetime | None = None,
+        last_recovery_at: datetime | None = None,
+    ) -> None:
+        self.health_status_payload = build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="ready",
+            serving_effect="continuity_limited",
+            reason_code="semantic_cache_ready",
+            detail=detail,
+            required=False,
+            last_failure_at=last_failure_at,
+            last_recovery_at=last_recovery_at,
+            extra={"enabled": True},
         )
 
 
-class FailingGovernanceStore:
-    def __init__(self, detail: str = "Governance store query failed: injected outage") -> None:
+class StatefulGovernanceStore:
+    def __init__(self, delegate, detail: str = "Governance store query failed: injected outage") -> None:
+        self.delegate = delegate
         self.detail = detail
+        self.mode = "outage"
+        self.last_failure_at: datetime | None = None
+        self.last_recovery_at: datetime | None = None
+
+    def set_outage(
+        self,
+        detail: str = "Governance store query failed: injected outage",
+        *,
+        last_failure_at: datetime | None = None,
+    ) -> None:
+        self.mode = "outage"
+        self.detail = detail
+        self.last_failure_at = last_failure_at
+        self.last_recovery_at = None
+
+    def set_recovering(
+        self,
+        *,
+        detail: str = "Governance store recovered and is stabilizing.",
+        last_failure_at: datetime | None,
+        last_recovery_at: datetime | None,
+    ) -> None:
+        self.mode = "recovering"
+        self.detail = detail
+        self.last_failure_at = last_failure_at
+        self.last_recovery_at = last_recovery_at
+
+    def set_ready(
+        self,
+        *,
+        detail: str = "Governance store is reachable.",
+        last_failure_at: datetime | None = None,
+        last_recovery_at: datetime | None = None,
+    ) -> None:
+        self.mode = "ready"
+        self.detail = detail
+        self.last_failure_at = last_failure_at
+        self.last_recovery_at = last_recovery_at
 
     def find_api_key(self, raw_key: str):
-        raise RuntimeError("injected governance auth outage")
+        if self.mode == "outage":
+            raise RuntimeError("injected governance auth outage")
+        return self.delegate.find_api_key(raw_key)
+
+    def get_tenant(self, tenant_id: str):
+        return self.delegate.get_tenant(tenant_id)
+
+    def get_policy(self, tenant_id: str):
+        return self.delegate.get_policy(tenant_id)
 
     def health_status(self) -> dict[str, object]:
+        if self.mode == "outage":
+            return build_dependency_health(
+                dependency_class="serving_critical",
+                lifecycle_state="not_ready",
+                serving_effect="fail_closed",
+                reason_code="governance_query_failed",
+                detail=self.detail,
+                required=True,
+                last_failure_at=self.last_failure_at,
+                last_recovery_at=self.last_recovery_at,
+            )
+        if self.mode == "recovering":
+            return build_dependency_health(
+                dependency_class="serving_critical",
+                lifecycle_state="recovering",
+                serving_effect="fail_closed",
+                reason_code="governance_ready",
+                detail=self.detail,
+                required=True,
+                recovering=True,
+                last_failure_at=self.last_failure_at,
+                last_recovery_at=self.last_recovery_at,
+            )
         return build_dependency_health(
             dependency_class="serving_critical",
-            lifecycle_state="not_ready",
+            lifecycle_state="ready",
             serving_effect="fail_closed",
-            reason_code="governance_query_failed",
+            reason_code="governance_ready",
             detail=self.detail,
             required=True,
+            last_failure_at=self.last_failure_at,
+            last_recovery_at=self.last_recovery_at,
         )
 
 
@@ -160,7 +275,8 @@ def _set_last_seen_at(app: FastAPI, deployment_id: str, last_seen_at: datetime) 
 @pytest.mark.asyncio
 async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_degraded() -> None:
     async with configured_outage_client() as (app, client, _deployment_id):
-        failing_cache = FailingSemanticCacheService()
+        failing_cache = StatefulSemanticCacheService()
+        failing_cache.set_outage()
         app.state.container.cache_service = failing_cache
         app.state.container.chat_service.cache_service = failing_cache
         app.state.container.runtime_health_service.semantic_cache = failing_cache
@@ -229,7 +345,8 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
 @pytest.mark.asyncio
 async def test_governance_outage_fails_closed_across_request_and_health() -> None:
     async with configured_outage_client() as (app, client, _deployment_id):
-        failing_store = FailingGovernanceStore()
+        failing_store = StatefulGovernanceStore(app.state.container.governance_store)
+        failing_store.set_outage()
         app.state.container.auth_service.store = failing_store
         app.state.container.runtime_health_service.governance_store = failing_store
 
@@ -269,6 +386,218 @@ async def test_governance_outage_fails_closed_across_request_and_health() -> Non
         "recovering": False,
         "last_failure_at": None,
         "last_recovery_at": None,
+    }
+
+
+@pytest.mark.asyncio
+async def test_governance_outage_recovery_restores_serving_and_health_truth() -> None:
+    failure_at = datetime(2026, 5, 23, 20, 0, tzinfo=UTC)
+    recovery_at = datetime(2026, 5, 23, 20, 5, tzinfo=UTC)
+
+    async with configured_outage_client() as (app, client, _deployment_id):
+        governance_store = StatefulGovernanceStore(app.state.container.governance_store)
+        governance_store.set_outage(last_failure_at=failure_at)
+        app.state.container.auth_service.store = governance_store
+        app.state.container.runtime_health_service.governance_store = governance_store
+
+        outage_response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Governance outage must fail closed before recovery",
+                    }
+                ],
+            },
+        )
+        outage_ready = await client.get("/health/ready")
+        outage_dependencies = await client.get("/health/dependencies")
+
+        governance_store.set_ready(
+            detail="Governance store recovered and is serving requests.",
+            last_failure_at=failure_at,
+            last_recovery_at=recovery_at,
+        )
+
+        recovered_response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Governance recovery should restore serving",
+                    }
+                ],
+            },
+        )
+        recovered_ready = await client.get("/health/ready")
+        recovered_dependencies = await client.get("/health/dependencies")
+
+    assert outage_response.status_code == 503
+    assert outage_response.json() == {"detail": "Governance store unavailable."}
+    assert outage_ready.status_code == 503
+    assert outage_ready.json()["status"] == "not_ready"
+    assert outage_dependencies.status_code == 200
+    assert outage_dependencies.json()["dependencies"]["governance_store"] == {
+        "status": "not_ready",
+        "required": True,
+        "detail": "Governance store query failed: injected outage",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "not_ready",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_query_failed",
+        "recovering": False,
+        "last_failure_at": "2026-05-23T20:00:00+00:00",
+        "last_recovery_at": None,
+    }
+
+    assert recovered_response.status_code == 200
+    assert recovered_response.json()["choices"][0]["message"]["content"] == "local outage-safe response"
+    assert recovered_response.headers["X-Nebula-Route-Target"] == "local"
+    assert recovered_ready.status_code == 200
+    assert recovered_ready.json()["status"] in {"ready", "degraded"}
+    assert recovered_ready.json()["dependencies"]["governance_store"] == {
+        "status": "ready",
+        "required": True,
+        "detail": "Governance store recovered and is serving requests.",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "ready",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_ready",
+        "recovering": False,
+        "last_failure_at": "2026-05-23T20:00:00+00:00",
+        "last_recovery_at": "2026-05-23T20:05:00+00:00",
+    }
+    assert recovered_dependencies.status_code == 200
+    assert recovered_dependencies.json()["status"] in {"ready", "degraded"}
+    assert recovered_dependencies.json()["dependencies"]["governance_store"] == {
+        "status": "ready",
+        "required": True,
+        "detail": "Governance store recovered and is serving requests.",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "ready",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_ready",
+        "recovering": False,
+        "last_failure_at": "2026-05-23T20:00:00+00:00",
+        "last_recovery_at": "2026-05-23T20:05:00+00:00",
+    }
+
+
+@pytest.mark.asyncio
+async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_ready() -> None:
+    failure_at = datetime(2026, 5, 23, 21, 0, tzinfo=UTC)
+    recovery_at = datetime(2026, 5, 23, 21, 3, tzinfo=UTC)
+
+    async with configured_outage_client() as (app, client, _deployment_id):
+        cache_service = StatefulSemanticCacheService()
+        cache_service.set_outage()
+        app.state.container.cache_service = cache_service
+        app.state.container.chat_service.cache_service = cache_service
+        app.state.container.runtime_health_service.semantic_cache = cache_service
+
+        outage_response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Semantic cache outage should degrade before recovery",
+                    }
+                ],
+            },
+        )
+        outage_ready = await client.get("/health/ready")
+        outage_dependencies = await client.get("/health/dependencies")
+
+        cache_service.set_recovering(
+            last_failure_at=failure_at,
+            last_recovery_at=recovery_at,
+        )
+        recovering_response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Semantic cache recovering should keep serving truthfully",
+                    }
+                ],
+            },
+        )
+        recovering_ready = await client.get("/health/ready")
+        recovering_dependencies = await client.get("/health/dependencies")
+
+        cache_service.set_ready(
+            detail="Semantic cache collection recovered and is reachable.",
+            last_failure_at=failure_at,
+            last_recovery_at=recovery_at,
+        )
+        recovered_ready = await client.get("/health/ready")
+        recovered_dependencies = await client.get("/health/dependencies")
+
+    assert outage_response.status_code == 200
+    assert outage_ready.status_code == 200
+    assert outage_ready.json()["status"] == "degraded"
+    assert outage_dependencies.status_code == 200
+    assert outage_dependencies.json()["dependencies"]["semantic_cache"] == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Qdrant unavailable: injected semantic cache outage",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+        "enabled": True,
+    }
+
+    assert recovering_response.status_code == 200
+    assert recovering_response.json()["choices"][0]["message"]["content"] == "local outage-safe response"
+    assert recovering_ready.status_code == 200
+    assert recovering_ready.json()["status"] == "degraded"
+    assert recovering_dependencies.status_code == 200
+    assert recovering_dependencies.json()["dependencies"]["semantic_cache"] == {
+        "status": "recovering",
+        "required": False,
+        "detail": "Qdrant recovered and warming semantic cache availability.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "recovering",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_ready",
+        "recovering": True,
+        "last_failure_at": "2026-05-23T21:00:00+00:00",
+        "last_recovery_at": "2026-05-23T21:03:00+00:00",
+        "enabled": True,
+    }
+
+    assert recovered_ready.status_code == 200
+    assert recovered_ready.json()["status"] == "ready"
+    assert recovered_dependencies.status_code == 200
+    assert recovered_dependencies.json()["status"] == "ready"
+    assert recovered_dependencies.json()["dependencies"]["semantic_cache"] == {
+        "status": "ready",
+        "required": False,
+        "detail": "Semantic cache collection recovered and is reachable.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "ready",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_ready",
+        "recovering": False,
+        "last_failure_at": "2026-05-23T21:00:00+00:00",
+        "last_recovery_at": "2026-05-23T21:03:00+00:00",
+        "enabled": True,
     }
 
 

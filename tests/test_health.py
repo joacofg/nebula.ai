@@ -205,6 +205,7 @@ def test_readiness_reports_recovering_dependencies_as_degraded() -> None:
                 RecoveringPremiumProviderHealth()
             )
             ready = client.get("/health/ready")
+            dependencies = client.get("/health/dependencies")
 
     assert ready.status_code == 200
     assert ready.json()["status"] == "degraded"
@@ -220,6 +221,47 @@ def test_readiness_reports_recovering_dependencies_as_degraded() -> None:
         "last_failure_at": None,
         "last_recovery_at": None,
     }
+    assert dependencies.status_code == 200
+    assert dependencies.json()["status"] == "degraded"
+
+
+def test_readiness_returns_503_for_recovering_serving_critical_dependency() -> None:
+    class RecoveringGovernanceStore:
+        def health_status(self) -> dict[str, object]:
+            return build_dependency_health(
+                dependency_class="serving_critical",
+                lifecycle_state="recovering",
+                serving_effect="fail_closed",
+                reason_code="governance_ready",
+                detail="Governance store recovered and is stabilizing.",
+                required=True,
+                recovering=True,
+                last_failure_at=None,
+                last_recovery_at=None,
+            )
+
+    with configured_app() as app:
+        with TestClient(app) as client:
+            app.state.container.runtime_health_service.governance_store = RecoveringGovernanceStore()
+            ready = client.get("/health/ready")
+            dependencies = client.get("/health/dependencies")
+
+    assert ready.status_code == 503
+    assert ready.json()["status"] == "not_ready"
+    assert ready.json()["dependencies"]["governance_store"] == {
+        "status": "recovering",
+        "required": True,
+        "detail": "Governance store recovered and is stabilizing.",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "recovering",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_ready",
+        "recovering": True,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+    }
+    assert dependencies.status_code == 200
+    assert dependencies.json()["status"] == "not_ready"
 
 
 def test_dependencies_include_mock_premium_provider_status() -> None:
