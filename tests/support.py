@@ -65,11 +65,15 @@ class FakeCacheService:
         cached_response: str | None = None,
         *,
         health_status_payload: dict[str, object] | None = None,
+        lookup_error: Exception | None = None,
+        store_error: Exception | None = None,
     ) -> None:
         self.cached_response = cached_response
         self.lookup_calls: list[str] = []
         self.stored_entries: list[tuple[str, str, str]] = []
         self.enabled = True
+        self.lookup_error = lookup_error
+        self.store_error = store_error
         self.health_status_payload = health_status_payload or build_dependency_health(
             dependency_class="serving_optional",
             lifecycle_state="ready",
@@ -85,9 +89,13 @@ class FakeCacheService:
 
     async def lookup(self, prompt: str) -> str | None:
         self.lookup_calls.append(prompt)
+        if self.lookup_error is not None:
+            raise self.lookup_error
         return self.cached_response
 
     async def store(self, prompt: str, response: str, model: str) -> None:
+        if self.store_error is not None:
+            raise self.store_error
         self.stored_entries.append((prompt, response, model))
 
     async def close(self) -> None:

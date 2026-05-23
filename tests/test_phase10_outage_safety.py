@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 import httpx
 import pytest
 from fastapi import FastAPI
-from nebula.models.resilience import build_dependency_health
+from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
@@ -103,6 +103,25 @@ def _install_serving_stubs(app: FastAPI) -> None:
     container.chat_service.cache_service = container.cache_service
 
 
+def _semantic_cache_outage_payload(detail: str = "Qdrant unavailable: injected semantic cache outage") -> dict[str, object]:
+    return build_dependency_health(
+        dependency_class="serving_optional",
+        lifecycle_state="degraded",
+        serving_effect="continuity_limited",
+        reason_code=DependencyHealthReason.SEMANTIC_CACHE_UNAVAILABLE,
+        detail=detail,
+        required=False,
+        extra={"enabled": True},
+    )
+
+
+class FailingSemanticCacheService(FakeCacheService):
+    def __init__(self, detail: str = "Qdrant unavailable: injected semantic cache outage") -> None:
+        super().__init__(
+            health_status_payload=_semantic_cache_outage_payload(detail),
+        )
+
+
 class FailingGovernanceStore:
     def __init__(self, detail: str = "Governance store query failed: injected outage") -> None:
         self.detail = detail
@@ -136,6 +155,75 @@ def _set_last_seen_at(app: FastAPI, deployment_id: str, last_seen_at: datetime) 
         assert deployment is not None
         deployment.last_seen_at = last_seen_at
         session.commit()
+
+
+@pytest.mark.asyncio
+async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_degraded() -> None:
+    async with configured_outage_client() as (app, client, _deployment_id):
+        failing_cache = FailingSemanticCacheService()
+        app.state.container.cache_service = failing_cache
+        app.state.container.chat_service.cache_service = failing_cache
+        app.state.container.runtime_health_service.semantic_cache = failing_cache
+
+        response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Semantic cache outage should degrade without blocking local serving",
+                    }
+                ],
+            },
+        )
+        readiness = await client.get("/health/ready")
+        dependencies = await client.get("/health/dependencies")
+
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["message"]["content"] == "local outage-safe response"
+    assert response.headers["X-Nebula-Route-Target"] == "local"
+    assert response.headers["X-Nebula-Cache-Hit"] == "false"
+    assert response.headers["X-Nebula-Fallback-Used"] == "false"
+
+    readiness_payload = readiness.json()
+    dependency_payload = dependencies.json()
+
+    assert readiness.status_code == 200
+    assert readiness_payload["status"] == "degraded"
+    semantic_cache_ready = readiness_payload["dependencies"]["semantic_cache"]
+    assert semantic_cache_ready["enabled"] is True
+    assert semantic_cache_ready == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Qdrant unavailable: injected semantic cache outage",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+        "enabled": True,
+    }
+    assert dependencies.status_code == 200
+    assert dependency_payload["status"] == "degraded"
+    semantic_cache_dependency = dependency_payload["dependencies"]["semantic_cache"]
+    assert semantic_cache_dependency["enabled"] is True
+    assert semantic_cache_dependency == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Qdrant unavailable: injected semantic cache outage",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+        "enabled": True,
+    }
 
 
 @pytest.mark.asyncio

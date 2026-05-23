@@ -4,6 +4,14 @@ from nebula.models.resilience import build_dependency_health
 from tests.support import configured_app
 
 
+class FakeSemanticCacheHealth:
+    def __init__(self, payload: dict[str, object]) -> None:
+        self.payload = payload
+
+    async def health_status(self) -> dict[str, object]:
+        return self.payload
+
+
 def test_healthcheck() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
@@ -11,6 +19,63 @@ def test_healthcheck() -> None:
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok"}
+
+
+def test_readiness_reports_degraded_optional_semantic_cache_dependencies() -> None:
+    semantic_cache_health = build_dependency_health(
+        dependency_class="serving_optional",
+        lifecycle_state="degraded",
+        serving_effect="continuity_limited",
+        reason_code="semantic_cache_unavailable",
+        detail="Qdrant unavailable: injected semantic cache outage",
+        required=False,
+        last_failure_at=None,
+        last_recovery_at=None,
+        extra={"enabled": True},
+    )
+
+    with configured_app() as app:
+        with TestClient(app) as client:
+            app.state.container.runtime_health_service.semantic_cache = FakeSemanticCacheHealth(
+                semantic_cache_health
+            )
+            ready = client.get("/health/ready")
+            dependencies = client.get("/health/dependencies")
+
+    ready_body = ready.json()
+    dependencies_body = dependencies.json()
+
+    assert ready.status_code == 200
+    assert ready_body["status"] == "degraded"
+    semantic_cache_ready = ready_body["dependencies"]["semantic_cache"]
+    assert semantic_cache_ready == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Qdrant unavailable: injected semantic cache outage",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+        "enabled": True,
+    }
+    assert dependencies.status_code == 200
+    assert dependencies_body["status"] == "degraded"
+    assert dependencies_body["dependencies"]["semantic_cache"] == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Qdrant unavailable: injected semantic cache outage",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+        "enabled": True,
+    }
 
 
 def test_readiness_reports_degraded_optional_dependencies() -> None:
