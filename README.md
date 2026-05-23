@@ -52,6 +52,7 @@ The default metadata exported to the hosted plane is defined in [`docs/hosted-de
 - [M006 integrated proof](docs/m006-integrated-proof.md): pointer-only calibrated-routing close-out review order for `route-decision-vocabulary`, one public `POST /v1/chat/completions` response, `X-Request-ID` / `X-Nebula-*` correlation, usage-ledger lookup, `policy/simulate` replay parity, and selected-request-first Observability inspection
 - [M007 integrated proof](docs/m007-integrated-proof.md): pointer-only operator-surface close-out review order for selected-request-first Observability, authoritative request detail, compare-before-save policy preview, and explicit anti-drift scope boundaries
 - [M008 integrated proof](docs/m008-integrated-proof.md): pointer-only governance review order for tenant policy, one persisted request row and request detail, `evidence_expires_at`-driven retention cleanup, `retention_lifecycle` health context, and the hosted metadata-only boundary
+- [M010 integrated resilience proof](docs/m010-integrated-proof.md): pointer-only resilience close-out review order that joins outage truth, operator corroboration, and recovery confirmation on the existing health and Observability surfaces
 - [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
 - [Demo script](docs/demo-script.md): benchmark-led walkthrough tied to Playground and Observability
 
