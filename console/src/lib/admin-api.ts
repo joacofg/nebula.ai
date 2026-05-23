@@ -243,11 +243,41 @@ export type PlaygroundCompletionResult = {
   policyOutcome: string;
 };
 
+export type RuntimeHealthDependencyStatus = "ready" | "degraded" | "not_ready" | "recovering" | string;
+
+export type RuntimeHealthDependencyClass =
+  | "serving_critical"
+  | "serving_optional"
+  | "supporting"
+  | string;
+
+export type RuntimeHealthLifecycleState =
+  | "ready"
+  | "degraded"
+  | "not_ready"
+  | "recovering"
+  | "disabled"
+  | string;
+
+export type RuntimeHealthServingEffect =
+  | "none"
+  | "fail_closed"
+  | "continuity_limited"
+  | "visibility_limited"
+  | string;
+
 export type RuntimeHealthDependency = {
-  status: string;
+  status: RuntimeHealthDependencyStatus;
   required: boolean;
   detail: string;
   enabled?: boolean;
+  dependency_class?: RuntimeHealthDependencyClass;
+  lifecycle_state?: RuntimeHealthLifecycleState;
+  serving_effect?: RuntimeHealthServingEffect;
+  reason_code?: string;
+  recovering?: boolean;
+  last_failure_at?: string | null;
+  last_recovery_at?: string | null;
   interval_seconds?: number;
   last_status?: string;
   last_run_at?: string | null;
