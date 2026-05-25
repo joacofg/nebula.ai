@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "milestoneId": "M010",
+  "sliceId": "S04",
+  "timestamp": 1779567313898,
+  "status": "fail",
+  "durationMs": 1,
+  "checks": [
+    {
+      "category": "tool",
+      "target": "T02 Verify",
+      "passed": false,
+      "message": "Unsafe or non-runnable Verify command: python3 -c \"from pathlib import Path; p = Path('docs/m010-recovery-proof.md'); assert p.exists() and p.stat().st_size > 0\" (contains shell control syntax such as pipes, redirects, semicolons, backticks, or command substitution)",
+      "blocking": true
+    }
+  ]
+}

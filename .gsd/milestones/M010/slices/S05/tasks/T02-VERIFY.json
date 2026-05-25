@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "taskId": "T02",
+  "unitId": "M010/S05/T02",
+  "timestamp": 1779568665047,
+  "passed": true,
+  "discoverySource": "task-plan",
+  "checks": [
+    {
+      "command": "rg -n \"m010-integrated-proof\" README.md docs/architecture.md docs/m010-recovery-proof.md docs/m010-integrated-proof.md",
+      "exitCode": 0,
+      "durationMs": 9,
+      "verdict": "pass"
+    }
+  ]
+}
