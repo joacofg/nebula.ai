@@ -144,17 +144,42 @@ describe("observability-page", () => {
         ok: true,
         json: async () => ({
           dependencies: {
-            postgres: { status: "healthy", required: true, detail: "reachable" },
-            retention_lifecycle: {
+            governance_store: {
+              status: "not_ready",
+              required: true,
+              detail: "Governance queries failed; requests are blocked fail-closed.",
+              dependency_class: "serving_critical",
+              lifecycle_state: "not_ready",
+              serving_effect: "fail_closed",
+              reason_code: "governance_query_failed",
+              recovering: false,
+              enabled: true,
+              last_failure_at: "2026-04-12T01:00:00Z",
+            },
+            semantic_cache: {
               status: "degraded",
               required: false,
-              detail: "Retention lifecycle cleanup failed on its last attempt.",
-              last_status: "failed",
-              last_run_at: "2026-04-12T01:02:03Z",
-              last_attempted_run_at: "2026-04-12T01:05:00Z",
-              last_deleted_count: 2,
-              last_eligible_count: 2,
-              last_error: "cleanup query timed out",
+              detail: "Semantic cache unavailable; requests continue without cache hits.",
+              dependency_class: "serving_optional",
+              lifecycle_state: "degraded",
+              serving_effect: "continuity_limited",
+              reason_code: "semantic_cache_unavailable",
+              recovering: false,
+              enabled: true,
+              last_failure_at: "2026-04-12T00:55:00Z",
+            },
+            premium_provider: {
+              status: "recovering",
+              required: false,
+              detail: "Premium provider connectivity restored; recovery checks are still running.",
+              dependency_class: "serving_optional",
+              lifecycle_state: "recovering",
+              serving_effect: "continuity_limited",
+              reason_code: "premium_provider_recovered",
+              recovering: true,
+              enabled: true,
+              last_failure_at: "2026-04-12T00:55:00Z",
+              last_recovery_at: "2026-04-12T01:03:00Z",
             },
           },
         }),
@@ -197,9 +222,9 @@ describe("observability-page", () => {
     const selectedRequestText = selectedRequestSection!.textContent ?? "";
     const followUpText = followUpSection!.textContent ?? "";
     expect(selectedRequestText.indexOf("req-123")).toBeGreaterThanOrEqual(0);
-    expect(followUpText.indexOf("retention_lifecycle")).toBeGreaterThanOrEqual(0);
+    expect(followUpText.indexOf("governance_store")).toBeGreaterThanOrEqual(0);
     expect(selectedRequestText.indexOf("req-123")).toBeLessThan(
-      container.firstElementChild!.textContent!.indexOf("retention_lifecycle"),
+      container.firstElementChild!.textContent!.indexOf("governance_store"),
     );
     expect(followUpSection).not.toBeNull();
     const followUp = within(followUpSection!);
@@ -248,13 +273,24 @@ describe("observability-page", () => {
     expect(
       dependency.getByText(/These dependency states do not replace the ledger record; they provide supporting runtime context/i),
     ).toBeInTheDocument();
-    expect(await dependency.findByText("retention_lifecycle")).toBeInTheDocument();
-    expect(dependency.getByText("Last status")).toBeInTheDocument();
-    expect(dependency.getByText("failed")).toBeInTheDocument();
-    expect(dependency.getByText("Deleted rows")).toBeInTheDocument();
-    expect(dependency.getAllByText("2")).toHaveLength(2);
-    expect(dependency.getByText("cleanup query timed out")).toBeInTheDocument();
-    expect(screen.queryByText(/retention dashboard/i)).not.toBeInTheDocument();
+    expect(await dependency.findByText("governance_store")).toBeInTheDocument();
+    expect(dependency.getByText("semantic_cache")).toBeInTheDocument();
+    expect(dependency.getByText("premium_provider")).toBeInTheDocument();
+    expect(dependency.getAllByText("Dependency class")).toHaveLength(3);
+    expect(dependency.getByText("serving critical")).toBeInTheDocument();
+    expect(dependency.getAllByText("serving optional")).toHaveLength(2);
+    expect(dependency.getAllByText("Serving effect")).toHaveLength(3);
+    expect(dependency.getByText("fail closed")).toBeInTheDocument();
+    expect(dependency.getAllByText("continuity limited")).toHaveLength(2);
+    expect(dependency.getAllByText("Reason code")).toHaveLength(3);
+    expect(dependency.getByText("governance query failed")).toBeInTheDocument();
+    expect(dependency.getByText("semantic cache unavailable")).toBeInTheDocument();
+    expect(dependency.getByText("premium provider recovered")).toBeInTheDocument();
+    expect(dependency.getAllByText("Recovering")).toHaveLength(3);
+    expect(dependency.getAllByText("Last failure")).toHaveLength(3);
+    expect(dependency.getByText("2026-04-12T01:00:00Z")).toBeInTheDocument();
+    expect(dependency.getByText("Last recovery")).toBeInTheDocument();
+    expect(dependency.getByText("2026-04-12T01:03:00Z")).toBeInTheDocument();
 
     vi.unstubAllGlobals();
   });

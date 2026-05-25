@@ -56,7 +56,7 @@ function cacheInsightTone(level: "info" | "notice" | "warning") {
   return "border-slate-200 bg-slate-50 text-slate-900";
 }
 
-function calibrationBadgeTone(state: "sufficient" | "thin" | "stale") {
+function calibrationBadgeTone(state: "sufficient" | "thin" | "stale" | "degraded") {
   if (state === "sufficient") {
     return "border-emerald-200 bg-emerald-50 text-emerald-900";
   }
@@ -113,7 +113,7 @@ export default function ObservabilityPage() {
         throw new Error("Unable to load runtime health.");
       }
       return (await response.json()) as {
-        dependencies: Record<string, { status: string; required: boolean; detail: string }>;
+        dependencies: Record<string, import("@/lib/admin-api").RuntimeHealthDependency>;
       };
     },
     enabled: Boolean(adminKey),

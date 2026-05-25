@@ -14,16 +14,16 @@
 - [x] **S01: S01** `risk:high` `depends:[]`
   > After this: After this: Nebula has a stable typed resilience contract proving how serving-critical, serving-optional, and metadata-only dependency failures degrade, fail closed, and recover at the runtime truth layer.
 
-- [ ] **S02: S02** `risk:high` `depends:[]`
+- [x] **S02: S02** `risk:high` `depends:[]`
   > After this: After this: at least one serving-critical outage and one serving-optional outage are exercised end to end, proving truthful request behavior, safe degraded or fail-closed behavior, and correct runtime/admin evidence.
 
-- [ ] **S03: Operator-visible resilience state** `risk:medium` `depends:[S01,S02]`
+- [x] **S03: S03** `risk:medium` `depends:[]`
   > After this: After this: operators can use existing health/admin/request-detail/Observability surfaces to identify the failed dependency, understand the current degraded mode, and see recovery status without a new dashboard.
 
-- [ ] **S04: Recovery verification and runbook proof** `risk:medium` `depends:[S02,S03]`
+- [x] **S04: S04** `risk:medium` `depends:[]`
   > After this: After this: a documented recovery path for the highest-value outage classes is verified end to end, including restored healthy behavior and trustworthy post-recovery evidence.
 
-- [ ] **S05: Integrated resilience proof** `risk:low` `depends:[S02,S03,S04]`
+- [x] **S05: S05** `risk:low` `depends:[]`
   > After this: After this: one integrated proof shows outage trigger, degraded runtime truth, operator inspection, and successful recovery confirmation in a pointer-first review path with anti-sprawl boundaries locked.
 
 ## Boundary Map

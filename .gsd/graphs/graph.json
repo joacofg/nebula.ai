@@ -9,8 +9,8 @@
       "sourceFile": "STATE.md"
     },
     {
-      "id": "concept:phase:planning",
-      "label": "Phase: planning",
+      "id": "concept:phase:validating-milestone",
+      "label": "Phase: validating-milestone",
       "type": "concept",
       "confidence": "EXTRACTED",
       "sourceFile": "STATE.md"
@@ -982,6 +982,82 @@
     {
       "id": "task:M010:S01:T02",
       "label": "T02: Wire RuntimeHealthService aggregation semantics and lock the contract with failure-path tests",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M010:S02",
+      "label": "S02: Runtime outage behavior proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M010/slices/S02/S02-PLAN.md"
+    },
+    {
+      "id": "task:M010:S02:T01",
+      "label": "T01: Add serving-critical governance outage proof",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M010:S02:T02",
+      "label": "T02: Add serving-optional semantic cache outage proof and slice verification",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M010:S03",
+      "label": "S03: Operator-visible resilience state",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M010/slices/S03/S03-PLAN.md"
+    },
+    {
+      "id": "task:M010:S03:T01",
+      "label": "T01: Wire resilience metadata into runtime health cards",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M010:S03:T02",
+      "label": "T02: Prove request-first observability surfaces expose outage and recovery truth",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M010:S04",
+      "label": "S04: Recovery verification and runbook proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M010/slices/S04/S04-PLAN.md"
+    },
+    {
+      "id": "task:M010:S04:T01",
+      "label": "T01: Add deterministic recovery transition proofs for governance and semantic-cache outages",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M010:S04:T02",
+      "label": "T02: Write the bounded M010 recovery proof walkthrough",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "slice:M010:S05",
+      "label": "S05: Integrated resilience proof",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M010/slices/S05/S05-PLAN.md"
+    },
+    {
+      "id": "task:M010:S05:T01",
+      "label": "T01: Author the integrated M010 resilience proof document",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M010:S05:T02",
+      "label": "T02: Wire M010 proof discoverability from entry docs",
       "type": "task",
       "confidence": "EXTRACTED"
     },
@@ -2124,6 +2200,78 @@
       "confidence": "EXTRACTED"
     },
     {
+      "from": "milestone:M010",
+      "to": "slice:M010:S02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S02",
+      "to": "task:M010:S02:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S02",
+      "to": "task:M010:S02:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M010",
+      "to": "slice:M010:S03",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S03",
+      "to": "task:M010:S03:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S03",
+      "to": "task:M010:S03:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M010",
+      "to": "slice:M010:S04",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S04",
+      "to": "task:M010:S04:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S04",
+      "to": "task:M010:S04:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "milestone:M010",
+      "to": "slice:M010:S05",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S05",
+      "to": "task:M010:S05:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S05",
+      "to": "task:M010:S05:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
       "from": "milestone:M009",
       "to": "decision:M009:1",
       "type": "relates_to",
@@ -2328,5 +2476,5 @@
       "confidence": "EXTRACTED"
     }
   ],
-  "builtAt": "2026-05-23T19:49:22.744Z"
+  "builtAt": "2026-05-23T20:38:31.164Z"
 }

@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-05-23T19:49:25Z | Files: 243 | Described: 0/243
-<!-- gsd:codebase-meta {"generatedAt":"2026-05-23T19:49:25Z","fingerprint":"a03d1ed87fc403c1244f0367eeff4e90d437a43d","fileCount":243,"truncated":false} -->
+Generated: 2026-05-23T20:37:45Z | Files: 247 | Described: 0/247
+<!-- gsd:codebase-meta {"generatedAt":"2026-05-23T20:37:45Z","fingerprint":"6d13b65ff12a2f1ba0752b07d4a5d24047549384","fileCount":247,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`
@@ -13,7 +13,9 @@ Generated: 2026-05-23T19:49:25Z | Files: 243 | Described: 0/243
 - `docker-compose.selfhosted.yml`
 - `docker-compose.yml`
 - `Dockerfile`
+- `guion_nebula.docx`
 - `Makefile`
+- `nebula_presentacion.pptx`
 - `pyproject.toml`
 - `README.md`
 
@@ -191,7 +193,7 @@ Generated: 2026-05-23T19:49:25Z | Files: 243 | Described: 0/243
 - `deploy/selfhosted.env.example`
 
 ### docs/
-- *(24 files: 23 .md, 1 .json)*
+- *(25 files: 24 .md, 1 .json)*
 
 ### migrations/
 - `migrations/env.py`
@@ -251,6 +253,7 @@ Generated: 2026-05-23T19:49:25Z | Files: 243 | Described: 0/243
 - `src/nebula/models/heartbeat.py`
 - `src/nebula/models/hosted_contract.py`
 - `src/nebula/models/openai.py`
+- `src/nebula/models/resilience.py`
 
 ### src/nebula/observability/
 - `src/nebula/observability/__init__.py`

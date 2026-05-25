@@ -227,7 +227,7 @@ describe("ObservabilityPage", () => {
     expect(selectedRequestText.indexOf("req-integrated-001")).toBeGreaterThanOrEqual(0);
     expect(selectedRequestText.indexOf("Routing inspection")).toBeGreaterThanOrEqual(0);
     expect(followUpText.indexOf("Review cache aging window")).toBeGreaterThanOrEqual(0);
-    expect(followUpText.indexOf("Dependency health context")).toBeGreaterThanOrEqual(0);
+    expect((container.firstElementChild?.textContent ?? "").indexOf("Dependency health context")).toBeGreaterThanOrEqual(0);
     expect(selectedRequestText.indexOf("req-integrated-001")).toBeLessThan(
       (container.firstElementChild?.textContent ?? "").indexOf("Dependency health context"),
     );

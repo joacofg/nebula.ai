@@ -23,7 +23,7 @@ function formatHealthLabel(value: string): string {
 }
 
 function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unknown]> {
-  return [
+  const metadata: Array<[string, unknown]> = [
     ["Dependency class", dependency.dependency_class],
     ["Lifecycle state", dependency.lifecycle_state],
     ["Serving effect", dependency.serving_effect],
@@ -39,7 +39,9 @@ function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unkn
     ["Eligible rows", dependency.last_eligible_count],
     ["Last cutoff", dependency.last_cutoff],
     ["Last error", dependency.last_error],
-  ].filter(([, value]) => value !== undefined);
+  ];
+
+  return metadata.filter(([, value]) => value !== undefined);
 }
 
 export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCardsProps) {
