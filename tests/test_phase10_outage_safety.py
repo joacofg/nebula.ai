@@ -14,6 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from nebula.db.models import DeploymentModel
 from nebula.models.deployment import EnrollmentExchangeResponse
 from nebula.providers.base import CompletionResult
+from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from tests.support import (
     FakeCacheService,
     StubProvider,
@@ -162,6 +163,31 @@ class StatefulSemanticCacheService(FakeCacheService):
             last_failure_at=last_failure_at,
             last_recovery_at=last_recovery_at,
             extra={"enabled": True},
+        )
+
+
+
+class FailingPremiumProviderHealthService(PremiumProviderHealthService):
+    async def health_status(self) -> dict[str, object]:
+        return build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="degraded",
+            serving_effect="continuity_limited",
+            reason_code=DependencyHealthReason.PREMIUM_PROVIDER_UNAVAILABLE,
+            detail="Premium provider unavailable: injected outage.",
+            required=False,
+        )
+
+
+class HostedMetadataOnlyHealth:
+    async def health_status(self) -> dict[str, object]:
+        return build_dependency_health(
+            dependency_class="metadata_only",
+            lifecycle_state="degraded",
+            serving_effect="unaffected",
+            reason_code="hosted_metadata_unavailable",
+            detail="Hosted metadata service unavailable: injected outage.",
+            required=False,
         )
 
 
@@ -342,8 +368,66 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
     }
 
 
+
 @pytest.mark.asyncio
-async def test_governance_outage_fails_closed_across_request_and_health() -> None:
+async def test_premium_provider_outage_keeps_local_serving_and_reports_degraded_truth() -> None:
+    async with configured_outage_client() as (app, client, _deployment_id):
+        app.state.container.runtime_health_service.premium_provider_health = (
+            FailingPremiumProviderHealthService(app.state.container.settings)
+        )
+
+        response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": "Premium provider outage should not block unrelated healthy local serving",
+                    }
+                ],
+            },
+        )
+        readiness = await client.get("/health/ready")
+        dependencies = await client.get("/health/dependencies")
+
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["message"]["content"] == "local outage-safe response"
+    assert response.headers["X-Nebula-Route-Target"] == "local"
+    assert response.headers["X-Nebula-Fallback-Used"] == "false"
+
+    assert readiness.status_code == 200
+    assert readiness.json()["status"] == "degraded"
+    assert readiness.json()["dependencies"]["premium_provider"] == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Premium provider unavailable: injected outage.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "premium_provider_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+    }
+
+    assert dependencies.status_code == 200
+    assert dependencies.json()["status"] == "degraded"
+    assert dependencies.json()["dependencies"]["premium_provider"] == {
+        "status": "degraded",
+        "required": False,
+        "detail": "Premium provider unavailable: injected outage.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "premium_provider_unavailable",
+        "recovering": False,
+        "last_failure_at": None,
+        "last_recovery_at": None,
+    }
+
+
     async with configured_outage_client() as (app, client, _deployment_id):
         failing_store = StatefulGovernanceStore(app.state.container.governance_store)
         failing_store.set_outage()
@@ -608,6 +692,10 @@ async def test_hosted_outage_keeps_chat_completion_serving_and_readiness_green(
     caplog.set_level(logging.WARNING)
 
     async with configured_outage_client() as (app, client, _deployment_id):
+        app.state.container.heartbeat_service._http_transport = _hosted_outage_transport()
+        app.state.container.remote_management_service._http_transport = _hosted_outage_transport()
+        app.state.container.runtime_health_service.hosted_exporter = HostedMetadataOnlyHealth()
+
         await app.state.container.heartbeat_service._send_once()
         await app.state.container.remote_management_service.poll_and_apply_once()
 
@@ -625,12 +713,16 @@ async def test_hosted_outage_keeps_chat_completion_serving_and_readiness_green(
             },
         )
         readiness = await client.get("/health/ready")
+        dependencies = await client.get("/health/dependencies")
 
     assert response.status_code == 200
     assert response.headers["X-Nebula-Route-Target"] == "local"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert readiness.status_code == 200
     assert readiness.json()["status"] in {"ready", "degraded"}
+    assert dependencies.status_code == 200
+    assert dependencies.json()["status"] in {"ready", "degraded"}
+    assert "hosted_exporter" not in dependencies.json()["dependencies"]
     assert "Heartbeat failed:" in caplog.text
     assert "Remote management poll/apply failed:" in caplog.text
 

@@ -26,6 +26,9 @@
 - [x] **S05: S05** `risk:low` `depends:[]`
   > After this: After this: one integrated proof shows outage trigger, degraded runtime truth, operator inspection, and successful recovery confirmation in a pointer-first review path with anti-sprawl boundaries locked.
 
+- [x] **S06: S06** `risk:low` `depends:[]`
+  > After this: After this: M010 explicitly proves premium-provider and hosted-metadata outage behavior on existing runtime truth surfaces, closing the remaining R087 validation gap without adding new product surface area.
+
 ## Boundary Map
 
 ### S01 → S02

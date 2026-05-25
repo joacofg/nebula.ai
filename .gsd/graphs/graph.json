@@ -1062,6 +1062,25 @@
       "confidence": "EXTRACTED"
     },
     {
+      "id": "slice:M010:S06",
+      "label": "S06: S06",
+      "type": "slice",
+      "confidence": "EXTRACTED",
+      "sourceFile": "milestones/M010/slices/S06/S06-PLAN.md"
+    },
+    {
+      "id": "task:M010:S06:T01",
+      "label": "T01: Add premium-provider and hosted-metadata outage proofs",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "id": "task:M010:S06:T02",
+      "label": "T02: Update resilience proof references for full R087 coverage",
+      "type": "task",
+      "confidence": "EXTRACTED"
+    },
+    {
       "id": "decision:M009:1",
       "label": "Kept one shared backend contract for recent tenant-scoped outcome evidence and route-score factors across runtime routing, replay, persistence, and operator evidence so live decisions, simulations, and request-level explanations stay aligned.",
       "type": "decision",
@@ -2272,6 +2291,24 @@
       "confidence": "EXTRACTED"
     },
     {
+      "from": "milestone:M010",
+      "to": "slice:M010:S06",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S06",
+      "to": "task:M010:S06:T01",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
+      "from": "slice:M010:S06",
+      "to": "task:M010:S06:T02",
+      "type": "contains",
+      "confidence": "EXTRACTED"
+    },
+    {
       "from": "milestone:M009",
       "to": "decision:M009:1",
       "type": "relates_to",
@@ -2476,5 +2513,5 @@
       "confidence": "EXTRACTED"
     }
   ],
-  "builtAt": "2026-05-23T20:38:31.164Z"
+  "builtAt": "2026-05-25T13:31:22.870Z"
 }
