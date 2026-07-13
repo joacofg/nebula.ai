@@ -14,10 +14,49 @@ from nebula.benchmarking.dataset import (
 )
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.benchmarking.run import BenchmarkResult, BenchmarkRunner
+from nebula.core.config import Settings
+from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionUsage
+from nebula.services.router_service import RouterService
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.mark.asyncio
+async def test_auto_heuristic_scenarios_expect_reasons_the_router_emits() -> None:
+    """Guard against route-reason vocabulary drift.
+
+    The heuristic auto routes (cold simple, complex) get their route_reason
+    straight from RouterService. M006 unified those reasons to "token_complexity";
+    a scenarios.jsonl expecting a retired reason (e.g. "simple_prompt",
+    "complexity_hint") would silently fail every benchmark run. This pins the
+    eval expectations to what the router actually produces — no live services.
+    """
+    scenarios = load_scenarios(PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl")
+    router = RouterService(Settings())
+
+    heuristic = [s for s in scenarios if s.mode in {"auto_simple_cold", "auto_complex"}]
+    assert heuristic, "expected auto heuristic scenarios in the dataset"
+
+    for scenario in heuristic:
+        prompt = "\n".join(
+            str(m["content"])
+            for m in scenario.messages
+            if m.get("role") == "user" and isinstance(m.get("content"), str)
+        )
+        decision = await router.choose_target_with_reason(
+            prompt,
+            ChatCompletionRequest(model="nebula-auto", messages=scenario.messages),
+        )
+        assert decision.reason == scenario.expect.route_reason, (
+            f"{scenario.id}: router emits {decision.reason!r}, "
+            f"scenario expects {scenario.expect.route_reason!r}"
+        )
+        assert decision.target == scenario.expect.route_target, (
+            f"{scenario.id}: router targets {decision.target!r}, "
+            f"scenario expects {scenario.expect.route_target!r}"
+        )
 
 
 def test_load_scenarios_and_group_by_expected_order() -> None:
