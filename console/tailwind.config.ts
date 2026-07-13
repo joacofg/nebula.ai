@@ -21,7 +21,7 @@ const config: Config = {
         border: "rgb(var(--color-border) / <alpha-value>)",
       },
       boxShadow: {
-        panel: "0 18px 60px rgba(2, 6, 23, 0.12)",
+        panel: "0 4px 20px rgba(2, 6, 23, 0.07)",
       },
     },
   },
