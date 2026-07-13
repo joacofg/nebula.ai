@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-fira-sans)", "sans-serif"],
+        mono: ["var(--font-fira-code)", "ui-monospace", "monospace"],
+      },
       colors: {
         panel: "rgb(var(--color-panel) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
