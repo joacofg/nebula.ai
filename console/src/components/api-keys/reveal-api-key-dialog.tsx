@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Check, Copy, KeyRound } from "lucide-react";
 
+import { useDialogDismiss } from "@/lib/use-dialog-dismiss";
+
 type RevealApiKeyDialogProps = {
   apiKey: string | null;
   open: boolean;
@@ -11,6 +13,8 @@ type RevealApiKeyDialogProps = {
 
 export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialogProps) {
   const [copied, setCopied] = useState(false);
+
+  useDialogDismiss(open, onClose);
 
   if (!open || !apiKey) {
     return null;
@@ -25,7 +29,7 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-      <div className="panel w-full max-w-xl px-6 py-6">
+      <div role="dialog" aria-modal="true" aria-label="Raw API key" className="panel w-full max-w-xl px-6 py-6">
         <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
           <KeyRound className="h-5 w-5" />
         </div>

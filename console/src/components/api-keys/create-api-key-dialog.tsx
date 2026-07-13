@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 
 import type { ApiKeyCreateInput, TenantRecord } from "@/lib/admin-api";
+import { useDialogDismiss } from "@/lib/use-dialog-dismiss";
 
 const API_KEYS_ENDPOINT = "/api/admin/api-keys";
 
@@ -44,6 +45,8 @@ export function CreateApiKeyDialog({
     setError(null);
   }, [open, selectedTenantId, tenants]);
 
+  useDialogDismiss(open, onClose);
+
   if (!open) {
     return null;
   }
@@ -78,7 +81,7 @@ export function CreateApiKeyDialog({
 
   return (
     <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm">
-      <div className="panel w-full max-w-2xl px-6 py-6">
+      <div role="dialog" aria-modal="true" aria-label="Create API key" className="panel w-full max-w-2xl px-6 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">New API key</div>

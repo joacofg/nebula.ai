@@ -2,6 +2,8 @@
 
 import { LoaderCircle } from "lucide-react";
 
+import { useDialogDismiss } from "@/lib/use-dialog-dismiss";
+
 type UnlinkConfirmationDialogProps = {
   open: boolean;
   isUnlinking: boolean;
@@ -15,13 +17,15 @@ export function UnlinkConfirmationDialog({
   onConfirm,
   onDismiss,
 }: UnlinkConfirmationDialogProps) {
+  useDialogDismiss(open, onDismiss);
+
   if (!open) {
     return null;
   }
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-sm">
-      <div className="panel w-full max-w-md px-6 py-6">
+      <div role="dialog" aria-modal="true" aria-label="Unlink this deployment?" className="panel w-full max-w-md px-6 py-6">
         <h3 className="font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
           Unlink this deployment?
         </h3>
