@@ -84,7 +84,7 @@ export function DeploymentTable({
                 >
                   <td className="border-b border-border/70 px-4 py-4 align-top">
                     <div className="font-semibold text-slate-950">{deployment.display_name}</div>
-                    <div className="mt-0.5 font-[var(--font-fira-code)] text-xs text-slate-400">
+                    <div className="mt-0.5 font-[var(--font-fira-code)] text-xs text-slate-500">
                       {deployment.id}
                     </div>
                   </td>
