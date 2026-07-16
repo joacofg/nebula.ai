@@ -28,12 +28,12 @@ function toPills(summary: DependencySummary): PillEntry[] {
 
 export function DependencyHealthPills({ summary }: DependencyHealthPillsProps) {
   if (summary === null) {
-    return <span className="text-sm text-slate-400">No data reported</span>;
+    return <span className="text-sm text-slate-500">No data reported</span>;
   }
 
   const pills = toPills(summary);
   if (pills.length === 0) {
-    return <span className="text-sm text-slate-400">No data reported</span>;
+    return <span className="text-sm text-slate-500">No data reported</span>;
   }
 
   return (

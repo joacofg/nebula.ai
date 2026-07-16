@@ -8,6 +8,10 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-fira-sans)", "sans-serif"],
+        mono: ["var(--font-fira-code)", "ui-monospace", "monospace"],
+      },
       colors: {
         panel: "rgb(var(--color-panel) / <alpha-value>)",
         surface: "rgb(var(--color-surface) / <alpha-value>)",
@@ -17,7 +21,7 @@ const config: Config = {
         border: "rgb(var(--color-border) / <alpha-value>)",
       },
       boxShadow: {
-        panel: "0 18px 60px rgba(2, 6, 23, 0.12)",
+        panel: "0 4px 20px rgba(2, 6, 23, 0.07)",
       },
     },
   },

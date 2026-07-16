@@ -96,7 +96,7 @@ export default function ApiKeysPage() {
           </p>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
             If a key authorizes exactly one tenant, Nebula can infer it. If a key intentionally authorizes multiple
-            tenants without a default tenant, public callers must send <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>
+            tenants without a default tenant, public callers must send <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>{" "}
             on each request.
           </p>
         </div>

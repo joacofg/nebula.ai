@@ -117,3 +117,4 @@ CLAUDE.md
 # ── GSD baseline (auto-generated) ──
 .mcp.json
 *.pyc
+.gstack/

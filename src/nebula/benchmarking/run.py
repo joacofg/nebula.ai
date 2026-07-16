@@ -34,6 +34,19 @@ DEFAULT_DATASET_PATH = PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl"
 DEFAULT_PRICING_PATH = PROJECT_ROOT / "benchmarks" / "pricing.json"
 DEFAULT_ARTIFACTS_ROOT = PROJECT_ROOT / "artifacts" / "benchmarks"
 
+# Managed-local runs are a self-contained routing + cost-avoidance proof, not a
+# premium-latency measurement. Pin the premium adapter to the deterministic mock
+# (overriding any openai_compatible creds an operator's .env may carry) so a clean
+# checkout reaches 14/14 with no network or API key. Routing, cache, fallback, and
+# cost-estimate assertions are unaffected (cost is computed from pricing.json, never
+# the provider bill). To benchmark a real premium provider, run a gateway with
+# NEBULA_PREMIUM_PROVIDER=openai_compatible and point the runner at it via --base-url.
+MANAGED_LOCAL_PREMIUM_OVERRIDES = {
+    "NEBULA_PREMIUM_PROVIDER": "mock",
+    "NEBULA_PREMIUM_BASE_URL": "",
+    "NEBULA_PREMIUM_API_KEY": "",
+}
+
 
 @dataclass(slots=True)
 class BenchmarkResult:
@@ -154,6 +167,7 @@ class BenchmarkRunner:
             async with ManagedServer(
                 port=normal_port,
                 env_overrides={
+                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
                     "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-normal",
                 },
             ) as normal_server:
@@ -168,6 +182,7 @@ class BenchmarkRunner:
             async with ManagedServer(
                 port=fallback_port,
                 env_overrides={
+                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
                     "NEBULA_OLLAMA_BASE_URL": "http://127.0.0.1:9",
                     "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-fallback",
                 },

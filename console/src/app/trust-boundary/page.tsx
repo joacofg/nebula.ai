@@ -126,7 +126,7 @@ export default function TrustBoundaryPage() {
           </div>
         </section>
 
-        <p className="mt-6 text-center text-xs text-slate-400">
+        <p className="mt-6 text-center text-xs text-slate-500">
           This page is public and accessible before authentication.
         </p>
       </div>

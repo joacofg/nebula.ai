@@ -61,7 +61,9 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
         </p>
       </div>
 
-      <form className="space-y-5 px-6 py-6" onSubmit={handleSubmit}>
+      {/* method="post" keeps the admin key out of the URL if the form ever
+          submits natively (e.g. before hydration), instead of a GET query string. */}
+      <form className="space-y-5 px-6 py-6" method="post" onSubmit={handleSubmit}>
         {helperMessage ? (
           <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
             {helperMessage}

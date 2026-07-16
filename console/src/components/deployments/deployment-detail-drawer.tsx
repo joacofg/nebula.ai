@@ -84,7 +84,7 @@ export function DeploymentDetailDrawer({
           <div className="text-sm text-slate-600">{deployment.freshness_reason}</div>
         ) : null}
         {deployment.last_seen_at ? (
-          <div className="font-[var(--font-fira-code)] text-xs text-slate-400">
+          <div className="font-[var(--font-fira-code)] text-xs text-slate-500">
             {dateFormatter.format(new Date(deployment.last_seen_at))}
           </div>
         ) : null}

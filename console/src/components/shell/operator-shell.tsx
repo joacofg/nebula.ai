@@ -42,7 +42,7 @@ export function OperatorShell({ children }: OperatorShellProps) {
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10"
+            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60"
             onClick={() => {
               signOut();
               router.push("/?reason=signed_out");
@@ -61,7 +61,7 @@ export function OperatorShell({ children }: OperatorShellProps) {
                 key={href}
                 href={href}
                 className={[
-                  "group inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition",
+                  "group inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300/60",
                   active
                     ? "bg-sky-500/15 text-white ring-1 ring-inset ring-sky-300/30"
                     : "text-slate-300 hover:bg-white/5 hover:text-white",

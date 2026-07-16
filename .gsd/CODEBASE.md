@@ -1,7 +1,7 @@
 # Codebase Map
 
-Generated: 2026-05-25T20:25:42Z | Files: 248 | Described: 0/248
-<!-- gsd:codebase-meta {"generatedAt":"2026-05-25T20:25:42Z","fingerprint":"4fdca1c516b4ea93ebe2579dad8df398328a3ecd","fileCount":248,"truncated":false} -->
+Generated: 2026-05-30T23:44:59Z | Files: 248 | Described: 0/248
+<!-- gsd:codebase-meta {"generatedAt":"2026-05-30T23:44:59Z","fingerprint":"4fdca1c516b4ea93ebe2579dad8df398328a3ecd","fileCount":248,"truncated":false} -->
 
 ### (root)/
 - `.dockerignore`

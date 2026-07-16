@@ -66,7 +66,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                           Current investigation
                         </span>
                       ) : (
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-400 transition group-hover:text-slate-500">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition group-hover:text-slate-600">
                           Select request
                         </span>
                       )}
