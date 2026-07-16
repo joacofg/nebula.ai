@@ -524,7 +524,12 @@ function DetailRow({
   return (
     <div className="rounded-2xl border border-border bg-white px-4 py-4">
       <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-      <dd className={["mt-2 text-sm text-slate-900", mono ? "font-[var(--font-fira-code)]" : ""].join(" ")}>
+      <dd
+        className={[
+          "mt-2 text-sm text-slate-900 [overflow-wrap:anywhere]",
+          mono ? "font-[var(--font-fira-code)]" : "",
+        ].join(" ")}
+      >
         {value}
       </dd>
     </div>
