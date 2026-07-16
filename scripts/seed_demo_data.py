@@ -65,29 +65,42 @@ CACHE_PROMPTS = [
 
 
 def ensure_governance(client: httpx.Client) -> None:
-    r = client.post(
-        f"{BASE}/v1/admin/tenants",
-        headers=ADMIN_HEADERS,
-        json={
-            "id": DEMO_TENANT_ID,
-            "name": "Acme Robotics",
-            "description": "Customer-support AI workloads (demo tenant)",
-            "metadata": {"plan": "growth", "region": "us-east"},
-            "active": True,
-        },
-    )
-    if r.status_code not in (201, 409):
+    r = client.get(f"{BASE}/v1/admin/tenants/{DEMO_TENANT_ID}", headers=ADMIN_HEADERS)
+    if r.status_code == 200:
+        print(f"tenant {DEMO_TENANT_ID}: exists")
+    elif r.status_code == 404:
+        r = client.post(
+            f"{BASE}/v1/admin/tenants",
+            headers=ADMIN_HEADERS,
+            json={
+                "id": DEMO_TENANT_ID,
+                "name": "Acme Robotics",
+                "description": "Customer-support AI workloads (demo tenant)",
+                "metadata": {"plan": "growth", "region": "us-east"},
+                "active": True,
+            },
+        )
         r.raise_for_status()
-    print(f"tenant {DEMO_TENANT_ID}: {'created' if r.status_code == 201 else 'exists'}")
+        print(f"tenant {DEMO_TENANT_ID}: created")
+    else:
+        r.raise_for_status()
 
-    r = client.post(
-        f"{BASE}/v1/admin/api-keys",
-        headers=ADMIN_HEADERS,
-        json={"name": "acme-demo-key", "tenant_id": DEMO_TENANT_ID, "key": DEMO_API_KEY},
+    r = client.get(f"{BASE}/v1/admin/api-keys", headers=ADMIN_HEADERS)
+    r.raise_for_status()
+    existing = any(
+        rec.get("name") == "acme-demo-key" and rec.get("tenant_id") == DEMO_TENANT_ID
+        for rec in r.json()
     )
-    if r.status_code not in (201, 409):
+    if existing:
+        print("api key acme-demo-key: exists")
+    else:
+        r = client.post(
+            f"{BASE}/v1/admin/api-keys",
+            headers=ADMIN_HEADERS,
+            json={"name": "acme-demo-key", "tenant_id": DEMO_TENANT_ID, "key": DEMO_API_KEY},
+        )
         r.raise_for_status()
-    print(f"api key acme-demo-key: {'created' if r.status_code == 201 else 'exists'}")
+        print("api key acme-demo-key: created")
 
 
 def send(client: httpx.Client, prompt: str) -> str:
