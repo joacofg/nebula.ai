@@ -74,11 +74,11 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
               </div>
               <p className="mt-2 text-sm text-slate-600">{dependency.detail}</p>
               {metrics.length > 0 ? (
-                <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+                <dl className="mt-4 grid gap-3">
                   {metrics.map(([label, value]) => (
                     <div key={`${name}-${label}`} className="rounded-xl border border-border bg-slate-50 px-4 py-3">
                       <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">
                         {typeof value === "string" ? formatHealthLabel(value) : formatHealthValue(value)}
                       </dd>
                     </div>
