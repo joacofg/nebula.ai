@@ -1027,13 +1027,12 @@ async def test_policy_simulation_uses_shared_tenant_window_outcome_evidence_for_
     assert response.calibration_summary.state == "sufficient"
     assert response.summary.evaluated_rows == 5
     assert response.summary.changed_routes == 1
-    assert [item.request_id for item in response.changed_requests] == [
-        "req-calibrated-0",
-        "req-calibrated-1",
-        "req-calibrated-2",
-        "req-calibrated-3",
-        "req-calibrated-4",
-    ]
+    # Only record 0 flips premium -> local; records 1-4 replay to full parity
+    # (local -> local, cost 0.0 -> 0.0) and so are not part of the changed sample.
+    # That the shared summary is reused across all five replayed rows is proven by
+    # evaluated_rows == 5 against a single calibration_summary_calls entry above,
+    # not by padding the changed sample with unchanged rows.
+    assert [item.request_id for item in response.changed_requests] == ["req-calibrated-0"]
     route_flip = response.changed_requests[0]
     assert route_flip.baseline_route_target == "premium"
     assert route_flip.simulated_route_target == "local"

@@ -227,13 +227,39 @@ class PolicySimulationService:
         baseline_target = self._baseline_target(record)
         if baseline_target != simulated_target:
             return True
-        if (record.policy_outcome or "") != evaluation.policy_outcome:
+        if self._policy_outcome_without_evidence(
+            record.policy_outcome or ""
+        ) != self._policy_outcome_without_evidence(evaluation.policy_outcome):
             return True
         baseline_cost = (record.estimated_cost or 0.0) if baseline_target == "premium" else 0.0
         simulated_cost = evaluation.projected_premium_cost or 0.0
         if round(baseline_cost, 8) != round(simulated_cost, 8):
             return True
         return False
+
+    @staticmethod
+    def _policy_outcome_without_evidence(policy_outcome: str) -> str:
+        """Drop the outcome_evidence segment before diffing two policy outcomes.
+
+        Simulation answers "would this candidate policy have routed differently".
+        The evidence summary is recomputed from the tenant's *current* window at
+        replay time, so it never matches the segment persisted on a historical
+        ledger row. Leaving it in the comparison flags rows whose route, mode,
+        and cost are identical, which is noise the operator cannot act on.
+        """
+        if not policy_outcome:
+            return ""
+        remaining = ";".join(
+            part
+            for part in policy_outcome.split(";")
+            if part and not part.startswith("outcome_evidence=")
+        )
+        # PolicyService only falls back to the "default" sentinel when nothing else
+        # was annotated, and it applies that fallback *after* attaching evidence. So
+        # a live evaluation with no policy action reads "outcome_evidence=..." while
+        # the historical row for the same non-action reads "default". Collapsing an
+        # evidence-only outcome back to the sentinel keeps those two comparable.
+        return remaining or "default"
 
     def _route_parity_from_record(self, record: UsageLedgerRecord) -> dict[str, str | bool | float | None]:
         route_signals = record.route_signals or {}
