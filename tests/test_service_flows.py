@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -967,8 +967,8 @@ async def test_governance_store_calibration_summary_is_tenant_and_window_scoped(
 
     summary = store.summarize_calibration_evidence(
         tenant_id="default",
-        from_timestamp=now.replace(second=max(0, now.second - 1)),
-        to_timestamp=now.replace(second=min(59, now.second + 1)),
+        from_timestamp=now - timedelta(seconds=1),
+        to_timestamp=now + timedelta(seconds=1),
         now=now,
     )
 
@@ -1416,8 +1416,8 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
         tenant_context=tenant_context(),
         payload=PolicySimulationRequest(
             candidate_policy=TenantPolicy(),
-            from_timestamp=now.replace(second=max(0, now.second - 1)),
-            to_timestamp=now.replace(second=min(59, now.second + 1)),
+            from_timestamp=now - timedelta(seconds=1),
+            to_timestamp=now + timedelta(seconds=1),
             limit=10,
             changed_sample_limit=10,
         ),
