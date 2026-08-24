@@ -191,6 +191,28 @@ class HostedMetadataOnlyHealth:
         )
 
 
+class ReachableLocalOllamaHealth:
+    """Pins local_ollama to ready.
+
+    /health/ready reports "degraded" when ANY dependency is degraded
+    (runtime_health_service.py:66). A test that asserts the overall status
+    flips to "ready" therefore has to hold every other dependency steady, or
+    it silently measures the host instead of the code: with a live Ollama on
+    :11434 it passes, and on a machine without one (CI) it fails with
+    `assert 'degraded' == 'ready'`.
+    """
+
+    async def health_status(self) -> dict[str, object]:
+        return build_dependency_health(
+            dependency_class="serving_optional",
+            lifecycle_state="ready",
+            serving_effect="continuity_limited",
+            reason_code=DependencyHealthReason.LOCAL_OLLAMA_READY,
+            detail="Local Ollama endpoint is reachable.",
+            required=False,
+        )
+
+
 class StatefulGovernanceStore:
     def __init__(self, delegate, detail: str = "Governance store query failed: injected outage") -> None:
         self.delegate = delegate
@@ -584,6 +606,9 @@ async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_read
         app.state.container.cache_service = cache_service
         app.state.container.chat_service.cache_service = cache_service
         app.state.container.runtime_health_service.semantic_cache = cache_service
+        app.state.container.runtime_health_service.embeddings_service = (
+            ReachableLocalOllamaHealth()
+        )
 
         outage_response = await client.post(
             "/v1/chat/completions",
