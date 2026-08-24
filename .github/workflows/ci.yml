@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# A new push to the same ref makes the in-flight run irrelevant.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (ruff + pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      # `make setup` is the documented bootstrap: it builds .venv, installs
+      # [dev], and seeds .env from .env.example. That last step is not optional
+      # here -- nine tests read settings that only exist once .env is present,
+      # and a runner without it goes red for reasons unrelated to the change.
+      # PYTHON_BOOTSTRAP is overridden because setup-python puts the
+      # interpreter on PATH as `python`, not necessarily as `python3.12`.
+      - name: Bootstrap
+        run: make setup PYTHON_BOOTSTRAP=python
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+  console:
+    name: console (tsc + eslint + vitest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: console
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: console/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      # Typecheck is a first-class gate, not a side effect of `next build`.
+      # 27 type errors sat in this repo unnoticed because nothing ever ran
+      # tsc; ten were in production code reading TenantPolicy fields that the
+      # type did not declare.
+      - name: Typecheck
+        run: npx tsc --noEmit -p tsconfig.json
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm run test -- --run
