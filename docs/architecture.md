@@ -14,7 +14,7 @@ Nebula is a self-hosted gateway that routes LLM traffic across local, cached, fa
 4. The response returns route metadata in the `X-Nebula-*` header contract.
 5. Usage and outcome details are persisted so operators can inspect them later in the usage ledger and console.
 
-Nebula also exposes a narrow public embeddings surface at `POST /v1/embeddings`. The canonical request/response, evidence, and exclusion contract for that path lives in [`docs/embeddings-adoption-contract.md`](embeddings-adoption-contract.md); this architecture guide intentionally does not restate those details. For the minimal-change caller walkthrough that proves how an OpenAI-style embeddings integration moves onto that path, see [`docs/embeddings-reference-migration.md`](embeddings-reference-migration.md). For the joined final proof order from public request to `X-Request-ID`/`X-Nebula-*` headers to usage-ledger correlation and Observability corroboration, see [`docs/embeddings-integrated-adoption-proof.md`](embeddings-integrated-adoption-proof.md). For the pointer-only decisioning review path that assembles simulation replay, hard guardrails, bounded recommendations, cache controls, Observability corroboration, and benchmark evidence without widening product scope, see [`docs/v4-integrated-proof.md`](v4-integrated-proof.md). For the calibrated-routing close-out review path that joins `docs/route-decision-vocabulary.md`, one public `POST /v1/chat/completions` response, `X-Request-ID`/`X-Nebula-*` correlation, `GET /v1/admin/usage/ledger?request_id=...`, `POST /v1/admin/tenants/{tenant_id}/policy/simulate`, and selected-request-first Observability inspection without redefining those seams, see [`docs/m006-integrated-proof.md`](m006-integrated-proof.md). For the operator-surface close-out review path that keeps one selected request authoritative, uses request detail as the primary evidence seam, and treats policy preview as an explicit compare-before-save step without dashboard drift, see [`docs/m007-integrated-proof.md`](m007-integrated-proof.md). For the governance close-out review path that keeps tenant policy first, treats one persisted row and request detail as the primary historical evidence while it exists, ties deletion to persisted `evidence_expires_at`, and leaves hosted metadata-only instead of authoritative, see [`docs/m008-integrated-proof.md`](m008-integrated-proof.md). For the integrated M009 close-out review path that keeps one public request, its persisted evidence, replay parity, and selected-request-first operator inspection aligned for both a happy path and a degraded path, see [`docs/m009-integrated-proof.md`](m009-integrated-proof.md). For the resilience close-out review path that joins outage truth, operator corroboration, and recovery confirmation on the existing health and Observability surfaces without adding a new resilience product surface, see [`docs/m010-integrated-proof.md`](m010-integrated-proof.md).
+Nebula also exposes a narrow public embeddings surface at `POST /v1/embeddings`. It follows the same auth, routing, and evidence seams as the chat-completions path.
 
 ## Runtime components
 
@@ -59,7 +59,7 @@ The Next.js console is a separate service that proxies same-origin browser traff
 
 The Playground is intentionally distinct from the public `POST /v1/chat/completions` adoption contract. It is an admin-only inspection surface, not the public client integration path, and the tested milestone boundary keeps it non-streaming.
 
-For the canonical operator/application split and the current tenant-versus-app/workload model, see [production-model.md](production-model.md). For the supported first-request flow, see [quickstart.md](quickstart.md).
+For the supported first-request flow, see [quickstart.md](quickstart.md).
 
 ## Benchmark harness
 
@@ -96,8 +96,7 @@ Nebula's operator-facing proof depends on two views working together:
 
 - Playground shows immediate route, provider, fallback, and latency metadata for a live request
 - Observability shows dependency health and recorded usage-ledger evidence after the fact
-- Embeddings adopters should use the canonical [`docs/embeddings-adoption-contract.md`](embeddings-adoption-contract.md) when they need the exact `POST /v1/embeddings` evidence surface, supported behavior, and explicit exclusions
-- The pointer-only joined walkthrough in [`docs/embeddings-integrated-adoption-proof.md`](embeddings-integrated-adoption-proof.md) is the discoverability layer for following one embeddings request through public headers, `GET /v1/admin/usage/ledger?request_id=...`, and Observability corroboration without redefining the contract
+- Embeddings requests surface the same public headers and usage-ledger evidence, correlated through `GET /v1/admin/usage/ledger?request_id=...`
 
 That split matters: the immediate response proves what just happened, while the usage ledger proves what the system persisted and can explain later.
 
@@ -129,4 +128,4 @@ That topology runs:
 - PostgreSQL
 - Qdrant
 
-See [self-hosting.md](self-hosting.md) for the canonical runbook, [quickstart.md](quickstart.md) for the supported adoption flow, and [adoption-api-contract.md](adoption-api-contract.md) for the public `POST /v1/chat/completions` compatibility boundary.
+See [self-hosting.md](self-hosting.md) for the canonical runbook and [quickstart.md](quickstart.md) for the supported adoption flow.

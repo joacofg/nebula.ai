@@ -2,7 +2,7 @@
 
 This document is the canonical deployment runbook for Nebula pilot onboarding. There is one supported self-hosted path: `docker-compose.selfhosted.yml` plus `deploy/selfhosted.env.example`.
 
-Use [`quickstart.md`](quickstart.md) for the first successful public request after deployment, and [`production-model.md`](production-model.md) for the tenant, API-key, operator, app, and workload boundaries behind that flow.
+Use [`quickstart.md`](quickstart.md) for the first successful public request after deployment.
 
 Local development is useful for coding, but it is not a second supported production-ish topology.
 
@@ -54,7 +54,7 @@ The supported self-hosted profile is already encoded in the template:
 
 `NEBULA_ADMIN_API_KEY` is required for the operator console login flow.
 
-For the supported first request and credential split, continue with [`quickstart.md`](quickstart.md). For when `X-Nebula-Tenant-ID` is required and how tenant-scoped keys differ from bootstrap access, see [`production-model.md`](production-model.md).
+For the supported first request and credential split, continue with [`quickstart.md`](quickstart.md).
 
 ## Start the supported stack
 
@@ -135,8 +135,6 @@ Richer diagnostics beyond the default export are operator-initiated exceptions, 
 
 - [README](../README.md)
 - [Quickstart](quickstart.md)
-- [Production model](production-model.md)
-- [Adoption API contract](adoption-api-contract.md)
 - [Architecture](architecture.md)
 - [Evaluation](evaluation.md)
-- [Demo script](demo-script.md)
+- [Demo runbook](demo-runbook.md)
