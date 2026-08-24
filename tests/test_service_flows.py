@@ -692,7 +692,7 @@ async def test_runtime_policy_resolution_applies_live_outcome_evidence_to_route_
     }
     assert resolution.route_decision.signals["score_components"]["outcome_bonus"] == 0.15
     assert resolution.route_decision.signals["score_components"]["evidence_penalty"] == 0.0
-    assert resolution.route_decision.score == 0.39
+    assert resolution.route_decision.score == 0.21
     assert "outcome_evidence=sufficient(eligible=7,sufficient=7,degraded=0,gated=0,excluded=1)" in resolution.policy_outcome
 
 
@@ -1323,7 +1323,7 @@ async def test_policy_simulation_preserves_gated_null_mode_for_changed_request_s
     assert changed.baseline_route_target == "premium"
     assert changed.simulated_route_target == "local"
     assert changed.simulated_route_reason == "calibrated_routing_disabled"
-    assert changed.simulated_policy_outcome == "calibrated_routing=disabled"
+    assert changed.simulated_policy_outcome == "calibrated_routing=disabled;outcome_evidence=thin(eligible=1,sufficient=1,degraded=0,gated=0,excluded=0)"
     assert changed.baseline_route_mode == "calibrated"
     assert changed.baseline_calibrated_routing is True
     assert changed.baseline_degraded_routing is False

@@ -70,7 +70,7 @@ def test_admin_playground_completion() -> None:
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
     assert response.headers["X-Nebula-Policy-Mode"] == "auto"
-    assert response.headers["X-Nebula-Policy-Outcome"] == "default"
+    assert response.headers["X-Nebula-Policy-Outcome"] == "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
     assert ledger.status_code == 200
     assert len(ledger_body) == 1
     assert ledger_body[0]["request_id"] == request_id

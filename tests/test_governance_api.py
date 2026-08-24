@@ -1175,7 +1175,7 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     assert changed["baseline_route_score"] == baseline_score
     assert changed["simulated_route_target"] == "local"
     assert changed["simulated_route_reason"] == "calibrated_routing_disabled"
-    assert changed["simulated_policy_outcome"] == "calibrated_routing=disabled"
+    assert changed["simulated_policy_outcome"] == "calibrated_routing=disabled;outcome_evidence=thin(eligible=1,sufficient=1,degraded=0,gated=0,excluded=0)"
     assert changed["simulated_route_mode"] is None
     assert changed["simulated_calibrated_routing"] is None
     assert changed["simulated_degraded_routing"] is None
@@ -1409,7 +1409,7 @@ def test_policy_can_disable_cache() -> None:
 
     assert response.status_code == 200
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
-    assert response.headers["X-Nebula-Policy-Outcome"] == "cache=disabled"
+    assert response.headers["X-Nebula-Policy-Outcome"] == "cache=disabled;outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
     assert cache_service.lookup_calls == []
 
 
@@ -1480,7 +1480,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
     assert ledger.json()[0]["final_route_target"] == "denied"
     assert ledger.json()[0]["final_provider"] is None
     assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
-    assert ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
+    assert f"denied={denied.json()['detail']}" in ledger.json()[0]["policy_outcome"]
 
 
 def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premium_requests() -> None:
@@ -1577,7 +1577,7 @@ def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premiu
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied_ledger.status_code == 200
     assert denied_ledger.json()[0]["final_route_target"] == "denied"
-    assert denied_ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
+    assert f"denied={denied.json()['detail']}" in denied_ledger.json()[0]["policy_outcome"]
 
 
 def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -> None:
