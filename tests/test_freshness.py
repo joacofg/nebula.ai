@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-import pytest
 
 from nebula.services.heartbeat_ingest_service import compute_freshness
 

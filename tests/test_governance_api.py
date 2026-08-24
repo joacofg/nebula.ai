@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from nebula.db.models import UsageLedgerModel
@@ -593,14 +595,11 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
                 headers=admin_headers(),
             )
 
-            cleanup = client.app.state.container
-            lifecycle_result = cleanup.retention_lifecycle_service
-            cleanup_result = client.app.state.container
-            cleanup = None
-            cleanup_run = client.app.state.container.retention_lifecycle_service.run_cleanup_once
-            import asyncio
-            cleanup = asyncio.run(cleanup_run(now=expired_record.evidence_expires_at))
-            lifecycle_health = asyncio.run(client.app.state.container.retention_lifecycle_service.health_status())
+            lifecycle_service = client.app.state.container.retention_lifecycle_service
+            cleanup = asyncio.run(
+                lifecycle_service.run_cleanup_once(now=expired_record.evidence_expires_at)
+            )
+            lifecycle_health = asyncio.run(lifecycle_service.health_status())
             ledger_after_cleanup = client.get(
                 "/v1/admin/usage/ledger?tenant_id=default&limit=10",
                 headers=admin_headers(),
@@ -651,6 +650,8 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
 
     assert cleanup["eligible_count"] == 1
     assert cleanup["deleted_count"] == 1
+    assert lifecycle_health["dependency_class"] == "metadata_only"
+    assert lifecycle_health["serving_effect"] == "unaffected"
     assert cleanup["cutoff"].isoformat() == store._normalize_comparable_datetime(
         expired_record.evidence_expires_at
     ).isoformat()
