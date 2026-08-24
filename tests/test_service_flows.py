@@ -1445,6 +1445,51 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
     assert empty_response.changed_requests == []
 
 
+@pytest.mark.asyncio
+async def test_policy_simulation_reports_rows_with_no_recorded_policy_outcome_as_changed() -> None:
+    """A ledger row with a NULL policy_outcome is not the same as one that recorded
+    the "default" sentinel: the first means nothing was recorded, the second means
+    the policy took no action. _policy_outcome_without_evidence normalizes an
+    evidence-only outcome to "default" so live and historical no-action rows
+    compare equal, and it deliberately stops short of extending that to NULL --
+    parity cannot be claimed for a row whose outcome was never written."""
+    settings = Settings()
+    now = datetime.now(UTC)
+    store = FakeSimulationGovernanceStore(
+        [
+            _ledger_record(
+                request_id="req-no-outcome",
+                timestamp=now,
+                tenant_id="default",
+                policy_outcome=None,
+                route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+            )
+        ]
+    )
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(
+            settings,
+            store,
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        ),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(), limit=10, changed_sample_limit=10
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert [item.request_id for item in response.changed_requests] == ["req-no-outcome"]
+    changed = response.changed_requests[0]
+    assert changed.baseline_policy_outcome is None
+    assert changed.baseline_route_target == changed.simulated_route_target == "local"
+
+
 def test_policy_simulation_response_model_is_bounded_and_comparison_first() -> None:
     response = PolicySimulationRequest(
         candidate_policy=TenantPolicy(),
