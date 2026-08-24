@@ -26,6 +26,13 @@ describe("playground-recorded-outcome", () => {
           terminal_status: "fallback_completed",
           route_reason: "fallback",
           policy_outcome: "allowed",
+          route_signals: null,
+          message_type: "chat",
+          evidence_retention_window: "30d",
+          evidence_expires_at: null,
+          metadata_minimization_level: "standard",
+          metadata_fields_suppressed: [],
+          governance_source: "tenant_policy",
         }}
       />,
     );

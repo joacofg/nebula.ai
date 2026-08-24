@@ -3,9 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { LedgerTable } from "@/components/ledger/ledger-table";
+import type { UsageLedgerRecord } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
 
-const baseRow = {
+const baseRow: UsageLedgerRecord = {
   request_id: "req-001",
   tenant_id: "default",
   requested_model: "text-embedding-3-small",
@@ -23,7 +24,14 @@ const baseRow = {
   terminal_status: "completed",
   route_reason: "embeddings_request",
   policy_outcome: "allowed",
-} as const;
+  route_signals: null,
+  message_type: "chat",
+  evidence_retention_window: "30d",
+  evidence_expires_at: null,
+  metadata_minimization_level: "standard",
+  metadata_fields_suppressed: [],
+  governance_source: "tenant_policy",
+};
 
 describe("ledger-table", () => {
   it("renders the usage-ledger columns and selects a row", async () => {

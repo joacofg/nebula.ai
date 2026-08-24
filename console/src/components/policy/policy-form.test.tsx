@@ -93,8 +93,8 @@ const baseSimulationResult: PolicySimulationResponse = {
 function renderPolicyForm({
   onSave = vi.fn().mockResolvedValue(undefined),
   onSimulate = vi.fn().mockResolvedValue(undefined),
-  simulationResult = null,
-  simulationError = null,
+  simulationResult = null as PolicySimulationResponse | null,
+  simulationError = null as string | null,
   isSimulating = false,
 } = {}) {
   return renderWithProviders(
@@ -303,6 +303,8 @@ describe("policy-form", () => {
           soft_budget_usd: null,
           prompt_capture_enabled: false,
           response_capture_enabled: false,
+      evidence_retention_window: "30d",
+      metadata_minimization_level: "standard",
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],
@@ -382,6 +384,8 @@ describe("policy-form", () => {
           soft_budget_usd: null,
           prompt_capture_enabled: false,
           response_capture_enabled: false,
+      evidence_retention_window: "30d",
+      metadata_minimization_level: "standard",
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],
@@ -431,6 +435,8 @@ describe("policy-form", () => {
           soft_budget_usd: null,
           prompt_capture_enabled: false,
           response_capture_enabled: false,
+      evidence_retention_window: "30d",
+      metadata_minimization_level: "standard",
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],

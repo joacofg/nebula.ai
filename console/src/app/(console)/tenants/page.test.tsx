@@ -27,9 +27,11 @@ const mockedListTenants = vi.mocked(listTenants);
 beforeEach(() => {
   mockedUseAdminSession.mockReturnValue({
     adminKey: "admin-key",
-    setAdminKey: vi.fn(),
-    clearAdminKey: vi.fn(),
-    status: "authenticated",
+    isAuthenticated: true,
+    isSigningIn: false,
+    signIn: vi.fn().mockResolvedValue(undefined),
+    signOut: vi.fn(),
+    clearSession: vi.fn(),
   });
 
   mockedListTenants.mockResolvedValue([
