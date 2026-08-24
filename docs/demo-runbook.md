@@ -11,7 +11,7 @@
    it here guarantees the demo starts from a known cache state — only the
    prompts the seed script sends will be cached — so Beats 2–3 route fresh
    (local / premium) instead of accidentally cache-hitting, and Beat 4
-   reliably cache-hits. A 404 resp  onse here just means the cache was already empty — that's fine.
+   reliably cache-hits. A 404 response here just means the cache was already empty — that's fine.
 4. `make run` (in its own terminal) — wait for "Application startup complete"; `curl -s localhost:8000/health/dependencies` all healthy.
 5. `make console-dev` (in its own terminal) — open http://localhost:3000, sign in with admin key.
    ⚠️ Session is memory-only: do NOT reload the tab mid-demo (you'd be logged out).
@@ -45,7 +45,7 @@ Acme Robotics: route mix, usage ledger, cost visibility. "Every request lands
 in a ledger — this is how an operator sees exactly what routing saved."
 
 **Beat 6 — under the hood (optional, terminal).**
-` curl -sD - localhost:8000/v1/chat/completions -H "Content-Type: application/json" -H "X-Nebula-API-Key: nebula-demo-acme-key" -d '{"model":"nebula-auto","messages":[{"role":"user","content":"What is a webhook, briefly?"}],"max_tokens":40}' -o /dev/null | grep -i x-nebula `
+`curl -sD - localhost:8000/v1/chat/completions -H "Content-Type: application/json" -H "X-Nebula-API-Key: nebula-demo-acme-key" -d '{"model":"nebula-auto","messages":[{"role":"user","content":"What is a webhook, briefly?"}],"max_tokens":40}' -o /dev/null | grep -i x-nebula`
 Note: this prompt is one of the seeded ones, so `x-nebula-route-target` will
 read **cache**, not local — that's expected and fine. The point of this beat
 isn't which tier it hits; it's the `X-Nebula-*` header block itself: "It's
