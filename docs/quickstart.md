@@ -2,7 +2,7 @@
 
 This document is Nebula's canonical happy-path quickstart for the supported self-hosted deployment.
 
-It shows how to configure real credentials, start the Compose stack, sign into the console as an operator, send a first public `POST /v1/chat/completions` request, and confirm success through the product's existing evidence surfaces. If you are migrating an existing caller after the first request works, continue with [`docs/reference-migration.md`](reference-migration.md). For the exact public API boundary, see [`docs/adoption-api-contract.md`](adoption-api-contract.md). For the runtime entity model behind the steps below, see [`docs/production-model.md`](production-model.md).
+It shows how to configure real credentials, start the Compose stack, sign into the console as an operator, send a first public `POST /v1/chat/completions` request, and confirm success through the product's existing evidence surfaces.
 
 ## Before you start
 
@@ -131,7 +131,7 @@ You do **not** need to send it when:
 
 If a multi-tenant key omits `X-Nebula-Tenant-ID`, Nebula rejects the request with `403` because the tenant is ambiguous.
 
-For the supported public request and response semantics, do not copy examples from the admin API. Use [`docs/adoption-api-contract.md`](adoption-api-contract.md) as the canonical contract.
+For the supported public request and response semantics, do not copy examples from the admin API.
 
 ## Send the first public chat-completions request
 
@@ -215,22 +215,14 @@ Use the console Observability views to inspect the request after the public call
 
 For this quickstart, Observability is the place to verify that the request shows up in the same operator-facing surfaces your team will use later for troubleshooting and governance review.
 
-If you want the single canonical walkthrough that ties the supported quickstart, the public route, `X-Nebula-*` / `X-Request-ID`, usage-ledger correlation, Playground corroboration, and Observability corroboration into one final path, continue with [`docs/integrated-adoption-proof.md`](integrated-adoption-proof.md). If you want the same proof focused specifically on operator-visible day-1 value after adoption succeeds, continue with [`docs/day-1-value.md`](day-1-value.md).
-
 ## What to do next
 
 Once the first request works:
 
-1. If you are replacing an existing OpenAI-style integration, use [`docs/reference-migration.md`](reference-migration.md) for the canonical before/after migration proof.
-2. Create tenant-specific API keys instead of sharing the bootstrap key broadly.
-3. Review tenant policy defaults and allowed premium models in the console.
-4. Use [`docs/production-model.md`](production-model.md) to align your team on operator versus application boundaries.
-5. Keep [`docs/adoption-api-contract.md`](adoption-api-contract.md) as the source of truth for public request/response behavior.
+1. Create tenant-specific API keys instead of sharing the bootstrap key broadly.
+2. Review tenant policy defaults and allowed premium models in the console.
 
 ## Related docs
 
-- [`docs/production-model.md`](production-model.md) — operating-model reference for tenant, API key, operator, app, and workload boundaries
-- [`docs/adoption-api-contract.md`](adoption-api-contract.md) — canonical public API contract
-- [`docs/reference-migration.md`](reference-migration.md) — canonical before/after migration proof grounded in `tests/test_reference_migration.py`
 - [`docs/self-hosting.md`](self-hosting.md) — supported Compose deployment runbook
 - [`docs/architecture.md`](architecture.md) — request flow, runtime components, trust boundary, and operator surfaces

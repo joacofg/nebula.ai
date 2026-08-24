@@ -52,11 +52,11 @@ describe("ledger-filters", () => {
     const user = userEvent.setup();
     const onRouteTargetChange = vi.fn();
 
-    renderWithProviders(
+    const filters = (routeTarget: string) => (
       <LedgerFilters
         tenants={[]}
         tenantId=""
-        routeTarget=""
+        routeTarget={routeTarget}
         terminalStatus=""
         fromTimestamp=""
         toTimestamp=""
@@ -66,12 +66,19 @@ describe("ledger-filters", () => {
         onFromTimestampChange={vi.fn()}
         onToTimestampChange={vi.fn()}
         onRefresh={vi.fn()}
-      />,
+      />
     );
+
+    const { rerender } = renderWithProviders(filters(""));
 
     await user.selectOptions(screen.getByRole("combobox", { name: "Route target" }), "embeddings");
 
     expect(onRouteTargetChange).toHaveBeenCalledWith("embeddings");
-    expect(screen.getByRole("option", { name: "embeddings" })).toBeSelected();
+    // The select is controlled by the routeTarget prop, so picking an option does
+    // not move it on its own; the parent owns the value and passes it back down.
+    expect(screen.getByRole("combobox", { name: "Route target" })).toHaveValue("");
+
+    rerender(filters("embeddings"));
+    expect(screen.getByRole("combobox", { name: "Route target" })).toHaveValue("embeddings");
   });
 });

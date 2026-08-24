@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import asyncio
+
 from fastapi.testclient import TestClient
 
 from nebula.db.models import UsageLedgerModel
@@ -593,14 +595,11 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
                 headers=admin_headers(),
             )
 
-            cleanup = client.app.state.container
-            lifecycle_result = cleanup.retention_lifecycle_service
-            cleanup_result = client.app.state.container
-            cleanup = None
-            cleanup_run = client.app.state.container.retention_lifecycle_service.run_cleanup_once
-            import asyncio
-            cleanup = asyncio.run(cleanup_run(now=expired_record.evidence_expires_at))
-            lifecycle_health = asyncio.run(client.app.state.container.retention_lifecycle_service.health_status())
+            lifecycle_service = client.app.state.container.retention_lifecycle_service
+            cleanup = asyncio.run(
+                lifecycle_service.run_cleanup_once(now=expired_record.evidence_expires_at)
+            )
+            lifecycle_health = asyncio.run(lifecycle_service.health_status())
             ledger_after_cleanup = client.get(
                 "/v1/admin/usage/ledger?tenant_id=default&limit=10",
                 headers=admin_headers(),
@@ -651,6 +650,8 @@ def test_governed_usage_ledger_cleanup_deletes_only_rows_with_persisted_expirati
 
     assert cleanup["eligible_count"] == 1
     assert cleanup["deleted_count"] == 1
+    assert lifecycle_health["dependency_class"] == "metadata_only"
+    assert lifecycle_health["serving_effect"] == "unaffected"
     assert cleanup["cutoff"].isoformat() == store._normalize_comparable_datetime(
         expired_record.evidence_expires_at
     ).isoformat()
@@ -937,7 +938,11 @@ def test_admin_policy_simulation_returns_summary_and_preserves_saved_policy() ->
     assert body["calibration_summary"]["degraded_reasons"] == [
         {"reason": "missing_route_signals", "count": 1},
     ]
-    assert len(body["changed_requests"]) == 4
+    # Two rows change: one is re-routed premium -> local, the other keeps its route
+    # but re-prices (estimated_cost 4.5e-06 -> 1.26e-05). A third row that replays to
+    # full parity is intentionally absent: see PolicySimulationService.
+    # _policy_outcome_without_evidence.
+    assert len(body["changed_requests"]) == 2
 
     local_row = local_ledger.json()[0]
     premium_row = premium_ledger.json()[0]
@@ -1175,7 +1180,7 @@ def test_admin_policy_simulation_can_disable_calibrated_routing_for_runtime_and_
     assert changed["baseline_route_score"] == baseline_score
     assert changed["simulated_route_target"] == "local"
     assert changed["simulated_route_reason"] == "calibrated_routing_disabled"
-    assert changed["simulated_policy_outcome"] == "calibrated_routing=disabled"
+    assert changed["simulated_policy_outcome"] == "calibrated_routing=disabled;outcome_evidence=thin(eligible=1,sufficient=1,degraded=0,gated=0,excluded=0)"
     assert changed["simulated_route_mode"] is None
     assert changed["simulated_calibrated_routing"] is None
     assert changed["simulated_degraded_routing"] is None
@@ -1265,22 +1270,25 @@ def test_admin_policy_simulation_supports_unchanged_and_empty_windows() -> None:
     assert unchanged_body["summary"]["evaluated_rows"] == 1
     assert unchanged_body["summary"]["changed_routes"] == 0
     assert unchanged_body["summary"]["newly_denied"] == 0
-    assert len(unchanged_body["changed_requests"]) == 1
-    changed = unchanged_body["changed_requests"][0]
-    assert changed["request_id"] == baseline_request_id == baseline_row["request_id"]
-    assert changed["baseline_route_target"] == changed["simulated_route_target"] == "local"
-    assert changed["baseline_route_reason"] == baseline.headers["X-Nebula-Route-Reason"] == baseline_row["route_reason"]
-    assert changed["simulated_route_reason"] == changed["baseline_route_reason"]
-    assert changed["baseline_route_mode"] == baseline.headers["X-Nebula-Route-Mode"] == baseline_row["route_signals"]["route_mode"]
-    assert changed["simulated_route_mode"] == changed["baseline_route_mode"]
-    assert changed["baseline_calibrated_routing"] == baseline_row["route_signals"]["calibrated_routing"] is True
-    assert changed["simulated_calibrated_routing"] == changed["baseline_calibrated_routing"]
-    assert changed["baseline_degraded_routing"] == baseline_row["route_signals"]["degraded_routing"] is False
-    assert changed["simulated_degraded_routing"] == changed["baseline_degraded_routing"]
-    assert changed["baseline_route_score"] == float(baseline.headers["X-Nebula-Route-Score"])
-    assert changed["baseline_route_score"] == baseline_row["route_signals"]["score_components"]["total_score"]
-    assert changed["simulated_route_score"] == changed["baseline_route_score"]
-    assert changed["baseline_policy_outcome"] != changed["simulated_policy_outcome"]
+    # Replaying a row against the policy it already ran under is a no-op, so the
+    # changed sample is empty. This assertion is the regression guard for
+    # PolicySimulationService._policy_outcome_without_evidence: before that,
+    # the recomputed outcome_evidence segment alone put this row in the sample,
+    # and the block below used to assert -- on that same row -- that every
+    # routing field matched its baseline.
+    assert unchanged_body["changed_requests"] == []
+
+    # The baseline row still has to correlate with the public headers it was
+    # served with. That correlation used to ride on the spurious changed row.
+    assert baseline_row["request_id"] == baseline_request_id
+    assert baseline_row["final_route_target"] == baseline.headers["X-Nebula-Route-Target"] == "local"
+    assert baseline_row["route_reason"] == baseline.headers["X-Nebula-Route-Reason"]
+    assert baseline_row["route_signals"]["route_mode"] == baseline.headers["X-Nebula-Route-Mode"]
+    assert baseline_row["route_signals"]["calibrated_routing"] is True
+    assert baseline_row["route_signals"]["degraded_routing"] is False
+    assert baseline_row["route_signals"]["score_components"]["total_score"] == float(
+        baseline.headers["X-Nebula-Route-Score"]
+    )
 
     assert empty.status_code == 200
     empty_body = empty.json()
@@ -1409,7 +1417,7 @@ def test_policy_can_disable_cache() -> None:
 
     assert response.status_code == 200
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
-    assert response.headers["X-Nebula-Policy-Outcome"] == "cache=disabled"
+    assert response.headers["X-Nebula-Policy-Outcome"] == "cache=disabled;outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
     assert cache_service.lookup_calls == []
 
 
@@ -1480,7 +1488,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
     assert ledger.json()[0]["final_route_target"] == "denied"
     assert ledger.json()[0]["final_provider"] is None
     assert ledger.json()[0]["route_reason"] == denied.headers["X-Nebula-Route-Reason"]
-    assert ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
+    assert f"denied={denied.json()['detail']}" in ledger.json()[0]["policy_outcome"]
 
 
 def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premium_requests() -> None:
@@ -1577,7 +1585,7 @@ def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premiu
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied_ledger.status_code == 200
     assert denied_ledger.json()[0]["final_route_target"] == "denied"
-    assert denied_ledger.json()[0]["policy_outcome"].endswith(denied.json()["detail"])
+    assert f"denied={denied.json()['detail']}" in denied_ledger.json()[0]["policy_outcome"]
 
 
 def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -> None:

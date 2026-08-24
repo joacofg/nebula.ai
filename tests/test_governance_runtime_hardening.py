@@ -8,9 +8,15 @@ from fastapi import HTTPException
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
-from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
+from nebula.models.governance import (
+    ApiKeyRecord,
+    CalibrationEvidenceSummary,
+    TenantPolicy,
+    TenantRecord,
+)
 from nebula.models.openai import ChatCompletionRequest
 from nebula.services.auth_service import AuthenticatedTenantContext
+from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.router_service import RouterService
 
@@ -18,14 +24,41 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 class FakeGovernanceStore:
-    def __init__(self, *, spend_total: float = 0.0) -> None:
+    def __init__(
+        self,
+        *,
+        spend_total: float = 0.0,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
+    ) -> None:
         self.spend_total = spend_total
         self.calls: list[tuple[str, datetime | None]] = []
+        self.evidence_summary = evidence_summary
+        self.evidence_summary_calls: list[str] = []
 
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
         self.calls.append((tenant_id, before_timestamp))
         return self.spend_total
+
+    def summarize_calibration_evidence(self, *, tenant_id: str) -> CalibrationEvidenceSummary:
+        assert tenant_id == "default"
+        self.evidence_summary_calls.append(tenant_id)
+        return self.evidence_summary or CalibrationEvidenceSummary(
+            tenant_id=tenant_id,
+            scope="tenant",
+            state="thin",
+            state_reason="No eligible calibrated routing evidence is available yet.",
+            generated_at=datetime.now(UTC),
+            latest_eligible_request_at=None,
+            latest_any_request_at=None,
+            eligible_request_count=0,
+            sufficient_request_count=0,
+            thin_request_threshold=GovernanceStore.CALIBRATION_THIN_REQUEST_THRESHOLD,
+            staleness_threshold_hours=GovernanceStore.CALIBRATION_STALENESS_THRESHOLD_HOURS,
+            excluded_request_count=0,
+            gated_request_count=0,
+            degraded_request_count=0,
+        )
 
 
 def _tenant_context(policy: TenantPolicy) -> AuthenticatedTenantContext:

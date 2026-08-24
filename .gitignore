@@ -90,20 +90,7 @@ target/
 vendor/
 
 # --- Project automation / generated state ---
-.gsd/activity/
-.gsd/runtime/
-.gsd/worktrees/
-.gsd/auto.lock
-.gsd/metrics.json
-.gsd/completed-units.json
-.gsd/STATE.md
-.gsd/gsd.db
-.gsd/gsd.db.*
-.gsd/doctor-history.jsonl
-.gsd/event-log.jsonl
-.gsd/notifications.jsonl
-.gsd/state-manifest.json
-.gsd/DISCUSSION-MANIFEST.json
+.gsd/
 .gsd-id
 
 # --- Misc logs ---

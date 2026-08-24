@@ -126,5 +126,5 @@ After running `make benchmark` or `make benchmark-demo`, check:
 
 - [README](../README.md)
 - [Architecture](architecture.md)
-- [Demo script](demo-script.md)
+- [Demo runbook](demo-runbook.md)
 - [Self-hosting](self-hosting.md)

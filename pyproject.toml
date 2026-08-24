@@ -42,3 +42,11 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+
+# Pinned explicitly so the lint gate does not move when ruff ships new
+# defaults. ruff 0.15 selected E4/E7/E9/F implicitly; 0.16 widened its default
+# set and turned this repo from clean into 175 findings without a line of code
+# changing. Adopting the wider set (SIM, B, I, BLE, UP, ...) is a real cleanup
+# worth doing on its own, not a side effect of whichever ruff CI resolved.
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]

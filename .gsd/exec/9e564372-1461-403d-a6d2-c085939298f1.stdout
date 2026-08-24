@@ -1,8 +1,0 @@
-src/nebula/services/runtime_health_service.py: statuses=['degraded', 'not_ready', 'ready'] required_field=True
-src/nebula/services/governance_store.py: statuses=['degraded', 'not_ready', 'ready'] required_field=True
-src/nebula/services/semantic_cache_service.py: statuses=['degraded', 'ready'] required_field=True
-src/nebula/services/premium_provider_health_service.py: statuses=['degraded', 'ready'] required_field=True
-src/nebula/services/embeddings_service.py: statuses=['degraded', 'ready'] required_field=True
-src/nebula/services/chat_service.py: statuses=['ok'] required_field=True
-src/nebula/main.py: statuses=['degraded', 'ok', 'ready'] required_field=False
-tests/test_health.py: statuses=['degraded', 'not_ready', 'ok', 'ready'] required_field=True

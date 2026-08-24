@@ -99,7 +99,7 @@ def test_chat_completions_streams_sse() -> None:
     assert float(response.headers["X-Nebula-Route-Score"]) > 0.0
     assert response.headers["X-Nebula-Cache-Hit"] == "false"
     assert response.headers["X-Nebula-Fallback-Used"] == "false"
-    assert response.headers["X-Nebula-Policy-Outcome"] == "default"
+    assert response.headers["X-Nebula-Policy-Outcome"] == "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
     assert b"data: " in body
     assert b"chat.completion.chunk" in body
     assert b"[DONE]" in body

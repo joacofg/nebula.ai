@@ -15,7 +15,18 @@ test("operator can create, reveal once, and revoke an API key", async ({ page })
     },
   ];
 
-  const apiKeys = [
+  type ApiKeyFixture = {
+    id: string;
+    name: string;
+    key_prefix: string;
+    tenant_id: string;
+    allowed_tenant_ids: string[];
+    revoked_at: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+
+  const apiKeys: ApiKeyFixture[] = [
     {
       id: "key-1",
       name: "Bootstrap key",

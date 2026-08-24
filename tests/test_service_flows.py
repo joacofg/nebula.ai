@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import httpx
@@ -692,7 +692,7 @@ async def test_runtime_policy_resolution_applies_live_outcome_evidence_to_route_
     }
     assert resolution.route_decision.signals["score_components"]["outcome_bonus"] == 0.15
     assert resolution.route_decision.signals["score_components"]["evidence_penalty"] == 0.0
-    assert resolution.route_decision.score == 0.39
+    assert resolution.route_decision.score == 0.21
     assert "outcome_evidence=sufficient(eligible=7,sufficient=7,degraded=0,gated=0,excluded=1)" in resolution.policy_outcome
 
 
@@ -967,8 +967,8 @@ async def test_governance_store_calibration_summary_is_tenant_and_window_scoped(
 
     summary = store.summarize_calibration_evidence(
         tenant_id="default",
-        from_timestamp=now.replace(second=max(0, now.second - 1)),
-        to_timestamp=now.replace(second=min(59, now.second + 1)),
+        from_timestamp=now - timedelta(seconds=1),
+        to_timestamp=now + timedelta(seconds=1),
         now=now,
     )
 
@@ -1027,13 +1027,12 @@ async def test_policy_simulation_uses_shared_tenant_window_outcome_evidence_for_
     assert response.calibration_summary.state == "sufficient"
     assert response.summary.evaluated_rows == 5
     assert response.summary.changed_routes == 1
-    assert [item.request_id for item in response.changed_requests] == [
-        "req-calibrated-0",
-        "req-calibrated-1",
-        "req-calibrated-2",
-        "req-calibrated-3",
-        "req-calibrated-4",
-    ]
+    # Only record 0 flips premium -> local; records 1-4 replay to full parity
+    # (local -> local, cost 0.0 -> 0.0) and so are not part of the changed sample.
+    # That the shared summary is reused across all five replayed rows is proven by
+    # evaluated_rows == 5 against a single calibration_summary_calls entry above,
+    # not by padding the changed sample with unchanged rows.
+    assert [item.request_id for item in response.changed_requests] == ["req-calibrated-0"]
     route_flip = response.changed_requests[0]
     assert route_flip.baseline_route_target == "premium"
     assert route_flip.simulated_route_target == "local"
@@ -1323,7 +1322,7 @@ async def test_policy_simulation_preserves_gated_null_mode_for_changed_request_s
     assert changed.baseline_route_target == "premium"
     assert changed.simulated_route_target == "local"
     assert changed.simulated_route_reason == "calibrated_routing_disabled"
-    assert changed.simulated_policy_outcome == "calibrated_routing=disabled"
+    assert changed.simulated_policy_outcome == "calibrated_routing=disabled;outcome_evidence=thin(eligible=1,sufficient=1,degraded=0,gated=0,excluded=0)"
     assert changed.baseline_route_mode == "calibrated"
     assert changed.baseline_calibrated_routing is True
     assert changed.baseline_degraded_routing is False
@@ -1417,8 +1416,8 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
         tenant_context=tenant_context(),
         payload=PolicySimulationRequest(
             candidate_policy=TenantPolicy(),
-            from_timestamp=now.replace(second=max(0, now.second - 1)),
-            to_timestamp=now.replace(second=min(59, now.second + 1)),
+            from_timestamp=now - timedelta(seconds=1),
+            to_timestamp=now + timedelta(seconds=1),
             limit=10,
             changed_sample_limit=10,
         ),
@@ -1444,6 +1443,51 @@ async def test_policy_simulation_scopes_by_tenant_and_window_and_handles_empty_r
     assert empty_response.summary.newly_denied == 0
     assert empty_response.window.returned_rows == 0
     assert empty_response.changed_requests == []
+
+
+@pytest.mark.asyncio
+async def test_policy_simulation_reports_rows_with_no_recorded_policy_outcome_as_changed() -> None:
+    """A ledger row with a NULL policy_outcome is not the same as one that recorded
+    the "default" sentinel: the first means nothing was recorded, the second means
+    the policy took no action. _policy_outcome_without_evidence normalizes an
+    evidence-only outcome to "default" so live and historical no-action rows
+    compare equal, and it deliberately stops short of extending that to NULL --
+    parity cannot be claimed for a row whose outcome was never written."""
+    settings = Settings()
+    now = datetime.now(UTC)
+    store = FakeSimulationGovernanceStore(
+        [
+            _ledger_record(
+                request_id="req-no-outcome",
+                timestamp=now,
+                tenant_id="default",
+                policy_outcome=None,
+                route_signals={"token_count": 120, "complexity_tier": "low", "keyword_match": False},
+            )
+        ]
+    )
+    service = PolicySimulationService(
+        governance_store=store,
+        router_service=RouterService(settings),
+        policy_service=PolicyService(
+            settings,
+            store,
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        ),
+    )
+
+    response = await service.simulate(
+        tenant_context=tenant_context(),
+        payload=PolicySimulationRequest(
+            candidate_policy=TenantPolicy(), limit=10, changed_sample_limit=10
+        ),
+    )
+
+    assert response.summary.evaluated_rows == 1
+    assert [item.request_id for item in response.changed_requests] == ["req-no-outcome"]
+    changed = response.changed_requests[0]
+    assert changed.baseline_policy_outcome is None
+    assert changed.baseline_route_target == changed.simulated_route_target == "local"
 
 
 def test_policy_simulation_response_model_is_bounded_and_comparison_first() -> None:

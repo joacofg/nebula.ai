@@ -18,6 +18,8 @@ export type TenantPolicy = {
   soft_budget_usd: number | null;
   prompt_capture_enabled: boolean;
   response_capture_enabled: boolean;
+  evidence_retention_window: EvidenceRetentionWindow;
+  metadata_minimization_level: MetadataMinimizationLevel;
 };
 
 export type TenantRecord = {

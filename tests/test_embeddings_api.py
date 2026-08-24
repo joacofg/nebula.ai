@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 from fastapi.testclient import TestClient
 
 from nebula.api.dependencies import get_embeddings_service
+from nebula.api.routes.embeddings import _record_usage
+from nebula.models.governance import UsageLedgerRecord
 from tests.support import auth_headers, configured_app
 
 
@@ -193,3 +197,31 @@ def test_embeddings_api_persist_governed_ledger_markers_from_tenant_policy() -> 
     assert row["route_signals"] is None
     assert row["governance_source"] == "tenant_policy"
     assert row["evidence_expires_at"] is not None
+
+
+def test_embeddings_usage_record_generates_a_request_id_when_the_middleware_did_not_set_one() -> None:
+    """create_embeddings reads request_id via getattr(..., None), so _record_usage has to
+    cover the case where the observability middleware never populated request.state.
+    That fallback branch referenced uuid4 without importing it and raised NameError
+    instead of generating an id."""
+    recorded: list[UsageLedgerRecord] = []
+
+    class _Store:
+        def record_usage(self, record: UsageLedgerRecord) -> None:
+            recorded.append(record)
+
+    _record_usage(
+        container=SimpleNamespace(governance_store=_Store()),
+        tenant_context=SimpleNamespace(tenant=SimpleNamespace(id="default")),
+        request_id=None,
+        requested_model="nomic-embed-text",
+        response_model="nomic-embed-text",
+        terminal_status="completed",
+        route_reason="embeddings_request",
+        policy_outcome="embeddings=completed",
+    )
+
+    assert len(recorded) == 1
+    assert recorded[0].request_id.startswith("req-")
+    assert len(recorded[0].request_id) == len("req-") + 32
+    assert recorded[0].message_type == "embeddings"

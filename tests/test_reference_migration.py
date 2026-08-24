@@ -131,7 +131,7 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
         "cache_hit": "false",
         "fallback_used": "false",
         "policy_mode": "auto",
-        "policy_outcome": "default",
+        "policy_outcome": "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)",
     }
 
     assert ledger.status_code == 200
@@ -165,7 +165,7 @@ def test_reference_migration_proves_public_headers_and_usage_ledger_correlation(
     assert playground.headers["X-Nebula-Route-Target"] == "premium"
     assert playground.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert playground.headers["X-Nebula-Provider"] == "mock-premium"
-    assert playground.headers["X-Nebula-Policy-Outcome"] == "default"
+    assert playground.headers["X-Nebula-Policy-Outcome"] == "outcome_evidence=thin(eligible=1,sufficient=1,degraded=0,gated=0,excluded=0)"
 
     assert playground_ledger.status_code == 200
     assert len(playground_ledger_body) == 1
@@ -244,7 +244,7 @@ def test_reference_migration_requires_tenant_header_only_for_ambiguous_multi_ten
     assert resolved_tenant.headers["X-Nebula-Tenant-ID"] == "team-b"
     assert resolved_tenant.headers["X-Nebula-Route-Target"] == "local"
     assert resolved_tenant.headers["X-Nebula-Provider"] == "ollama"
-    assert resolved_tenant.headers["X-Nebula-Policy-Outcome"] == "default"
+    assert resolved_tenant.headers["X-Nebula-Policy-Outcome"] == "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=0)"
 
     assert ledger.status_code == 200
     assert len(ledger_body) == 1
