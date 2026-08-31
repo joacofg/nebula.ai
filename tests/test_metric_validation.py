@@ -1,15 +1,22 @@
 from __future__ import annotations
 
+import json
+from collections import Counter
+from pathlib import Path
+
 import pytest
 
-from collections import Counter
-
 from scripts.metric_validation import (
+    analyse,
     analysis,
     blinding,
+    build_pilot_corpus,
     capture,
     corpus,
+    label,
     labels,
+    llm_judge,
+    report,
     rubric,
     stats,
 )
@@ -577,3 +584,290 @@ def test_capture_refuses_a_premium_provider_with_no_base_url() -> None:
         capture.ensure_real_premium(
             provider="openai_compatible", base_url="", model="openai/gpt-4o-mini"
         )
+
+
+# --- report --------------------------------------------------------------------
+
+
+def _built_report() -> analysis.ValidationReport:
+    pairs, grades = _graded_corpus()
+    grades["llm-judge"] = dict(grades["human-1"])
+    grades["llm-judge"]["p0003"] = "partial"
+    return analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=200
+    )
+
+
+def test_the_markdown_names_the_winning_prefix_and_its_auc() -> None:
+    rendered = report.render_markdown(_built_report())
+
+    assert "`none`" in rendered
+    assert "AUC" in rendered
+
+
+def test_the_markdown_marks_human_to_human_agreement_as_not_yet_measured() -> None:
+    # The single most misreadable number in this study is an LLM's agreement
+    # with the one human, presented where a reader expects two humans.
+    rendered = report.render_markdown(_built_report())
+
+    assert "PENDING" in rendered
+    assert "auxiliary" in rendered.lower()
+
+
+def test_the_markdown_labels_the_llm_rater_as_auxiliary_in_the_agreement_table() -> None:
+    rendered = report.render_markdown(_built_report())
+    agreement_row = next(
+        line for line in rendered.splitlines() if "llm-judge" in line and "human-1" in line
+    )
+
+    assert "auxiliary" in agreement_row.lower()
+
+
+def test_the_markdown_reports_the_planted_negatives_separately() -> None:
+    # Separation measured over planted cross-prompt pairs flatters the metric.
+    # Both tables have to be on the page, and the honest one has to be named.
+    rendered = report.render_markdown(_built_report())
+
+    assert "local_vs_premium only" in rendered
+    assert "planted" in rendered.lower()
+
+
+def test_the_json_payload_keeps_every_prefix_variant_not_just_the_winner() -> None:
+    # The chosen prefix changes the numbers in every later phase. The losing
+    # variants are the evidence that the choice was made on data.
+    payload = report.to_payload(_built_report())
+
+    assert [entry["prefix"] for entry in payload["prefix_sweep"]] == ["none", "clustering"]
+    assert payload["chosen_prefix"] == "none"
+
+
+def test_the_json_payload_records_how_many_bootstrap_resamples_were_unusable() -> None:
+    payload = report.to_payload(_built_report())
+    winner = payload["prefix_sweep"][0]
+
+    assert "resamples_skipped" in winner["auc_ci"]
+
+
+# --- llm judge -----------------------------------------------------------------
+
+
+def test_the_judge_prompt_carries_the_rubric_and_both_responses() -> None:
+    payload = blinding.blinded_payload(_pair(), rater_id="llm-judge")
+
+    prompt = llm_judge.judge_prompt(payload)
+
+    assert rubric.QUESTION in prompt
+    assert all(grade in prompt for grade in rubric.SCALE)
+    assert "Rayleigh scattering." in prompt
+    assert "Short wavelengths scatter." in prompt
+
+
+def test_the_judge_prompt_is_blinded_exactly_like_the_human_one() -> None:
+    # If the judge could see which side is local, its agreement with the human
+    # would measure nothing but its access to the answer key.
+    payload = blinding.blinded_payload(_pair(), rater_id="llm-judge")
+
+    prompt = llm_judge.judge_prompt(payload)
+
+    for secret in ("local", "premium_a", "llama3.2:3b", "0.80-0.90"):
+        assert secret not in prompt
+
+
+def test_the_judge_grade_is_read_out_of_a_json_reply() -> None:
+    reply = '{"grade": "minor_loss", "reason": "same substance, thinner example"}'
+
+    assert llm_judge.parse_grade(reply) == "minor_loss"
+
+
+def test_the_judge_grade_survives_a_reply_wrapped_in_prose_and_fences() -> None:
+    reply = 'Here is my assessment:\n```json\n{"grade": "PARTIAL"}\n```\nHope that helps.'
+
+    assert llm_judge.parse_grade(reply) == "partial"
+
+
+def test_an_unparseable_judge_reply_raises_instead_of_defaulting() -> None:
+    # A judge that silently returns "equivalent" whenever it fails to answer
+    # would inflate agreement exactly where the pair was hardest.
+    with pytest.raises(ValueError, match="did not return a rubric grade"):
+        llm_judge.parse_grade("I would rather not say.")
+
+
+def test_a_hallucinated_grade_raises_instead_of_being_coerced() -> None:
+    with pytest.raises(ValueError, match="did not return a rubric grade"):
+        llm_judge.parse_grade('{"grade": "mostly_fine"}')
+
+
+# --- labelling CLI -------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("keystroke", "expected"),
+    [("1", "equivalent"), ("2", "minor_loss"), ("3", "partial"), ("4", "divergent")],
+)
+def test_the_labeller_maps_each_number_key_to_its_rubric_grade(keystroke, expected) -> None:
+    assert label.parse_response(keystroke) == expected
+
+
+def test_the_labeller_accepts_a_grade_typed_out() -> None:
+    assert label.parse_response("  Minor_Loss  ") == "minor_loss"
+
+
+def test_the_labeller_treats_s_as_skip_rather_than_a_grade() -> None:
+    # Skipping leaves the pair unlabelled and resumable. Recording a grade for
+    # a pair the rater could not call would be worse than having no grade.
+    assert label.parse_response("s") is None
+
+
+def test_the_labeller_rejects_anything_else() -> None:
+    with pytest.raises(ValueError, match="Unrecognised"):
+        label.parse_response("5")
+
+
+def test_the_rendered_pair_shows_position_and_never_the_grades_of_others() -> None:
+    payload = blinding.blinded_payload(_pair(), rater_id="human-1")
+
+    rendered = label.render_pair(payload, position=7, total=130)
+
+    assert "7/130" in rendered
+    assert rubric.QUESTION in rendered
+    assert "Rayleigh scattering." in rendered
+
+
+# --- capture driver ------------------------------------------------------------
+
+
+async def test_capture_responses_resumes_from_the_cache_instead_of_paying_twice(
+    tmp_path,
+) -> None:
+    # Re-running after a rate limit must not re-bill the prompts that already
+    # landed. The pilot is cheap; the same driver captures the 1400-call
+    # reference corpus later.
+    records = _prompt_records()[:3]
+    cache = tmp_path / "premium_a.jsonl"
+    calls: list[str] = []
+
+    async def complete(prompt: str) -> str:
+        calls.append(prompt)
+        return f"answered {prompt}"
+
+    first = await capture.capture_responses(records[:1], complete=complete, cache_path=cache)
+    second = await capture.capture_responses(records, complete=complete, cache_path=cache)
+
+    assert len(calls) == 3
+    assert first["q000"] == second["q000"]
+    assert set(second) == {"q000", "q001", "q002"}
+
+
+async def test_capture_responses_retries_a_transient_failure(tmp_path) -> None:
+    records = _prompt_records()[:1]
+    attempts = 0
+
+    async def flaky(prompt: str) -> str:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise TimeoutError("rate limited")
+        return "answered"
+
+    captured = await capture.capture_responses(
+        records, complete=flaky, cache_path=tmp_path / "cache.jsonl", attempts=3, backoff=0.0
+    )
+
+    assert captured == {"q000": "answered"}
+
+
+async def test_capture_responses_gives_up_loudly_after_the_last_attempt(tmp_path) -> None:
+    async def always_fails(prompt: str) -> str:
+        raise TimeoutError("rate limited")
+
+    with pytest.raises(TimeoutError):
+        await capture.capture_responses(
+            _prompt_records()[:1],
+            complete=always_fails,
+            cache_path=tmp_path / "cache.jsonl",
+            attempts=2,
+            backoff=0.0,
+        )
+
+
+async def test_the_similarity_builder_embeds_each_text_once_per_prefix() -> None:
+    # Every text takes part in several pairs. Embedding per pair would multiply
+    # a 250-text corpus by four prefixes and then by pair membership.
+    texts = ["alpha", "beta"]
+    seen: list[str] = []
+
+    async def embed(batch: list[str]) -> list[list[float]]:
+        seen.extend(batch)
+        return [[float(len(text)), 1.0] for text in batch]
+
+    similarity = await capture.build_similarity(texts, embed=embed)
+
+    assert similarity("alpha", "beta", "none") == pytest.approx(
+        capture.cosine([5.0, 1.0], [4.0, 1.0])
+    )
+    assert len(seen) == len(texts) * len(corpus.PREFIX_VARIANTS)
+    assert len(set(seen)) == len(seen)
+
+
+# --- end to end ----------------------------------------------------------------
+
+
+def test_the_pipeline_runs_from_pairs_on_disk_to_a_written_report(tmp_path, monkeypatch) -> None:
+    pairs, grades = _graded_corpus()
+    corpus.write_pairs(pairs, tmp_path / "pairs.jsonl")
+    for rater, rater_grades in {**grades, "llm-judge": dict(grades["human-1"])}.items():
+        for pair_id, grade in rater_grades.items():
+            labels.append(
+                labels.Label(pair_id=pair_id, rater_id=rater, grade=grade),
+                tmp_path / "labels" / f"{rater}.jsonl",
+            )
+
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            "analyse",
+            "--root",
+            str(tmp_path),
+            "--reference-rater",
+            "human-1",
+            "--resamples",
+            "50",
+        ],
+    )
+    assert analyse.main() == 0
+
+    rendered = (tmp_path / "report.md").read_text(encoding="utf-8")
+    payload = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert "PENDING" in rendered
+    assert payload["chosen_prefix"] == "none"
+    assert payload["auxiliary_raters"] == ["llm-judge"]
+
+
+def test_pairs_survive_a_round_trip_through_the_jsonl_format(tmp_path) -> None:
+    pairs, _ = _graded_corpus()
+    path = tmp_path / "pairs.jsonl"
+
+    corpus.write_pairs(pairs, path)
+
+    assert corpus.read_pairs(path) == pairs
+
+
+def test_analyse_stops_when_nobody_has_labelled_anything(tmp_path, monkeypatch) -> None:
+    pairs, _ = _graded_corpus()
+    corpus.write_pairs(pairs, tmp_path / "pairs.jsonl")
+    (tmp_path / "labels").mkdir()
+    monkeypatch.setattr("sys.argv", ["analyse", "--root", str(tmp_path)])
+
+    with pytest.raises(SystemExit, match="No labels found"):
+        analyse.main()
+
+
+def test_the_committed_prompt_corpus_is_balanced_across_task_types() -> None:
+    # The study stratifies by task type. A corpus skewed towards one type would
+    # make the per-type breakdown unreportable for the others.
+    records = build_pilot_corpus.read_prompts(Path("benchmarks/metric-validation/prompts.jsonl"))
+
+    per_type = Counter(record.task_type for record in records)
+    assert set(per_type) == set(corpus.TASK_TYPES)
+    assert len(set(per_type.values())) == 1
+    assert len({record.prompt_id for record in records}) == len(records)

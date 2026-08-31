@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -45,6 +45,21 @@ benchmark:
 
 benchmark-demo:
 	$(PYTHON) -m nebula.benchmarking.run --dataset benchmarks/v1/demo-scenarios.jsonl
+
+# Metric-validation study (v4.0 Phase 1, T1). PREMIUM_B is the second
+# premium model that anchors the noise floor; it has no default because the
+# ceiling it measures depends entirely on which model it is.
+metric-corpus:
+	$(PYTHON) -m scripts.metric_validation.build_pilot_corpus --premium-b-model $(PREMIUM_B)
+
+metric-label:
+	$(PYTHON) -m scripts.metric_validation.label --rater $(RATER)
+
+metric-judge:
+	$(PYTHON) -m scripts.metric_validation.run_judge --model $(JUDGE_MODEL)
+
+metric-report:
+	$(PYTHON) -m scripts.metric_validation.analyse --reference-rater $(RATER)
 
 migrate:
 	./.venv/bin/alembic upgrade head

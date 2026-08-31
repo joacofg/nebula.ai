@@ -10,9 +10,12 @@ and cross-prompt anchors the floor.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
-from collections.abc import Callable, Sequence
+import json
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
+from pathlib import Path
 
 from scripts.metric_validation.corpus import (
     PREFIX_VARIANTS,
@@ -181,3 +184,101 @@ def build_pairs(
         )
 
     return pairs
+
+
+Complete = Callable[[str], Awaitable[str]]
+Embed = Callable[[list[str]], Awaitable[list[list[float]]]]
+
+
+def _read_cache(path: Path) -> dict[str, str]:
+    if not path.exists():
+        return {}
+    cached: dict[str, str] = {}
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                raw = json.loads(line)
+                cached[raw["prompt_id"]] = raw["response"]
+    return cached
+
+
+async def capture_responses(
+    records: Sequence[PromptRecord],
+    *,
+    complete: Complete,
+    cache_path: Path,
+    attempts: int = 4,
+    backoff: float = 2.0,
+) -> dict[str, str]:
+    """Run every prompt through ``complete``, resuming from an on-disk cache.
+
+    Written through after each response rather than at the end: a rate limit
+    partway through must not cost the responses already paid for. The same
+    driver captures the frozen reference corpus later, where the bill is
+    fourteen hundred calls rather than a hundred and sixty.
+    """
+    captured = _read_cache(cache_path)
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    for record in records:
+        if record.prompt_id in captured:
+            continue
+
+        last_error: Exception | None = None
+        for attempt in range(attempts):
+            try:
+                response = await complete(record.prompt)
+                break
+            except Exception as error:  # noqa: BLE001 - re-raised below
+                last_error = error
+                if attempt + 1 < attempts:
+                    await asyncio.sleep(backoff * (2**attempt))
+        else:
+            raise last_error  # type: ignore[misc]
+
+        captured[record.prompt_id] = response
+        with cache_path.open("a", encoding="utf-8") as handle:
+            handle.write(
+                json.dumps(
+                    {"prompt_id": record.prompt_id, "response": response},
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
+
+    return {record.prompt_id: captured[record.prompt_id] for record in records}
+
+
+async def build_similarity(
+    texts: Sequence[str],
+    *,
+    embed: Embed,
+    prefixes: Sequence[str] = PREFIX_VARIANTS,
+) -> Similarity:
+    """Embed the corpus once per prefix and hand back a cosine lookup.
+
+    Each text belongs to several pairs, and the sweep needs every prefix, so
+    embedding at pair level would multiply the work by pair membership on top
+    of the four variants.
+    """
+    unique = sorted(set(texts))
+    vectors: dict[tuple[str, str], list[float]] = {}
+
+    for prefix in prefixes:
+        batch = [apply_prefix(text, prefix) for text in unique]
+        embedded = await embed(batch)
+        if len(embedded) != len(unique):
+            raise ValueError(
+                f"Embedder returned {len(embedded)} vectors for {len(unique)} texts."
+            )
+        for text, vector in zip(unique, embedded, strict=True):
+            vectors[(text, prefix)] = vector
+
+    def similarity(left: str, right: str, prefix: str) -> float:
+        try:
+            return cosine(vectors[(left, prefix)], vectors[(right, prefix)])
+        except KeyError as error:
+            raise KeyError(f"No embedding captured for {error.args[0]!r}.") from error
+
+    return similarity
