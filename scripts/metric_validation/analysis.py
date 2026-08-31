@@ -71,6 +71,7 @@ class ValidationReport:
     human_to_human_pending: bool
     prefix_sweep: list[PrefixResult]
     chosen_prefix: str | None
+    chosen_prefix_tied_with: list[str]
     bands_all: list[BandRow]
     bands_local_vs_premium: list[BandRow]
     agreements: list[RaterAgreement]
@@ -268,7 +269,16 @@ def build_report(
 
     reference = grades_by_rater[reference_rater]
     sweep = prefix_sweep(pairs, reference, seed=seed, resamples=resamples)
-    chosen = next((result.prefix for result in sweep if result.auc is not None), None)
+    scorable = [result for result in sweep if result.auc is not None]
+    chosen = scorable[0].prefix if scorable else None
+    # Two prefixes that separate the grades equally well are a tie, not a
+    # ranking. The winner is the first in declared variant order, and the
+    # report has to say so rather than let the order pass for a finding.
+    tied_with = (
+        [result.prefix for result in scorable[1:] if result.auc == scorable[0].auc]
+        if scorable
+        else []
+    )
 
     # An LLM standing in for the missing second human is an auxiliary rater. It
     # is recorded as one so the report cannot be read as satisfying the
@@ -294,6 +304,7 @@ def build_report(
         human_to_human_pending=len(human_raters) < 2,
         prefix_sweep=sweep,
         chosen_prefix=chosen,
+        chosen_prefix_tied_with=tied_with,
         bands_all=separation_by_band(pairs, reference, prefix=chosen) if chosen else [],
         bands_local_vs_premium=(
             separation_by_band(pairs, reference, prefix=chosen, kinds=("local_vs_premium",))

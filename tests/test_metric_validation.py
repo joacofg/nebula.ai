@@ -927,3 +927,33 @@ def test_no_two_cross_prompt_pairs_carry_the_same_two_answers() -> None:
         if pair.kind == "cross_prompt"
     ]
     assert len(set(contents)) == len(contents)
+
+
+def test_a_tied_prefix_sweep_names_the_ties_instead_of_silently_picking_one() -> None:
+    # Two prefixes that separate the grades equally well are not a result. The
+    # report has to say the winner was a tie broken by declared order, or a
+    # reader will take the ranking for a finding.
+    pairs, grades = _graded_corpus()
+    tied = [
+        corpus.Pair(**{**vars(pair), "cosine": {"none": c, "clustering": c}})
+        for pair in pairs
+        for c in [pair.cosine["none"]]
+    ]
+
+    built = analysis.build_report(
+        tied, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    assert built.chosen_prefix == "none"
+    assert built.chosen_prefix_tied_with == ["clustering"]
+    assert "tie" in report.render_markdown(built).lower()
+
+
+def test_an_untied_sweep_reports_no_tie() -> None:
+    pairs, grades = _graded_corpus()
+
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    assert built.chosen_prefix_tied_with == []

@@ -93,7 +93,16 @@ def render_markdown(report: ValidationReport) -> str:
         )
 
     chosen = f"`{report.chosen_prefix}`" if report.chosen_prefix else "none — unmeasurable"
-    lines += ["", f"**Chosen prefix: {chosen}.**", ""]
+    lines += ["", f"**Chosen prefix: {chosen}.**"]
+    if report.chosen_prefix_tied_with:
+        tied = ", ".join(f"`{prefix}`" for prefix in report.chosen_prefix_tied_with)
+        lines += [
+            "",
+            f"This is a **tie** with {tied} on AUC, broken by declared variant "
+            "order. The ranking above is not evidence that the chosen prefix "
+            "separates the grades better than the ones it tied with.",
+        ]
+    lines += [""]
 
     lines += ["## Separation by similarity band", "", PLANTED_NOTE, ""]
     for title, rows in (

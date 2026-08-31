@@ -198,6 +198,14 @@ the similarity scores.
 | `premium_vs_premium` | 25 | two different premium models on the same prompt | the noise floor — the ceiling the metric can reach when both answers are good |
 | `cross_prompt` | 25 | a premium answer against a premium answer to a *different* prompt of the same task type | a planted negative, so the low band is populated and AUC is measurable |
 
+The planted pairs are drawn by round-robin over the task types, not off the
+head of a sorted list, so all five types are represented in each planted kind.
+A cross-prompt negative borrows from the cyclic successor within its own task
+type: a single cycle over the group, so no two prompts can borrow from each
+other and no two planted pairs hold the same two texts. Two pairs holding the
+same texts would score identically and count one observation twice, in the AUC
+and in every bootstrap resample.
+
 The planted kinds exist because nothing guarantees the natural pairs span the
 range. If the local model happened to answer well everywhere, every pair would
 be substitutable and the separation would be unmeasurable. The report gives the
