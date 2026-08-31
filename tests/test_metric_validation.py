@@ -871,3 +871,59 @@ def test_the_committed_prompt_corpus_is_balanced_across_task_types() -> None:
     assert set(per_type) == set(corpus.TASK_TYPES)
     assert len(set(per_type.values())) == 1
     assert len({record.prompt_id for record in records}) == len(records)
+
+
+def test_planted_pairs_are_spread_across_every_task_type() -> None:
+    # Taking the planted subsets off the head of a sorted prompt list puts all
+    # of them in the first one or two task types, which is the opposite of the
+    # stratification the study is supposed to have.
+    records = [
+        capture.PromptRecord(prompt_id=f"{task}-{index:02d}", task_type=task, prompt=f"{task} {index}")
+        for task in corpus.TASK_TYPES
+        for index in range(4)
+    ]
+    responses = {record.prompt_id: f"answer {record.prompt_id}" for record in records}
+
+    pairs = capture.build_pairs(
+        records,
+        local=responses,
+        premium_a=responses,
+        premium_b=responses,
+        similarity=_fake_similarity,
+        noise_floor_count=10,
+        cross_prompt_count=10,
+    )
+
+    for kind in ("premium_vs_premium", "cross_prompt"):
+        planted = Counter(pair.task_type for pair in pairs if pair.kind == kind)
+        assert set(planted) == set(corpus.TASK_TYPES)
+        assert set(planted.values()) == {2}
+
+
+def test_no_two_cross_prompt_pairs_carry_the_same_two_answers() -> None:
+    # If two prompts borrow from each other, the two pairs hold the same two
+    # texts and score identically. That is one observation counted twice, in
+    # both the AUC and the bootstrap.
+    records = [
+        capture.PromptRecord(prompt_id=f"{task}-{index:02d}", task_type=task, prompt=f"{task} {index}")
+        for task in corpus.TASK_TYPES
+        for index in range(4)
+    ]
+    responses = {record.prompt_id: f"answer {record.prompt_id}" for record in records}
+
+    pairs = capture.build_pairs(
+        records,
+        local=responses,
+        premium_a=responses,
+        premium_b=responses,
+        similarity=_fake_similarity,
+        noise_floor_count=0,
+        cross_prompt_count=20,
+    )
+
+    contents = [
+        frozenset({pair.left.text, pair.right.text})
+        for pair in pairs
+        if pair.kind == "cross_prompt"
+    ]
+    assert len(set(contents)) == len(contents)

@@ -11,8 +11,8 @@ and cross-prompt anchors the floor.
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
+from itertools import zip_longest
 from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -82,9 +82,21 @@ def ensure_real_premium(*, provider: str, base_url: str, model: str) -> None:
         raise RuntimeError("Refusing to capture: the premium provider has no base URL.")
 
 
-def _stable_pick(candidates: Sequence[str], *, salt: str) -> str:
-    digest = int.from_bytes(hashlib.sha256(salt.encode("utf-8")).digest(), "big")
-    return candidates[digest % len(candidates)]
+def _round_robin(records: Sequence[PromptRecord]) -> list[PromptRecord]:
+    """Reorder so that taking the first N cycles through the task types.
+
+    The planted pairs are a prefix of this order. Taking them off a plainly
+    sorted list would put every one of them in the first task type or two,
+    which is the opposite of the stratification the study claims.
+    """
+    by_task: dict[str, list[PromptRecord]] = {}
+    for record in sorted(records, key=lambda record: record.prompt_id):
+        by_task.setdefault(record.task_type, []).append(record)
+
+    ordered: list[PromptRecord] = []
+    for tier in zip_longest(*(by_task[task] for task in sorted(by_task))):
+        ordered.extend(record for record in tier if record is not None)
+    return ordered
 
 
 def _cosines(left: str, right: str, similarity: Similarity) -> dict[str, float]:
@@ -144,7 +156,9 @@ def build_pairs(
             )
         )
 
-    for record in ordered[:noise_floor_count]:
+    spread = _round_robin(ordered)
+
+    for record in spread[:noise_floor_count]:
         pairs.append(
             _pair(
                 f"pvp:{record.prompt_id}",
@@ -160,18 +174,17 @@ def build_pairs(
     for record in ordered:
         by_task.setdefault(record.task_type, []).append(record.prompt_id)
 
-    for record in ordered[:cross_prompt_count]:
-        siblings = [
-            prompt_id
-            for prompt_id in by_task[record.task_type]
-            if prompt_id != record.prompt_id
-        ]
-        if not siblings:
+    for record in spread[:cross_prompt_count]:
+        siblings = by_task[record.task_type]
+        if len(siblings) < 2:
             raise ValueError(
                 f"Task type {record.task_type!r} has a single prompt, so no "
                 f"cross-prompt negative can be planted for it."
             )
-        borrowed = _stable_pick(siblings, salt=f"cross:{record.prompt_id}")
+        # Borrow from the cyclic successor within the task type. A single cycle
+        # over the group means no two prompts can borrow from each other, so no
+        # two planted pairs hold the same two texts and get counted twice.
+        borrowed = siblings[(siblings.index(record.prompt_id) + 1) % len(siblings)]
         pairs.append(
             _pair(
                 f"xpr:{record.prompt_id}",
