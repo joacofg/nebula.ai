@@ -1003,3 +1003,65 @@ def test_the_metric_scale_is_reported_at_the_chosen_prefix_only() -> None:
     local = next(row for row in built.scale_by_kind if row.kind == "local_vs_premium")
     assert local.prefix == built.chosen_prefix
     assert local.maximum == pytest.approx(0.95)
+
+
+NATURAL = ("local_vs_premium", "premium_vs_premium")
+
+
+def test_the_prefix_sweep_can_be_restricted_to_the_pairs_the_metric_is_used_on() -> None:
+    # One natural pair the rater called non-substitutable but the cosine scores
+    # high. Over all pairs the planted negatives drown it and AUC stays near
+    # perfect; over natural pairs alone it is exactly the error that matters.
+    pairs, grades = _graded_corpus()
+    pairs = [
+        corpus.Pair(**{**vars(pair), "cosine": {"none": 0.99, "clustering": 0.99}})
+        if pair.pair_id == "p0007"
+        else pair
+        for pair in pairs
+    ]
+
+    everything = analysis.prefix_sweep(pairs, grades["human-1"], seed=1, resamples=100)
+    natural = analysis.prefix_sweep(
+        pairs, grades["human-1"], seed=1, resamples=100, kinds=NATURAL
+    )
+
+    assert everything[0].pairs == 8
+    assert natural[0].pairs == 6
+    assert natural[0].auc < everything[0].auc
+
+
+def test_the_report_sweeps_both_all_pairs_and_natural_pairs() -> None:
+    # An AUC computed over planted negatives answers "did it answer the
+    # question asked", which is trivial. The number that decides whether the
+    # metric is usable is the one restricted to pairs Nebula would really see.
+    pairs, grades = _graded_corpus()
+
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    assert [r.prefix for r in built.prefix_sweep_natural] == ["none", "clustering"]
+    assert built.prefix_sweep_natural[0].pairs == 6
+    assert built.prefix_sweep[0].pairs == 8
+
+
+def test_the_prefix_is_chosen_on_the_natural_pairs_not_the_planted_ones() -> None:
+    pairs, grades = _graded_corpus()
+
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    assert built.chosen_prefix_basis == "local_vs_premium, premium_vs_premium"
+
+
+def test_the_markdown_warns_that_the_all_pairs_auc_is_inflated() -> None:
+    pairs, grades = _graded_corpus()
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    rendered = report.render_markdown(built)
+
+    assert "inflated" in rendered.lower()
+    assert rendered.index("natural pairs") < rendered.index("all pairs, including planted")

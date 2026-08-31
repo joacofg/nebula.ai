@@ -23,6 +23,14 @@ PENDING_NOTE = (
     "must not be reported as such."
 )
 
+INFLATION_NOTE = (
+    "An AUC over all pairs is **inflated** by the planted `cross_prompt` "
+    "negatives: telling an answer to a different question from an answer to "
+    "this one is easy, and every prefix does it. The natural-pairs table above "
+    "is the one that says whether the cosine resolves quality among responses "
+    "that all actually answered the prompt."
+)
+
 NOISE_FLOOR_NOTE = (
     "**Noise floor.** `premium_vs_premium` is two different premium models "
     "answering the same prompt: the ceiling the cosine can reach when both "
@@ -78,6 +86,25 @@ def render_markdown(report: ValidationReport) -> str:
     if report.human_to_human_pending:
         lines += [PENDING_NOTE.format(count=len(report.human_raters)), ""]
 
+    def sweep_table(results: list) -> list[str]:
+        rows = [
+            "| prefix | pairs | AUC | 95% CI | resamples used/skipped | Spearman | note |",
+            "|---|---|---|---|---|---|---|",
+        ]
+        for result in results:
+            interval = result.auc_ci
+            ci = "—" if interval is None else f"[{interval.low:.3f}, {interval.high:.3f}]"
+            used = (
+                "—"
+                if interval is None
+                else f"{interval.resamples_used}/{interval.resamples_skipped}"
+            )
+            rows.append(
+                f"| `{result.prefix}` | {result.pairs} | {_number(result.auc)} | {ci} "
+                f"| {used} | {_number(result.spearman)} | {result.note or '—'} |"
+            )
+        return rows or ["| — | 0 | — | — | — | — | — |"]
+
     lines += [
         "## Task prefix sweep",
         "",
@@ -85,24 +112,23 @@ def render_markdown(report: ValidationReport) -> str:
         "after labelling, on the labels, so the choice cannot be read off the "
         "stratification.",
         "",
-        "| prefix | pairs | AUC | 95% CI | resamples used/skipped | Spearman | note |",
-        "|---|---|---|---|---|---|---|",
+        "### natural pairs — the pairs the metric is used on",
+        "",
+        *sweep_table(report.prefix_sweep_natural),
+        "",
+        "### all pairs, including planted negatives",
+        "",
+        *sweep_table(report.prefix_sweep),
+        "",
+        INFLATION_NOTE,
+        "",
     ]
-    for result in report.prefix_sweep:
-        interval = result.auc_ci
-        ci = "—" if interval is None else f"[{interval.low:.3f}, {interval.high:.3f}]"
-        used = (
-            "—"
-            if interval is None
-            else f"{interval.resamples_used}/{interval.resamples_skipped}"
-        )
-        lines.append(
-            f"| `{result.prefix}` | {result.pairs} | {_number(result.auc)} | {ci} "
-            f"| {used} | {_number(result.spearman)} | {result.note or '—'} |"
-        )
 
     chosen = f"`{report.chosen_prefix}`" if report.chosen_prefix else "none — unmeasurable"
-    lines += ["", f"**Chosen prefix: {chosen}.**"]
+    lines += [
+        "",
+        f"**Chosen prefix: {chosen}**, on {report.chosen_prefix_basis}.",
+    ]
     if report.chosen_prefix_tied_with:
         tied = ", ".join(f"`{prefix}`" for prefix in report.chosen_prefix_tied_with)
         lines += [

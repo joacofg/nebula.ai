@@ -1,0 +1,206 @@
+{
+  "agreements": [],
+  "auxiliary_raters": [
+    "llm-judge"
+  ],
+  "bands_all": [
+    {
+      "band": "0.00-0.50",
+      "pairs": 2,
+      "substitutable": 0,
+      "substitutable_rate": 0.0
+    },
+    {
+      "band": "0.50-0.65",
+      "pairs": 23,
+      "substitutable": 0,
+      "substitutable_rate": 0.0
+    },
+    {
+      "band": "0.80-0.90",
+      "pairs": 24,
+      "substitutable": 12,
+      "substitutable_rate": 0.5
+    },
+    {
+      "band": "0.90-1.00",
+      "pairs": 81,
+      "substitutable": 61,
+      "substitutable_rate": 0.7530864197530864
+    }
+  ],
+  "bands_local_vs_premium": [
+    {
+      "band": "0.80-0.90",
+      "pairs": 21,
+      "substitutable": 11,
+      "substitutable_rate": 0.5238095238095238
+    },
+    {
+      "band": "0.90-1.00",
+      "pairs": 59,
+      "substitutable": 42,
+      "substitutable_rate": 0.711864406779661
+    }
+  ],
+  "chosen_prefix": "search_query",
+  "chosen_prefix_basis": "local_vs_premium, premium_vs_premium",
+  "chosen_prefix_tied_with": [],
+  "human_raters": [],
+  "human_to_human_pending": true,
+  "krippendorff_alpha": null,
+  "prefix_sweep": [
+    {
+      "auc": 0.7971641432347993,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.8696553412070207,
+        "low": 0.7173331040866466,
+        "point": 0.7971641432347993,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 130,
+      "prefix": "search_query",
+      "spearman": 0.6078244768021506
+    },
+    {
+      "auc": 0.7901946647440519,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.8648286939180682,
+        "low": 0.7047260499734184,
+        "point": 0.7901946647440519,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 130,
+      "prefix": "clustering",
+      "spearman": 0.5908521593638981
+    },
+    {
+      "auc": 0.7755347272290315,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.8543136977886977,
+        "low": 0.6895232422082758,
+        "point": 0.7755347272290315,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 130,
+      "prefix": "search_document",
+      "spearman": 0.5581604384392589
+    },
+    {
+      "auc": 0.771689497716895,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.8509184001743012,
+        "low": 0.6819746924783222,
+        "point": 0.771689497716895,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 130,
+      "prefix": "none",
+      "spearman": 0.5595887037794218
+    }
+  ],
+  "prefix_sweep_natural": [
+    {
+      "auc": 0.6386986301369864,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.750021404109589,
+        "low": 0.5253075378625737,
+        "point": 0.6386986301369864,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 105,
+      "prefix": "search_query",
+      "spearman": 0.2822205965986186
+    },
+    {
+      "auc": 0.6262842465753424,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.7410272773322144,
+        "low": 0.5102619213292869,
+        "point": 0.6262842465753424,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 105,
+      "prefix": "clustering",
+      "spearman": 0.25386266431110405
+    },
+    {
+      "auc": 0.6001712328767124,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.7169899514426576,
+        "low": 0.4824907245532245,
+        "point": 0.6001712328767124,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 105,
+      "prefix": "search_document",
+      "spearman": 0.1873836939910303
+    },
+    {
+      "auc": 0.5933219178082192,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.7133617294520547,
+        "low": 0.4734742578849722,
+        "point": 0.5933219178082192,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 105,
+      "prefix": "none",
+      "spearman": 0.1919310440294069
+    }
+  ],
+  "raters": [
+    "llm-judge"
+  ],
+  "reference_rater": "llm-judge",
+  "scale_by_kind": [
+    {
+      "kind": "local_vs_premium",
+      "maximum": 0.9864636919218572,
+      "median": 0.9379309625396877,
+      "minimum": 0.827158672074784,
+      "pairs": 80,
+      "prefix": "search_query"
+    },
+    {
+      "kind": "premium_vs_premium",
+      "maximum": 0.9942951590371699,
+      "median": 0.9352533584143886,
+      "minimum": 0.852452563999655,
+      "pairs": 25,
+      "prefix": "search_query"
+    },
+    {
+      "kind": "cross_prompt",
+      "maximum": 0.6291251334432622,
+      "median": 0.5550671325156703,
+      "minimum": 0.49361241210150775,
+      "pairs": 25,
+      "prefix": "search_query"
+    }
+  ]
+}

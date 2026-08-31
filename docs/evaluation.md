@@ -239,6 +239,43 @@ rather than to a real answer, and the whole study would read as a success.
 `provenance.json` pins the run: model digests, the Ollama version, the
 temperature, and SHA-256 of both the prompt file and the pair file.
 
+### What the pilot found so far — preliminary, auxiliary rater only
+
+The corpus is captured and the auxiliary LLM rater has graded all 130 pairs.
+No human has labelled anything yet, so **everything below is provisional** and
+rests on a rater the study itself set out to treat as auxiliary. It is
+recorded here because it is decision-relevant for the rest of Phase 1.
+
+Best prefix, `search_query`:
+
+| sample | n | AUC | 95% CI |
+|---|---|---|---|
+| all pairs, including planted negatives | 130 | 0.797 | [0.717, 0.870] |
+| natural pairs (`local_vs_premium` + `premium_vs_premium`) | 105 | 0.639 | [0.525, 0.750] |
+| `local_vs_premium` only | 80 | 0.600 | [0.475, 0.732] |
+
+The headline number is carried by the planted negatives. Remove them and the
+separation is weak; restrict to the pairs the metric is actually used on and
+the interval covers 0.5, which is chance.
+
+The noise floor says the same thing from the other side. At `search_query` the
+median cosine is 0.938 for local-against-premium and 0.935 for
+premium-against-premium. Two different premium models answering the same prompt
+sit exactly where the local model sits. Meanwhile the rater called 27 of the 80
+local-vs-premium pairs non-substitutable — so the disagreements are real, and
+the cosine is not seeing them.
+
+The reading this supports is that `nomic-embed-text` cosine, on this corpus,
+largely measures **whether both sides answered the question asked**, and not
+how well. If the human labels agree, Phase 1 cannot rest on this metric as
+specified, and the phase needs either a different similarity signal or a
+different quality measure before the frontier work in T6 is worth building.
+
+If they disagree — if the human grades track the cosine where the LLM's did
+not — then the finding is about the auxiliary rater, not the metric. That is
+precisely the ambiguity a second rater exists to resolve, and it is why the
+human labelling is the blocking step rather than a formality.
+
 ### What the numbers do and do not say
 
 The LLM rater is **auxiliary**. Rigour point 3 of the Phase 1 plan asks for two

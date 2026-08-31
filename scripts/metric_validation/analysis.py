@@ -34,6 +34,11 @@ NO_SEPARATION = (
 
 Grades = dict[str, str]
 
+# The pairs the metric is actually used on. cross_prompt is planted: separating
+# an answer to a different question is trivial, and including it in the sweep
+# answers a question nobody asked.
+NATURAL_KINDS: tuple[str, ...] = ("local_vs_premium", "premium_vs_premium")
+
 
 @dataclass(frozen=True)
 class PrefixResult:
@@ -81,7 +86,9 @@ class ValidationReport:
     human_raters: list[str]
     human_to_human_pending: bool
     prefix_sweep: list[PrefixResult]
+    prefix_sweep_natural: list[PrefixResult]
     chosen_prefix: str | None
+    chosen_prefix_basis: str
     chosen_prefix_tied_with: list[str]
     scale_by_kind: list[ScaleRow]
     bands_all: list[BandRow]
@@ -100,6 +107,7 @@ def prefix_sweep(
     *,
     seed: int,
     resamples: int = 2000,
+    kinds: tuple[str, ...] | None = None,
 ) -> list[PrefixResult]:
     """Score every task prefix against the reference rater's grades.
 
@@ -107,7 +115,11 @@ def prefix_sweep(
     cannot be scored keep their place in the output with an explicit note
     rather than a stand-in number.
     """
-    scored = _graded(pairs, grades)
+    scored = [
+        pair
+        for pair in _graded(pairs, grades)
+        if kinds is None or pair.kind in kinds
+    ]
     variants = [
         prefix for prefix in PREFIX_VARIANTS if any(prefix in pair.cosine for pair in scored)
     ]
@@ -307,7 +319,18 @@ def build_report(
 
     reference = grades_by_rater[reference_rater]
     sweep = prefix_sweep(pairs, reference, seed=seed, resamples=resamples)
-    scorable = [result for result in sweep if result.auc is not None]
+    natural = prefix_sweep(
+        pairs, reference, seed=seed, resamples=resamples, kinds=NATURAL_KINDS
+    )
+
+    # Chosen on the natural pairs. Choosing on all pairs would let the planted
+    # negatives — which every prefix separates easily — decide a question about
+    # resolution among real answers.
+    scorable = [result for result in natural if result.auc is not None]
+    basis = ", ".join(NATURAL_KINDS)
+    if not scorable:
+        scorable = [result for result in sweep if result.auc is not None]
+        basis = "all pairs (natural pairs were unscorable)"
     chosen = scorable[0].prefix if scorable else None
     # Two prefixes that separate the grades equally well are a tie, not a
     # ranking. The winner is the first in declared variant order, and the
@@ -341,7 +364,9 @@ def build_report(
         human_raters=human_raters,
         human_to_human_pending=len(human_raters) < 2,
         prefix_sweep=sweep,
+        prefix_sweep_natural=natural,
         chosen_prefix=chosen,
+        chosen_prefix_basis=basis,
         chosen_prefix_tied_with=tied_with,
         scale_by_kind=metric_scale(pairs, prefix=chosen) if chosen else [],
         bands_all=separation_by_band(pairs, reference, prefix=chosen) if chosen else [],
