@@ -957,3 +957,49 @@ def test_an_untied_sweep_reports_no_tie() -> None:
     )
 
     assert built.chosen_prefix_tied_with == []
+
+
+def test_the_report_puts_the_noise_floor_next_to_the_local_premium_similarity() -> None:
+    # The plan is explicit that sim_local has no interpretable scale without
+    # the noise floor. A report that shows one and not the other invites the
+    # reader to treat 0.92 as high, when two premium models answering the same
+    # prompt may also sit at 0.92.
+    pairs, grades = _graded_corpus()
+    pairs.append(
+        corpus.Pair(
+            pair_id="p0009",
+            kind="premium_vs_premium",
+            task_type="factual_qa",
+            prompt="noise floor",
+            left=corpus.ResponseSide("premium_a", "gpt-4o-mini", "a"),
+            right=corpus.ResponseSide("premium_b", "haiku", "b"),
+            cosine={"none": 0.93, "clustering": 0.53},
+            band=corpus.band_for(0.93),
+        )
+    )
+    grades["human-1"]["p0009"] = "equivalent"
+
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+    rendered = report.render_markdown(built)
+
+    floor = next(row for row in built.scale_by_kind if row.kind == "premium_vs_premium")
+    assert floor.pairs == 1
+    assert floor.median == pytest.approx(0.93)
+    assert "Noise floor" in rendered
+    assert "premium_vs_premium" in rendered
+
+
+def test_the_metric_scale_is_reported_at_the_chosen_prefix_only() -> None:
+    # Mixing prefixes in one table would compare numbers produced by different
+    # embeddings.
+    pairs, grades = _graded_corpus()
+
+    built = analysis.build_report(
+        pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    local = next(row for row in built.scale_by_kind if row.kind == "local_vs_premium")
+    assert local.prefix == built.chosen_prefix
+    assert local.maximum == pytest.approx(0.95)

@@ -23,6 +23,15 @@ PENDING_NOTE = (
     "must not be reported as such."
 )
 
+NOISE_FLOOR_NOTE = (
+    "**Noise floor.** `premium_vs_premium` is two different premium models "
+    "answering the same prompt: the ceiling the cosine can reach when both "
+    "answers are good. A `local_vs_premium` median has no interpretable scale "
+    "without it. If the two medians coincide, the cosine is not resolving "
+    "quality in that range — it is saturating, and a high similarity says only "
+    "that both sides answered the question asked."
+)
+
 PLANTED_NOTE = (
     "`cross_prompt` pairs are planted negatives: a premium answer to a *different* "
     "prompt of the same task type. They anchor the low band so AUC is measurable, "
@@ -103,6 +112,23 @@ def render_markdown(report: ValidationReport) -> str:
             "separates the grades better than the ones it tied with.",
         ]
     lines += [""]
+
+    lines += [
+        "## Where the metric sits — noise floor",
+        "",
+        NOISE_FLOOR_NOTE,
+        "",
+        f"Cosine at the chosen prefix (`{report.chosen_prefix}`).",
+        "",
+        "| pair kind | pairs | min | median | max |",
+        "|---|---|---|---|---|",
+    ]
+    lines += [
+        f"| `{row.kind}` | {row.pairs} | {row.minimum:.3f} | {row.median:.3f} "
+        f"| {row.maximum:.3f} |"
+        for row in report.scale_by_kind
+    ] or ["| — | 0 | — | — | — |"]
+    lines.append("")
 
     lines += ["## Separation by similarity band", "", PLANTED_NOTE, ""]
     for title, rows in (

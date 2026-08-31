@@ -13,9 +13,10 @@ Three questions, in order of what the rest of Phase 1 depends on:
 from __future__ import annotations
 
 from dataclasses import dataclass
+from statistics import median
 
 from scripts.metric_validation import rubric
-from scripts.metric_validation.corpus import PREFIX_VARIANTS, Pair
+from scripts.metric_validation.corpus import PAIR_KINDS, PREFIX_VARIANTS, Pair
 from scripts.metric_validation.stats import (
     BootstrapInterval,
     bootstrap_ci,
@@ -53,6 +54,16 @@ class BandRow:
 
 
 @dataclass(frozen=True)
+class ScaleRow:
+    kind: str
+    prefix: str
+    pairs: int
+    minimum: float
+    median: float
+    maximum: float
+
+
+@dataclass(frozen=True)
 class RaterAgreement:
     left_rater: str
     right_rater: str
@@ -72,6 +83,7 @@ class ValidationReport:
     prefix_sweep: list[PrefixResult]
     chosen_prefix: str | None
     chosen_prefix_tied_with: list[str]
+    scale_by_kind: list[ScaleRow]
     bands_all: list[BandRow]
     bands_local_vs_premium: list[BandRow]
     agreements: list[RaterAgreement]
@@ -147,6 +159,32 @@ def prefix_sweep(
         )
 
     return sorted(results, key=lambda result: (result.auc is None, -(result.auc or 0.0)))
+
+
+def metric_scale(pairs: list[Pair], *, prefix: str) -> list[ScaleRow]:
+    """Where each kind of pair sits on the cosine, at one prefix.
+
+    The noise floor lives here. cos(premium_a, premium_b) is the ceiling the
+    metric can reach when both answers are good, so a local-vs-premium median
+    means nothing until it is read against it: if the two medians coincide, the
+    cosine is not resolving quality in that range, it is saturating.
+    """
+    rows: list[ScaleRow] = []
+    for kind in PAIR_KINDS:
+        scores = [pair.cosine[prefix] for pair in pairs if pair.kind == kind and prefix in pair.cosine]
+        if not scores:
+            continue
+        rows.append(
+            ScaleRow(
+                kind=kind,
+                prefix=prefix,
+                pairs=len(scores),
+                minimum=min(scores),
+                median=median(scores),
+                maximum=max(scores),
+            )
+        )
+    return rows
 
 
 def separation_by_band(
@@ -305,6 +343,7 @@ def build_report(
         prefix_sweep=sweep,
         chosen_prefix=chosen,
         chosen_prefix_tied_with=tied_with,
+        scale_by_kind=metric_scale(pairs, prefix=chosen) if chosen else [],
         bands_all=separation_by_band(pairs, reference, prefix=chosen) if chosen else [],
         bands_local_vs_premium=(
             separation_by_band(pairs, reference, prefix=chosen, kinds=("local_vs_premium",))
