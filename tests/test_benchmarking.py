@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import httpx
@@ -7,6 +8,7 @@ import pytest
 
 from nebula.benchmarking.dataset import (
     PHASE5_COMPARISON_GROUPS,
+    BenchmarkScenario,
     SCENARIO_MODE_ORDER,
     comparison_group_for_mode,
     group_scenarios,
@@ -338,13 +340,13 @@ async def test_benchmark_runner_authenticates_requests_as_a_tenant(tmp_path) -> 
         base_url="http://127.0.0.1:8000",
         transport=httpx.MockTransport(handler),
     ) as client:
-        await runner._run_scenario(client=client, scenario=scenario, prompt_baselines={})
+        await runner._run_scenario(client=client, scenario=scenario, baselines={})
 
     assert captured_headers["X-Nebula-API-Key"] == runner.settings.bootstrap_api_key
     assert captured_headers["X-Nebula-Tenant-ID"] == runner.settings.bootstrap_tenant_id
 
 
-# --- T11: response_content -> response_content --------------------------------
+# --- T11: response_preview -> response_content --------------------------------
 
 
 GOLDEN_REPORT = PROJECT_ROOT / "tests" / "golden" / "benchmark_report.md"
@@ -604,3 +606,216 @@ async def test_ephemeral_collection_cleanup_records_an_async_failure(tmp_path) -
     outcomes = await runner._cleanup_collections()
 
     assert [outcome["status"] for outcome in outcomes] == ["failed", "failed"]
+
+
+def test_the_runner_is_importable_and_runnable_as_a_module(tmp_path) -> None:
+    # Importing the module defines every top-level name; running it as __main__
+    # calls main() at the point the guard sits, so anything defined below that
+    # guard does not exist yet. Only executing the module catches that, which
+    # is why the unit tests above cannot.
+    import subprocess
+    import sys
+
+    dataset = tmp_path / "empty.jsonl"
+    dataset.write_text("", encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "nebula.benchmarking.run",
+            "--base-url",
+            "http://127.0.0.1:1",
+            "--dataset",
+            str(dataset),
+            "--artifacts-root",
+            str(tmp_path / "artifacts"),
+        ],
+        capture_output=True,
+        text=True,
+        cwd=PROJECT_ROOT,
+    )
+
+    assert "NameError" not in completed.stderr
+    assert completed.returncode == 0, completed.stderr[-2000:]
+
+
+def test_a_dataset_outside_the_repo_does_not_lose_the_run_at_report_time(tmp_path) -> None:
+    # The report recorded the dataset as a repo-relative path, which throws for
+    # any dataset elsewhere. The throw lands in _build_report, after every
+    # scenario has already been executed, so the whole run is lost at the last
+    # step.
+    dataset = tmp_path / "elsewhere.jsonl"
+    dataset.write_text("", encoding="utf-8")
+    runner = BenchmarkRunner(
+        base_url="http://127.0.0.1:8000",
+        dataset_path=dataset,
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+    report = runner._build_report(_regression_results())
+
+    assert report["dataset"] == str(dataset)
+
+
+def test_a_dataset_inside_the_repo_is_still_recorded_relative(tmp_path) -> None:
+    runner = _regression_runner(tmp_path)
+
+    report = runner._build_report(_regression_results())
+
+    assert report["dataset"] == "benchmarks/v1/scenarios.jsonl"
+
+
+# --- T9: bounded concurrency per mode, with a barrier between modes ------------
+
+
+class _TracingRunner(BenchmarkRunner):
+    """Records when each scenario starts and ends, without touching a server."""
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.trace: list[tuple[str, str]] = []
+        self.seen_baselines: dict[str, dict[str, int]] = {}
+
+    async def _run_scenario(self, *, client, scenario, baselines):
+        self.trace.append((scenario.id, "start"))
+        self.seen_baselines[scenario.id] = {
+            key: usage.total_tokens for key, usage in baselines.items()
+        }
+        for _ in range(3):
+            await asyncio.sleep(0)
+        self.trace.append((scenario.id, "end"))
+        return _regression_result(
+            scenario.id, scenario.mode, "premium", "explicit_premium_model",
+            "openai-compatible", 10.0, 5, 5, 0.0, None, "body",
+        )
+
+
+def _tracing_runner(tmp_path, **kwargs) -> _TracingRunner:
+    return _TracingRunner(
+        base_url="http://127.0.0.1:8000",
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+        **kwargs,
+    )
+
+
+def _fake_grouped(counts: dict[str, int]) -> dict[str, list[BenchmarkScenario]]:
+    from nebula.benchmarking.dataset import ScenarioExpectation
+
+    return {
+        mode: [
+            BenchmarkScenario(
+                id=f"{mode}-{index}",
+                mode=mode,
+                messages=[{"role": "user", "content": f"{mode} {index}"}],
+                tags=[],
+                expect=ScenarioExpectation(
+                    route_target="premium",
+                    route_reason="explicit_premium_model",
+                    cache_hit=False,
+                    fallback_used=False,
+                ),
+            )
+            for index in range(count)
+        ]
+        for mode, count in counts.items()
+    }
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_drains_a_mode_before_the_next_one_starts(tmp_path) -> None:
+    # Cold has to populate the cache before warm reads it. Without a barrier a
+    # warm scenario can start while cold is still in flight and miss the entry
+    # it was written to find.
+    runner = _tracing_runner(tmp_path, concurrency=4)
+    grouped = _fake_grouped({"auto_simple_cold": 3, "auto_simple_warm": 3})
+
+    await runner._run_groups(
+        client=None, grouped=grouped, modes=["auto_simple_cold", "auto_simple_warm"]
+    )
+
+    last_cold_end = max(
+        index for index, (sid, event) in enumerate(runner.trace)
+        if sid.startswith("auto_simple_cold") and event == "end"
+    )
+    first_warm_start = min(
+        index for index, (sid, event) in enumerate(runner.trace)
+        if sid.startswith("auto_simple_warm") and event == "start"
+    )
+    assert last_cold_end < first_warm_start
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_defaults_to_running_one_scenario_at_a_time(tmp_path) -> None:
+    # The suite reports latency. Concurrent scenarios contend for the same
+    # local model and inflate the very number the benchmark exists to report,
+    # so parallelism has to be opt-in.
+    runner = _tracing_runner(tmp_path)
+    grouped = _fake_grouped({"premium_direct": 3})
+
+    assert runner.concurrency == 1
+
+    await runner._run_groups(client=None, grouped=grouped, modes=["premium_direct"])
+
+    events = [event for _, event in runner.trace]
+    assert events == ["start", "end"] * 3
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_honours_a_raised_concurrency_bound(tmp_path) -> None:
+    runner = _tracing_runner(tmp_path, concurrency=2)
+    grouped = _fake_grouped({"premium_direct": 4})
+
+    await runner._run_groups(client=None, grouped=grouped, modes=["premium_direct"])
+
+    in_flight = peak = 0
+    for _, event in runner.trace:
+        in_flight += 1 if event == "start" else -1
+        peak = max(peak, in_flight)
+    assert peak == 2
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_keeps_results_in_dataset_order(tmp_path) -> None:
+    # Under concurrency, completion order is arbitrary. The report's raw rows
+    # are read by a human against the dataset, so they must not shuffle.
+    runner = _tracing_runner(tmp_path, concurrency=4)
+    grouped = _fake_grouped({"premium_direct": 4})
+
+    results = await runner._run_groups(
+        client=None, grouped=grouped, modes=["premium_direct"]
+    )
+
+    assert [result.scenario_id for result in results] == [
+        f"premium_direct-{index}" for index in range(4)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_publishes_earlier_modes_baselines_to_later_ones(tmp_path) -> None:
+    runner = _tracing_runner(tmp_path, concurrency=4)
+    grouped = _fake_grouped({"premium_direct": 2, "auto_simple_warm": 1})
+
+    await runner._run_groups(
+        client=None, grouped=grouped, modes=["premium_direct", "auto_simple_warm"]
+    )
+
+    assert runner.seen_baselines["auto_simple_warm-0"] != {}
+
+
+@pytest.mark.asyncio
+async def test_mode_barrier_hides_same_mode_baselines_so_results_do_not_depend_on_order(
+    tmp_path,
+) -> None:
+    # A scenario reading a baseline written by a sibling in the same mode makes
+    # the numbers depend on completion order, which under concurrency is not
+    # even stable between runs of the same suite.
+    runner = _tracing_runner(tmp_path, concurrency=4)
+    grouped = _fake_grouped({"premium_direct": 3})
+
+    await runner._run_groups(client=None, grouped=grouped, modes=["premium_direct"])
+
+    assert all(seen == {} for seen in runner.seen_baselines.values())

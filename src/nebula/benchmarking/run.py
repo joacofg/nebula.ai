@@ -140,11 +140,19 @@ class BenchmarkRunner:
         dataset_path: Path,
         pricing_path: Path,
         artifacts_root: Path,
+        concurrency: int = 1,
     ) -> None:
         self.base_url = base_url
         self.dataset_path = dataset_path
         self.pricing_path = pricing_path
         self.artifacts_root = artifacts_root
+        # One at a time by default. This suite reports latency, and concurrent
+        # scenarios contend for the same local model, inflating the very number
+        # the benchmark exists to report. Parallelism is for runs where latency
+        # is not the measurement.
+        if concurrency < 1:
+            raise ValueError("Concurrency must be at least 1.")
+        self.concurrency = concurrency
         self.settings = get_settings()
         self.scenarios = load_scenarios(dataset_path)
         self.pricing = PricingCatalog.from_path(pricing_path)
@@ -264,12 +272,56 @@ class BenchmarkRunner:
         grouped: dict[ScenarioMode, list[BenchmarkScenario]],
         modes: list[ScenarioMode],
     ) -> list[BenchmarkResult]:
-        prompt_baselines: dict[str, CompletionUsage] = {}
+        baselines: dict[str, CompletionUsage] = {}
         results: list[BenchmarkResult] = []
         for mode in modes:
-            for scenario in grouped[mode]:
-                result = await self._run_scenario(client=client, scenario=scenario, prompt_baselines=prompt_baselines)
-                results.append(result)
+            # The barrier. Nothing in this mode starts until the previous mode
+            # has fully drained, so cold finishes populating the cache before
+            # warm goes looking for what it wrote.
+            results.extend(
+                await self._run_mode(
+                    client=client,
+                    scenarios=grouped[mode],
+                    baselines=baselines,
+                )
+            )
+        return results
+
+    async def _run_mode(
+        self,
+        *,
+        client: httpx.AsyncClient,
+        scenarios: list[BenchmarkScenario],
+        baselines: dict[str, CompletionUsage],
+    ) -> list[BenchmarkResult]:
+        """Run one mode's scenarios under a concurrency bound.
+
+        Reads go against a snapshot frozen at the start of the mode and writes
+        are staged until it ends. A scenario reading a baseline a sibling wrote
+        would make the reported cost depend on completion order — which under
+        any concurrency above one is not stable between runs of the same suite.
+        """
+        snapshot = dict(baselines)
+        semaphore = asyncio.Semaphore(self.concurrency)
+
+        async def run_one(scenario: BenchmarkScenario) -> BenchmarkResult:
+            async with semaphore:
+                return await self._run_scenario(
+                    client=client, scenario=scenario, baselines=snapshot
+                )
+
+        # gather preserves argument order regardless of completion order, so the
+        # report's raw rows stay in dataset order for a human reading them
+        # against the dataset.
+        results = list(await asyncio.gather(*(run_one(s) for s in scenarios)))
+
+        for scenario, result in zip(scenarios, results, strict=True):
+            if result.total_tokens:
+                baselines[self._prompt_key(scenario)] = CompletionUsage(
+                    prompt_tokens=result.prompt_tokens,
+                    completion_tokens=result.completion_tokens,
+                    total_tokens=result.total_tokens,
+                )
         return results
 
     async def _run_scenario(
@@ -277,7 +329,7 @@ class BenchmarkRunner:
         *,
         client: httpx.AsyncClient,
         scenario: BenchmarkScenario,
-        prompt_baselines: dict[str, CompletionUsage],
+        baselines: dict[str, CompletionUsage],
     ) -> BenchmarkResult:
         payload = {
             "model": self._requested_model_for_mode(scenario.mode),
@@ -321,9 +373,9 @@ class BenchmarkRunner:
             completion_tokens=body.get("usage", {}).get("completion_tokens", 0),
             total_tokens=body.get("usage", {}).get("total_tokens", 0),
         )
+        # The write is staged by the caller at the mode barrier, from the
+        # result itself, so this stays free of shared mutable state.
         prompt_key = self._prompt_key(scenario)
-        if usage.total_tokens:
-            prompt_baselines[prompt_key] = usage
 
         route_target = response.headers.get("X-Nebula-Route-Target")
         route_reason = response.headers.get("X-Nebula-Route-Reason")
@@ -344,7 +396,7 @@ class BenchmarkRunner:
 
         avoided_premium_cost = None
         if route_target in {"local", "cache"}:
-            avoided_usage = usage if route_target == "local" and usage.total_tokens else prompt_baselines.get(prompt_key)
+            avoided_usage = usage if route_target == "local" and usage.total_tokens else baselines.get(prompt_key)
             avoided_premium_cost = self.pricing.estimate_cost(self.settings.premium_model, avoided_usage)
 
         failure_reasons = self._evaluate_expectations(
@@ -482,7 +534,7 @@ class BenchmarkRunner:
         return {
             "generated_at": datetime.now(UTC).isoformat(),
             "run_id": self.run_id,
-            "dataset": str(self.dataset_path.relative_to(PROJECT_ROOT)),
+            "dataset": _repo_relative(self.dataset_path),
             "cache_collections": self.collection_cleanup,
             "base_url": self.base_url or "managed-local",
             "summary": {
@@ -775,8 +827,17 @@ def main() -> None:
     asyncio.run(_async_main())
 
 
-if __name__ == "__main__":
-    main()
+def _repo_relative(path: Path) -> str:
+    """Record a path relative to the repo when it is inside it, absolute when not.
+
+    relative_to() raises for anything outside PROJECT_ROOT, and this is called
+    from _build_report — after every scenario has run — so a --dataset pointing
+    anywhere else used to throw away the whole run at the very last step.
+    """
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
 
 
 async def _delete_qdrant_collection(name: str) -> None:
@@ -794,3 +855,6 @@ async def _delete_qdrant_collection(name: str) -> None:
         await client.delete_collection(collection_name=name)
     finally:
         await client.close()
+
+if __name__ == "__main__":
+    main()
