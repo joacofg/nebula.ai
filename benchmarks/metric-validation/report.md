@@ -1,6 +1,6 @@
 # Metric validation — pilot study
 
-Reference rater: `llm-judge`. Raters: `llm-judge (auxiliary)`.
+Reference rater: `llm-judge`. Raters: `llm-gemini-2.5-flash (auxiliary)`, `llm-judge (auxiliary)`.
 
 **Human-to-human agreement: PENDING.** Rigour point 3 of the Phase 1 plan asks for two human evaluators. This run has 0. The LLM rater below is an auxiliary rater: it followed the same rubric on the same blinded pairs, and its agreement with the human rater is evidence that the rubric can be applied consistently — it is not the inter-rater agreement the plan requires, and it must not be reported as such.
 
@@ -67,5 +67,6 @@ Cosine at the chosen prefix (`search_query`).
 
 | rater | rater | shared pairs | Cohen κ (binary) | quadratic-weighted κ | 95% CI | note |
 |---|---|---|---|---|---|---|
+| llm-gemini-2.5-flash (auxiliary) | llm-judge (auxiliary) | 130 | 0.651 | 0.770 | [0.674, 0.848] | — |
 
-Krippendorff's ordinal α across all raters: —.
+Krippendorff's ordinal α across all raters: 0.733.

@@ -1,6 +1,24 @@
 {
-  "agreements": [],
+  "agreements": [
+    {
+      "cohens_kappa_binary": 0.6509641200878693,
+      "kappa_ci": {
+        "confidence": 0.95,
+        "high": 0.8480084567781832,
+        "low": 0.673596639056832,
+        "point": 0.7698072805139187,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "left_rater": "llm-gemini-2.5-flash",
+      "note": "",
+      "pairs": 130,
+      "quadratic_weighted_kappa": 0.7698072805139187,
+      "right_rater": "llm-judge"
+    }
+  ],
   "auxiliary_raters": [
+    "llm-gemini-2.5-flash",
     "llm-judge"
   ],
   "bands_all": [
@@ -48,7 +66,7 @@
   "chosen_prefix_tied_with": [],
   "human_raters": [],
   "human_to_human_pending": true,
-  "krippendorff_alpha": null,
+  "krippendorff_alpha": 0.7329342565676411,
   "prefix_sweep": [
     {
       "auc": 0.7971641432347993,
@@ -174,6 +192,7 @@
     }
   ],
   "raters": [
+    "llm-gemini-2.5-flash",
     "llm-judge"
   ],
   "reference_rater": "llm-judge",
