@@ -69,7 +69,9 @@ class BenchmarkResult:
     estimated_premium_cost: float | None
     avoided_premium_cost: float | None
     failure_reasons: list[str]
-    response_preview: str | None
+    # The complete completion, not a trimmed one. Any trimming belongs to
+    # whatever renders it, so the stored artifact stays the full evidence.
+    response_content: str | None
 
 
 class ManagedServer:
@@ -257,7 +259,7 @@ class BenchmarkRunner:
                 estimated_premium_cost=None,
                 avoided_premium_cost=None,
                 failure_reasons=[str(exc)],
-                response_preview=None,
+                response_content=None,
             )
 
         latency_ms = (time.perf_counter() - started_at) * 1000
@@ -322,7 +324,7 @@ class BenchmarkRunner:
             estimated_premium_cost=estimated_premium_cost,
             avoided_premium_cost=avoided_premium_cost,
             failure_reasons=failure_reasons,
-            response_preview=body.get("choices", [{}])[0].get("message", {}).get("content"),
+            response_content=body.get("choices", [{}])[0].get("message", {}).get("content"),
         )
 
     def _build_report(self, results: list[BenchmarkResult]) -> dict[str, object]:
@@ -668,7 +670,7 @@ class BenchmarkRunner:
                     estimated_premium_cost=None,
                     avoided_premium_cost=None,
                     failure_reasons=["Fallback scenarios require a managed local Nebula server."],
-                    response_preview=None,
+                    response_content=None,
                 )
             )
         return results

@@ -146,7 +146,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0004,
             avoided_premium_cost=None,
             failure_reasons=[],
-            response_preview="premium",
+            response_content="premium",
         ),
         BenchmarkResult(
             scenario_id="local-direct-brief",
@@ -168,7 +168,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0,
             avoided_premium_cost=0.0000066,
             failure_reasons=[],
-            response_preview="local",
+            response_content="local",
         ),
         BenchmarkResult(
             scenario_id="auto-simple-cold-1",
@@ -190,7 +190,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0,
             avoided_premium_cost=0.000005,
             failure_reasons=[],
-            response_preview="cold",
+            response_content="cold",
         ),
         BenchmarkResult(
             scenario_id="auto-simple-warm-1",
@@ -212,7 +212,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0,
             avoided_premium_cost=0.000005,
             failure_reasons=[],
-            response_preview="warm",
+            response_content="warm",
         ),
         BenchmarkResult(
             scenario_id="auto-complex-architecture",
@@ -234,7 +234,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0012,
             avoided_premium_cost=None,
             failure_reasons=[],
-            response_preview="complex",
+            response_content="complex",
         ),
         BenchmarkResult(
             scenario_id="auto-fallback-hello",
@@ -256,7 +256,7 @@ def test_benchmark_runner_builds_report_and_markdown_shapes(tmp_path) -> None:
             estimated_premium_cost=0.0,
             avoided_premium_cost=None,
             failure_reasons=["Expected status 200, received 502"],
-            response_preview=None,
+            response_content=None,
         ),
     ]
 
@@ -342,3 +342,110 @@ async def test_benchmark_runner_authenticates_requests_as_a_tenant(tmp_path) -> 
 
     assert captured_headers["X-Nebula-API-Key"] == runner.settings.bootstrap_api_key
     assert captured_headers["X-Nebula-Tenant-ID"] == runner.settings.bootstrap_tenant_id
+
+
+# --- T11: response_content -> response_content --------------------------------
+
+
+GOLDEN_REPORT = PROJECT_ROOT / "tests" / "golden" / "benchmark_report.md"
+
+
+def _mask_volatile(markdown: str) -> str:
+    """Blank the two lines that change on every render."""
+    import re
+
+    markdown = re.sub(r"^- Run ID: `.*`$", "- Run ID: `<run-id>`", markdown, flags=re.M)
+    return re.sub(
+        r"^- Generated At: `.*`$", "- Generated At: `<generated-at>`", markdown, flags=re.M
+    )
+
+
+def _regression_result(
+    scenario_id: str,
+    mode: str,
+    route_target: str,
+    route_reason: str,
+    provider: str,
+    latency_ms: float,
+    prompt_tokens: int,
+    completion_tokens: int,
+    estimated_premium_cost: float,
+    avoided_premium_cost: float | None,
+    content: str,
+) -> BenchmarkResult:
+    return BenchmarkResult(
+        scenario_id=scenario_id,
+        mode=mode,
+        tags=["t"],
+        status="passed",
+        requested_model="m",
+        response_model="m",
+        route_target=route_target,
+        route_reason=route_reason,
+        provider=provider,
+        cache_hit=False,
+        fallback_used=False,
+        http_status=200,
+        latency_ms=latency_ms,
+        prompt_tokens=prompt_tokens,
+        completion_tokens=completion_tokens,
+        total_tokens=prompt_tokens + completion_tokens,
+        estimated_premium_cost=estimated_premium_cost,
+        avoided_premium_cost=avoided_premium_cost,
+        failure_reasons=[],
+        response_content=content,
+    )
+
+
+def _regression_runner(tmp_path) -> BenchmarkRunner:
+    return BenchmarkRunner(
+        base_url="http://127.0.0.1:8000",
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+
+def _regression_results() -> list[BenchmarkResult]:
+    return [
+        _regression_result(
+            "p1", "premium_direct", "premium", "explicit_premium_model",
+            "openai-compatible", 800.0, 100, 20, 0.0004, None, "premium body",
+        ),
+        _regression_result(
+            "l1", "local_direct", "local", "explicit_local_model",
+            "ollama", 42.0, 12, 8, 0.0, 0.0000066, "local body",
+        ),
+        _regression_result(
+            "c1", "auto_simple_cold", "local", "simple_prompt",
+            "ollama", 60.0, 10, 6, 0.0, 0.000005, "cold body",
+        ),
+    ]
+
+
+def test_the_result_field_is_named_for_what_it_holds(tmp_path) -> None:
+    # The field has always stored the complete completion, never a preview of
+    # it. A name that says otherwise invites a caller to render it raw.
+    result = _regression_results()[0]
+
+    assert result.response_content == "premium body"
+    assert not hasattr(result, "response_preview")
+
+
+def test_the_report_rows_carry_response_content(tmp_path) -> None:
+    runner = _regression_runner(tmp_path)
+
+    report = runner._build_report(_regression_results())
+
+    assert "response_content" in report["results"][0]
+    assert "response_preview" not in report["results"][0]
+
+
+def test_renaming_the_field_leaves_the_rendered_report_byte_identical(tmp_path) -> None:
+    # The golden was captured before the rename. report.md is what a reader
+    # actually reads, and the rename must not have moved a character of it.
+    runner = _regression_runner(tmp_path)
+
+    rendered = runner._render_markdown(runner._build_report(_regression_results()))
+
+    assert _mask_volatile(rendered) == GOLDEN_REPORT.read_text(encoding="utf-8")
