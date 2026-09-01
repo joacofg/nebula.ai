@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -69,7 +71,9 @@ class BenchmarkResult:
     estimated_premium_cost: float | None
     avoided_premium_cost: float | None
     failure_reasons: list[str]
-    response_preview: str | None
+    # The complete completion, not a trimmed one. Any trimming belongs to
+    # whatever renders it, so the stored artifact stays the full evidence.
+    response_content: str | None
 
 
 class ManagedServer:
@@ -136,65 +140,60 @@ class BenchmarkRunner:
         dataset_path: Path,
         pricing_path: Path,
         artifacts_root: Path,
+        concurrency: int = 1,
     ) -> None:
         self.base_url = base_url
         self.dataset_path = dataset_path
         self.pricing_path = pricing_path
         self.artifacts_root = artifacts_root
+        # One at a time by default. This suite reports latency, and concurrent
+        # scenarios contend for the same local model, inflating the very number
+        # the benchmark exists to report. Parallelism is for runs where latency
+        # is not the measurement.
+        if concurrency < 1:
+            raise ValueError("Concurrency must be at least 1.")
+        self.concurrency = concurrency
         self.settings = get_settings()
         self.scenarios = load_scenarios(dataset_path)
         self.pricing = PricingCatalog.from_path(pricing_path)
         self.run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        # Only a managed run owns its cache collections. Under --base-url the
+        # runner is a client of somebody else's gateway, and deleting that
+        # operator's collection would destroy a production cache.
+        self.managed_collections: list[str] = (
+            []
+            if self.base_url
+            else [
+                f"nebula-benchmark-{self.run_id}-normal",
+                f"nebula-benchmark-{self.run_id}-fallback",
+            ]
+        )
+        self.collection_cleaner: Callable[[str], object] = _delete_qdrant_collection
+        self.collection_cleanup: list[dict[str, str]] = []
 
     async def run(self) -> tuple[dict[str, object], Path]:
         grouped = group_scenarios(self.scenarios)
         normal_modes = [mode for mode in SCENARIO_MODE_ORDER if mode != "auto_fallback"]
-        results: list[BenchmarkResult] = []
 
         if self.base_url:
             async with httpx.AsyncClient(base_url=self.base_url, timeout=120.0) as client:
-                results.extend(
-                    await self._run_groups(
-                        client=client,
-                        grouped=grouped,
-                        modes=normal_modes,
-                    )
+                results = await self._run_groups(
+                    client=client,
+                    grouped=grouped,
+                    modes=normal_modes,
                 )
             results.extend(self._skipped_fallback_results(grouped["auto_fallback"]))
         else:
-            normal_port = _free_port()
-            fallback_port = _free_port()
-            async with ManagedServer(
-                port=normal_port,
-                env_overrides={
-                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
-                    "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-normal",
-                },
-            ) as normal_server:
-                async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
-                    results.extend(
-                        await self._run_groups(
-                            client=client,
-                            grouped=grouped,
-                            modes=normal_modes,
-                        )
-                    )
-            async with ManagedServer(
-                port=fallback_port,
-                env_overrides={
-                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
-                    "NEBULA_OLLAMA_BASE_URL": "http://127.0.0.1:9",
-                    "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-fallback",
-                },
-            ) as fallback_server:
-                async with httpx.AsyncClient(base_url=fallback_server.base_url, timeout=120.0) as client:
-                    results.extend(
-                        await self._run_groups(
-                            client=client,
-                            grouped=grouped,
-                            modes=["auto_fallback"],
-                        )
-                    )
+            # Cleanup in a finally: an interrupted run is precisely when an
+            # orphan collection is left behind, so cleaning only on the happy
+            # path would miss the case that motivates cleaning at all.
+            try:
+                results = await self._execute_managed(
+                    grouped=grouped,
+                    normal_modes=normal_modes,
+                )
+            finally:
+                self.collection_cleanup = await self._cleanup_collections()
 
         report = self._build_report(results)
         artifact_dir = self.artifacts_root / self.run_id
@@ -203,6 +202,69 @@ class BenchmarkRunner:
         (artifact_dir / "report.md").write_text(self._render_markdown(report), encoding="utf-8")
         return report, artifact_dir
 
+    async def _execute_managed(
+        self,
+        *,
+        grouped: dict[ScenarioMode, list[BenchmarkScenario]],
+        normal_modes: list[ScenarioMode],
+    ) -> list[BenchmarkResult]:
+        results: list[BenchmarkResult] = []
+        normal_collection, fallback_collection = self.managed_collections
+        normal_port = _free_port()
+        fallback_port = _free_port()
+        async with ManagedServer(
+            port=normal_port,
+            env_overrides={
+                **MANAGED_LOCAL_PREMIUM_OVERRIDES,
+                "NEBULA_SEMANTIC_CACHE_COLLECTION": normal_collection,
+            },
+        ) as normal_server:
+            async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
+                results.extend(
+                    await self._run_groups(
+                        client=client,
+                        grouped=grouped,
+                        modes=normal_modes,
+                    )
+                )
+        async with ManagedServer(
+            port=fallback_port,
+            env_overrides={
+                **MANAGED_LOCAL_PREMIUM_OVERRIDES,
+                "NEBULA_OLLAMA_BASE_URL": "http://127.0.0.1:9",
+                "NEBULA_SEMANTIC_CACHE_COLLECTION": fallback_collection,
+            },
+        ) as fallback_server:
+            async with httpx.AsyncClient(base_url=fallback_server.base_url, timeout=120.0) as client:
+                results.extend(
+                    await self._run_groups(
+                        client=client,
+                        grouped=grouped,
+                        modes=["auto_fallback"],
+                    )
+                )
+        return results
+
+    async def _cleanup_collections(self) -> list[dict[str, str]]:
+        """Drop the cache collections this run created.
+
+        Best effort, but never silent. Qdrant may be gone by the time the run
+        ends, and that must not turn a completed benchmark into a failed one —
+        yet the operator still has an orphan collection to remove, so the
+        outcome is recorded in the report either way.
+        """
+        outcomes: list[dict[str, str]] = []
+        for name in self.managed_collections:
+            try:
+                result = self.collection_cleaner(name)
+                if inspect.isawaitable(result):
+                    await result
+            except Exception as exc:  # noqa: BLE001 - recorded, never raised
+                outcomes.append({"collection": name, "status": "failed", "detail": str(exc)})
+            else:
+                outcomes.append({"collection": name, "status": "deleted"})
+        return outcomes
+
     async def _run_groups(
         self,
         *,
@@ -210,12 +272,56 @@ class BenchmarkRunner:
         grouped: dict[ScenarioMode, list[BenchmarkScenario]],
         modes: list[ScenarioMode],
     ) -> list[BenchmarkResult]:
-        prompt_baselines: dict[str, CompletionUsage] = {}
+        baselines: dict[str, CompletionUsage] = {}
         results: list[BenchmarkResult] = []
         for mode in modes:
-            for scenario in grouped[mode]:
-                result = await self._run_scenario(client=client, scenario=scenario, prompt_baselines=prompt_baselines)
-                results.append(result)
+            # The barrier. Nothing in this mode starts until the previous mode
+            # has fully drained, so cold finishes populating the cache before
+            # warm goes looking for what it wrote.
+            results.extend(
+                await self._run_mode(
+                    client=client,
+                    scenarios=grouped[mode],
+                    baselines=baselines,
+                )
+            )
+        return results
+
+    async def _run_mode(
+        self,
+        *,
+        client: httpx.AsyncClient,
+        scenarios: list[BenchmarkScenario],
+        baselines: dict[str, CompletionUsage],
+    ) -> list[BenchmarkResult]:
+        """Run one mode's scenarios under a concurrency bound.
+
+        Reads go against a snapshot frozen at the start of the mode and writes
+        are staged until it ends. A scenario reading a baseline a sibling wrote
+        would make the reported cost depend on completion order — which under
+        any concurrency above one is not stable between runs of the same suite.
+        """
+        snapshot = dict(baselines)
+        semaphore = asyncio.Semaphore(self.concurrency)
+
+        async def run_one(scenario: BenchmarkScenario) -> BenchmarkResult:
+            async with semaphore:
+                return await self._run_scenario(
+                    client=client, scenario=scenario, baselines=snapshot
+                )
+
+        # gather preserves argument order regardless of completion order, so the
+        # report's raw rows stay in dataset order for a human reading them
+        # against the dataset.
+        results = list(await asyncio.gather(*(run_one(s) for s in scenarios)))
+
+        for scenario, result in zip(scenarios, results, strict=True):
+            if result.total_tokens:
+                baselines[self._prompt_key(scenario)] = CompletionUsage(
+                    prompt_tokens=result.prompt_tokens,
+                    completion_tokens=result.completion_tokens,
+                    total_tokens=result.total_tokens,
+                )
         return results
 
     async def _run_scenario(
@@ -223,7 +329,7 @@ class BenchmarkRunner:
         *,
         client: httpx.AsyncClient,
         scenario: BenchmarkScenario,
-        prompt_baselines: dict[str, CompletionUsage],
+        baselines: dict[str, CompletionUsage],
     ) -> BenchmarkResult:
         payload = {
             "model": self._requested_model_for_mode(scenario.mode),
@@ -257,7 +363,7 @@ class BenchmarkRunner:
                 estimated_premium_cost=None,
                 avoided_premium_cost=None,
                 failure_reasons=[str(exc)],
-                response_preview=None,
+                response_content=None,
             )
 
         latency_ms = (time.perf_counter() - started_at) * 1000
@@ -267,9 +373,9 @@ class BenchmarkRunner:
             completion_tokens=body.get("usage", {}).get("completion_tokens", 0),
             total_tokens=body.get("usage", {}).get("total_tokens", 0),
         )
+        # The write is staged by the caller at the mode barrier, from the
+        # result itself, so this stays free of shared mutable state.
         prompt_key = self._prompt_key(scenario)
-        if usage.total_tokens:
-            prompt_baselines[prompt_key] = usage
 
         route_target = response.headers.get("X-Nebula-Route-Target")
         route_reason = response.headers.get("X-Nebula-Route-Reason")
@@ -290,7 +396,7 @@ class BenchmarkRunner:
 
         avoided_premium_cost = None
         if route_target in {"local", "cache"}:
-            avoided_usage = usage if route_target == "local" and usage.total_tokens else prompt_baselines.get(prompt_key)
+            avoided_usage = usage if route_target == "local" and usage.total_tokens else baselines.get(prompt_key)
             avoided_premium_cost = self.pricing.estimate_cost(self.settings.premium_model, avoided_usage)
 
         failure_reasons = self._evaluate_expectations(
@@ -322,7 +428,7 @@ class BenchmarkRunner:
             estimated_premium_cost=estimated_premium_cost,
             avoided_premium_cost=avoided_premium_cost,
             failure_reasons=failure_reasons,
-            response_preview=body.get("choices", [{}])[0].get("message", {}).get("content"),
+            response_content=body.get("choices", [{}])[0].get("message", {}).get("content"),
         )
 
     def _build_report(self, results: list[BenchmarkResult]) -> dict[str, object]:
@@ -428,7 +534,8 @@ class BenchmarkRunner:
         return {
             "generated_at": datetime.now(UTC).isoformat(),
             "run_id": self.run_id,
-            "dataset": str(self.dataset_path.relative_to(PROJECT_ROOT)),
+            "dataset": _repo_relative(self.dataset_path),
+            "cache_collections": self.collection_cleanup,
             "base_url": self.base_url or "managed-local",
             "summary": {
                 "total_requests": total_requests,
@@ -668,7 +775,7 @@ class BenchmarkRunner:
                     estimated_premium_cost=None,
                     avoided_premium_cost=None,
                     failure_reasons=["Fallback scenarios require a managed local Nebula server."],
-                    response_preview=None,
+                    response_content=None,
                 )
             )
         return results
@@ -719,6 +826,35 @@ async def _async_main() -> None:
 def main() -> None:
     asyncio.run(_async_main())
 
+
+def _repo_relative(path: Path) -> str:
+    """Record a path relative to the repo when it is inside it, absolute when not.
+
+    relative_to() raises for anything outside PROJECT_ROOT, and this is called
+    from _build_report — after every scenario has run — so a --dataset pointing
+    anywhere else used to throw away the whole run at the very last step.
+    """
+    try:
+        return str(path.relative_to(PROJECT_ROOT))
+    except ValueError:
+        return str(path)
+
+
+async def _delete_qdrant_collection(name: str) -> None:
+    """Drop a benchmark's cache collection.
+
+    Async, matching semantic_cache_service, so cleanup does not block the event
+    loop. Imported lazily so the runner still loads, and still reports, on a
+    machine where the Qdrant client cannot be constructed.
+    """
+    from qdrant_client import AsyncQdrantClient
+
+    settings = get_settings()
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    try:
+        await client.delete_collection(collection_name=name)
+    finally:
+        await client.close()
 
 if __name__ == "__main__":
     main()
