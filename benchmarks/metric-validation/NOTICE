@@ -1,0 +1,41 @@
+Metric-validation pilot corpus
+==============================
+
+What this directory holds
+-------------------------
+
+`prompts.jsonl` is 80 prompts written for this study, 16 in each of five task
+types. They are original to this repository and carry no third-party licence.
+
+`pairs.jsonl`, `cache/` and `provenance.json` are generated. They contain model
+outputs captured for the sole purpose of validating a similarity metric.
+
+Provenance of the generated outputs
+-----------------------------------
+
+Every capture writes `provenance.json`, which pins the exact producers: the
+local model and its digest, the two premium models, the premium provider and
+base URL, the embedding model and its digest, the Ollama version, the sampling
+temperature, and SHA-256 checksums of both the prompt file and the pair file.
+Read that file for the run actually in the tree; the values below are the
+intended configuration, not a record of a specific run.
+
+- Local: Ollama, `llama3.2:3b`, temperature 0
+- Premium A / Premium B: two different models through an OpenAI-compatible
+  endpoint, temperature 0. Two models rather than one sampled twice, because
+  at temperature 0 a single model reproduces itself and the resulting noise
+  floor would measure nothing.
+- Embeddings: Ollama, `nomic-embed-text`, 768 dimensions, captured under all
+  four candidate task prefixes
+
+Terms
+-----
+
+Model outputs are redistributed here under the terms of the providers that
+generated them. Before publishing this directory, confirm those terms still
+permit redistribution of generated output for research use, and update this
+file with the providers and dates actually used.
+
+The two-premium-provider requirement of the plan (decision 13) is not satisfied
+by this pilot: it uses two models reached through one provider. That is T8's
+scope, not T1's.

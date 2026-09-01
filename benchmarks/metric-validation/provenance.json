@@ -1,0 +1,27 @@
+{
+  "captured_at": "2026-08-31T22:17:22+00:00",
+  "embedding_model": "nomic-embed-text",
+  "embedding_model_digest": "0a109f422b47e3a30ba2b10eca18548e944e8a23073ee3f3e947efcf3c45e59f",
+  "local_model": "llama3.2:3b",
+  "local_model_digest": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+  "ollama_version": "0.33.2",
+  "pair_counts": {
+    "cross_prompt": 25,
+    "local_vs_premium": 80,
+    "premium_vs_premium": 25
+  },
+  "pairs_sha256": "33304385129f30f1cfb1638a168db41b9bb63db95bb216a9c7b0d9936461441e",
+  "prefix_variants": [
+    "none",
+    "search_query",
+    "search_document",
+    "clustering"
+  ],
+  "premium_a_model": "openai/gpt-4o-mini",
+  "premium_b_model": "anthropic/claude-haiku-4.5",
+  "premium_base_url": "https://openrouter.ai/api/v1",
+  "premium_provider": "openai_compatible",
+  "prompts_sha256": "d2a67f86b4b187a84a10a2af7544af28973bb740dc281aca2d1bc763c20225ee",
+  "provisional_prefix": "none",
+  "temperature": 0.0
+}
