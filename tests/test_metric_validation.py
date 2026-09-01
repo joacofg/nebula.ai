@@ -1108,3 +1108,80 @@ def test_a_judge_cannot_be_given_a_rater_id_that_passes_for_a_human() -> None:
         llm_judge.validate_rater_id("joaquin")
 
     assert llm_judge.validate_rater_id("llm-gemini-2.5-flash") == "llm-gemini-2.5-flash"
+
+
+# --- calibration round ---------------------------------------------------------
+
+
+def test_calibration_covers_both_verdicts_with_objectively_known_answers() -> None:
+    # A calibration round of only negatives teaches the rater to say divergent.
+    # Both directions have to be represented, and both have to be items whose
+    # answer is fixed by construction rather than by opinion.
+    corpus_pairs, _ = _graded_corpus()
+
+    items = label.calibration_items(corpus_pairs, rater_id="human-2")
+
+    assert {item.expected_substitutable for item in items} == {True, False}
+    assert all(item.why for item in items)
+
+
+def test_the_known_negative_is_a_response_to_a_different_prompt() -> None:
+    corpus_pairs, _ = _graded_corpus()
+
+    negatives = [
+        item
+        for item in label.calibration_items(corpus_pairs, rater_id="human-2")
+        if not item.expected_substitutable
+    ]
+
+    assert negatives
+    assert all(item.pair.kind == "cross_prompt" for item in negatives)
+
+
+def test_the_known_positive_is_a_response_against_itself() -> None:
+    # Nothing in the corpus is objectively substitutable — two premium models
+    # genuinely differ sometimes. A response paired with itself is the only
+    # positive whose answer is not a matter of judgement.
+    corpus_pairs, _ = _graded_corpus()
+
+    positives = [
+        item
+        for item in label.calibration_items(corpus_pairs, rater_id="human-2")
+        if item.expected_substitutable
+    ]
+
+    assert positives
+    for item in positives:
+        assert item.pair.left.text == item.pair.right.text
+
+
+def test_calibration_grades_the_rater_not_the_pair() -> None:
+    corpus_pairs, _ = _graded_corpus()
+    items = label.calibration_items(corpus_pairs, rater_id="human-2")
+    answers = {
+        item.pair.pair_id: ("equivalent" if item.expected_substitutable else "divergent")
+        for item in items
+    }
+
+    assert label.calibration_failures(items, answers) == []
+
+    wrong = {pair_id: "equivalent" for pair_id in answers}
+    failures = label.calibration_failures(items, wrong)
+    assert [item.pair.pair_id for item in failures] == [
+        item.pair.pair_id for item in items if not item.expected_substitutable
+    ]
+
+
+def test_calibration_pairs_are_dropped_from_that_raters_scored_queue(tmp_path) -> None:
+    # A pair the rater was shown with the answer attached cannot also be one of
+    # their blind grades.
+    corpus_pairs, _ = _graded_corpus()
+    items = label.calibration_items(corpus_pairs, rater_id="human-2")
+    used = {item.pair.pair_id for item in items if item.pair.kind == "cross_prompt"}
+
+    queue = label.scored_queue(
+        corpus_pairs, tmp_path / "human-2.jsonl", rater_id="human-2", calibration=items
+    )
+
+    assert used
+    assert not (used & set(queue))
