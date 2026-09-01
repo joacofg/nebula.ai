@@ -38,10 +38,13 @@ async def run(args: argparse.Namespace) -> int:
         raise RuntimeError("NEBULA_PREMIUM_API_KEY is unset; refusing to run the judge.")
 
     root: Path = args.root
+    rater_id = llm_judge.validate_rater_id(
+        args.rater_id or llm_judge.rater_id_for(args.model)
+    )
     pairs = {pair.pair_id: pair for pair in corpus.read_pairs(root / "pairs.jsonl")}
-    label_path = root / "labels" / f"{llm_judge.RATER_ID}.jsonl"
-    queue = labels.remaining(list(pairs), label_path, rater_id=llm_judge.RATER_ID)
-    print(f"{len(queue)} pairs left for {llm_judge.RATER_ID}.")
+    label_path = root / "labels" / f"{rater_id}.jsonl"
+    queue = labels.remaining(list(pairs), label_path, rater_id=rater_id)
+    print(f"{len(queue)} pairs left for {rater_id}.")
 
     unparseable = 0
     async with httpx.AsyncClient(
@@ -50,7 +53,7 @@ async def run(args: argparse.Namespace) -> int:
         timeout=httpx.Timeout(180.0, connect=10.0),
     ) as client:
         for position, pair_id in enumerate(queue, start=1):
-            payload = blinding.blinded_payload(pairs[pair_id], rater_id=llm_judge.RATER_ID)
+            payload = blinding.blinded_payload(pairs[pair_id], rater_id=rater_id)
             response = await client.post(
                 "/chat/completions",
                 json={
@@ -70,7 +73,7 @@ async def run(args: argparse.Namespace) -> int:
                 continue
 
             labels.append(
-                labels.Label(pair_id=pair_id, rater_id=llm_judge.RATER_ID, grade=grade),
+                labels.Label(pair_id=pair_id, rater_id=rater_id, grade=grade),
                 label_path,
             )
             print(f"  [{position}/{len(queue)}] {pair_id}: {grade}")
@@ -84,6 +87,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=DEFAULT_ROOT)
     parser.add_argument("--model", required=True, help="judge model, e.g. openai/gpt-4o-mini")
+    parser.add_argument(
+        "--rater-id",
+        default=None,
+        help="override the derived rater id; must start with llm- to stay auxiliary",
+    )
     return asyncio.run(run(parser.parse_args()))
 
 

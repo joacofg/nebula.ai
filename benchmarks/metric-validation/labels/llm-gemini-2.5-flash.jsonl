@@ -1,0 +1,8 @@
+{"grade": "divergent", "notes": "", "pair_id": "xpr:factual_qa-04", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:17+00:00"}
+{"grade": "equivalent", "notes": "", "pair_id": "lvp:summarisation-02", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:18+00:00"}
+{"grade": "equivalent", "notes": "", "pair_id": "lvp:code-12", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:20+00:00"}
+{"grade": "divergent", "notes": "", "pair_id": "lvp:multistep_reasoning-13", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:21+00:00"}
+{"grade": "divergent", "notes": "", "pair_id": "xpr:summarisation-01", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:22+00:00"}
+{"grade": "partial", "notes": "", "pair_id": "lvp:open_writing-13", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:24+00:00"}
+{"grade": "divergent", "notes": "", "pair_id": "xpr:factual_qa-01", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:25+00:00"}
+{"grade": "equivalent", "notes": "", "pair_id": "lvp:open_writing-09", "rater_id": "llm-gemini-2.5-flash", "recorded_at": "2026-09-01T21:59:26+00:00"}

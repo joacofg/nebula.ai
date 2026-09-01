@@ -13,7 +13,35 @@ import re
 
 from scripts.metric_validation import rubric
 
+# The id the first judge's grades are already stored under. Kept so those
+# 130 labels are not orphaned by a rename.
 RATER_ID = "llm-judge"
+
+
+def rater_id_for(model: str) -> str:
+    """Derive a rater id from a judge's model.
+
+    The "llm-" prefix is what the report keys off to mark a rater auxiliary.
+    However many judges run, none of them is the human evaluator rigour point 3
+    asks for, and the id has to keep saying so.
+    """
+    slug = model.rsplit("/", maxsplit=1)[-1]
+    return f"llm-{slug}"
+
+
+def validate_rater_id(rater_id: str) -> str:
+    """Refuse a judge id the report would read as a human rater.
+
+    The report decides who is auxiliary by this prefix and nothing else, so an
+    id without it turns a model's agreement with a model into the inter-rater
+    agreement the thesis reports, and silently clears the PENDING marker.
+    """
+    if not rater_id.startswith("llm-"):
+        raise ValueError(
+            f"Judge rater id {rater_id!r} must start with 'llm-'; the report uses "
+            f"that prefix to mark a rater auxiliary."
+        )
+    return rater_id
 
 _INSTRUCTIONS = """\
 You are grading how interchangeable two candidate responses to the same prompt \

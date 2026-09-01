@@ -1065,3 +1065,46 @@ def test_the_markdown_warns_that_the_all_pairs_auc_is_inflated() -> None:
 
     assert "inflated" in rendered.lower()
     assert rendered.index("natural pairs") < rendered.index("all pairs, including planted")
+
+
+def test_a_judge_rater_id_is_derived_from_its_model_and_marked_auxiliary() -> None:
+    # Two judges must be distinguishable in the report, and both must be
+    # recognisable as auxiliary — neither is the human evaluator the plan asks
+    # for, however many of them there are.
+    first = llm_judge.rater_id_for("openai/gpt-4o-mini")
+    second = llm_judge.rater_id_for("google/gemini-2.5-flash")
+
+    assert first != second
+    assert first.startswith("llm-") and second.startswith("llm-")
+    assert "gpt-4o-mini" in first and "gemini-2.5-flash" in second
+
+
+def test_two_judges_receive_independently_blinded_pairs() -> None:
+    # Same-orientation pairs would let a shared positional bias inflate the
+    # agreement between the two judges, which is the number being used to
+    # decide whether the grades are reproducible at all.
+    pairs = [_pair(f"p{index:04d}") for index in range(40)]
+    first = llm_judge.rater_id_for("openai/gpt-4o-mini")
+    second = llm_judge.rater_id_for("google/gemini-2.5-flash")
+
+    orientations_first = [blinding.blind(pair, rater_id=first).swapped for pair in pairs]
+    orientations_second = [blinding.blind(pair, rater_id=second).swapped for pair in pairs]
+
+    assert orientations_first != orientations_second
+
+
+def test_the_legacy_judge_rater_id_is_preserved() -> None:
+    # The first judge's 130 grades are already on disk under "llm-judge".
+    # Renaming the id would orphan them.
+    assert llm_judge.RATER_ID == "llm-judge"
+
+
+def test_a_judge_cannot_be_given_a_rater_id_that_passes_for_a_human() -> None:
+    # The report decides who is auxiliary by the "llm-" prefix alone. A judge
+    # running as "joaquin" would be counted as the second human evaluator and
+    # the PENDING marker would quietly disappear — turning a model's agreement
+    # with a model into the inter-rater agreement the thesis reports.
+    with pytest.raises(ValueError, match="must start with 'llm-'"):
+        llm_judge.validate_rater_id("joaquin")
+
+    assert llm_judge.validate_rater_id("llm-gemini-2.5-flash") == "llm-gemini-2.5-flash"
