@@ -4,6 +4,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from collections.abc import Callable
 from typing import Iterator
 from uuid import uuid4
 
@@ -17,8 +18,35 @@ from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
 
 
+def _drop_cache_collection(name: str) -> None:
+    """Remove a test's Qdrant collection, if Qdrant is even there.
+
+    Tests must pass on a machine with no Qdrant running, so a failure here is
+    swallowed on purpose — the collection cannot exist if the connection does
+    not.
+    """
+    try:
+        from qdrant_client import QdrantClient
+
+        # check_compatibility=False: this client only issues a DELETE, and the
+        # client/server version skew is a pre-existing property of the dev
+        # environment. Warning about it once per test buries the output.
+        client = QdrantClient(
+            url=get_settings().qdrant_url, timeout=2, check_compatibility=False
+        )
+        try:
+            client.delete_collection(collection_name=name)
+        finally:
+            client.close()
+    except Exception:  # noqa: BLE001 - no Qdrant, nothing to clean
+        pass
+
+
 @contextmanager
-def configured_app(**env_overrides: str) -> Iterator:
+def configured_app(
+    _collection_reaper: Callable[[str], None] = _drop_cache_collection,
+    **env_overrides: str,
+) -> Iterator:
     temp_dir = TemporaryDirectory()
     database_path = Path(temp_dir.name) / "nebula.db"
     default_overrides = {
@@ -36,6 +64,10 @@ def configured_app(**env_overrides: str) -> Iterator:
     try:
         yield app
     finally:
+        # Drop the collection before restoring the environment: the reaper
+        # reads qdrant_url out of settings, and settings are about to be
+        # rebuilt from the outer environment.
+        _collection_reaper(os.environ["NEBULA_SEMANTIC_CACHE_COLLECTION"])
         for key, value in original_values.items():
             if value is None:
                 os.environ.pop(key, None)

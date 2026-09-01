@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 from pathlib import Path
 
 import httpx
@@ -26,16 +27,22 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
 @pytest.mark.asyncio
-async def test_auto_heuristic_scenarios_expect_reasons_the_router_emits() -> None:
+@pytest.mark.parametrize("dataset", ["scenarios.jsonl", "demo-scenarios.jsonl"])
+async def test_auto_heuristic_scenarios_expect_reasons_the_router_emits(dataset) -> None:
     """Guard against route-reason vocabulary drift.
 
     The heuristic auto routes (cold simple, complex) get their route_reason
     straight from RouterService. M006 unified those reasons to "token_complexity";
-    a scenarios.jsonl expecting a retired reason (e.g. "simple_prompt",
+    a dataset expecting a retired reason (e.g. "simple_prompt",
     "complexity_hint") would silently fail every benchmark run. This pins the
     eval expectations to what the router actually produces — no live services.
+
+    Both datasets, because the guard used to read only the full suite. The demo
+    subset drifted to a retired reason and stayed there: make benchmark-demo,
+    the one run in front of an audience, reported a failed expectation on every
+    single run and no test noticed.
     """
-    scenarios = load_scenarios(PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl")
+    scenarios = load_scenarios(PROJECT_ROOT / "benchmarks" / "v1" / dataset)
     router = RouterService(Settings())
 
     heuristic = [s for s in scenarios if s.mode in {"auto_simple_cold", "auto_complex"}]
@@ -819,3 +826,25 @@ async def test_mode_barrier_hides_same_mode_baselines_so_results_do_not_depend_o
     await runner._run_groups(client=None, grouped=grouped, modes=["premium_direct"])
 
     assert all(seen == {} for seen in runner.seen_baselines.values())
+
+
+# --- test-harness cache collections --------------------------------------------
+
+
+def test_configured_app_deletes_the_cache_collection_it_created() -> None:
+    # Every configured_app() gave itself a unique Qdrant collection and never
+    # removed it. 774 of them had accumulated, 1.4 GB, all empty, and Qdrant
+    # spent twenty minutes recovering them on every boot.
+    from tests import support
+
+    created: list[str] = []
+    deleted: list[str] = []
+
+    def record_delete(name: str) -> None:
+        deleted.append(name)
+
+    with support.configured_app(_collection_reaper=record_delete) as _:
+        created.append(os.environ["NEBULA_SEMANTIC_CACHE_COLLECTION"])
+
+    assert deleted == created
+    assert created[0].startswith("nebula-test-cache-")
