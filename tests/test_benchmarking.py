@@ -449,3 +449,158 @@ def test_renaming_the_field_leaves_the_rendered_report_byte_identical(tmp_path) 
     rendered = runner._render_markdown(runner._build_report(_regression_results()))
 
     assert _mask_volatile(rendered) == GOLDEN_REPORT.read_text(encoding="utf-8")
+
+
+# --- T5: ephemeral Qdrant collections ------------------------------------------
+
+
+def test_ephemeral_collection_names_are_scoped_to_the_run(tmp_path) -> None:
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+    assert runner.managed_collections == [
+        f"nebula-benchmark-{runner.run_id}-normal",
+        f"nebula-benchmark-{runner.run_id}-fallback",
+    ]
+
+
+def test_an_external_run_owns_no_ephemeral_collection(tmp_path) -> None:
+    # With --base-url the runner is a client of somebody else's gateway. The
+    # collection belongs to that operator, and deleting it would destroy a
+    # production cache.
+    runner = BenchmarkRunner(
+        base_url="http://127.0.0.1:8000",
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+    assert runner.managed_collections == []
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_collection_cleanup_deletes_every_collection_it_owns(tmp_path) -> None:
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+    deleted: list[str] = []
+    runner.collection_cleaner = deleted.append
+
+    outcomes = await runner._cleanup_collections()
+
+    assert deleted == runner.managed_collections
+    assert [outcome["status"] for outcome in outcomes] == ["deleted", "deleted"]
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_collection_cleanup_records_a_failure_without_failing_the_run(
+    tmp_path,
+) -> None:
+    # Qdrant may be down by the time the run ends. That must not turn a
+    # completed benchmark into a failed one, and it must not pass silently
+    # either: the operator has an orphan collection to go and remove.
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+    def refuse(name: str) -> None:
+        raise ConnectionError("qdrant unreachable")
+
+    runner.collection_cleaner = refuse
+    outcomes = await runner._cleanup_collections()
+
+    assert [outcome["status"] for outcome in outcomes] == ["failed", "failed"]
+    assert all("qdrant unreachable" in outcome["detail"] for outcome in outcomes)
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_collection_is_cleaned_up_even_when_the_run_raises(tmp_path) -> None:
+    # An interrupted run is exactly when an orphan collection is created, so
+    # cleanup on the happy path only would miss the case that motivates it.
+    cleaned: list[str] = []
+
+    class ExplodingRunner(BenchmarkRunner):
+        async def _execute_managed(self, **_: object) -> list[BenchmarkResult]:
+            raise KeyboardInterrupt("operator stopped the run")
+
+    runner = ExplodingRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+    runner.collection_cleaner = cleaned.append
+
+    with pytest.raises(KeyboardInterrupt):
+        await runner.run()
+
+    assert cleaned == runner.managed_collections
+
+
+@pytest.mark.asyncio
+async def test_the_report_records_which_collections_the_run_owned(tmp_path) -> None:
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+    runner.collection_cleaner = lambda name: None
+    runner.collection_cleanup = await runner._cleanup_collections()
+
+    report = runner._build_report(_regression_results())
+
+    assert [entry["collection"] for entry in report["cache_collections"]] == (
+        runner.managed_collections
+    )
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_collection_cleanup_awaits_an_async_cleaner(tmp_path) -> None:
+    # The real cleaner is async, so this is the branch production takes. A
+    # sync-only test would leave it unexercised and the coroutine would be
+    # created and dropped without ever deleting anything.
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+    deleted: list[str] = []
+
+    async def delete(name: str) -> None:
+        deleted.append(name)
+
+    runner.collection_cleaner = delete
+    outcomes = await runner._cleanup_collections()
+
+    assert deleted == runner.managed_collections
+    assert [outcome["status"] for outcome in outcomes] == ["deleted", "deleted"]
+
+
+@pytest.mark.asyncio
+async def test_ephemeral_collection_cleanup_records_an_async_failure(tmp_path) -> None:
+    runner = BenchmarkRunner(
+        base_url=None,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+    )
+
+    async def refuse(name: str) -> None:
+        raise ConnectionError("qdrant unreachable")
+
+    runner.collection_cleaner = refuse
+    outcomes = await runner._cleanup_collections()
+
+    assert [outcome["status"] for outcome in outcomes] == ["failed", "failed"]

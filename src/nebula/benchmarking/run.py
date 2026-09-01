@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import inspect
 import json
 import os
 import socket
 import subprocess
 import sys
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -147,56 +149,43 @@ class BenchmarkRunner:
         self.scenarios = load_scenarios(dataset_path)
         self.pricing = PricingCatalog.from_path(pricing_path)
         self.run_id = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+        # Only a managed run owns its cache collections. Under --base-url the
+        # runner is a client of somebody else's gateway, and deleting that
+        # operator's collection would destroy a production cache.
+        self.managed_collections: list[str] = (
+            []
+            if self.base_url
+            else [
+                f"nebula-benchmark-{self.run_id}-normal",
+                f"nebula-benchmark-{self.run_id}-fallback",
+            ]
+        )
+        self.collection_cleaner: Callable[[str], object] = _delete_qdrant_collection
+        self.collection_cleanup: list[dict[str, str]] = []
 
     async def run(self) -> tuple[dict[str, object], Path]:
         grouped = group_scenarios(self.scenarios)
         normal_modes = [mode for mode in SCENARIO_MODE_ORDER if mode != "auto_fallback"]
-        results: list[BenchmarkResult] = []
 
         if self.base_url:
             async with httpx.AsyncClient(base_url=self.base_url, timeout=120.0) as client:
-                results.extend(
-                    await self._run_groups(
-                        client=client,
-                        grouped=grouped,
-                        modes=normal_modes,
-                    )
+                results = await self._run_groups(
+                    client=client,
+                    grouped=grouped,
+                    modes=normal_modes,
                 )
             results.extend(self._skipped_fallback_results(grouped["auto_fallback"]))
         else:
-            normal_port = _free_port()
-            fallback_port = _free_port()
-            async with ManagedServer(
-                port=normal_port,
-                env_overrides={
-                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
-                    "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-normal",
-                },
-            ) as normal_server:
-                async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
-                    results.extend(
-                        await self._run_groups(
-                            client=client,
-                            grouped=grouped,
-                            modes=normal_modes,
-                        )
-                    )
-            async with ManagedServer(
-                port=fallback_port,
-                env_overrides={
-                    **MANAGED_LOCAL_PREMIUM_OVERRIDES,
-                    "NEBULA_OLLAMA_BASE_URL": "http://127.0.0.1:9",
-                    "NEBULA_SEMANTIC_CACHE_COLLECTION": f"nebula-benchmark-{self.run_id}-fallback",
-                },
-            ) as fallback_server:
-                async with httpx.AsyncClient(base_url=fallback_server.base_url, timeout=120.0) as client:
-                    results.extend(
-                        await self._run_groups(
-                            client=client,
-                            grouped=grouped,
-                            modes=["auto_fallback"],
-                        )
-                    )
+            # Cleanup in a finally: an interrupted run is precisely when an
+            # orphan collection is left behind, so cleaning only on the happy
+            # path would miss the case that motivates cleaning at all.
+            try:
+                results = await self._execute_managed(
+                    grouped=grouped,
+                    normal_modes=normal_modes,
+                )
+            finally:
+                self.collection_cleanup = await self._cleanup_collections()
 
         report = self._build_report(results)
         artifact_dir = self.artifacts_root / self.run_id
@@ -204,6 +193,69 @@ class BenchmarkRunner:
         (artifact_dir / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         (artifact_dir / "report.md").write_text(self._render_markdown(report), encoding="utf-8")
         return report, artifact_dir
+
+    async def _execute_managed(
+        self,
+        *,
+        grouped: dict[ScenarioMode, list[BenchmarkScenario]],
+        normal_modes: list[ScenarioMode],
+    ) -> list[BenchmarkResult]:
+        results: list[BenchmarkResult] = []
+        normal_collection, fallback_collection = self.managed_collections
+        normal_port = _free_port()
+        fallback_port = _free_port()
+        async with ManagedServer(
+            port=normal_port,
+            env_overrides={
+                **MANAGED_LOCAL_PREMIUM_OVERRIDES,
+                "NEBULA_SEMANTIC_CACHE_COLLECTION": normal_collection,
+            },
+        ) as normal_server:
+            async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
+                results.extend(
+                    await self._run_groups(
+                        client=client,
+                        grouped=grouped,
+                        modes=normal_modes,
+                    )
+                )
+        async with ManagedServer(
+            port=fallback_port,
+            env_overrides={
+                **MANAGED_LOCAL_PREMIUM_OVERRIDES,
+                "NEBULA_OLLAMA_BASE_URL": "http://127.0.0.1:9",
+                "NEBULA_SEMANTIC_CACHE_COLLECTION": fallback_collection,
+            },
+        ) as fallback_server:
+            async with httpx.AsyncClient(base_url=fallback_server.base_url, timeout=120.0) as client:
+                results.extend(
+                    await self._run_groups(
+                        client=client,
+                        grouped=grouped,
+                        modes=["auto_fallback"],
+                    )
+                )
+        return results
+
+    async def _cleanup_collections(self) -> list[dict[str, str]]:
+        """Drop the cache collections this run created.
+
+        Best effort, but never silent. Qdrant may be gone by the time the run
+        ends, and that must not turn a completed benchmark into a failed one —
+        yet the operator still has an orphan collection to remove, so the
+        outcome is recorded in the report either way.
+        """
+        outcomes: list[dict[str, str]] = []
+        for name in self.managed_collections:
+            try:
+                result = self.collection_cleaner(name)
+                if inspect.isawaitable(result):
+                    await result
+            except Exception as exc:  # noqa: BLE001 - recorded, never raised
+                outcomes.append({"collection": name, "status": "failed", "detail": str(exc)})
+            else:
+                outcomes.append({"collection": name, "status": "deleted"})
+        return outcomes
 
     async def _run_groups(
         self,
@@ -431,6 +483,7 @@ class BenchmarkRunner:
             "generated_at": datetime.now(UTC).isoformat(),
             "run_id": self.run_id,
             "dataset": str(self.dataset_path.relative_to(PROJECT_ROOT)),
+            "cache_collections": self.collection_cleanup,
             "base_url": self.base_url or "managed-local",
             "summary": {
                 "total_requests": total_requests,
@@ -724,3 +777,20 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+
+async def _delete_qdrant_collection(name: str) -> None:
+    """Drop a benchmark's cache collection.
+
+    Async, matching semantic_cache_service, so cleanup does not block the event
+    loop. Imported lazily so the runner still loads, and still reports, on a
+    machine where the Qdrant client cannot be constructed.
+    """
+    from qdrant_client import AsyncQdrantClient
+
+    settings = get_settings()
+    client = AsyncQdrantClient(url=settings.qdrant_url)
+    try:
+        await client.delete_collection(collection_name=name)
+    finally:
+        await client.close()
