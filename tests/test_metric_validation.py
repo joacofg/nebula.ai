@@ -1126,17 +1126,19 @@ def test_calibration_covers_both_verdicts_with_objectively_known_answers() -> No
     assert all(item.why for item in items)
 
 
-def test_the_known_negative_is_a_response_to_a_different_prompt() -> None:
+def test_the_off_topic_negative_is_a_response_to_a_different_prompt() -> None:
     corpus_pairs, _ = _graded_corpus()
 
-    negatives = [
+    off_topic = [
         item
         for item in label.calibration_items(corpus_pairs, rater_id="human-2")
-        if not item.expected_substitutable
+        if item.kind == "off_topic"
     ]
 
-    assert negatives
-    assert all(item.pair.kind == "cross_prompt" for item in negatives)
+    assert off_topic
+    for item in off_topic:
+        assert item.pair.kind == "cross_prompt"
+        assert item.expected_substitutable is False
 
 
 def test_the_known_positive_is_a_response_against_itself() -> None:
@@ -1274,3 +1276,81 @@ def test_a_rater_absent_from_the_roster_falls_back_to_the_prefix_rule() -> None:
 
     assert profile.kind == "auxiliary"
     assert raters.profile_for("human-9", _roster()).kind == "human"
+
+
+def test_calibration_includes_a_same_topic_item_that_is_not_substitutable() -> None:
+    # A rater can pass a topic-level calibration while grading on topic alone:
+    # cross-prompt pairs are a different subject, so "same topic?" rejects them
+    # correctly and the heuristic survives. This item is the same subject and
+    # still cannot substitute, which is the axis a topic heuristic fails.
+    corpus_pairs, _ = _graded_corpus()
+
+    items = label.calibration_items(corpus_pairs, rater_id="human-3")
+
+    same_topic = [item for item in items if item.kind == "truncated"]
+    assert same_topic
+    for item in same_topic:
+        assert item.expected_substitutable is False
+        assert len(item.pair.right.text) < len(item.pair.left.text)
+        assert item.pair.right.text in item.pair.left.text
+
+
+def test_every_calibration_item_declares_which_axis_it_tests() -> None:
+    corpus_pairs, _ = _graded_corpus()
+
+    kinds = {item.kind for item in label.calibration_items(corpus_pairs, rater_id="human-3")}
+
+    assert kinds == {"off_topic", "identical", "truncated"}
+
+
+# --- informative subset --------------------------------------------------------
+
+
+def test_informative_pairs_are_the_ones_the_judges_disagree_on() -> None:
+    # A human's scarce attention is worth spending only where the answer is not
+    # already settled. Where two judges agree, a third opinion changes nothing.
+    corpus_pairs, _ = _graded_corpus()
+    judges = {
+        "llm-a": {"p0001": "equivalent", "p0002": "equivalent", "p0003": "partial"},
+        "llm-b": {"p0001": "equivalent", "p0002": "divergent", "p0003": "minor_loss"},
+    }
+
+    informative = label.informative_pairs(corpus_pairs, judges)
+
+    assert "p0002" in informative
+    assert "p0003" in informative
+    assert "p0001" not in informative
+
+
+def test_informative_pairs_include_a_wide_ordinal_split_even_when_the_binary_agrees() -> None:
+    # equivalent against partial crosses the cut; equivalent against minor_loss
+    # does not, yet a two-step gap still marks a pair the raters read
+    # differently.
+    corpus_pairs, _ = _graded_corpus()
+    judges = {
+        "llm-a": {"p0001": "equivalent", "p0002": "equivalent"},
+        "llm-b": {"p0001": "minor_loss", "p0002": "equivalent"},
+    }
+
+    assert label.informative_pairs(corpus_pairs, judges) == []
+
+    judges["llm-b"]["p0001"] = "partial"
+    assert label.informative_pairs(corpus_pairs, judges) == ["p0001"]
+
+
+def test_informative_pairs_skip_the_planted_negatives() -> None:
+    # Planted pairs are not traffic and the judges never disagree on them.
+    corpus_pairs, _ = _graded_corpus()
+    judges = {
+        "llm-a": {"p0005": "divergent", "p0006": "equivalent"},
+        "llm-b": {"p0005": "divergent", "p0006": "divergent"},
+    }
+
+    assert label.informative_pairs(corpus_pairs, judges) == []
+
+
+def test_informative_pairs_need_at_least_two_judges() -> None:
+    corpus_pairs, _ = _graded_corpus()
+
+    with pytest.raises(ValueError, match="at least two"):
+        label.informative_pairs(corpus_pairs, {"llm-a": {"p0001": "equivalent"}})

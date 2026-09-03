@@ -241,62 +241,82 @@ temperature, and SHA-256 of both the prompt file and the pair file.
 
 ### What the pilot found
 
-One human rater has now graded 41 pairs under the calibration round, and two
-auxiliary LLM raters from different model families have graded all 130. The
-result is not the one the single-rater pass pointed at.
+Two auxiliary LLM raters, from different model families, have graded all 130
+pairs. **Two human passes were attempted and both were withdrawn.** The study
+has no human ground truth, and that is the finding, not a footnote.
 
-**The LLM raters are reproducible, and they are not a proxy for the human.**
-Over the same 33 natural pairs the human graded:
+#### The two withdrawn passes
+
+`human-1`, before the calibration round existed, graded 2 of 7 planted
+cross-prompt negatives as substitutable and all 34 natural pairs as
+substitutable — a binary κ of 0.000 against both judges, from using a single
+category rather than from disagreement.
+
+`human-2`, the same person through the calibration round, caught 8 of 8
+planted negatives and still graded 31 of 33 natural pairs substitutable. The
+rater then reported the criterion they had actually applied: whether the two
+responses shared a topic, not whether one could replace the other.
+
+That explains both passes exactly, and it exposes a flaw in the calibration
+round as first built: all three items were topic-level discriminations.
+Off-topic pairs are a different subject, so "same topic?" rejects them
+correctly and the shortcut survives the check. The round now includes a
+**same-topic** item that is objectively not substitutable — one side truncated
+partway through — which is the axis a topic heuristic cannot pass.
+
+#### What the judges do and do not establish
+
+The two judges agree with each other substantially and with the withdrawn
+human passes only slightly:
 
 | agreement | Cohen's κ (binary) | quadratic-weighted κ |
 |---|---|---|
-| judge vs judge | 0.681 | 0.682 |
-| human vs `llm-judge` | 0.161 | 0.165 |
-| human vs `llm-gemini-2.5-flash` | 0.229 | 0.182 |
+| judge vs judge, 130 pairs | 0.651 | 0.770 |
+| judge vs judge, the 33 natural pairs `human-2` saw | 0.681 | 0.682 |
+| `human-2` vs `llm-judge`, same 33 | 0.161 | 0.165 |
+| `human-2` vs `llm-gemini-2.5-flash`, same 33 | 0.229 | 0.182 |
 
-Two judges agreeing substantially with each other while both show only slight
-agreement with a human is the signature of a shared systematic bias in the
-judges, not of rater noise. Both are language models trained on similar
-conventions about what a good answer looks like; their agreement measures
-reproducibility, never validity. This pass makes that concrete rather than
-hypothetical, and it is the reason rigour point 3 asks for humans.
+Reproducibility is not validity. Two language models with similar training
+conventions can be consistently wrong together, and their agreement cannot
+detect it. Nothing here says the judges are right; it says they are
+consistent. Equally, nothing here says they are wrong — the passes that
+disagreed with them were graded on a different criterion, so they are not
+evidence against the judges either.
 
-**The human finds local output almost always acceptable.**
+#### Why the metric question is still open
 
-| rater | substitutable, same 33 natural pairs |
-|---|---|
-| human | 31/33 (94%) |
-| `llm-judge` | 19/33 (58%) |
-| `llm-gemini-2.5-flash` | 22/33 (67%) |
+Against `human-2`'s grades, AUC on `local_vs_premium` was 0.542 with a 95%
+interval of [0.200, 0.875] and 12% of bootstrap resamples losing the negative
+class outright — no information, because a topic heuristic produces almost no
+negatives. Against the judges' grades it was 0.600 and 0.567, on grades with
+no established validity.
 
-That rate is stable: an earlier pass by the same person, over a partly
-different subset, called all 10 overlapping natural pairs substitutable too.
-The second pass also caught 8 of 8 planted `cross_prompt` negatives, so the
-criterion was being applied.
+Neither answers the question. What the study can say today is narrow:
 
-**And that makes the metric question unanswerable on this corpus.** With 2
-non-substitutable pairs out of 26 `local_vs_premium`, AUC against human grades
-is 0.542 with a 95% interval of [0.200, 0.875] — no information at all, and
-12% of bootstrap resamples lost the negative class entirely. The obstacle is
-not that the cosine fails to separate the classes; it is that on this corpus
-there is barely a negative class to separate.
+- The cosine separates answers to *different questions* easily (AUC 0.797 over
+  all pairs, carried entirely by the planted negatives).
+- Among responses that all answered the prompt, it barely separates the
+  judges' grades, and there is no valid human standard to check that against.
+- The noise floor is where the signal is: median cosine 0.938 for
+  local-against-premium and 0.935 for premium-against-premium.
 
-**What follows.**
+#### What to do next
 
-- The earlier reading — that the cosine does not resolve quality — is *not*
-  supported. It was measured against LLM grades that do not agree with a human.
-- The pilot corpus is too easy. Its prompts skew simple, `llama3.2:3b` handles
-  most of them, and a study of routing *quality* needs prompts where the local
-  model actually fails. T12's dataset should target that difficulty gap
-  explicitly, not just volume: sample or construct prompts where local and
-  premium demonstrably diverge, and verify the negative class is populated
-  before any labelling starts.
-- LLM-as-judge cannot stand in for human ground truth here. That is now
-  measured rather than assumed, and it is a finding in its own right.
-- A human accepting 94% of local answers as substitutes for premium is, on its
-  face, a *favourable* result for the gateway's premise on traffic of this
-  kind — but it rests on 26 pairs from one rater on an easy corpus, and it is
-  not a claim the study can make yet.
+- **Spend human attention only where it decides something.** 22 of the 105
+  natural pairs are ones the two judges read differently — binary verdicts
+  split, or ordinal grades two or more steps apart. Those are the pairs where
+  a third reading breaks a tie; on the rest a third opinion changes nothing.
+  `make metric-label RATER=<id> INFORMATIVE=1` presents only those.
+- **Design difficulty into T12's dataset.** The pilot prompts skew simple and
+  `llama3.2:3b` handles most of them. Verify the negative class is populated
+  before labelling starts; volume alone would reproduce this dead end at four
+  times the cost.
+- **If no valid human pass is achievable, declare LLM-as-judge as the
+  instrument** rather than presenting it as validated by humans. Two
+  independent judges with inter-judge agreement reported as reliability is a
+  defensible methodology, widely used, and honest — provided the write-up says
+  that human validation was attempted twice and not achieved, and does not
+  claim the judges track human preference.
 
 ### What the numbers do and do not say
 

@@ -1,38 +1,6 @@
 {
   "agreements": [
     {
-      "cohens_kappa_binary": 0.5438813349814586,
-      "kappa_ci": {
-        "confidence": 0.95,
-        "high": 0.756387326454818,
-        "low": 0.367222345733555,
-        "point": 0.5848635661575425,
-        "resamples_skipped": 0,
-        "resamples_used": 2000
-      },
-      "left_rater": "human-2",
-      "note": "",
-      "pairs": 41,
-      "quadratic_weighted_kappa": 0.5848635661575425,
-      "right_rater": "llm-gemini-2.5-flash"
-    },
-    {
-      "cohens_kappa_binary": 0.43577981651376135,
-      "kappa_ci": {
-        "confidence": 0.95,
-        "high": 0.7449103513707338,
-        "low": 0.34338192345213975,
-        "point": 0.5603404255319149,
-        "resamples_skipped": 0,
-        "resamples_used": 2000
-      },
-      "left_rater": "human-2",
-      "note": "",
-      "pairs": 41,
-      "quadratic_weighted_kappa": 0.5603404255319149,
-      "right_rater": "llm-judge"
-    },
-    {
       "cohens_kappa_binary": 0.6509641200878693,
       "kappa_ci": {
         "confidence": 0.95,
@@ -56,181 +24,178 @@
   "bands_all": [
     {
       "band": "0.00-0.50",
-      "pairs": 1,
+      "pairs": 2,
       "substitutable": 0,
       "substitutable_rate": 0.0
     },
     {
       "band": "0.50-0.65",
-      "pairs": 7,
+      "pairs": 23,
       "substitutable": 0,
       "substitutable_rate": 0.0
     },
     {
       "band": "0.80-0.90",
-      "pairs": 11,
-      "substitutable": 10,
-      "substitutable_rate": 0.9090909090909091
+      "pairs": 24,
+      "substitutable": 12,
+      "substitutable_rate": 0.5
     },
     {
       "band": "0.90-1.00",
-      "pairs": 22,
-      "substitutable": 21,
-      "substitutable_rate": 0.9545454545454546
+      "pairs": 81,
+      "substitutable": 61,
+      "substitutable_rate": 0.7530864197530864
     }
   ],
   "bands_local_vs_premium": [
     {
       "band": "0.80-0.90",
-      "pairs": 10,
-      "substitutable": 9,
-      "substitutable_rate": 0.9
+      "pairs": 21,
+      "substitutable": 11,
+      "substitutable_rate": 0.5238095238095238
     },
     {
       "band": "0.90-1.00",
-      "pairs": 16,
-      "substitutable": 15,
-      "substitutable_rate": 0.9375
+      "pairs": 59,
+      "substitutable": 42,
+      "substitutable_rate": 0.711864406779661
     }
   ],
   "chosen_prefix": "search_query",
   "chosen_prefix_basis": "local_vs_premium, premium_vs_premium",
   "chosen_prefix_tied_with": [],
-  "human_raters": [
-    "rater-a"
-  ],
+  "human_raters": [],
   "human_to_human_pending": true,
-  "krippendorff_alpha": 0.6383879450215401,
+  "krippendorff_alpha": 0.7329342565676411,
   "prefix_sweep": [
     {
-      "auc": 0.9064516129032258,
+      "auc": 0.7971641432347993,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 1.0,
-        "low": 0.728912512218964,
-        "point": 0.9064516129032258,
+        "high": 0.8696553412070207,
+        "low": 0.7173331040866466,
+        "point": 0.7971641432347993,
         "resamples_skipped": 0,
         "resamples_used": 2000
       },
       "note": "",
-      "pairs": 41,
+      "pairs": 130,
       "prefix": "search_query",
-      "spearman": 0.657519788970603
+      "spearman": 0.6078244768021506
     },
     {
-      "auc": 0.8935483870967742,
+      "auc": 0.7901946647440519,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 1.0,
-        "low": 0.7032967032967032,
-        "point": 0.8935483870967742,
+        "high": 0.8648286939180682,
+        "low": 0.7047260499734184,
+        "point": 0.7901946647440519,
         "resamples_skipped": 0,
         "resamples_used": 2000
       },
       "note": "",
-      "pairs": 41,
-      "prefix": "none",
-      "spearman": 0.6561714913855642
-    },
-    {
-      "auc": 0.8935483870967742,
-      "auc_ci": {
-        "confidence": 0.95,
-        "high": 1.0,
-        "low": 0.7045454545454546,
-        "point": 0.8935483870967742,
-        "resamples_skipped": 0,
-        "resamples_used": 2000
-      },
-      "note": "",
-      "pairs": 41,
+      "pairs": 130,
       "prefix": "clustering",
-      "spearman": 0.6526883892908806
+      "spearman": 0.5908521593638981
     },
     {
-      "auc": 0.8806451612903226,
+      "auc": 0.7755347272290315,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 1.0,
-        "low": 0.6784619815668206,
-        "point": 0.8806451612903226,
+        "high": 0.8543136977886977,
+        "low": 0.6895232422082758,
+        "point": 0.7755347272290315,
         "resamples_skipped": 0,
         "resamples_used": 2000
       },
       "note": "",
-      "pairs": 41,
+      "pairs": 130,
       "prefix": "search_document",
-      "spearman": 0.609542866569638
+      "spearman": 0.5581604384392589
+    },
+    {
+      "auc": 0.771689497716895,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.8509184001743012,
+        "low": 0.6819746924783222,
+        "point": 0.771689497716895,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 130,
+      "prefix": "none",
+      "spearman": 0.5595887037794218
     }
   ],
   "prefix_sweep_natural": [
     {
-      "auc": 0.532258064516129,
+      "auc": 0.6386986301369864,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 0.875,
-        "low": 0.1875,
-        "point": 0.532258064516129,
-        "resamples_skipped": 233,
-        "resamples_used": 1767
+        "high": 0.750021404109589,
+        "low": 0.5253075378625737,
+        "point": 0.6386986301369864,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
       },
       "note": "",
-      "pairs": 33,
+      "pairs": 105,
       "prefix": "search_query",
-      "spearman": 0.14745361302775836
+      "spearman": 0.2822205965986186
     },
     {
-      "auc": 0.46774193548387094,
+      "auc": 0.6262842465753424,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 0.8125,
-        "low": 0.125,
-        "point": 0.46774193548387094,
-        "resamples_skipped": 233,
-        "resamples_used": 1767
+        "high": 0.7410272773322144,
+        "low": 0.5102619213292869,
+        "point": 0.6262842465753424,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
       },
       "note": "",
-      "pairs": 33,
-      "prefix": "none",
-      "spearman": 0.14343215085427405
-    },
-    {
-      "auc": 0.46774193548387094,
-      "auc_ci": {
-        "confidence": 0.95,
-        "high": 0.8125,
-        "low": 0.125,
-        "point": 0.46774193548387094,
-        "resamples_skipped": 233,
-        "resamples_used": 1767
-      },
-      "note": "",
-      "pairs": 33,
+      "pairs": 105,
       "prefix": "clustering",
-      "spearman": 0.1330433735727729
+      "spearman": 0.25386266431110405
     },
     {
-      "auc": 0.4032258064516129,
+      "auc": 0.6001712328767124,
       "auc_ci": {
         "confidence": 0.95,
-        "high": 0.71875,
-        "low": 0.0967741935483871,
-        "point": 0.4032258064516129,
-        "resamples_skipped": 233,
-        "resamples_used": 1767
+        "high": 0.7169899514426576,
+        "low": 0.4824907245532245,
+        "point": 0.6001712328767124,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
       },
       "note": "",
-      "pairs": 33,
+      "pairs": 105,
       "prefix": "search_document",
-      "spearman": 0.004356584021274679
+      "spearman": 0.1873836939910303
+    },
+    {
+      "auc": 0.5933219178082192,
+      "auc_ci": {
+        "confidence": 0.95,
+        "high": 0.7133617294520547,
+        "low": 0.4734742578849722,
+        "point": 0.5933219178082192,
+        "resamples_skipped": 0,
+        "resamples_used": 2000
+      },
+      "note": "",
+      "pairs": 105,
+      "prefix": "none",
+      "spearman": 0.1919310440294069
     }
   ],
   "raters": [
-    "human-2",
     "llm-gemini-2.5-flash",
     "llm-judge"
   ],
-  "reference_rater": "human-2",
+  "reference_rater": "llm-judge",
   "scale_by_kind": [
     {
       "kind": "local_vs_premium",
@@ -258,6 +223,7 @@
     }
   ],
   "withdrawn_raters": [
-    "human-1"
+    "human-1",
+    "human-2"
   ]
 }

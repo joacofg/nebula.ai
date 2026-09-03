@@ -7,9 +7,9 @@
   },
   "human-2": {
     "kind": "human",
-    "note": "second pass by the same person, through the calibration round; 8 of 8 planted negatives caught",
+    "note": "withdrawn on the rater's own account: graded by whether the two responses shared a topic rather than by whether one could replace the other. Passed calibration because all three items were topic-level discriminations, which a topic heuristic answers correctly.",
     "person": "rater-a",
-    "status": "active"
+    "status": "withdrawn"
   },
   "llm-gemini-2.5-flash": {
     "kind": "auxiliary",

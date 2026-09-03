@@ -60,7 +60,11 @@ def main() -> int:
     print(f"payload → {root / 'report.json'}")
     print(f"chosen prefix: {built.chosen_prefix}")
     if built.human_to_human_pending:
-        print("human-to-human agreement: PENDING (one human rater)")
+        print(
+            f"human-to-human agreement: PENDING "
+            f"({len(built.human_raters)} human rater(s); "
+            f"withdrawn: {', '.join(built.withdrawn_raters) or 'none'})"
+        )
     return 0
 
 

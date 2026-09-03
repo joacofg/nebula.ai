@@ -30,6 +30,7 @@ CALIBRATION_NEGATIVES = 2
 class CalibrationItem:
     pair: corpus.Pair
     expected_substitutable: bool
+    kind: str
     why: str
 
 
@@ -58,6 +59,7 @@ def calibration_items(
                 CalibrationItem(
                     pair=pair,
                     expected_substitutable=False,
+                    kind="off_topic",
                     why=(
                         "One of these answers a different question. It cannot stand "
                         "in for the other, however well written it is — the question "
@@ -83,10 +85,42 @@ def calibration_items(
                         right=replace(pair.right, text=pair.left.text),
                     ),
                     expected_substitutable=True,
+                    kind="identical",
                     why="These two responses are identical.",
                 )
             )
             break
+
+    # The axis a topic heuristic cannot pass. Off-topic items are a different
+    # subject, so "same topic?" rejects them correctly and the shortcut
+    # survives the round. This one is the same subject, answering the same
+    # question, and still cannot stand in: it stops partway.
+    for pair_id in ordered:
+        pair = by_id[pair_id]
+        if pair.kind != "local_vs_premium":
+            continue
+        full = pair.left.text
+        truncated = full[: max(1, len(full) // 5)]
+        if len(truncated) >= len(full):
+            continue
+        items.append(
+            CalibrationItem(
+                pair=replace(
+                    pair,
+                    pair_id=f"cal-trunc:{pair.pair_id}",
+                    right=replace(pair.right, text=truncated),
+                ),
+                expected_substitutable=False,
+                kind="truncated",
+                why=(
+                    "Same subject, same question, but one side stops partway "
+                    "through. Sharing a topic is not the test — the test is "
+                    "whether the person who asked would have been just as well "
+                    "served by either one."
+                ),
+            )
+        )
+        break
 
     return items
 
@@ -116,11 +150,50 @@ def scored_queue(
     Calibration pairs are dropped: a pair shown with its answer attached cannot
     also be one of the rater's blind grades.
     """
-    shown = {item.pair.pair_id.removeprefix("cal:") for item in calibration}
+    shown = {
+        item.pair.pair_id.removeprefix("cal:").removeprefix("cal-trunc:")
+        for item in calibration
+    }
     remaining = labels.remaining(
         [pair.pair_id for pair in pairs], label_path, rater_id=rater_id
     )
     return [pair_id for pair_id in remaining if pair_id not in shown]
+
+
+NATURAL_KINDS: tuple[str, ...] = ("local_vs_premium", "premium_vs_premium")
+ORDINAL_SPLIT = 2
+
+
+def informative_pairs(
+    pairs: list[corpus.Pair],
+    judge_grades: dict[str, dict[str, str]],
+    *,
+    kinds: tuple[str, ...] = NATURAL_KINDS,
+) -> list[str]:
+    """Pairs where the judges read the same evidence differently.
+
+    A human's attention is the scarce resource in this study, and spending it
+    where two judges already agree buys nothing. These are the pairs where a
+    third reading breaks a tie: the binary verdicts differ, or the ordinal
+    grades sit two or more steps apart.
+
+    Planted pairs are excluded — they are not traffic, and the judges do not
+    disagree about them anyway.
+    """
+    if len(judge_grades) < 2:
+        raise ValueError("Comparing judges needs at least two of them.")
+
+    candidates = [pair.pair_id for pair in pairs if pair.kind in kinds]
+    informative: list[str] = []
+    for pair_id in candidates:
+        graded = [g[pair_id] for g in judge_grades.values() if pair_id in g]
+        if len(graded) < 2:
+            continue
+        binaries = {rubric.is_substitutable(grade) for grade in graded}
+        positions = [rubric.SCALE.index(grade) for grade in graded]
+        if len(binaries) > 1 or max(positions) - min(positions) >= ORDINAL_SPLIT:
+            informative.append(pair_id)
+    return informative
 
 
 def parse_response(raw: str) -> str | None:
@@ -217,7 +290,13 @@ def run_calibration(pairs: list[corpus.Pair], *, rater_id: str) -> bool:
     return False
 
 
-def run_session(*, rater_id: str, pairs_path: Path, label_dir: Path) -> int:
+def run_session(
+    *,
+    rater_id: str,
+    pairs_path: Path,
+    label_dir: Path,
+    only_informative: bool = False,
+) -> int:
     pairs = corpus.read_pairs(pairs_path)
     by_id = {pair.pair_id: pair for pair in pairs}
     label_path = label_dir / f"{rater_id}.jsonl"
@@ -227,6 +306,16 @@ def run_session(*, rater_id: str, pairs_path: Path, label_dir: Path) -> int:
         return 1
 
     queue = scored_queue(pairs, label_path, rater_id=rater_id, calibration=calibration)
+    if only_informative:
+        judge_grades = {
+            path.stem: {label.pair_id: label.grade for label in labels.read(path)}
+            for path in sorted(label_dir.glob("llm-*.jsonl"))
+        }
+        wanted = set(informative_pairs(pairs, judge_grades))
+        queue = [pair_id for pair_id in queue if pair_id in wanted]
+        print(
+            f"Informative subset: {len(wanted)} pairs the judges read differently.\n"
+        )
     if not queue:
         print(f"Nothing left to label for {rater_id}.")
         return 0
@@ -261,8 +350,18 @@ def main() -> int:
     parser.add_argument("--rater", required=True, help="rater id, e.g. human-1")
     parser.add_argument("--pairs", type=Path, default=DEFAULT_PAIRS)
     parser.add_argument("--labels", type=Path, default=DEFAULT_LABEL_DIR)
+    parser.add_argument(
+        "--only-informative",
+        action="store_true",
+        help="grade only the pairs the auxiliary judges disagree about",
+    )
     args = parser.parse_args()
-    return run_session(rater_id=args.rater, pairs_path=args.pairs, label_dir=args.labels)
+    return run_session(
+        rater_id=args.rater,
+        pairs_path=args.pairs,
+        label_dir=args.labels,
+        only_informative=args.only_informative,
+    )
 
 
 if __name__ == "__main__":

@@ -53,7 +53,7 @@ metric-corpus:
 	$(PYTHON) -m scripts.metric_validation.build_pilot_corpus --premium-b-model $(PREMIUM_B)
 
 metric-label:
-	$(PYTHON) -m scripts.metric_validation.label --rater $(RATER)
+	$(PYTHON) -m scripts.metric_validation.label --rater $(RATER) $(if $(INFORMATIVE),--only-informative,)
 
 metric-judge:
 	$(PYTHON) -m scripts.metric_validation.run_judge --model $(JUDGE_MODEL)
