@@ -85,6 +85,13 @@ def render_markdown(report: ValidationReport) -> str:
 
     if report.human_to_human_pending:
         lines += [PENDING_NOTE.format(count=len(report.human_raters)), ""]
+    if report.withdrawn_raters:
+        withdrawn = ", ".join(f"`{rater}`" for rater in report.withdrawn_raters)
+        lines += [
+            f"Withdrawn passes, kept in the repository as evidence and excluded "
+            f"from every number below: {withdrawn}.",
+            "",
+        ]
 
     def sweep_table(results: list) -> list[str]:
         rows = [

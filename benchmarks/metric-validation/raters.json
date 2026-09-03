@@ -1,0 +1,26 @@
+{
+  "human-1": {
+    "kind": "human",
+    "note": "first pass, before the calibration round existed: 2 of 7 planted cross-prompt negatives graded substitutable, and all 34 natural pairs graded substitutable, giving a binary kappa of 0.000 against both judges",
+    "person": "rater-a",
+    "status": "withdrawn"
+  },
+  "human-2": {
+    "kind": "human",
+    "note": "second pass by the same person, through the calibration round; 8 of 8 planted negatives caught",
+    "person": "rater-a",
+    "status": "active"
+  },
+  "llm-gemini-2.5-flash": {
+    "kind": "auxiliary",
+    "note": "google/gemini-2.5-flash, temperature 0; authored no response in the corpus",
+    "person": null,
+    "status": "active"
+  },
+  "llm-judge": {
+    "kind": "auxiliary",
+    "note": "openai/gpt-4o-mini, temperature 0",
+    "person": null,
+    "status": "active"
+  }
+}

@@ -13,7 +13,7 @@ import argparse
 import json
 from pathlib import Path
 
-from scripts.metric_validation import analysis, corpus, labels, report
+from scripts.metric_validation import analysis, corpus, labels, raters, report
 
 DEFAULT_ROOT = Path("benchmarks/metric-validation")
 
@@ -45,6 +45,7 @@ def main() -> int:
         pairs,
         grades,
         reference_rater=args.reference_rater,
+        roster=raters.load_roster(root / "raters.json"),
         seed=args.seed,
         resamples=args.resamples,
     )

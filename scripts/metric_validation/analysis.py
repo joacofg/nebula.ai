@@ -15,6 +15,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from statistics import median
 
+from scripts.metric_validation import raters as rater_roster
 from scripts.metric_validation import rubric
 from scripts.metric_validation.corpus import PAIR_KINDS, PREFIX_VARIANTS, Pair
 from scripts.metric_validation.stats import (
@@ -84,6 +85,7 @@ class ValidationReport:
     reference_rater: str
     raters: list[str]
     human_raters: list[str]
+    withdrawn_raters: list[str]
     human_to_human_pending: bool
     prefix_sweep: list[PrefixResult]
     prefix_sweep_natural: list[PrefixResult]
@@ -313,11 +315,26 @@ def build_report(
     reference_rater: str,
     seed: int,
     resamples: int = 2000,
+    roster: dict[str, rater_roster.RaterProfile] | None = None,
 ) -> ValidationReport:
     if reference_rater not in grades_by_rater:
         raise ValueError(f"Reference rater {reference_rater!r} has no grades.")
 
-    reference = grades_by_rater[reference_rater]
+    declared = roster or {}
+    profiles = {
+        rater: rater_roster.profile_for(rater, declared) for rater in grades_by_rater
+    }
+    if profiles[reference_rater].is_withdrawn:
+        raise ValueError(
+            f"Reference rater {reference_rater!r} is withdrawn "
+            f"({profiles[reference_rater].note or 'no reason recorded'})."
+        )
+
+    withdrawn = sorted(r for r, p in profiles.items() if p.is_withdrawn)
+    # A withdrawn pass stays in the repo as evidence and out of every number.
+    scored = {r: g for r, g in grades_by_rater.items() if r not in withdrawn}
+
+    reference = scored[reference_rater]
     sweep = prefix_sweep(pairs, reference, seed=seed, resamples=resamples)
     natural = prefix_sweep(
         pairs, reference, seed=seed, resamples=resamples, kinds=NATURAL_KINDS
@@ -332,24 +349,27 @@ def build_report(
         scorable = [result for result in sweep if result.auc is not None]
         basis = "all pairs (natural pairs were unscorable)"
     chosen = scorable[0].prefix if scorable else None
-    # Two prefixes that separate the grades equally well are a tie, not a
-    # ranking. The winner is the first in declared variant order, and the
-    # report has to say so rather than let the order pass for a finding.
     tied_with = (
         [result.prefix for result in scorable[1:] if result.auc == scorable[0].auc]
         if scorable
         else []
     )
 
-    # An LLM standing in for the missing second human is an auxiliary rater. It
-    # is recorded as one so the report cannot be read as satisfying the
-    # two-human requirement.
-    human_raters = sorted(rater for rater in grades_by_rater if not rater.startswith("llm-"))
+    # Distinct people, not label files. Two passes by one person are one
+    # evaluator, and counting ids would clear the pending marker on the
+    # strength of somebody labelling twice.
+    people = sorted(
+        {
+            profiles[rater].person or rater
+            for rater in scored
+            if profiles[rater].is_human
+        }
+    )
 
     alpha = None
-    if len(grades_by_rater) > 1:
+    if len(scored) > 1:
         units = [
-            [grades[pair.pair_id] for grades in grades_by_rater.values() if pair.pair_id in grades]
+            [grades[pair.pair_id] for grades in scored.values() if pair.pair_id in grades]
             for pair in pairs
         ]
         if any(len(unit) > 1 for unit in units):
@@ -360,14 +380,15 @@ def build_report(
 
     return ValidationReport(
         reference_rater=reference_rater,
-        raters=sorted(grades_by_rater),
-        human_raters=human_raters,
-        human_to_human_pending=len(human_raters) < 2,
+        raters=sorted(scored),
+        human_raters=people,
+        withdrawn_raters=withdrawn,
+        human_to_human_pending=len(people) < 2,
         prefix_sweep=sweep,
         prefix_sweep_natural=natural,
         chosen_prefix=chosen,
-        chosen_prefix_basis=basis,
         chosen_prefix_tied_with=tied_with,
+        chosen_prefix_basis=basis,
         scale_by_kind=metric_scale(pairs, prefix=chosen) if chosen else [],
         bands_all=separation_by_band(pairs, reference, prefix=chosen) if chosen else [],
         bands_local_vs_premium=(
@@ -375,6 +396,6 @@ def build_report(
             if chosen
             else []
         ),
-        agreements=pairwise_agreement(grades_by_rater, seed=seed, resamples=resamples),
+        agreements=pairwise_agreement(scored, seed=seed, resamples=resamples),
         krippendorff_alpha=alpha,
     )

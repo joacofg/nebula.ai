@@ -16,6 +16,7 @@ from scripts.metric_validation import (
     label,
     labels,
     llm_judge,
+    raters,
     report,
     rubric,
     stats,
@@ -1185,3 +1186,91 @@ def test_calibration_pairs_are_dropped_from_that_raters_scored_queue(tmp_path) -
 
     assert used
     assert not (used & set(queue))
+
+
+# --- rater roster --------------------------------------------------------------
+
+
+def _roster() -> dict[str, raters.RaterProfile]:
+    return {
+        "human-1": raters.RaterProfile(
+            rater_id="human-1", kind="human", person="a", status="withdrawn",
+            note="failed the attention check",
+        ),
+        "human-2": raters.RaterProfile(
+            rater_id="human-2", kind="human", person="a", status="active", note="",
+        ),
+        "llm-judge": raters.RaterProfile(
+            rater_id="llm-judge", kind="auxiliary", person=None, status="active", note="",
+        ),
+    }
+
+
+def test_two_passes_by_one_person_count_as_one_human_rater() -> None:
+    # Two label files are not two evaluators. Counting ids instead of people
+    # clears the PENDING marker on the strength of the same person labelling
+    # twice, which is the exact false claim the marker exists to prevent.
+    corpus_pairs, grades = _graded_corpus()
+    grades["human-2"] = dict(grades["human-1"])
+
+    built = analysis.build_report(
+        corpus_pairs, grades, reference_rater="human-2", seed=1, resamples=100,
+        roster=_roster(),
+    )
+
+    assert built.human_to_human_pending is True
+
+
+def test_a_withdrawn_pass_is_named_and_kept_out_of_the_agreement_tables() -> None:
+    # A withdrawn pass stays in the repo as evidence, and out of every number.
+    corpus_pairs, grades = _graded_corpus()
+    grades["human-2"] = dict(grades["human-1"])
+    grades["llm-judge"] = dict(grades["human-1"])
+
+    built = analysis.build_report(
+        corpus_pairs, grades, reference_rater="human-2", seed=1, resamples=100,
+        roster=_roster(),
+    )
+
+    assert built.withdrawn_raters == ["human-1"]
+    assert all(
+        "human-1" not in (a.left_rater, a.right_rater) for a in built.agreements
+    )
+    rendered = report.render_markdown(built)
+    assert "human-1" in rendered and "withdrawn" in rendered.lower()
+
+
+def test_a_withdrawn_rater_cannot_be_the_reference() -> None:
+    corpus_pairs, grades = _graded_corpus()
+
+    with pytest.raises(ValueError, match="withdrawn"):
+        analysis.build_report(
+            corpus_pairs, grades, reference_rater="human-1", seed=1, resamples=100,
+            roster=_roster(),
+        )
+
+
+def test_without_a_roster_the_prefix_rule_still_applies() -> None:
+    corpus_pairs, grades = _graded_corpus()
+    grades["llm-judge"] = dict(grades["human-1"])
+
+    built = analysis.build_report(
+        corpus_pairs, grades, reference_rater="human-1", seed=1, resamples=100
+    )
+
+    assert built.human_to_human_pending is True
+    assert built.withdrawn_raters == []
+
+
+def test_the_roster_round_trips_through_its_json_file(tmp_path) -> None:
+    path = tmp_path / "raters.json"
+    raters.write_roster(_roster(), path)
+
+    assert raters.load_roster(path) == _roster()
+
+
+def test_a_rater_absent_from_the_roster_falls_back_to_the_prefix_rule() -> None:
+    profile = raters.profile_for("llm-something-new", _roster())
+
+    assert profile.kind == "auxiliary"
+    assert raters.profile_for("human-9", _roster()).kind == "human"
