@@ -848,3 +848,100 @@ def test_configured_app_deletes_the_cache_collection_it_created() -> None:
 
     assert deleted == created
     assert created[0].startswith("nebula-test-cache-")
+
+
+# --- degraded-run detection ----------------------------------------------------
+
+
+def _health_payload(cache_state: str) -> dict:
+    return {
+        "status": "ready" if cache_state == "ready" else "degraded",
+        "runtime_profile": "premium_first",
+        "dependencies": {
+            "gateway": {"status": "ready", "required": True},
+            "semantic_cache": {"lifecycle_state": cache_state, "required": False},
+            "local_ollama": {"lifecycle_state": "ready", "required": True},
+        },
+    }
+
+
+def _health_client(payload: dict | None) -> httpx.AsyncClient:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if payload is None:
+            raise httpx.ConnectError("gateway unreachable")
+        return httpx.Response(200, json=payload)
+
+    return httpx.AsyncClient(
+        base_url="http://127.0.0.1:8000", transport=httpx.MockTransport(handler)
+    )
+
+
+@pytest.mark.asyncio
+async def test_the_report_records_the_dependency_health_it_probed(tmp_path) -> None:
+    runner = _regression_runner(tmp_path)
+
+    async with _health_client(_health_payload("ready")) as client:
+        runner.runtime_health = await runner._probe_health(client)
+
+    report = runner._build_report(_regression_results())
+
+    assert report["runtime_health"]["status"] == "ready"
+
+
+@pytest.mark.asyncio
+async def test_a_run_with_an_unreachable_cache_is_marked_degraded(tmp_path) -> None:
+    # This is the failure that already produced a wrong number twice: Qdrant
+    # down, exit code 0, three scenarios quietly failing, and a savings
+    # headline that reads exactly like a healthy run's.
+    runner = _regression_runner(tmp_path)
+
+    async with _health_client(_health_payload("not_ready")) as client:
+        runner.runtime_health = await runner._probe_health(client)
+
+    report = runner._build_report(_regression_results())
+    rendered = runner._render_markdown(report)
+
+    assert report["degraded_dependencies"] == ["semantic_cache"]
+    assert "NOT COMPARABLE" in rendered
+    assert "semantic_cache" in rendered
+
+
+@pytest.mark.asyncio
+async def test_a_healthy_run_carries_no_degradation_warning(tmp_path) -> None:
+    runner = _regression_runner(tmp_path)
+
+    async with _health_client(_health_payload("ready")) as client:
+        runner.runtime_health = await runner._probe_health(client)
+
+    rendered = runner._render_markdown(runner._build_report(_regression_results()))
+
+    assert "NOT COMPARABLE" not in rendered
+    assert report_degradation_free(rendered)
+
+
+def report_degradation_free(rendered: str) -> bool:
+    return "degraded" not in rendered.lower()
+
+
+@pytest.mark.asyncio
+async def test_a_failed_health_probe_is_recorded_not_swallowed(tmp_path) -> None:
+    runner = _regression_runner(tmp_path)
+
+    async with _health_client(None) as client:
+        runner.runtime_health = await runner._probe_health(client)
+
+    report = runner._build_report(_regression_results())
+
+    assert report["runtime_health"]["probe"] == "failed"
+    assert "NOT COMPARABLE" in runner._render_markdown(report)
+
+
+def test_an_unprobed_report_makes_no_claim_either_way(tmp_path) -> None:
+    # Unit tests build reports without a gateway. That must not manufacture a
+    # warning, and must not manufacture a clean bill of health either.
+    runner = _regression_runner(tmp_path)
+
+    report = runner._build_report(_regression_results())
+
+    assert report["runtime_health"]["probe"] == "not attempted"
+    assert "NOT COMPARABLE" not in runner._render_markdown(report)

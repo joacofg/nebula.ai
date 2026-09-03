@@ -170,6 +170,7 @@ class BenchmarkRunner:
         )
         self.collection_cleaner: Callable[[str], object] = _delete_qdrant_collection
         self.collection_cleanup: list[dict[str, str]] = []
+        self.runtime_health: dict[str, object] = {"probe": "not attempted"}
 
     async def run(self) -> tuple[dict[str, object], Path]:
         grouped = group_scenarios(self.scenarios)
@@ -177,6 +178,7 @@ class BenchmarkRunner:
 
         if self.base_url:
             async with httpx.AsyncClient(base_url=self.base_url, timeout=120.0) as client:
+                self.runtime_health = await self._probe_health(client)
                 results = await self._run_groups(
                     client=client,
                     grouped=grouped,
@@ -220,6 +222,7 @@ class BenchmarkRunner:
             },
         ) as normal_server:
             async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
+                self.runtime_health = await self._probe_health(client)
                 results.extend(
                     await self._run_groups(
                         client=client,
@@ -244,6 +247,35 @@ class BenchmarkRunner:
                     )
                 )
         return results
+
+    async def _probe_health(self, client: httpx.AsyncClient) -> dict[str, object]:
+        """Ask the gateway what state its dependencies are in, before measuring.
+
+        Twice in one week a run with Qdrant down exited 0 and produced a
+        savings headline that read exactly like a healthy run's. The report has
+        to know the difference, and it cannot infer it from the numbers.
+        """
+        try:
+            response = await client.get("/health/dependencies")
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            return {"probe": "failed", "detail": str(exc)}
+        payload = response.json()
+        payload["probe"] = "ok"
+        return payload
+
+    def _degraded_dependencies(self) -> list[str]:
+        """Dependencies that were not ready when the run started."""
+        dependencies = self.runtime_health.get("dependencies")
+        if not isinstance(dependencies, dict):
+            return []
+        return sorted(
+            name
+            for name, payload in dependencies.items()
+            if isinstance(payload, dict)
+            and str(payload.get("lifecycle_state") or payload.get("status"))
+            not in {"ready", "None"}
+        )
 
     async def _cleanup_collections(self) -> list[dict[str, str]]:
         """Drop the cache collections this run created.
@@ -536,6 +568,8 @@ class BenchmarkRunner:
             "run_id": self.run_id,
             "dataset": _repo_relative(self.dataset_path),
             "cache_collections": self.collection_cleanup,
+            "runtime_health": self.runtime_health,
+            "degraded_dependencies": self._degraded_dependencies(),
             "base_url": self.base_url or "managed-local",
             "summary": {
                 "total_requests": total_requests,
@@ -570,6 +604,7 @@ class BenchmarkRunner:
         results = report["results"]
         lines = [
             "# Nebula Benchmark Report",
+            *_degraded_banner(report),
             "",
             f"- Run ID: `{report['run_id']}`",
             f"- Generated At: `{report['generated_at']}`",
@@ -825,6 +860,35 @@ async def _async_main() -> None:
 
 def main() -> None:
     asyncio.run(_async_main())
+
+
+def _degraded_banner(report: dict[str, object]) -> list[str]:
+    """A banner a reader cannot miss when the run was not measuring a healthy stack.
+
+    A savings figure from a run with the semantic cache unreachable looks
+    identical to one from a healthy run. Nothing else on the page distinguishes
+    them, so the distinction has to be stated.
+    """
+    health = report.get("runtime_health")
+    probe = health.get("probe") if isinstance(health, dict) else None
+    degraded = report.get("degraded_dependencies") or []
+
+    if probe == "failed":
+        return [
+            "> **NOT COMPARABLE.** The dependency-health probe failed, so this run "
+            "was measured against a stack of unknown state. Do not compare these "
+            "numbers with a healthy run.",
+            "",
+        ]
+    if degraded:
+        names = ", ".join(f"`{name}`" for name in degraded)
+        return [
+            f"> **NOT COMPARABLE.** These dependencies were not ready when the run "
+            f"started: {names}. Cache-dependent figures below reflect a degraded "
+            f"stack and cannot be compared with a healthy run.",
+            "",
+        ]
+    return []
 
 
 def _repo_relative(path: Path) -> str:
