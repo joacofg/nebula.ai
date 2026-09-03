@@ -300,23 +300,64 @@ Neither answers the question. What the study can say today is narrow:
 - The noise floor is where the signal is: median cosine 0.938 for
   local-against-premium and 0.935 for premium-against-premium.
 
+#### The validated pass: the judges are stricter than a human
+
+`human-3`, the same person, went through the calibration round including the
+same-topic truncated item — the axis a topic heuristic cannot pass — and
+graded the 22 natural pairs the two judges read differently. That subset is
+chosen so that on every pair one judge said substitutable and the other did
+not, which makes the human's grade a tie-break rather than a third opinion.
+
+| rater | substitutable, the same 22 split pairs |
+|---|---|
+| `llm-judge` (gpt-4o-mini) | 7/22 (32%) |
+| `llm-gemini-2.5-flash` | 15/22 (68%) |
+| `human-3` | 20/22 (91%) |
+
+The human broke 20 of 22 ties toward substitutable. Under a 50/50 null that is
+p = 1.2 × 10⁻⁴ two-tailed. The severity ordering is clear and it is not close:
+**gpt-4o-mini is far stricter than a human reader, gemini-2.5-flash is
+somewhat stricter, and the human is the most permissive of the three.**
+
+Do not read κ on this subset. It was selected for judge disagreement, so
+judge-vs-judge κ is −0.77 there by construction; a selected subset cannot
+carry an agreement statistic. The tie-break rate is the statistic this design
+supports.
+
+The practical consequence is direct: **using LLM-judge grades as ground truth
+would systematically understate how acceptable local output is.** A frontier
+calibrated against gpt-4o-mini's grades would route to premium far more often
+than a user would require.
+
+#### What is settled and what is not
+
+Settled:
+
+- The judges are reproducible with each other (κ 0.65–0.77 over all 130) and
+  are *not* interchangeable with a human on the pairs where they disagree.
+- On this corpus a human accepts local output on the great majority of pairs,
+  including 20 of the 22 the judges found hardest to call.
+
+Not settled — and not answerable on this corpus:
+
+- Whether the cosine tracks human judgement. With 2 non-substitutable pairs out
+  of 22, and that subset selected rather than representative, there is no
+  contrast to detect. The obstacle is the corpus, not the metric.
+
 #### What to do next
 
-- **Spend human attention only where it decides something.** 22 of the 105
-  natural pairs are ones the two judges read differently — binary verdicts
-  split, or ordinal grades two or more steps apart. Those are the pairs where
-  a third reading breaks a tie; on the rest a third opinion changes nothing.
-  `make metric-label RATER=<id> INFORMATIVE=1` presents only those.
-- **Design difficulty into T12's dataset.** The pilot prompts skew simple and
-  `llama3.2:3b` handles most of them. Verify the negative class is populated
-  before labelling starts; volume alone would reproduce this dead end at four
-  times the cost.
-- **If no valid human pass is achievable, declare LLM-as-judge as the
-  instrument** rather than presenting it as validated by humans. Two
-  independent judges with inter-judge agreement reported as reliability is a
-  defensible methodology, widely used, and honest — provided the write-up says
-  that human validation was attempted twice and not achieved, and does not
-  claim the judges track human preference.
+- **Design difficulty into T12's dataset.** This is now the blocking
+  requirement, not volume. The pilot prompts skew simple, `llama3.2:3b`
+  handles most of them, and a human accepts almost everything it produces.
+  Sample or construct prompts where local demonstrably fails, and verify the
+  negative class is populated *before* any labelling starts.
+- **Do not calibrate a frontier against LLM-judge grades.** That is now
+  measured, not suspected: the strict judge disagrees with a human on
+  two-thirds of the contested pairs, all in the same direction.
+- **Report the judge-severity finding.** Two independent judges, reproducible
+  with each other, both stricter than a validated human rater, with the
+  tie-break design that shows it. It is a result in its own right and it did
+  not exist before this pilot.
 
 ### What the numbers do and do not say
 

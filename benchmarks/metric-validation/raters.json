@@ -11,6 +11,12 @@
     "person": "rater-a",
     "status": "withdrawn"
   },
+  "human-3": {
+    "kind": "human",
+    "note": "third pass, through the calibration round including the same-topic truncated item that a topic heuristic cannot pass; graded only the 22 pairs the two judges read differently",
+    "person": "rater-a",
+    "status": "active"
+  },
   "llm-gemini-2.5-flash": {
     "kind": "auxiliary",
     "note": "google/gemini-2.5-flash, temperature 0; authored no response in the corpus",
