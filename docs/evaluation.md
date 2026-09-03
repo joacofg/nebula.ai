@@ -239,61 +239,64 @@ rather than to a real answer, and the whole study would read as a success.
 `provenance.json` pins the run: model digests, the Ollama version, the
 temperature, and SHA-256 of both the prompt file and the pair file.
 
-### What the pilot found so far — two auxiliary raters, no human yet
+### What the pilot found
 
-The corpus is captured and two auxiliary LLM raters, from different model
-families, have each graded all 130 pairs under the same rubric on
-independently blinded pairs. No human has labelled anything yet, so this is
-still provisional — but it is no longer a single rater's opinion.
+One human rater has now graded 41 pairs under the calibration round, and two
+auxiliary LLM raters from different model families have graded all 130. The
+result is not the one the single-rater pass pointed at.
 
-**The two raters agree substantially.**
+**The LLM raters are reproducible, and they are not a proxy for the human.**
+Over the same 33 natural pairs the human graded:
 
-| statistic | value | 95% CI |
+| agreement | Cohen's κ (binary) | quadratic-weighted κ |
 |---|---|---|
-| Cohen's κ, derived binary | 0.651 | — |
-| quadratic-weighted κ, ordinal | 0.770 | [0.674, 0.848] |
-| Krippendorff's ordinal α | 0.733 | — |
+| judge vs judge | 0.681 | 0.682 |
+| human vs `llm-judge` | 0.161 | 0.165 |
+| human vs `llm-gemini-2.5-flash` | 0.229 | 0.182 |
 
-Both called all 25 planted `cross_prompt` negatives divergent, unanimously.
+Two judges agreeing substantially with each other while both show only slight
+agreement with a human is the signature of a shared systematic bias in the
+judges, not of rater noise. Both are language models trained on similar
+conventions about what a good answer looks like; their agreement measures
+reproducibility, never validity. This pass makes that concrete rather than
+hypothetical, and it is the reason rigour point 3 asks for humans.
 
-**The cosine does not track those grades**, at the best prefix
-(`search_query`), under either rater independently:
+**The human finds local output almost always acceptable.**
 
-| rater | sample | n | AUC | 95% CI |
-|---|---|---|---|---|
-| `llm-judge` (gpt-4o-mini) | natural pairs | 105 | 0.639 | [0.521, 0.748] |
-| `llm-judge` (gpt-4o-mini) | `local_vs_premium` only | 80 | 0.600 | [0.475, 0.732] |
-| `llm-gemini-2.5-flash` | natural pairs | 105 | 0.595 | [0.463, 0.716] |
-| `llm-gemini-2.5-flash` | `local_vs_premium` only | 80 | 0.567 | [0.418, 0.710] |
+| rater | substitutable, same 33 natural pairs |
+|---|---|
+| human | 31/33 (94%) |
+| `llm-judge` | 19/33 (58%) |
+| `llm-gemini-2.5-flash` | 22/33 (67%) |
 
-Three of those four intervals cover 0.5. The headline AUC over all pairs is
-0.797, and it is carried entirely by the planted negatives: separating an
-answer to a different question is easy, and every prefix does it.
+That rate is stable: an earlier pass by the same person, over a partly
+different subset, called all 10 overlapping natural pairs substitutable too.
+The second pass also caught 8 of 8 planted `cross_prompt` negatives, so the
+criterion was being applied.
 
-The noise floor says the same from the other side. At `search_query` the median
-cosine is 0.938 for local-against-premium and 0.935 for
-premium-against-premium — two different premium models answering the same
-prompt sit exactly where the local model sits.
+**And that makes the metric question unanswerable on this corpus.** With 2
+non-substitutable pairs out of 26 `local_vs_premium`, AUC against human grades
+is 0.542 with a 95% interval of [0.200, 0.875] — no information at all, and
+12% of bootstrap resamples lost the negative class entirely. The obstacle is
+not that the cosine fails to separate the classes; it is that on this corpus
+there is barely a negative class to separate.
 
-**What this rules out.** A single rater's grades could have been noise, in
-which case nothing would correlate with them and the low AUC would say nothing
-about the metric. Two independent raters from different families, separately
-blinded, agreeing at κ 0.65–0.77 rules that out: the grades are reproducible,
-so the cosine's failure to track them is a property of the cosine.
+**What follows.**
 
-**What it does not rule out.** Both raters are language models. If human
-judgement differed from both of them in a way that happened to correlate with
-cosine similarity, the conclusion would flip. That is less likely now than it
-was with one rater, but it is not excluded, and it is the only thing the human
-labelling still has to settle.
-
-**What follows if the human labels agree.** `nomic-embed-text` cosine, on this
-corpus, largely measures whether both sides answered the question asked, not
-how well. Phase 1 cannot rest on it as specified, and the frontier work in T6 —
-which sweeps thresholds over `sim_local` — would be sweeping over noise. T6's
-machinery survives, since the oracle, the savings-per-weight frontier and APGR
-all take a quality score as input; what does not survive is this particular
-input.
+- The earlier reading — that the cosine does not resolve quality — is *not*
+  supported. It was measured against LLM grades that do not agree with a human.
+- The pilot corpus is too easy. Its prompts skew simple, `llama3.2:3b` handles
+  most of them, and a study of routing *quality* needs prompts where the local
+  model actually fails. T12's dataset should target that difficulty gap
+  explicitly, not just volume: sample or construct prompts where local and
+  premium demonstrably diverge, and verify the negative class is populated
+  before any labelling starts.
+- LLM-as-judge cannot stand in for human ground truth here. That is now
+  measured rather than assumed, and it is a finding in its own right.
+- A human accepting 94% of local answers as substitutes for premium is, on its
+  face, a *favourable* result for the gateway's premise on traffic of this
+  kind — but it rests on 26 pairs from one rater on an easy corpus, and it is
+  not a claim the study can make yet.
 
 ### What the numbers do and do not say
 
