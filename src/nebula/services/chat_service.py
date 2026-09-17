@@ -34,7 +34,7 @@ from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouterService
-from nebula.services.semantic_cache_service import SemanticCacheService
+from nebula.services.semantic_cache_service import CacheHit, SemanticCacheService
 
 logger = logging.getLogger(__name__)
 
@@ -110,20 +110,22 @@ class ChatService:
             request_id=request_id,
         )
 
-        cached_response = await self._lookup_cache(
+        cache_hit = await self._lookup_cache(
             prompt=latest_user_prompt,
-            cache_enabled=policy_resolution.cache_enabled,
+            tenant_id=tenant_context.tenant.id,
+            policy_resolution=policy_resolution,
             request_id=request_id,
             stream=False,
         )
-        if cached_response is not None:
+        if cache_hit is not None:
+            cached_response = cache_hit.response
             usage = self.policy_service.estimate_usage(request, cached_response)
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
                 route_target="cache",
                 route_reason="cache_hit",
                 provider="cache",
-                cache_hit=True,
+                cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
             )
@@ -266,7 +268,9 @@ class ChatService:
 
         usage = self._resolved_usage(request, result.content, result.usage)
         if policy_resolution.cache_enabled:
-            await self.cache_service.store(latest_user_prompt, result.content, result.model)
+            await self.cache_service.store(
+                latest_user_prompt, result.content, result.model, tenant_id=tenant_context.tenant.id
+            )
         response = self._build_response(content=result.content, model=result.model, usage=usage)
         await self._record_usage(
             request_id=request_id,
@@ -311,20 +315,22 @@ class ChatService:
         response_id = f"chatcmpl-{uuid4().hex}"
         created = int(time())
 
-        cached_response = await self._lookup_cache(
+        cache_hit = await self._lookup_cache(
             prompt=latest_user_prompt,
-            cache_enabled=policy_resolution.cache_enabled,
+            tenant_id=tenant_context.tenant.id,
+            policy_resolution=policy_resolution,
             request_id=request_id,
             stream=True,
         )
-        if cached_response is not None:
+        if cache_hit is not None:
+            cached_response = cache_hit.response
             COMPLETION_COUNT.labels("cache", "ok", "true").inc()
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
                 route_target="cache",
                 route_reason="cache_hit",
                 provider="cache",
-                cache_hit=True,
+                cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
             )
@@ -429,20 +435,28 @@ class ChatService:
         self,
         *,
         prompt: str,
-        cache_enabled: bool,
+        tenant_id: str,
+        policy_resolution: PolicyResolution,
         request_id: str | None,
         stream: bool,
-    ) -> str | None:
-        if not cache_enabled:
+    ) -> CacheHit | None:
+        if not policy_resolution.cache_enabled:
             logger.info("cache_bypassed request_id=%s stream=%s reason=policy_disabled", request_id, stream)
             return None
-        cached_response = await self.cache_service.lookup(prompt)
-        if cached_response is not None:
+        hit = await self.cache_service.lookup(
+            prompt,
+            tenant_id=tenant_id,
+            similarity_threshold=policy_resolution.cache_similarity_threshold,
+            max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
+        )
+        if hit is not None:
             logger.info(
-                "cache_hit request_id=%s stream=%s prompt_chars=%s",
+                "cache_hit request_id=%s stream=%s prompt_chars=%s score=%.4f age_seconds=%s",
                 request_id,
                 str(stream).lower(),
                 len(prompt),
+                hit.score,
+                hit.age_seconds,
             )
         else:
             logger.info(
@@ -451,7 +465,7 @@ class ChatService:
                 str(stream).lower(),
                 len(prompt),
             )
-        return cached_response
+        return hit
 
     async def _stream_provider(
         self,
@@ -487,7 +501,9 @@ class ChatService:
 
                 if chunk.finish_reason:
                     if cache_enabled:
-                        await self.cache_service.store(prompt, "".join(content_parts), chunk.model)
+                        await self.cache_service.store(
+                            prompt, "".join(content_parts), chunk.model, tenant_id=tenant_id
+                        )
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
                         perf_counter() - started_at
@@ -884,20 +900,25 @@ class ChatService:
         route_target: Literal["local", "premium", "cache", "denied"],
         route_reason: str,
         provider: str,
-        cache_hit: bool,
+        cache_hit: bool | CacheHit,
         fallback_used: bool,
         policy_resolution: PolicyResolution,
     ) -> CompletionMetadata:
+        signals: dict[str, Any] = dict(policy_resolution.route_decision.signals or {})
+        if isinstance(cache_hit, CacheHit):
+            signals["cache_similarity_score"] = round(cache_hit.score, 4)
+            signals["cache_entry_age_seconds"] = cache_hit.age_seconds
+            signals["cache_entry_model"] = cache_hit.model
         return CompletionMetadata(
             tenant_id=tenant_id,
             route_target=route_target,
             route_reason=route_reason,
             provider=provider,
-            cache_hit=cache_hit,
+            cache_hit=bool(cache_hit),
             fallback_used=fallback_used,
             policy_mode=policy_resolution.policy_mode,
             policy_outcome=policy_resolution.policy_outcome,
-            route_signals=policy_resolution.route_decision.signals or None,
+            route_signals=signals or None,
             route_score=policy_resolution.route_decision.score,
         )
 

@@ -21,6 +21,8 @@ class PolicyEvaluation:
     route_decision: RouteDecision
     policy_mode: RoutingMode
     cache_enabled: bool
+    cache_similarity_threshold: float
+    cache_max_entry_age_hours: int
     fallback_enabled: bool
     policy_outcome: str
     soft_budget_exceeded: bool
@@ -37,6 +39,8 @@ class PolicyResolution:
     route_decision: RouteDecision
     policy_mode: RoutingMode
     cache_enabled: bool
+    cache_similarity_threshold: float
+    cache_max_entry_age_hours: int
     fallback_enabled: bool
     policy_outcome: str
     soft_budget_exceeded: bool
@@ -87,6 +91,8 @@ class PolicyService:
             route_decision=evaluation.route_decision,
             policy_mode=evaluation.policy_mode,
             cache_enabled=evaluation.cache_enabled,
+            cache_similarity_threshold=evaluation.cache_similarity_threshold,
+            cache_max_entry_age_hours=evaluation.cache_max_entry_age_hours,
             fallback_enabled=evaluation.fallback_enabled,
             policy_outcome=evaluation.policy_outcome,
             soft_budget_exceeded=evaluation.soft_budget_exceeded,
@@ -220,6 +226,8 @@ class PolicyService:
             route_decision=route_decision,
             policy_mode=policy.routing_mode_default,
             cache_enabled=policy.semantic_cache_enabled,
+            cache_similarity_threshold=policy.semantic_cache_similarity_threshold,
+            cache_max_entry_age_hours=policy.semantic_cache_max_entry_age_hours,
             fallback_enabled=policy.fallback_enabled,
             policy_outcome=";".join(outcome_parts),
             soft_budget_exceeded=soft_budget_exceeded,

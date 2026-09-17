@@ -24,10 +24,6 @@ class Settings(BaseSettings):
         default="nebula-semantic-cache",
         alias="NEBULA_SEMANTIC_CACHE_COLLECTION",
     )
-    semantic_cache_threshold: float = Field(
-        default=0.90,
-        alias="NEBULA_SEMANTIC_CACHE_THRESHOLD",
-    )
     database_url: str | None = Field(default=None, alias="NEBULA_DATABASE_URL")
     premium_provider: Literal["mock", "openai_compatible"] = Field(
         default="mock",
@@ -36,7 +32,6 @@ class Settings(BaseSettings):
     premium_model: str = Field(default="gpt-4o-mini", alias="NEBULA_PREMIUM_MODEL")
     premium_base_url: str | None = Field(default=None, alias="NEBULA_PREMIUM_BASE_URL")
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")
-    router_complexity_chars: int = Field(default=400, alias="NEBULA_ROUTER_COMPLEXITY_CHARS")
     enable_metrics: bool = Field(default=True, alias="NEBULA_ENABLE_METRICS")
     data_store_path: str = Field(default=".nebula/nebula.db", alias="NEBULA_DATA_STORE_PATH")
     admin_api_key: str = Field(default="nebula-admin-key", alias="NEBULA_ADMIN_API_KEY")

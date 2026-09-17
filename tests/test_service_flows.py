@@ -36,7 +36,7 @@ from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.recommendation_service import RecommendationService
 from nebula.services.router_service import RouteDecision, RouterService
-from tests.support import FakeCacheService, StubProvider
+from tests.support import FakeCacheService, StubProvider, admin_headers, configured_app, usage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -146,6 +146,8 @@ class FakePolicyService:
             route_decision=decision,
             policy_mode=self.policy_mode,
             cache_enabled=self.cache_enabled,
+            cache_similarity_threshold=0.9,
+            cache_max_entry_age_hours=168,
             fallback_enabled=self.fallback_enabled,
             policy_outcome=self.policy_outcome,
             soft_budget_exceeded=False,
@@ -256,6 +258,7 @@ async def test_create_completion_persists_calibrated_route_evidence_for_real_req
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
         (
+            "default",
             "Please review this architecture tradeoff.",
             "premium response",
             service.settings.premium_model,
@@ -291,6 +294,7 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
         (
+            "default",
             "Please review this architecture tradeoff.",
             "premium response",
             service.settings.premium_model,
@@ -331,7 +335,7 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
 
     assert response.model == settings.premium_model
     assert response.choices[0].message.content == "fallback response"
-    assert cache_service.stored_entries == [("hello", "fallback response", settings.premium_model)]
+    assert cache_service.stored_entries == [("default", "hello", "fallback response", settings.premium_model)]
     assert store.records[-1].fallback_used is True
     assert store.records[-1].terminal_status == "fallback_completed"
 
@@ -397,7 +401,7 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
     assert b"premium " in payload
     assert b"stream" in payload
     assert payload.endswith(b"data: [DONE]\n\n")
-    assert cache_service.stored_entries == [("short", "premium stream", settings.premium_model)]
+    assert cache_service.stored_entries == [("default", "short", "premium stream", settings.premium_model)]
     assert store.records[-1].terminal_status == "fallback_completed"
 
 
@@ -1788,3 +1792,50 @@ async def test_embeddings_service_rejects_empty_upstream_embeddings() -> None:
         await service.create_embeddings(model="batch-model", input="hello")
 
     assert str(exc_info.value) == "Ollama returned no embeddings."
+
+
+@pytest.mark.asyncio
+async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy() -> None:
+    cache_service = FakeCacheService(cached_response=None)
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        async with app.router.lifespan_context(app):
+            container = app.state.container
+            container.cache_service = cache_service
+            container.chat_service.cache_service = cache_service
+            container.provider_registry.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="ok", model="llama", provider="ollama", usage=usage()
+                ),
+            )
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
+                created = await client.post(
+                    "/v1/admin/tenants",
+                    json={"id": "tenant-b", "name": "Tenant B"},
+                    headers=admin_headers(),
+                )
+                assert created.status_code == 201
+                policy = await client.get("/v1/admin/tenants/tenant-b/policy", headers=admin_headers())
+                body = policy.json()
+                body["semantic_cache_similarity_threshold"] = 0.95
+                body["semantic_cache_max_entry_age_hours"] = 12
+                updated = await client.put(
+                    "/v1/admin/tenants/tenant-b/policy", json=body, headers=admin_headers()
+                )
+                assert updated.status_code == 200
+                key = await client.post(
+                    "/v1/admin/api-keys",
+                    json={"name": "b-key", "tenant_id": "tenant-b"},
+                    headers=admin_headers(),
+                )
+                raw_key = key.json()["api_key"]
+
+                response = await client.post(
+                    "/v1/chat/completions",
+                    json={"model": "nebula-auto", "messages": [{"role": "user", "content": "hi"}]},
+                    headers={"X-Nebula-API-Key": raw_key},
+                )
+                assert response.status_code == 200
+
+    assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
+    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
