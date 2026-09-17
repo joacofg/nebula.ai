@@ -553,9 +553,6 @@ describe("policy-form", () => {
       "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
-    );
-    expect(runtimeSection).toHaveTextContent(
       "Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.",
     );
     expect(runtimeSection).toHaveTextContent(
@@ -594,9 +591,6 @@ describe("policy-form", () => {
     );
     expect(runtimeSection).toHaveTextContent(
       "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
     );
   });
 

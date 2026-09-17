@@ -1,5 +1,4 @@
 import type { CalibrationEvidenceSummary, UsageLedgerRecord } from "@/lib/admin-api";
-import { getHostedContractContent } from "@/lib/hosted-contract";
 
 type RouteSignals = Record<string, unknown>;
 
@@ -380,7 +379,6 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
   const budgetExplanation = extractBudgetExplanation(entry.policy_outcome);
   const calibrationExplanation = calibrationSummary ? buildCalibrationExplanation(calibrationSummary) : null;
   const routingInspection = buildRoutingInspection(routeSignals, entry.route_reason);
-  const { copy, reinforcement } = getHostedContractContent();
 
   return (
     <section className="panel space-y-4 px-6 py-5">
@@ -390,10 +388,9 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
         <p className="mt-2 text-sm text-slate-600">
           This persisted ledger record is the authoritative evidence row for this request ID while the row still
           exists. It explains the retained route, provider, fallback, cache, and policy outcome that operators first
-          corroborate through the public response headers before reading broader tenant or hosted posture guidance
+          corroborate through the public response headers before reading broader tenant guidance
           elsewhere on this page. If governed retention cleanup later deletes the row at its persisted expiration time,
-          this request detail should disappear with it rather than imply recovery, a soft-deleted archive, or hosted raw
-          export.
+          this request detail should disappear with it rather than imply recovery or a soft-deleted archive.
         </p>
       </div>
       <dl className="grid gap-4 sm:grid-cols-2">
@@ -430,11 +427,18 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
           </span>
         </div>
         <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4 text-sm text-slate-700">
-          <p>{reinforcement.evidenceBoundaryVocabulary.retained}</p>
-          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.suppressed}</p>
-          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.deleted}</p>
-          <p className="mt-3">{reinforcement.evidenceBoundaryVocabulary.notHosted}</p>
-          <p className="mt-3">{copy.hostedExportExclusion}</p>
+          <p>
+            Retained means the row is still inside its evidence retention window and is the authoritative record
+            for this request.
+          </p>
+          <p className="mt-3">
+            Suppressed means a metadata field was minimised at capture time under the tenant policy; it was never
+            persisted and cannot be recovered.
+          </p>
+          <p className="mt-3">
+            Deleted means governed retention cleanup removed the row at its expiration time; there is no soft-deleted
+            archive.
+          </p>
         </div>
       </section>
       {calibrationExplanation ? (

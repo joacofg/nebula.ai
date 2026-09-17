@@ -250,11 +250,6 @@ describe("policy-page", () => {
         "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
-      ),
-    ).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache max entry age hours")).toBeInTheDocument();
     expect(
