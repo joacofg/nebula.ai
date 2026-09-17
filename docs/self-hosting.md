@@ -113,6 +113,7 @@ This topology is designed for product proof and pilot evaluation:
 - Local Ollama is optional. It is an optimization path, not a deployment prerequisite.
 - A `degraded` dependency state can still be acceptable when optional services such as Qdrant or local Ollama are unavailable.
 - Estimated premium cost in benchmark artifacts is based on `benchmarks/pricing.json`, not provider invoice reconciliation.
+- **Upgrading from a deployment created before September 2026:** the Alembic history was collapsed into a single initial revision, so `alembic upgrade head` fails with "Can't locate revision identified by '20260411_0010'" on an existing database. Recreate it: stop the stack, remove the `postgres_data` volume (`docker compose -f docker-compose.selfhosted.yml down -v`), start again so the migration runs on an empty database, and re-create tenants and keys (or run `scripts/seed_demo_data.py` for the demo tenant). Semantic-cache points written before the upgrade lack a tenant id and are never served again; clear the Qdrant volume at the same time to reclaim the space.
 
 ## Related docs
 

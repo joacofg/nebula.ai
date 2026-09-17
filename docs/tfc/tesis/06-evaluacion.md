@@ -15,7 +15,7 @@ lector humano 91 % (p = 1.2e-4). <!-- GEN: judge-vs-human -->
 > PENDIENTE (fase 2): ensamble, rúbrica "lector satisfecho", 50 pares en español.
 
 ## 6.4 Resultados de ruteo
-Línea de base (heurística de dos reglas, 14 escenarios, 2026-08-19): 41.2 / 38.2 / 40.0 % de gasto
+Línea de base (heurística de dos reglas, 14 escenarios, 2026-08-19): 41.2 % (corrida 20260819T225557Z), 38.2 % (20260819T225703Z) y 40.0 % (20260819T225713Z) de gasto
 premium evitado. <!-- GEN: baseline-savings -->
 > PENDIENTE (fase 3): curva costo/calidad del router aprendido vs heurística.
 

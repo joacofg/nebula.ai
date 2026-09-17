@@ -35,7 +35,7 @@ PostgreSQL is the canonical governance store for the supported self-hosted topol
 
 ### Semantic cache
 
-Qdrant stores the semantic-cache vectors used to short-circuit repeat traffic when cache eligibility and similarity thresholds are satisfied.
+Qdrant stores the semantic-cache vectors used to short-circuit repeat traffic when cache eligibility and similarity thresholds are satisfied. Every point carries the owning `tenant_id`, the source `model` and a `created_at` timestamp in its payload. A lookup filters on the authenticated tenant and on `created_at` newer than the tenant policy's `semantic_cache_max_entry_age_hours`, and uses the policy's `semantic_cache_similarity_threshold` as the Qdrant score threshold, so a cached answer is never served across tenants and both knobs in the console are enforced on every request. The hit's similarity score is persisted in the ledger's `route_signals` as `cache_similarity_score`.
 
 ### Providers
 

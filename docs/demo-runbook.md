@@ -62,3 +62,4 @@ rides in the response headers."
 | Cache doesn't hit | Re-send the *identical* prompt (similarity 1.0 always hits). |
 | Beat 2/3 unexpectedly routes cache | You skipped the cache-reset step; any prompt sent before the demo is cached. Use a fresh variation of the prompt (different topic, keep/omit the hint keyword accordingly). |
 | Everything on fire | Terminal fallback: the Beat 6 curl works with just the gateway up and demonstrates the full routing story headlessly. |
+| Gateway fails at startup with "Can't locate revision identified by ..." | The local database predates the September 2026 migration collapse. Delete `.nebula/nebula.db`, run `make migrate`, then re-run `scripts/seed_demo_data.py`. |
