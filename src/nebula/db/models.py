@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, String, Text
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Index, Integer, JSON, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
@@ -95,3 +95,7 @@ class UsageLedgerModel(Base):
     metadata_minimization_level: Mapped[str] = mapped_column(String(16), nullable=False, default="standard")
     metadata_fields_suppressed_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     governance_source: Mapped[str] = mapped_column(String(32), nullable=False, default="tenant_policy")
+
+    __table_args__ = (
+        Index("idx_usage_ledger_tenant_timestamp", "tenant_id", "timestamp"),
+    )

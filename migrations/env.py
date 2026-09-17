@@ -22,9 +22,7 @@ def _database_url() -> str:
     return f"sqlite+pysqlite:///{Path(data_store_path).resolve()}"
 
 
-# Only set the default database URL if not already configured (e.g., by tests)
-if not config.get_main_option("sqlalchemy.url"):
-    config.set_main_option("sqlalchemy.url", _database_url())
+config.set_main_option("sqlalchemy.url", _database_url())
 
 
 def run_migrations_offline() -> None:
