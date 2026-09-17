@@ -553,19 +553,16 @@ describe("policy-form", () => {
       "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
-    );
-    expect(runtimeSection).toHaveTextContent(
       "Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.",
     );
     expect(runtimeSection).toHaveTextContent(
       "Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Higher values require a closer semantic match before Nebula reuses a cached response.",
+      "Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every lookup.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.",
+      "Cached answers older than this are ignored on lookup for this tenant.",
     );
     expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
 
@@ -594,9 +591,6 @@ describe("policy-form", () => {
     );
     expect(runtimeSection).toHaveTextContent(
       "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
     );
   });
 

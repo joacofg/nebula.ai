@@ -11,7 +11,6 @@ import type {
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import { PolicyAdvancedSection } from "@/components/policy/policy-advanced-section";
-import { getHostedContractContent } from "@/lib/hosted-contract";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -297,7 +296,6 @@ export function PolicyForm({
   const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
   const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
-  const { copy: hostedContractCopy } = getHostedContractContent();
   const evidenceBoundarySummary = useMemo(
     () =>
       getEvidenceBoundarySummary(
@@ -581,7 +579,6 @@ export function PolicyForm({
             <p>{evidenceBoundarySummary.retention}</p>
             <p>{evidenceBoundarySummary.inspectableWhileRetained}</p>
             <p>{evidenceBoundarySummary.minimizationEffect}</p>
-            <p>{hostedContractCopy.hostedExportExclusion}</p>
           </div>
         </div>
         <div className="mt-4 space-y-5">
@@ -678,7 +675,8 @@ export function PolicyForm({
                     }
                   />
                   <p className="mt-2 text-sm text-slate-500">
-                    Higher values require a closer semantic match before Nebula reuses a cached response.
+                    Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every
+                    lookup.
                   </p>
                 </div>
                 <div>
@@ -698,7 +696,7 @@ export function PolicyForm({
                     }
                   />
                   <p className="mt-2 text-sm text-slate-500">
-                    Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.
+                    Cached answers older than this are ignored on lookup for this tenant.
                   </p>
                 </div>
               </div>

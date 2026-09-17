@@ -64,39 +64,29 @@ describe("ledger-request-detail", () => {
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(/before reading broader tenant or hosted posture guidance elsewhere on this page/i),
+      screen.getByText(/before reading broader tenant guidance elsewhere on this page/i),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
         /If governed retention cleanup later deletes the row at its persisted expiration time, this request detail should disappear with it/i,
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText(/rather than imply recovery, a soft-deleted archive, or hosted raw export/i)).toBeInTheDocument();
+    expect(screen.getByText(/rather than imply recovery or a soft-deleted archive/i)).toBeInTheDocument();
     expect(screen.getByText("Effective evidence boundary")).toBeInTheDocument();
     expect(screen.getByText("Row-level governance truth")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Retained request detail stays local to the persisted ledger row while that governed row still exists.",
+        "Retained means the row is still inside its evidence retention window and is the authoritative record for this request.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Suppressed means governance removed or never wrote specific metadata fields, so those fields are no longer available from the ledger later.",
+        "Suppressed means a metadata field was minimised at capture time under the tenant policy; it was never persisted and cannot be recovered.",
       ),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Deleted means governed retention removed the entire row at expiration; Nebula should not imply recovery, soft-delete archives, or hidden raw exports afterward.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Not hosted means the hosted control plane does not receive raw usage-ledger rows and cannot replace the local row as request-level evidence.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
+        "Deleted means governed retention cleanup removed the row at its expiration time; there is no soft-deleted archive.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();

@@ -10,7 +10,7 @@ Application teams often need premium models for some requests, but not all of th
 - preserve premium capacity for requests that actually need it
 - surface route, cache, fallback, and cost signals to operators instead of hiding them
 
-Nebula is self-hosted with an optional hosted control plane. The hosted control plane is recommended for pilots because it improves onboarding and fleet visibility, but it is not required for serving traffic. The default hosted export is metadata-only; see [`docs/hosted-default-export.schema.json`](docs/hosted-default-export.schema.json) for the canonical machine-readable contract.
+Nebula is self-hosted only. Everything that serves or governs traffic runs inside the operator's environment; no component reports to an external control plane.
 
 ## Product proof
 
@@ -29,20 +29,13 @@ Use these repo-native proof paths:
 - operators who need a focused control plane and visible runtime behavior
 - academic or technical reviewers who need the architecture, deployment, and evaluation story to be inspectable from the repository
 
-## Hosted control plane
-
-Nebula can optionally connect to a hosted control plane for fleet visibility, deployment health, and streamlined pilot onboarding. The hosted plane is not in the request-serving path and is not authoritative for local runtime enforcement. Local policy decisions, routing, and governance remain under operator control at all times.
-
-The default metadata exported to the hosted plane is defined in [`docs/hosted-default-export.schema.json`](docs/hosted-default-export.schema.json). That contract explicitly excludes raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, and authoritative runtime policy state. Richer diagnostics beyond the default export are operator-initiated exceptions, not automatic behavior.
-
 ## Documentation map
 
 - [Quickstart](docs/quickstart.md): happy-path self-hosted flow from env setup to first public request and operator-visible confirmation
 - [Self-hosting](docs/self-hosting.md): the only supported deployment path for pilot onboarding
-- [Architecture](docs/architecture.md): request flow, runtime components, trust boundary, governance, cache, providers, console, and benchmark harness
-- [Evaluation](docs/evaluation.md): benchmark commands, artifact interpretation, and estimated-cost framing
+- [Architecture](docs/architecture.md): request flow, runtime components, governance, cache, providers, console, and benchmark harness
+- [Evaluation](docs/evaluation.md): the metric-validation study (does cosine similarity track answer quality?) and how the judges were calibrated
 - [Demo runbook](docs/demo-runbook.md): live walkthrough tied to Playground and Observability
-- [`docs/hosted-default-export.schema.json`](docs/hosted-default-export.schema.json): machine-readable hosted metadata contract, consumed directly by `console/src/lib/hosted-contract.ts` and `tests/test_hosted_contract.py`
 
 ## Quick start
 

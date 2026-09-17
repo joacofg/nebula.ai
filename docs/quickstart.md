@@ -225,4 +225,4 @@ Once the first request works:
 ## Related docs
 
 - [`docs/self-hosting.md`](self-hosting.md) — supported Compose deployment runbook
-- [`docs/architecture.md`](architecture.md) — request flow, runtime components, trust boundary, and operator surfaces
+- [`docs/architecture.md`](architecture.md) — request flow, runtime components, and operator surfaces

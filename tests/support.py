@@ -16,6 +16,7 @@ from nebula.main import create_app
 from nebula.models.resilience import build_dependency_health
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, CompletionUsage, ProviderError
+from nebula.services.semantic_cache_service import CacheHit
 
 
 def _drop_cache_collection(name: str) -> None:
@@ -101,8 +102,8 @@ class FakeCacheService:
         store_error: Exception | None = None,
     ) -> None:
         self.cached_response = cached_response
-        self.lookup_calls: list[str] = []
-        self.stored_entries: list[tuple[str, str, str]] = []
+        self.lookup_calls: list[tuple[str, str, float, int]] = []
+        self.stored_entries: list[tuple[str, str, str, str]] = []
         self.enabled = True
         self.lookup_error = lookup_error
         self.store_error = store_error
@@ -119,16 +120,25 @@ class FakeCacheService:
     async def initialize(self) -> None:
         return None
 
-    async def lookup(self, prompt: str) -> str | None:
-        self.lookup_calls.append(prompt)
+    async def lookup(
+        self,
+        prompt: str,
+        *,
+        tenant_id: str,
+        similarity_threshold: float,
+        max_entry_age_hours: int,
+    ) -> CacheHit | None:
+        self.lookup_calls.append((tenant_id, prompt, similarity_threshold, max_entry_age_hours))
         if self.lookup_error is not None:
             raise self.lookup_error
-        return self.cached_response
+        if self.cached_response is None:
+            return None
+        return CacheHit(response=self.cached_response, model="nebula-cache", score=1.0, age_seconds=0)
 
-    async def store(self, prompt: str, response: str, model: str) -> None:
+    async def store(self, prompt: str, response: str, model: str, *, tenant_id: str) -> None:
         if self.store_error is not None:
             raise self.store_error
-        self.stored_entries.append((prompt, response, model))
+        self.stored_entries.append((tenant_id, prompt, response, model))
 
     async def close(self) -> None:
         return None

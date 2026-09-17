@@ -35,7 +35,7 @@ PostgreSQL is the canonical governance store for the supported self-hosted topol
 
 ### Semantic cache
 
-Qdrant stores the semantic-cache vectors used to short-circuit repeat traffic when cache eligibility and similarity thresholds are satisfied.
+Qdrant stores the semantic-cache vectors used to short-circuit repeat traffic when cache eligibility and similarity thresholds are satisfied. Every point carries the owning `tenant_id`, the source `model` and a `created_at` timestamp in its payload. A lookup filters on the authenticated tenant and on `created_at` newer than the tenant policy's `semantic_cache_max_entry_age_hours`, and uses the policy's `semantic_cache_similarity_threshold` as the Qdrant score threshold, so a cached answer is never served across tenants and both knobs in the console are enforced on every request. The hit's similarity score is persisted in the ledger's `route_signals` as `cache_similarity_score`.
 
 ### Providers
 
@@ -68,7 +68,8 @@ Nebula includes a repo-native benchmark harness in `src/nebula/benchmarking/run.
 - `report.json`
 - `report.md`
 
-under `artifacts/benchmarks/<timestamp>/`.
+under `artifacts/benchmarks/<timestamp>/` (disposable) — runs cited by the docs are copied to
+`benchmarks/results/`.
 
 The benchmark harness is intentionally black-box:
 
@@ -99,23 +100,6 @@ Nebula's operator-facing proof depends on two views working together:
 - Embeddings requests surface the same public headers and usage-ledger evidence, correlated through `GET /v1/admin/usage/ledger?request_id=...`
 
 That split matters: the immediate response proves what just happened, while the usage ledger proves what the system persisted and can explain later.
-
-## Hybrid trust boundary
-
-Nebula is self-hosted with an optional hosted control plane. This section defines the trust boundary between the self-hosted gateway and the hosted plane.
-
-**Core invariants:**
-
-- Nebula's hosted control plane is not in the request-serving path.
-- Local runtime enforcement remains authoritative.
-- Default hosted export is metadata-only.
-- Hosted freshness states are connected, degraded, stale, and offline.
-
-**Excluded by default:** raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, authoritative runtime policy state. These categories never leave the self-hosted environment under the default export contract.
-
-Richer diagnostics are operator-initiated exceptions to the default contract. Any future expansion of the default export must update the canonical schema artifact first.
-
-This section is derived from [`docs/hosted-default-export.schema.json`](hosted-default-export.schema.json). Future edits to trust-boundary language must update the contract artifact first and then propagate here.
 
 ## Self-hosted deployment shape
 

@@ -250,11 +250,6 @@ describe("policy-page", () => {
         "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
       ),
     ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Hosted export still excludes raw usage-ledger rows; operators must confirm serving-time behavior from local runtime surfaces.",
-      ),
-    ).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache similarity threshold")).toBeInTheDocument();
     expect(screen.getByLabelText("Semantic cache max entry age hours")).toBeInTheDocument();
     expect(
@@ -269,13 +264,11 @@ describe("policy-page", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Higher values require a closer semantic match before Nebula reuses a cached response.",
+        "Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every lookup.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.",
-      ),
+      screen.getByText("Cached answers older than this are ignored on lookup for this tenant."),
     ).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
     expect(screen.getByLabelText("Evidence retention window")).toBeInTheDocument();

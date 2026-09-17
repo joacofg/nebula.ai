@@ -1,91 +1,35 @@
 from __future__ import annotations
 
-import logging
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, datetime
 
 import httpx
 import pytest
 from fastapi import FastAPI
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from nebula.db.models import DeploymentModel
-from nebula.models.deployment import EnrollmentExchangeResponse
 from nebula.providers.base import CompletionResult
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
 from tests.support import (
     FakeCacheService,
     StubProvider,
-    admin_headers,
     auth_headers,
     configured_app,
     usage,
 )
 
 
-def _hosted_outage_transport() -> httpx.MockTransport:
-    def handler(request: httpx.Request) -> httpx.Response:
-        if "heartbeat" in request.url.path:
-            raise httpx.ConnectError("hosted outage", request=request)
-        raise httpx.ReadTimeout("hosted outage", request=request)
-
-    return httpx.MockTransport(handler)
-
-
 @asynccontextmanager
 async def configured_outage_client():
-    with configured_app(
-        NEBULA_HOSTED_PLANE_URL="http://hosted.invalid/v1",
-        NEBULA_REMOTE_MANAGEMENT_ENABLED="true",
-        NEBULA_REMOTE_MANAGEMENT_ALLOWED_ACTIONS='["rotate_deployment_credential"]',
-        NEBULA_PREMIUM_PROVIDER="mock",
-    ) as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         transport = httpx.ASGITransport(app=app)
         async with app.router.lifespan_context(app):
-            app.state.container.gateway_enrollment_service._http_transport = transport
+            _install_serving_stubs(app)
             async with httpx.AsyncClient(
                 transport=transport,
                 base_url="http://testserver",
                 follow_redirects=True,
             ) as client:
-                deployment_id, _ = await _create_active_deployment(app, client)
-                _install_serving_stubs(app)
-                outage_transport = _hosted_outage_transport()
-                app.state.container.heartbeat_service._http_transport = outage_transport
-                app.state.container.remote_management_service._http_transport = outage_transport
-                yield app, client, deployment_id
-
-
-async def _create_active_deployment(app: FastAPI, client: httpx.AsyncClient) -> tuple[str, str]:
-    create_response = await client.post(
-        "/v1/admin/deployments",
-        json={"display_name": "phase10-gw", "environment": "production"},
-        headers=admin_headers(),
-    )
-    assert create_response.status_code == 201
-    deployment_id = create_response.json()["id"]
-
-    token_response = await client.post(
-        f"/v1/admin/deployments/{deployment_id}/enrollment-token",
-        headers=admin_headers(),
-    )
-    assert token_response.status_code == 200
-    token = token_response.json()["token"]
-
-    exchange_response = await client.post(
-        "/v1/enrollment/exchange",
-        json={
-            "enrollment_token": token,
-            "nebula_version": "2.0.0",
-            "capability_flags": ["semantic_cache"],
-        },
-    )
-    assert exchange_response.status_code == 200
-    exchange = EnrollmentExchangeResponse.model_validate(exchange_response.json())
-    app.state.container.gateway_enrollment_service._store_local_identity(exchange)
-    return deployment_id, exchange.deployment_credential
+                yield app, client
 
 
 def _install_serving_stubs(app: FastAPI) -> None:
@@ -175,18 +119,6 @@ class FailingPremiumProviderHealthService(PremiumProviderHealthService):
             serving_effect="continuity_limited",
             reason_code=DependencyHealthReason.PREMIUM_PROVIDER_UNAVAILABLE,
             detail="Premium provider unavailable: injected outage.",
-            required=False,
-        )
-
-
-class HostedMetadataOnlyHealth:
-    async def health_status(self) -> dict[str, object]:
-        return build_dependency_health(
-            dependency_class="metadata_only",
-            lifecycle_state="degraded",
-            serving_effect="unaffected",
-            reason_code="hosted_metadata_unavailable",
-            detail="Hosted metadata service unavailable: injected outage.",
             required=False,
         )
 
@@ -303,26 +235,9 @@ class StatefulGovernanceStore:
         )
 
 
-def _session_factory(app: FastAPI) -> sessionmaker:
-    engine = create_engine(
-        app.state.container.settings.database_url,
-        connect_args={"check_same_thread": False},
-    )
-    return sessionmaker(bind=engine)
-
-
-def _set_last_seen_at(app: FastAPI, deployment_id: str, last_seen_at: datetime) -> None:
-    Session = _session_factory(app)
-    with Session() as session:
-        deployment = session.get(DeploymentModel, deployment_id)
-        assert deployment is not None
-        deployment.last_seen_at = last_seen_at
-        session.commit()
-
-
 @pytest.mark.asyncio
 async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_degraded() -> None:
-    async with configured_outage_client() as (app, client, _deployment_id):
+    async with configured_outage_client() as (app, client):
         failing_cache = StatefulSemanticCacheService()
         failing_cache.set_outage()
         app.state.container.cache_service = failing_cache
@@ -393,7 +308,7 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
 
 @pytest.mark.asyncio
 async def test_premium_provider_outage_keeps_local_serving_and_reports_degraded_truth() -> None:
-    async with configured_outage_client() as (app, client, _deployment_id):
+    async with configured_outage_client() as (app, client):
         app.state.container.runtime_health_service.premium_provider_health = (
             FailingPremiumProviderHealthService(app.state.container.settings)
         )
@@ -450,7 +365,7 @@ async def test_premium_provider_outage_keeps_local_serving_and_reports_degraded_
     }
 
 
-    async with configured_outage_client() as (app, client, _deployment_id):
+    async with configured_outage_client() as (app, client):
         failing_store = StatefulGovernanceStore(app.state.container.governance_store)
         failing_store.set_outage()
         app.state.container.auth_service.store = failing_store
@@ -500,7 +415,7 @@ async def test_governance_outage_recovery_restores_serving_and_health_truth() ->
     failure_at = datetime(2026, 5, 23, 20, 0, tzinfo=UTC)
     recovery_at = datetime(2026, 5, 23, 20, 5, tzinfo=UTC)
 
-    async with configured_outage_client() as (app, client, _deployment_id):
+    async with configured_outage_client() as (app, client):
         governance_store = StatefulGovernanceStore(app.state.container.governance_store)
         governance_store.set_outage(last_failure_at=failure_at)
         app.state.container.auth_service.store = governance_store
@@ -600,7 +515,7 @@ async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_read
     failure_at = datetime(2026, 5, 23, 21, 0, tzinfo=UTC)
     recovery_at = datetime(2026, 5, 23, 21, 3, tzinfo=UTC)
 
-    async with configured_outage_client() as (app, client, _deployment_id):
+    async with configured_outage_client() as (app, client):
         cache_service = StatefulSemanticCacheService()
         cache_service.set_outage()
         app.state.container.cache_service = cache_service
@@ -710,90 +625,3 @@ async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_read
     }
 
 
-@pytest.mark.asyncio
-async def test_hosted_outage_keeps_chat_completion_serving_and_readiness_green(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    caplog.set_level(logging.WARNING)
-
-    async with configured_outage_client() as (app, client, _deployment_id):
-        app.state.container.heartbeat_service._http_transport = _hosted_outage_transport()
-        app.state.container.remote_management_service._http_transport = _hosted_outage_transport()
-        app.state.container.runtime_health_service.hosted_exporter = HostedMetadataOnlyHealth()
-
-        await app.state.container.heartbeat_service._send_once()
-        await app.state.container.remote_management_service.poll_and_apply_once()
-
-        response = await client.post(
-            "/v1/chat/completions",
-            headers=auth_headers(),
-            json={
-                "model": "nebula-auto",
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": "Hosted outage should not block local serving",
-                    }
-                ],
-            },
-        )
-        readiness = await client.get("/health/ready")
-        dependencies = await client.get("/health/dependencies")
-
-    assert response.status_code == 200
-    assert response.headers["X-Nebula-Route-Target"] == "local"
-    assert response.headers["X-Nebula-Fallback-Used"] == "false"
-    assert readiness.status_code == 200
-    assert readiness.json()["status"] in {"ready", "degraded"}
-    assert dependencies.status_code == 200
-    assert dependencies.json()["status"] in {"ready", "degraded"}
-    assert "hosted_exporter" not in dependencies.json()["dependencies"]
-    assert "Heartbeat failed:" in caplog.text
-    assert "Remote management poll/apply failed:" in caplog.text
-
-
-@pytest.mark.asyncio
-async def test_stale_and_offline_hosted_visibility_do_not_imply_serving_failure() -> None:
-    async with configured_outage_client() as (app, client, deployment_id):
-        stale_time = datetime.now(UTC) - timedelta(minutes=45)
-        _set_last_seen_at(app, deployment_id, stale_time)
-
-        stale_response = await client.get(
-            f"/v1/admin/deployments/{deployment_id}",
-            headers=admin_headers(),
-        )
-        stale_chat = await client.post(
-            "/v1/chat/completions",
-            headers=auth_headers(),
-            json={
-                "model": "nebula-auto",
-                "messages": [
-                    {"role": "user", "content": "stale visibility should not break serving"}
-                ],
-            },
-        )
-
-        offline_time = datetime.now(UTC) - timedelta(hours=2)
-        _set_last_seen_at(app, deployment_id, offline_time)
-
-        offline_response = await client.get(
-            f"/v1/admin/deployments/{deployment_id}",
-            headers=admin_headers(),
-        )
-        offline_chat = await client.post(
-            "/v1/chat/completions",
-            headers=auth_headers(),
-            json={
-                "model": "nebula-auto",
-                "messages": [
-                    {"role": "user", "content": "offline visibility should not break serving"}
-                ],
-            },
-        )
-
-    assert stale_response.status_code == 200
-    assert stale_response.json()["freshness_status"] == "stale"
-    assert stale_chat.status_code == 200
-    assert offline_response.status_code == 200
-    assert offline_response.json()["freshness_status"] == "offline"
-    assert offline_chat.status_code == 200

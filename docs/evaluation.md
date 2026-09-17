@@ -56,7 +56,7 @@ The Phase 5 `report.md` layout is summary-first:
 4. raw scenario results
 5. expectation mismatches
 
-For a concrete example, see `artifacts/benchmarks/20260314T193127Z/report.md`.
+For a concrete example, see `benchmarks/results/20260314T193127Z/report.md`.
 
 ## How to read the benchmark proof
 
