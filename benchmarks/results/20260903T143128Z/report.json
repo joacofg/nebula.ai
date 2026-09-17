@@ -1,0 +1,405 @@
+{
+  "generated_at": "2026-09-03T14:31:32.440385+00:00",
+  "run_id": "20260903T143128Z",
+  "dataset": "benchmarks/v1/demo-scenarios.jsonl",
+  "cache_collections": [
+    {
+      "collection": "nebula-benchmark-20260903T143128Z-normal",
+      "status": "failed",
+      "detail": "All connection attempts failed"
+    },
+    {
+      "collection": "nebula-benchmark-20260903T143128Z-fallback",
+      "status": "failed",
+      "detail": "All connection attempts failed"
+    }
+  ],
+  "runtime_health": {
+    "status": "degraded",
+    "runtime_profile": "local_dev",
+    "dependencies": {
+      "gateway": {
+        "status": "ready",
+        "required": true,
+        "detail": "FastAPI application is running."
+      },
+      "governance_store": {
+        "status": "ready",
+        "required": true,
+        "detail": "Governance store is connected and schema is present.",
+        "dependency_class": "serving_critical",
+        "lifecycle_state": "ready",
+        "serving_effect": "fail_closed",
+        "reason_code": "governance_ready",
+        "recovering": false,
+        "last_failure_at": null,
+        "last_recovery_at": null
+      },
+      "semantic_cache": {
+        "status": "degraded",
+        "required": false,
+        "detail": "Qdrant unavailable: All connection attempts failed",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "degraded",
+        "serving_effect": "continuity_limited",
+        "reason_code": "semantic_cache_unavailable",
+        "recovering": false,
+        "last_failure_at": null,
+        "last_recovery_at": null,
+        "enabled": false
+      },
+      "local_ollama": {
+        "status": "ready",
+        "required": false,
+        "detail": "Local Ollama endpoint is reachable.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "ready",
+        "serving_effect": "continuity_limited",
+        "reason_code": "local_ollama_ready",
+        "recovering": false,
+        "last_failure_at": null,
+        "last_recovery_at": null
+      },
+      "premium_provider": {
+        "status": "ready",
+        "required": false,
+        "detail": "Mock premium provider configured for local development.",
+        "dependency_class": "serving_optional",
+        "lifecycle_state": "ready",
+        "serving_effect": "continuity_limited",
+        "reason_code": "premium_provider_mock",
+        "recovering": false,
+        "last_failure_at": null,
+        "last_recovery_at": null
+      },
+      "retention_lifecycle": {
+        "status": "ready",
+        "required": false,
+        "detail": "Retention lifecycle has not completed a cleanup run yet.",
+        "dependency_class": "metadata_only",
+        "lifecycle_state": "ready",
+        "serving_effect": "unaffected",
+        "reason_code": "retention_idle",
+        "recovering": false,
+        "last_failure_at": null,
+        "last_recovery_at": null,
+        "enabled": true,
+        "interval_seconds": 300,
+        "last_status": "idle",
+        "last_run_at": null,
+        "last_attempted_run_at": null,
+        "last_deleted_count": 0,
+        "last_eligible_count": 0,
+        "last_cutoff": null,
+        "last_error": null
+      }
+    },
+    "probe": "ok"
+  },
+  "degraded_dependencies": [
+    "semantic_cache"
+  ],
+  "base_url": "managed-local",
+  "summary": {
+    "total_requests": 5,
+    "passed": 4,
+    "failed": 1,
+    "skipped": 0,
+    "route_distribution": {
+      "premium": 2,
+      "local": 3
+    },
+    "cache_hit_rate": 0.0,
+    "fallback_rate": 0.2,
+    "key_takeaways": [
+      "Nebula avoided an estimated premium spend of 2.85e-05 across 5 executed requests while keeping measured premium spend at 6.42e-05.",
+      "Route mix favored local:3, premium:2, showing how local, cache, and premium paths split in one repeatable run.",
+      "Warm-cache and fallback behavior stayed explicit with cache_hit_rate=0.0 and fallback_rate=0.2.",
+      "Expectation mismatches were detected in auto-simple-warm-1."
+    ],
+    "comparison_groups": {
+      "premium_control": {
+        "group": "premium_control",
+        "label": "Premium control",
+        "story_role": "Premium baseline for cost and latency comparison.",
+        "scenario_count": 1,
+        "passed": 1,
+        "failed": 0,
+        "route_target_distribution": {
+          "premium": 1
+        },
+        "median_latency_ms": 18.15,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 0.0,
+        "estimated_premium_cost": 3.21e-05,
+        "estimated_premium_cost_avoided": 0.0,
+        "failure_notes": []
+      },
+      "local_control": {
+        "group": "local_control",
+        "label": "Local control",
+        "story_role": "Direct local execution proving avoided premium spend.",
+        "scenario_count": 1,
+        "passed": 1,
+        "failed": 0,
+        "route_target_distribution": {
+          "local": 1
+        },
+        "median_latency_ms": 300.96,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 0.0,
+        "estimated_premium_cost": 0.0,
+        "estimated_premium_cost_avoided": 8.4e-06,
+        "failure_notes": []
+      },
+      "auto_routing_cold": {
+        "group": "auto_routing_cold",
+        "label": "Auto-routing cold",
+        "story_role": "Cold auto-routing behavior before cache reuse.",
+        "scenario_count": 1,
+        "passed": 1,
+        "failed": 0,
+        "route_target_distribution": {
+          "local": 1
+        },
+        "median_latency_ms": 238.05,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 0.0,
+        "estimated_premium_cost": 0.0,
+        "estimated_premium_cost_avoided": 1.005e-05,
+        "failure_notes": []
+      },
+      "auto_routing_warm_cache": {
+        "group": "auto_routing_warm_cache",
+        "label": "Auto-routing warm cache",
+        "story_role": "Warm-cache behavior showing low-latency repeat traffic.",
+        "scenario_count": 1,
+        "passed": 0,
+        "failed": 1,
+        "route_target_distribution": {
+          "local": 1
+        },
+        "median_latency_ms": 253.39,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 0.0,
+        "estimated_premium_cost": 0.0,
+        "estimated_premium_cost_avoided": 1.005e-05,
+        "failure_notes": [
+          "Expected route target cache, received local",
+          "Expected route reason cache_hit, received token_complexity",
+          "Expected cache_hit=True, received False"
+        ]
+      },
+      "fallback_resilience": {
+        "group": "fallback_resilience",
+        "label": "Fallback resilience",
+        "story_role": "Forced local failure path proving the premium fallback story.",
+        "scenario_count": 1,
+        "passed": 1,
+        "failed": 0,
+        "route_target_distribution": {
+          "premium": 1
+        },
+        "median_latency_ms": 14.53,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 1.0,
+        "estimated_premium_cost": 3.21e-05,
+        "estimated_premium_cost_avoided": 0.0,
+        "failure_notes": []
+      },
+      "premium_supporting_evidence": {
+        "group": "premium_supporting_evidence",
+        "label": "Supporting premium-routed evidence",
+        "story_role": "Supporting evidence for premium-routed complex prompts without replacing the top-line five-group story.",
+        "scenario_count": 0,
+        "passed": 0,
+        "failed": 0,
+        "route_target_distribution": {},
+        "median_latency_ms": 0.0,
+        "cache_hit_rate": 0.0,
+        "fallback_rate": 0.0,
+        "estimated_premium_cost": 0.0,
+        "estimated_premium_cost_avoided": 0.0,
+        "failure_notes": []
+      }
+    },
+    "latency_by_mode_ms": {
+      "premium_direct": {
+        "p50": 18.15,
+        "p95": 18.15,
+        "median": 18.15
+      },
+      "local_direct": {
+        "p50": 300.96,
+        "p95": 300.96,
+        "median": 300.96
+      },
+      "auto_simple_cold": {
+        "p50": 238.05,
+        "p95": 238.05,
+        "median": 238.05
+      },
+      "auto_simple_warm": {
+        "p50": 253.39,
+        "p95": 253.39,
+        "median": 253.39
+      },
+      "auto_fallback": {
+        "p50": 14.53,
+        "p95": 14.53,
+        "median": 14.53
+      }
+    },
+    "estimated_premium_cost": 6.42e-05,
+    "estimated_premium_cost_avoided": 2.85e-05,
+    "scenario_failures": {
+      "auto-simple-warm-1": [
+        "Expected route target cache, received local",
+        "Expected route reason cache_hit, received token_complexity",
+        "Expected cache_hit=True, received False"
+      ]
+    },
+    "expectation_mismatches": {
+      "auto-simple-warm-1": [
+        "Expected route target cache, received local",
+        "Expected route reason cache_hit, received token_complexity",
+        "Expected cache_hit=True, received False"
+      ]
+    },
+    "http_error_counts": {},
+    "scenarios_missing_cost_pricing": []
+  },
+  "results": [
+    {
+      "scenario_id": "premium-direct-brief",
+      "mode": "premium_direct",
+      "tags": [
+        "control",
+        "premium"
+      ],
+      "status": "passed",
+      "requested_model": "openai/gpt-4o-mini",
+      "response_model": "openai/gpt-4o-mini",
+      "route_target": "premium",
+      "route_reason": "explicit_premium_model",
+      "provider": "mock-premium",
+      "cache_hit": false,
+      "fallback_used": false,
+      "http_status": 200,
+      "latency_ms": 18.15,
+      "prompt_tokens": 22,
+      "completion_tokens": 48,
+      "total_tokens": 70,
+      "estimated_premium_cost": 3.21e-05,
+      "avoided_premium_cost": null,
+      "failure_reasons": [],
+      "response_content": "Mock premium response. Set NEBULA_PREMIUM_PROVIDER=openai_compatible to connect a real provider. prompt=[benchmark:20260903T143128Z:premium-direct-brief] Reply with the single word premium."
+    },
+    {
+      "scenario_id": "local-direct-brief",
+      "mode": "local_direct",
+      "tags": [
+        "control",
+        "local"
+      ],
+      "status": "passed",
+      "requested_model": "llama3.2:3b",
+      "response_model": "llama3.2:3b",
+      "route_target": "local",
+      "route_reason": "explicit_local_model",
+      "provider": "ollama",
+      "cache_hit": false,
+      "fallback_used": false,
+      "http_status": 200,
+      "latency_ms": 300.96,
+      "prompt_tokens": 48,
+      "completion_tokens": 2,
+      "total_tokens": 50,
+      "estimated_premium_cost": 0.0,
+      "avoided_premium_cost": 8.4e-06,
+      "failure_reasons": [],
+      "response_content": "local"
+    },
+    {
+      "scenario_id": "auto-simple-cold-1",
+      "mode": "auto_simple_cold",
+      "tags": [
+        "auto",
+        "cache",
+        "simple"
+      ],
+      "status": "passed",
+      "requested_model": "nebula-auto",
+      "response_model": "llama3.2:3b",
+      "route_target": "local",
+      "route_reason": "token_complexity",
+      "provider": "ollama",
+      "cache_hit": false,
+      "fallback_used": false,
+      "http_status": 200,
+      "latency_ms": 238.05,
+      "prompt_tokens": 51,
+      "completion_tokens": 4,
+      "total_tokens": 55,
+      "estimated_premium_cost": 0.0,
+      "avoided_premium_cost": 1.005e-05,
+      "failure_reasons": [],
+      "response_content": "qzvran"
+    },
+    {
+      "scenario_id": "auto-simple-warm-1",
+      "mode": "auto_simple_warm",
+      "tags": [
+        "auto",
+        "cache",
+        "warm"
+      ],
+      "status": "failed",
+      "requested_model": "nebula-auto",
+      "response_model": "llama3.2:3b",
+      "route_target": "local",
+      "route_reason": "token_complexity",
+      "provider": "ollama",
+      "cache_hit": false,
+      "fallback_used": false,
+      "http_status": 200,
+      "latency_ms": 253.39,
+      "prompt_tokens": 51,
+      "completion_tokens": 4,
+      "total_tokens": 55,
+      "estimated_premium_cost": 0.0,
+      "avoided_premium_cost": 1.005e-05,
+      "failure_reasons": [
+        "Expected route target cache, received local",
+        "Expected route reason cache_hit, received token_complexity",
+        "Expected cache_hit=True, received False"
+      ],
+      "response_content": "qzvran"
+    },
+    {
+      "scenario_id": "auto-fallback-hello",
+      "mode": "auto_fallback",
+      "tags": [
+        "auto",
+        "fallback"
+      ],
+      "status": "passed",
+      "requested_model": "nebula-auto",
+      "response_model": "openai/gpt-4o-mini",
+      "route_target": "premium",
+      "route_reason": "local_provider_error_fallback",
+      "provider": "mock-premium",
+      "cache_hit": false,
+      "fallback_used": true,
+      "http_status": 200,
+      "latency_ms": 14.53,
+      "prompt_tokens": 22,
+      "completion_tokens": 48,
+      "total_tokens": 70,
+      "estimated_premium_cost": 3.21e-05,
+      "avoided_premium_cost": null,
+      "failure_reasons": [],
+      "response_content": "Mock premium response. Set NEBULA_PREMIUM_PROVIDER=openai_compatible to connect a real provider. prompt=[benchmark:20260903T143128Z:auto-fallback-hello] Reply with the single word fallback."
+    }
+  ]
+}

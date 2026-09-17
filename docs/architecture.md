@@ -68,7 +68,8 @@ Nebula includes a repo-native benchmark harness in `src/nebula/benchmarking/run.
 - `report.json`
 - `report.md`
 
-under `artifacts/benchmarks/<timestamp>/`.
+under `artifacts/benchmarks/<timestamp>/` (disposable) — runs cited by the docs are copied to
+`benchmarks/results/`.
 
 The benchmark harness is intentionally black-box:
 
@@ -99,23 +100,6 @@ Nebula's operator-facing proof depends on two views working together:
 - Embeddings requests surface the same public headers and usage-ledger evidence, correlated through `GET /v1/admin/usage/ledger?request_id=...`
 
 That split matters: the immediate response proves what just happened, while the usage ledger proves what the system persisted and can explain later.
-
-## Hybrid trust boundary
-
-Nebula is self-hosted with an optional hosted control plane. This section defines the trust boundary between the self-hosted gateway and the hosted plane.
-
-**Core invariants:**
-
-- Nebula's hosted control plane is not in the request-serving path.
-- Local runtime enforcement remains authoritative.
-- Default hosted export is metadata-only.
-- Hosted freshness states are connected, degraded, stale, and offline.
-
-**Excluded by default:** raw prompts, raw responses, provider credentials, raw usage-ledger rows, tenant secrets, authoritative runtime policy state. These categories never leave the self-hosted environment under the default export contract.
-
-Richer diagnostics are operator-initiated exceptions to the default contract. Any future expansion of the default export must update the canonical schema artifact first.
-
-This section is derived from [`docs/hosted-default-export.schema.json`](hosted-default-export.schema.json). Future edits to trust-boundary language must update the contract artifact first and then propagate here.
 
 ## Self-hosted deployment shape
 
