@@ -359,6 +359,9 @@ async def test_create_completion_returns_cached_response_without_calling_provide
     assert response.choices[0].message.content == "cached response"
     assert store.records[-1].cache_hit is True
     assert store.records[-1].terminal_status == "cache_hit"
+    assert store.records[-1].route_signals["cache_similarity_score"] == 1.0
+    assert store.records[-1].route_signals["cache_entry_age_seconds"] == 0
+    assert store.records[-1].route_signals["cache_entry_model"] == "nebula-cache"
 
 
 @pytest.mark.asyncio
@@ -1794,6 +1797,30 @@ async def test_embeddings_service_rejects_empty_upstream_embeddings() -> None:
     assert str(exc_info.value) == "Ollama returned no embeddings."
 
 
+async def _create_tenant_b_with_cache_policy(client: httpx.AsyncClient) -> str:
+    """Create tenant-b with a distinctive cache policy and return its raw API key."""
+    created = await client.post(
+        "/v1/admin/tenants",
+        json={"id": "tenant-b", "name": "Tenant B"},
+        headers=admin_headers(),
+    )
+    assert created.status_code == 201
+    policy = await client.get("/v1/admin/tenants/tenant-b/policy", headers=admin_headers())
+    body = policy.json()
+    body["semantic_cache_similarity_threshold"] = 0.95
+    body["semantic_cache_max_entry_age_hours"] = 12
+    updated = await client.put(
+        "/v1/admin/tenants/tenant-b/policy", json=body, headers=admin_headers()
+    )
+    assert updated.status_code == 200
+    key = await client.post(
+        "/v1/admin/api-keys",
+        json={"name": "b-key", "tenant_id": "tenant-b"},
+        headers=admin_headers(),
+    )
+    return key.json()["api_key"]
+
+
 @pytest.mark.asyncio
 async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy() -> None:
     cache_service = FakeCacheService(cached_response=None)
@@ -1809,26 +1836,7 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
                 ),
             )
             async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
-                created = await client.post(
-                    "/v1/admin/tenants",
-                    json={"id": "tenant-b", "name": "Tenant B"},
-                    headers=admin_headers(),
-                )
-                assert created.status_code == 201
-                policy = await client.get("/v1/admin/tenants/tenant-b/policy", headers=admin_headers())
-                body = policy.json()
-                body["semantic_cache_similarity_threshold"] = 0.95
-                body["semantic_cache_max_entry_age_hours"] = 12
-                updated = await client.put(
-                    "/v1/admin/tenants/tenant-b/policy", json=body, headers=admin_headers()
-                )
-                assert updated.status_code == 200
-                key = await client.post(
-                    "/v1/admin/api-keys",
-                    json={"name": "b-key", "tenant_id": "tenant-b"},
-                    headers=admin_headers(),
-                )
-                raw_key = key.json()["api_key"]
+                raw_key = await _create_tenant_b_with_cache_policy(client)
 
                 response = await client.post(
                     "/v1/chat/completions",
@@ -1836,6 +1844,40 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
                     headers={"X-Nebula-API-Key": raw_key},
                 )
                 assert response.status_code == 200
+
+    assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
+    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
+
+
+@pytest.mark.asyncio
+async def test_streaming_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy() -> None:
+    cache_service = FakeCacheService(cached_response=None)
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        async with app.router.lifespan_context(app):
+            container = app.state.container
+            container.cache_service = cache_service
+            container.chat_service.cache_service = cache_service
+            container.provider_registry.local_provider = StubProvider(
+                "ollama",
+                stream_chunks=[
+                    CompletionChunk(delta="ok", model="llama"),
+                    CompletionChunk(delta="", model="llama", finish_reason="stop"),
+                ],
+            )
+            async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://t") as client:
+                raw_key = await _create_tenant_b_with_cache_policy(client)
+
+                response = await client.post(
+                    "/v1/chat/completions",
+                    json={
+                        "model": "nebula-auto",
+                        "stream": True,
+                        "messages": [{"role": "user", "content": "hi"}],
+                    },
+                    headers={"X-Nebula-API-Key": raw_key},
+                )
+                assert response.status_code == 200
+                assert b"[DONE]" in response.content
 
     assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
     assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]

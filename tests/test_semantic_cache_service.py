@@ -89,6 +89,21 @@ async def test_lookup_returns_hit_with_score_and_age() -> None:
 
 
 @pytest.mark.asyncio
+async def test_lookup_computes_age_for_a_float_created_at() -> None:
+    created_at = float(int(time()) - 90)
+    point = SimpleNamespace(
+        score=0.97,
+        payload={"response": "cached", "model": "llama3.2:3b", "created_at": created_at, "tenant_id": "acme"},
+    )
+    service = _service(RecordingQdrant(points=[point]))
+
+    hit = await service.lookup("hello", tenant_id="acme", similarity_threshold=0.9, max_entry_age_hours=24)
+
+    assert isinstance(hit, CacheHit)
+    assert 88 <= hit.age_seconds <= 92
+
+
+@pytest.mark.asyncio
 async def test_store_writes_tenant_id_into_payload() -> None:
     client = RecordingQdrant()
     service = _service(client)

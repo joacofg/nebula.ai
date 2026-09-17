@@ -129,7 +129,7 @@ class SemanticCacheService:
 
         CACHE_LOOKUPS.labels("hit").inc()
         created_at = payload.get("created_at")
-        age_seconds = now - int(created_at) if isinstance(created_at, int) else 0
+        age_seconds = now - int(created_at) if isinstance(created_at, (int, float)) else 0
         return CacheHit(
             response=response,
             model=str(payload.get("model") or "unknown"),
