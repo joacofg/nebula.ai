@@ -8,9 +8,9 @@ place; re-run and add a new folder.
 | Run | Why it is kept | Headline |
 |---|---|---|
 | `20260314T193127Z` | Golden v1.0 run referenced by `docs/architecture.md` and `tests/golden/` | 14/14 scenarios passed |
-| `20260819T225557Z` | Thesis anchor, run 1 of 3 (same 14 scenarios, healthy dependencies) | 38.2 % premium spend avoided |
-| `20260819T225703Z` | Thesis anchor, run 2 of 3 | 40.0 % premium spend avoided |
-| `20260819T225713Z` | Thesis anchor, run 3 of 3 | 41.2 % premium spend avoided |
+| `20260819T225557Z` | Thesis anchor, run 1 of 3 (same 14 scenarios, healthy dependencies) | 41.2 % premium spend avoided |
+| `20260819T225703Z` | Thesis anchor, run 2 of 3 | 38.2 % premium spend avoided |
+| `20260819T225713Z` | Thesis anchor, run 3 of 3 | 40.0 % premium spend avoided |
 | `20260903T143128Z` | Example of a degraded run carrying the **NOT COMPARABLE** banner (Qdrant down) | not comparable |
 
 The three August runs measure the two-rule heuristic router against a
