@@ -105,3 +105,8 @@ CLAUDE.md
 .mcp.json
 *.pyc
 .gstack/
+
+# Entregas academicas del Taller de TFC en Word (no forman parte del codigo del producto).
+# El Markdown de docs/tfc/tesis/ si se trackea: es la fuente de la tesis.
+docs/tfc/*.docx
+docs/tfc/assets/
