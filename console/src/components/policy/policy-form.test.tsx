@@ -559,10 +559,10 @@ describe("policy-form", () => {
       "Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Higher values require a closer semantic match before Nebula reuses a cached response.",
+      "Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every lookup.",
     );
     expect(runtimeSection).toHaveTextContent(
-      "Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.",
+      "Cached answers older than this are ignored on lookup for this tenant.",
     );
     expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
 

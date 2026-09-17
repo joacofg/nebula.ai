@@ -675,7 +675,8 @@ export function PolicyForm({
                     }
                   />
                   <p className="mt-2 text-sm text-slate-500">
-                    Higher values require a closer semantic match before Nebula reuses a cached response.
+                    Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every
+                    lookup.
                   </p>
                 </div>
                 <div>
@@ -695,7 +696,7 @@ export function PolicyForm({
                     }
                   />
                   <p className="mt-2 text-sm text-slate-500">
-                    Lower values age out cached entries sooner when recent traffic suggests stale reuse risk.
+                    Cached answers older than this are ignored on lookup for this tenant.
                   </p>
                 </div>
               </div>
