@@ -19,7 +19,7 @@ from pathlib import Path
 
 from scripts.ground_truth import cli, llm, records, sample, spend
 
-TRANSLATOR = "mistralai/mistral-large-2512"
+TRANSLATOR = "mistralai/mistral-medium-3.1"
 MAX_TOKENS = 2048
 ATTEMPTS = 2
 CONCURRENCY = 4

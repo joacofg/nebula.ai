@@ -14,7 +14,7 @@ Producir, para cada prompt de un corpus público estratificado, el **nivel más 
 | Fuente | Dolly-15k (CC BY-SA 3.0) + GSM8K (MIT) + MBPP (CC BY 4.0), revisiones fijadas por hash |
 | Tareas | `factual_qa`, `summarisation`, `open_writing` (Dolly), `multistep_reasoning` (GSM8K), `code` (MBPP); 200 por tarea |
 | Idiomas | 1000 prompts en ES (carga principal) + subset pareado de 250 en EN (50 por tarea) |
-| Traducción | `mistralai/mistral-large` (familia ajena a candidatos y jueces), temperatura 0; muestra de 40 revisada por Joaquín, tasa de error reportada |
+| Traducción | `mistralai/mistral-medium-3.1` (familia ajena a candidatos y jueces; `mistral-large-2512` estaba limitado upstream en OpenRouter el 2026-09-27), temperatura 0; muestra de 40 revisada por Joaquín, tasa de error reportada |
 | Candidatos | `qwen2.5:7b` (local), `llama3.2:3b` (local, sensibilidad), `anthropic/claude-haiku-4.5` (economy), `openai/gpt-4.1` (frontier y referencia) |
 | Jueces | `google/gemini-2.5-flash` + `deepseek/deepseek-chat-v3`, temperatura 0, razonamiento apagado |
 | Rúbrica | `scripts/metric_validation/rubric.py` sin cambios (escala de 4, "¿el lector quedaría igual de bien servido?"), para que las 22 etiquetas human-3 sigan valiendo |

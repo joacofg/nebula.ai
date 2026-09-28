@@ -14,7 +14,7 @@ from scripts.ground_truth.llm import Completion
 
 # USD per 1M tokens (input, output), OpenRouter list prices on 2026-09-27.
 PRICES: dict[str, tuple[float, float]] = {
-    "mistralai/mistral-large-2512": (0.5, 1.5),
+    "mistralai/mistral-medium-3.1": (0.4, 2.0),
     "anthropic/claude-haiku-4.5": (1.0, 5.0),
     "openai/gpt-4.1": (2.0, 8.0),
     "google/gemini-2.5-flash": (0.3, 2.5),
