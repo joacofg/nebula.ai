@@ -8,7 +8,7 @@ from collections import Counter
 import httpx
 import pytest
 
-from scripts.ground_truth import cli, llm, records, sample, sources, spend
+from scripts.ground_truth import cli, llm, records, review, sample, sources, spend, translate
 from scripts.metric_validation.corpus import TASK_TYPES
 
 
@@ -176,3 +176,82 @@ def test_ledger_accumulates_across_instances_and_enforces_cap(tmp_path):
 def test_estimate_refuses_unknown_models():
     with pytest.raises(ValueError):
         spend.estimate("who/knows", 1, 1)
+
+
+def test_problems_catch_lost_numbers_and_code():
+    src = "Janet has 16 eggs and eats 3.\n```python\nassert f(1) == 2\n```"
+    good = "Janet tiene 16 huevos y come 3.\n```python\nassert f(1) == 2\n```"
+    assert translate.translation_problems(src, good) == []
+    lost = "Janet tiene huevos.\n```python\nassert f(1) == 2\n```"
+    assert any("numbers" in p for p in translate.translation_problems(src, lost))
+    changed = "Janet tiene 16 huevos y come 3.\n```python\nassert g(1) == 2\n```"
+    assert any("code" in p for p in translate.translation_problems(src, changed))
+
+
+def test_problems_tolerate_spanish_number_formatting():
+    assert translate.translation_problems("It costs 1,000.50 dollars", "Cuesta 1.000,50 dólares") == []
+
+
+def test_problems_catch_an_answer_instead_of_a_translation():
+    src = "What causes the seasons?"
+    answer = "¿Qué causa las estaciones? " + "Se deben a la inclinación del eje terrestre. " * 5
+    assert any("answer" in p for p in translate.translation_problems(src, answer))
+    assert translate.translation_problems(src, "") == ["empty"]
+
+
+def test_clean_strips_wrappers():
+    assert translate.clean("<request>\n¿Hola?\n</request>") == "¿Hola?"
+    assert translate.clean('"¿Hola?"') == "¿Hola?"
+    assert translate.clean("¿Hola?") == "¿Hola?"
+
+
+def _row(pid, task, role="corpus"):
+    return records.PromptRow(pid, task, "s", f"p {pid}", role)
+
+
+def test_assemble_spanish_replaces_rejects_from_reserve_and_flags_en_subset():
+    rows = [_row("t-0", "code"), _row("t-1", "code"),
+            _row("t-2", "code", "reserve"), _row("t-3", "code", "reserve")]
+    tr = {
+        "t-0": translate.TranslationRow("t-0", "ok", "es0", [], 1),
+        "t-1": translate.TranslationRow("t-1", "rejected", "", ["numbers"], 2),
+        "t-2": translate.TranslationRow("t-2", "ok", "es2", [], 1),
+    }
+    got = translate.assemble_spanish(rows, tr, per_task=2, en_per_task=1)
+    assert [(r.prompt_id, r.prompt, r.role, r.en_subset) for r in got] == [
+        ("t-0", "es0", "corpus", True), ("t-2", "es2", "corpus", False)]
+
+
+def test_assemble_spanish_refuses_an_exhausted_reserve():
+    rows = [_row("t-0", "code"), _row("t-1", "code", "reserve")]
+    tr = {"t-0": translate.TranslationRow("t-0", "rejected", "", ["x"], 2)}
+    with pytest.raises(ValueError, match="code"):
+        translate.assemble_spanish(rows, tr, per_task=1, en_per_task=1)
+
+
+async def test_translate_all_retries_once_then_rejects_and_resumes(tmp_path):
+    replies = iter(["sin numero", "sin numero", "tiene 2"])
+    calls = []
+
+    async def chat(prompt):
+        calls.append(prompt)
+        return llm.Completion(next(replies), "stop", 1, 1, 0.0, "m")
+
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    rows = [records.PromptRow("a", "code", "s", "has 2", "corpus"),
+            records.PromptRow("b", "code", "s", "has 2", "corpus")]
+    cache = tmp_path / "t.jsonl"
+    got = await translate.translate_all(rows, chat=chat, cache_path=cache, ledger=ledger,
+                                        concurrency=1)
+    assert got["a"].status == "rejected" and got["a"].attempts == 2
+    assert got["b"].status == "ok" and got["b"].text == "tiene 2"
+    again = await translate.translate_all(rows, chat=chat, cache_path=cache, ledger=ledger,
+                                          concurrency=1)
+    assert len(calls) == 3 and again == got
+
+
+def test_review_sample_is_deterministic_and_bounded():
+    rows = [records.PromptRow(f"p{i}", "code", "s", "x", "corpus") for i in range(100)]
+    assert review.review_sample(rows, size=40, seed=1) == review.review_sample(
+        list(reversed(rows)), size=40, seed=1)
+    assert len(review.review_sample(rows, size=40, seed=1)) == 40
