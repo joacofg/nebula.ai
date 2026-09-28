@@ -45,11 +45,16 @@ def openrouter_chat(
         if "error" in data or not data.get("choices"):
             raise CallFailed(f"{model}: {data.get('error', data)!r}"[:300])
         choice = data["choices"][0]
+        text = (choice.get("message") or {}).get("content") or ""
+        finish = choice.get("finish_reason") or ""
+        if not text.strip() and finish not in {"stop", "length"}:
+            # A provider glitch, not an answer: retry it rather than grade it.
+            raise CallFailed(f"{model}: empty completion, finish_reason={finish!r}")
         usage = data.get("usage") or {}
         cost = usage.get("cost")
         return Completion(
-            text=(choice.get("message") or {}).get("content") or "",
-            finish_reason=choice.get("finish_reason") or "",
+            text=text,
+            finish_reason=finish,
             prompt_tokens=int(usage.get("prompt_tokens", 0)),
             completion_tokens=int(usage.get("completion_tokens", 0)),
             cost_usd=float(cost) if cost is not None else None,

@@ -579,3 +579,11 @@ async def test_translate_all_keeps_a_restyled_number_as_a_warning(tmp_path):
     got = await translate.translate_all(rows, chat=chat, cache_path=tmp_path / "t.jsonl",
                                         ledger=ledger, concurrency=1)
     assert got["s"].status == "ok" and got["s"].warnings == ["numbers differ"]
+
+
+async def test_an_empty_completion_that_did_not_finish_is_a_failure():
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json={
+        "choices": [{"message": {"content": ""}, "finish_reason": "error"}], "usage": {}}))
+    async with httpx.AsyncClient(transport=transport, base_url="http://x") as client:
+        with pytest.raises(llm.CallFailed):
+            await llm.openrouter_chat(client, "m", max_tokens=5)("q")
