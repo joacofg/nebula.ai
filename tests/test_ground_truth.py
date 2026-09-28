@@ -18,6 +18,7 @@ from scripts.ground_truth import (
     sample,
     sources,
     spend,
+    tiers,
     translate,
     validate,
 )
@@ -517,3 +518,20 @@ def test_position_flip_rate_counts_binary_changes_only():
 def test_holdout_agreement_pending_without_labels():
     got = validate.holdout_agreement({"p": ["equivalent"] * 4}, {}, "R1_unanimous", seed=1)
     assert got["status"] == "pending" and got["labelled"] == 0
+
+
+@pytest.mark.parametrize("local_ok, economy_ok, want", [
+    (True, None, "local"), (True, False, "local"), (False, True, "economy"),
+    (False, False, "frontier"), (None, True, None), (False, None, None),
+])
+def test_tier_for(local_ok, economy_ok, want):
+    assert tiers.tier_for(local_ok, economy_ok) == want
+
+
+def test_build_tiers_uses_the_named_local_role():
+    prompts = {"es": [records.PromptRow("p", "code", "s", "x", "corpus")]}
+    grades = {"es:qwen7b:p": ["divergent"] * 4, "es:llama3b:p": ["equivalent"] * 4,
+              "es:haiku:p": ["equivalent"] * 4}
+    q = tiers.build_tiers(prompts, grades, "R1_unanimous", local_role="qwen7b")
+    lo = tiers.build_tiers(prompts, grades, "R1_unanimous", local_role="llama3b")
+    assert q[0]["tier"] == "economy" and lo[0]["tier"] == "local"
