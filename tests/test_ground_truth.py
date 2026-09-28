@@ -5,9 +5,10 @@ import json
 
 from collections import Counter
 
+import httpx
 import pytest
 
-from scripts.ground_truth import cli, records, sample, sources
+from scripts.ground_truth import cli, llm, records, sample, sources, spend
 from scripts.metric_validation.corpus import TASK_TYPES
 
 
@@ -98,3 +99,80 @@ def test_fetch_refuses_a_hash_mismatch(tmp_path):
     (tmp_path / "x.jsonl").write_text("{}\n")
     with pytest.raises(ValueError, match="sha256"):
         sources.fetch(src, tmp_path)
+
+
+async def test_openrouter_chat_reads_usage_cost_and_finish_reason():
+    def handler(request):
+        body = json.loads(request.content)
+        assert body["temperature"] == 0.0 and body["max_tokens"] == 9
+        assert body["usage"] == {"include": True}
+        assert body["reasoning"] == {"max_tokens": 0}
+        return httpx.Response(200, json={
+            "model": "openai/gpt-4.1-2025-04-14",
+            "choices": [{"message": {"content": "hi"}, "finish_reason": "length"}],
+            "usage": {"prompt_tokens": 5, "completion_tokens": 9, "cost": 0.002},
+        })
+
+    transport = httpx.MockTransport(handler)
+    async with httpx.AsyncClient(transport=transport, base_url="http://x") as client:
+        chat = llm.openrouter_chat(
+            client, "openai/gpt-4.1", max_tokens=9, extra={"reasoning": {"max_tokens": 0}}
+        )
+        got = await chat("q")
+    assert got == llm.Completion("hi", "length", 5, 9, 0.002, "openai/gpt-4.1-2025-04-14")
+
+
+async def test_openrouter_error_body_is_a_failure():
+    transport = httpx.MockTransport(
+        lambda r: httpx.Response(200, json={"error": {"message": "nope"}})
+    )
+    async with httpx.AsyncClient(transport=transport, base_url="http://x") as client:
+        with pytest.raises(llm.CallFailed):
+            await llm.openrouter_chat(client, "m", max_tokens=5)("q")
+
+
+async def test_ollama_chat_maps_done_reason_and_counts():
+    transport = httpx.MockTransport(lambda r: httpx.Response(200, json={
+        "message": {"content": "hola"}, "done_reason": "length",
+        "prompt_eval_count": 3, "eval_count": 7,
+    }))
+    async with httpx.AsyncClient(transport=transport, base_url="http://x") as client:
+        got = await llm.ollama_chat(client, "qwen2.5:7b", max_tokens=7)("q")
+    assert got == llm.Completion("hola", "length", 3, 7, 0.0, "qwen2.5:7b")
+
+
+async def test_with_retries_gives_up_with_call_failed():
+    calls = []
+
+    async def flaky(prompt):
+        calls.append(prompt)
+        raise httpx.ConnectError("down")
+
+    async def no_sleep(_):
+        return None
+
+    with pytest.raises(llm.CallFailed):
+        await llm.with_retries(flaky, "q", attempts=4, sleep=no_sleep)
+    assert len(calls) == 4
+
+
+def test_ledger_accumulates_across_instances_and_enforces_cap(tmp_path):
+    path = tmp_path / "spend.jsonl"
+    ledger = spend.SpendLedger(path, cap_usd=0.01)
+    ledger.record(stage="t", model="openai/gpt-4.1",
+                  completion=llm.Completion("", "stop", 1, 1, 0.006, "m"))
+    again = spend.SpendLedger(path, cap_usd=0.01)
+    assert again.total == pytest.approx(0.006)
+    again.check()
+    again.record(stage="t", model="openai/gpt-4.1",
+                 completion=llm.Completion("", "stop", 1, 1, None, "m"))
+    assert again.total == pytest.approx(0.006 + spend.estimate("openai/gpt-4.1", 1, 1))
+    again.record(stage="t", model="openai/gpt-4.1",
+                 completion=llm.Completion("", "stop", 1, 1, 0.01, "m"))
+    with pytest.raises(spend.BudgetExceeded):
+        again.check()
+
+
+def test_estimate_refuses_unknown_models():
+    with pytest.raises(ValueError):
+        spend.estimate("who/knows", 1, 1)
