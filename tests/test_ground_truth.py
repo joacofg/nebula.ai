@@ -368,3 +368,24 @@ def test_calibration_negatives_are_off_prompt_references():
     assert len(neg) == 2 and all(p.kind == "cross_prompt" for p in neg)
     for p in neg:
         assert p.left.text != p.right.text and p.pair_id.startswith("xpr:")
+
+
+async def test_translate_all_leaves_a_failed_call_for_the_next_run(tmp_path, monkeypatch):
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr(llm.asyncio, "sleep", no_sleep)
+
+    async def chat(prompt):
+        if "down" in prompt:
+            raise httpx.ConnectError("429")
+        return llm.Completion("tiene 2", "stop", 1, 1, 0.0, "m")
+
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    rows = [records.PromptRow("a", "code", "s", "down 2", "corpus"),
+            records.PromptRow("b", "code", "s", "has 2", "corpus")]
+    cache = tmp_path / "t.jsonl"
+    got = await translate.translate_all(rows, chat=chat, cache_path=cache, ledger=ledger,
+                                        concurrency=2)
+    assert set(got) == {"b"}
+    assert [r.prompt_id for r in records.read_rows(cache, translate.TranslationRow)] == ["b"]

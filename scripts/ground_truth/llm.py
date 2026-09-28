@@ -88,7 +88,7 @@ async def with_retries(
     chat: Chat,
     prompt: str,
     *,
-    attempts: int = 4,
+    attempts: int = 6,
     backoff: float = 2.0,
     sleep: Callable[[float], Awaitable[None]] | None = None,
 ) -> Completion:

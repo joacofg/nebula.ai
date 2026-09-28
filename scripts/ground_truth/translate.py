@@ -22,6 +22,7 @@ from scripts.ground_truth import cli, llm, records, sample, spend
 TRANSLATOR = "mistralai/mistral-large-2512"
 MAX_TOKENS = 2048
 ATTEMPTS = 2
+CONCURRENCY = 4
 ANSWER_RATIO = 2.5  # a translation this much longer than its source is an answer
 
 _INSTRUCTIONS = """\
@@ -93,7 +94,10 @@ async def translate_all(
             text = ""
             for attempt in range(1, ATTEMPTS + 1):
                 ledger.check()
-                completion = await llm.with_retries(chat, translation_prompt(row.prompt))
+                try:
+                    completion = await llm.with_retries(chat, translation_prompt(row.prompt))
+                except llm.CallFailed:
+                    return  # nothing recorded: the next run retries it
                 ledger.record(stage="translate", model=TRANSLATOR, completion=completion)
                 text = clean(completion.text)
                 problems = translation_problems(row.prompt, text)
@@ -158,9 +162,14 @@ async def run(args: argparse.Namespace) -> int:
         translations: dict[str, TranslationRow] = {}
         while True:  # each pass pulls in reserve rows for the rejects of the last
             batch = _needed(rows_en, translations)
-            translations = await translate_all(batch, chat=chat, cache_path=cache, ledger=ledger)
+            translations = await translate_all(
+                batch, chat=chat, cache_path=cache, ledger=ledger, concurrency=CONCURRENCY
+            )
             if all(r.prompt_id in translations for r in _needed(rows_en, translations)):
                 break
+            failed = sum(1 for r in batch if r.prompt_id not in translations)
+            if failed:
+                raise RuntimeError(f"{failed} translation calls failed; re-run to resume.")
     rows_es = assemble_spanish(rows_en, translations, per_task=sample.PER_TASK, en_per_task=sample.EN_PER_TASK)
     records.write_rows(rows_es, root / "prompts.es.jsonl")
     rejected = sum(1 for t in translations.values() if t.status != "ok")
