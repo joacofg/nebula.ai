@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 import json
-
-
 from collections import Counter
 
 import httpx
@@ -11,6 +9,7 @@ import pytest
 from scripts.ground_truth import (
     capture,
     cli,
+    holdout,
     llm,
     records,
     review,
@@ -19,6 +18,7 @@ from scripts.ground_truth import (
     spend,
     translate,
 )
+from scripts.ground_truth import pairs as gt_pairs
 from scripts.metric_validation.corpus import TASK_TYPES
 
 
@@ -315,3 +315,56 @@ async def test_capture_stops_at_the_cap_and_keeps_what_was_paid(tmp_path):
                                    model="anthropic/claude-haiku-4.5", chat=chat,
                                    out_path=out, ledger=ledger, concurrency=1)
     assert [r.prompt_id for r in records.read_rows(out, records.ResponseRow)] == ["a", "b"]
+
+
+def _resp(pid, role, text="t", status="ok"):
+    return records.ResponseRow(pid, "es", role, status, text, "stop", 1, 1, 0.0, role)
+
+
+def test_build_pairs_skips_unusable_reference_and_failed_candidates():
+    prompts = [records.PromptRow("p1", "code", "s", "P1", "corpus"),
+               records.PromptRow("p2", "code", "s", "P2", "corpus")]
+    responses = {
+        "gpt41": {"p1": _resp("p1", "gpt41", "ref"), "p2": _resp("p2", "gpt41", "   ")},
+        "qwen7b": {"p1": _resp("p1", "qwen7b"), "p2": _resp("p2", "qwen7b")},
+        "llama3b": {"p1": _resp("p1", "llama3b", status="failed")},
+        "haiku": {"p1": _resp("p1", "haiku")},
+    }
+    got, skipped = gt_pairs.build_pairs("es", prompts, responses)
+    assert [p.pair_id for p in got] == ["es:haiku:p1", "es:qwen7b:p1"]
+    assert skipped == {"reference_unusable": 1, "candidate_failed": 1}
+    qwen = got[1]
+    assert qwen.kind == "local_vs_premium"
+    assert qwen.right.origin == "reference" and qwen.right.text == "ref"
+    assert got[0].kind == "premium_vs_premium"
+    assert gt_pairs.split_pair_id("es:qwen7b:code-0001") == ("es", "qwen7b", "code-0001")
+
+
+def _corpus_pairs():
+    prompts = [records.PromptRow(f"{t}-{i:04d}", t, "s", f"P {t} {i}", "corpus")
+               for t in TASK_TYPES for i in range(30)]
+    responses = {
+        role: {p.prompt_id: _resp(p.prompt_id, role, f"{role} {p.prompt_id}") for p in prompts}
+        for role in ("gpt41", "qwen7b", "llama3b", "haiku")
+    }
+    return gt_pairs.build_pairs("es", prompts, responses)[0]
+
+
+def test_holdout_is_stratified_deterministic_and_prompt_distinct():
+    ps = _corpus_pairs()
+    got = holdout.select_holdout(ps, per_task=10, seed=3)
+    assert got == holdout.select_holdout(list(reversed(ps)), per_task=10, seed=3)
+    assert Counter(p.task_type for p in got) == {t: 10 for t in TASK_TYPES}
+    by_cand = Counter(gt_pairs.split_pair_id(p.pair_id)[1] for p in got)
+    assert set(by_cand) == {"qwen7b", "llama3b", "haiku"}
+    assert max(by_cand.values()) - min(by_cand.values()) <= 1
+    for task in TASK_TYPES:
+        pids = [gt_pairs.split_pair_id(p.pair_id)[2] for p in got if p.task_type == task]
+        assert len(pids) == len(set(pids))
+
+
+def test_calibration_negatives_are_off_prompt_references():
+    neg = holdout.calibration_negatives(_corpus_pairs(), seed=3, count=2)
+    assert len(neg) == 2 and all(p.kind == "cross_prompt" for p in neg)
+    for p in neg:
+        assert p.left.text != p.right.text and p.pair_id.startswith("xpr:")
