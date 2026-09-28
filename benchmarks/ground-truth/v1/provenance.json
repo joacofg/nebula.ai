@@ -1,4 +1,18 @@
 {
+  "candidates": {
+    "gpt41": "openai/gpt-4.1",
+    "haiku": "anthropic/claude-haiku-4.5",
+    "llama3b": "llama3.2:3b",
+    "qwen7b": "qwen2.5:7b"
+  },
+  "holdout_seed": 20260927,
+  "holdout_sha256": "e21bec70209ca027bc46f30ada08959891014d0307994c08f68471c0a56fd5a5",
+  "max_tokens": 1024,
+  "ollama_digests": {
+    "llama3.2:3b": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
+    "qwen2.5:7b": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e"
+  },
+  "ollama_version": "0.34.4",
   "prompts_en_sha256": "41b87ffdb2fc139bb066183fefdfe8c8d67a21fe775bf40746537617fb434c71",
   "prompts_es_sha256": "a1e2736f17d4f14d39b324ca576827a1561ef92c53527f6e266f0f77d7894626",
   "sample_seed": 20260927,
@@ -19,6 +33,7 @@
       "url": "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl"
     }
   },
+  "temperature": 0.0,
   "translations_rejected": 10,
   "translator": "mistralai/mistral-medium-3.1"
 }
