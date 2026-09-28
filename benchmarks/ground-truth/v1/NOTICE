@@ -1,0 +1,7 @@
+Prompts in this directory are derived from the following datasets.
+
+- dolly: Conover et al. (2023), Free Dolly: Introducing the World's First Truly Open Instruction-Tuned LLM. License: CC BY-SA 3.0. https://huggingface.co/datasets/databricks/databricks-dolly-15k/resolve/main/databricks-dolly-15k.jsonl
+- gsm8k: Cobbe et al. (2021), Training Verifiers to Solve Math Word Problems. License: MIT. https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl
+- mbpp: Austin et al. (2021), Program Synthesis with Large Language Models. License: CC BY 4.0. https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl
+
+Spanish prompts are machine translations of the originals (same licenses).

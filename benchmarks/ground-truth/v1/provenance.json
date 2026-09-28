@@ -1,0 +1,21 @@
+{
+  "prompts_en_sha256": "41b87ffdb2fc139bb066183fefdfe8c8d67a21fe775bf40746537617fb434c71",
+  "sample_seed": 20260927,
+  "sources": {
+    "dolly": {
+      "license": "CC BY-SA 3.0",
+      "sha256": "2df9083338b4abd6bceb5635764dab5d833b393b55759dffb0959b6fcbf794ec",
+      "url": "https://huggingface.co/datasets/databricks/databricks-dolly-15k/resolve/main/databricks-dolly-15k.jsonl"
+    },
+    "gsm8k": {
+      "license": "MIT",
+      "sha256": "3730d312f6e3440559ace48831e51066acaca737f6eabec99bccb9e4b3c39d14",
+      "url": "https://raw.githubusercontent.com/openai/grade-school-math/master/grade_school_math/data/test.jsonl"
+    },
+    "mbpp": {
+      "license": "CC BY 4.0",
+      "sha256": "ccf64ceae9c5403bf50a044cb6d505bfd2a2963ee58338ba268fd65beab92a9f",
+      "url": "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl"
+    }
+  }
+}
