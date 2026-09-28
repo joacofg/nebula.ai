@@ -1,0 +1,466 @@
+{
+  "capture": {
+    "en": {
+      "gpt41": {
+        "failed": 0,
+        "ok": 250,
+        "truncated": 2
+      },
+      "haiku": {
+        "failed": 0,
+        "ok": 250,
+        "truncated": 1
+      },
+      "llama3b": {
+        "failed": 0,
+        "ok": 250,
+        "truncated": 0
+      },
+      "qwen7b": {
+        "failed": 0,
+        "ok": 250,
+        "truncated": 0
+      }
+    },
+    "es": {
+      "gpt41": {
+        "failed": 0,
+        "ok": 1000,
+        "truncated": 2
+      },
+      "haiku": {
+        "failed": 0,
+        "ok": 1000,
+        "truncated": 20
+      },
+      "llama3b": {
+        "failed": 0,
+        "ok": 1000,
+        "truncated": 2
+      },
+      "qwen7b": {
+        "failed": 0,
+        "ok": 1000,
+        "truncated": 7
+      }
+    }
+  },
+  "pairs_skipped": {
+    "en": {
+      "candidate_failed": 0,
+      "reference_unusable": 0
+    },
+    "es": {
+      "candidate_failed": 0,
+      "reference_unusable": 0
+    }
+  },
+  "prompts": {
+    "en": {
+      "code": 50,
+      "factual_qa": 50,
+      "multistep_reasoning": 50,
+      "open_writing": 50,
+      "summarisation": 50
+    },
+    "es": {
+      "code": 200,
+      "factual_qa": 200,
+      "multistep_reasoning": 200,
+      "open_writing": 200,
+      "summarisation": 200
+    }
+  },
+  "spend_usd": {
+    "by_stage": {
+      "capture": 5.396264000000005,
+      "judge": 4.017168149999986,
+      "translate": 0.42962376000000013
+    },
+    "total": 9.84305590999999
+  },
+  "tiers": {
+    "tiers.R1_unanimous.jsonl": {
+      "coverage": 1.0,
+      "distribution": {
+        "en": {
+          "code": {
+            "economy": 11,
+            "frontier": 10,
+            "local": 29,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 11,
+            "frontier": 10,
+            "local": 29,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 5,
+            "frontier": 2,
+            "local": 43,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 6,
+            "frontier": 21,
+            "local": 23,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 5,
+            "frontier": 6,
+            "local": 39,
+            "unlabelled": 0
+          }
+        },
+        "es": {
+          "code": {
+            "economy": 36,
+            "frontier": 59,
+            "local": 105,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 57,
+            "frontier": 43,
+            "local": 100,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 24,
+            "frontier": 9,
+            "local": 167,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 59,
+            "frontier": 86,
+            "local": 55,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 39,
+            "frontier": 37,
+            "local": 124,
+            "unlabelled": 0
+          }
+        }
+      }
+    },
+    "tiers.R2_majority.jsonl": {
+      "coverage": 1.0,
+      "distribution": {
+        "en": {
+          "code": {
+            "economy": 9,
+            "frontier": 8,
+            "local": 33,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 4,
+            "frontier": 9,
+            "local": 37,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 4,
+            "frontier": 2,
+            "local": 44,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 6,
+            "frontier": 19,
+            "local": 25,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 4,
+            "frontier": 3,
+            "local": 43,
+            "unlabelled": 0
+          }
+        },
+        "es": {
+          "code": {
+            "economy": 35,
+            "frontier": 35,
+            "local": 130,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 54,
+            "frontier": 27,
+            "local": 119,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 24,
+            "frontier": 6,
+            "local": 170,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 59,
+            "frontier": 61,
+            "local": 80,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 24,
+            "frontier": 14,
+            "local": 162,
+            "unlabelled": 0
+          }
+        }
+      }
+    },
+    "tiers.R3_ordinal_mean.jsonl": {
+      "coverage": 1.0,
+      "distribution": {
+        "en": {
+          "code": {
+            "economy": 10,
+            "frontier": 4,
+            "local": 36,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 4,
+            "frontier": 5,
+            "local": 41,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 4,
+            "frontier": 2,
+            "local": 44,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 5,
+            "frontier": 13,
+            "local": 32,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 1,
+            "frontier": 1,
+            "local": 48,
+            "unlabelled": 0
+          }
+        },
+        "es": {
+          "code": {
+            "economy": 37,
+            "frontier": 18,
+            "local": 145,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 44,
+            "frontier": 17,
+            "local": 139,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 24,
+            "frontier": 5,
+            "local": 171,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 55,
+            "frontier": 38,
+            "local": 107,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 14,
+            "frontier": 6,
+            "local": 180,
+            "unlabelled": 0
+          }
+        }
+      }
+    },
+    "tiers.jsonl": {
+      "coverage": 1.0,
+      "distribution": {
+        "en": {
+          "code": {
+            "economy": 10,
+            "frontier": 4,
+            "local": 36,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 4,
+            "frontier": 5,
+            "local": 41,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 4,
+            "frontier": 2,
+            "local": 44,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 5,
+            "frontier": 13,
+            "local": 32,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 1,
+            "frontier": 1,
+            "local": 48,
+            "unlabelled": 0
+          }
+        },
+        "es": {
+          "code": {
+            "economy": 37,
+            "frontier": 18,
+            "local": 145,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 44,
+            "frontier": 17,
+            "local": 139,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 24,
+            "frontier": 5,
+            "local": 171,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 55,
+            "frontier": 38,
+            "local": 107,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 14,
+            "frontier": 6,
+            "local": 180,
+            "unlabelled": 0
+          }
+        }
+      }
+    },
+    "tiers.llama3b.jsonl": {
+      "coverage": 1.0,
+      "distribution": {
+        "en": {
+          "code": {
+            "economy": 18,
+            "frontier": 5,
+            "local": 27,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 5,
+            "frontier": 5,
+            "local": 40,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 10,
+            "frontier": 2,
+            "local": 38,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 11,
+            "frontier": 11,
+            "local": 28,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 5,
+            "frontier": 1,
+            "local": 44,
+            "unlabelled": 0
+          }
+        },
+        "es": {
+          "code": {
+            "economy": 69,
+            "frontier": 29,
+            "local": 102,
+            "unlabelled": 0
+          },
+          "factual_qa": {
+            "economy": 65,
+            "frontier": 20,
+            "local": 115,
+            "unlabelled": 0
+          },
+          "multistep_reasoning": {
+            "economy": 56,
+            "frontier": 5,
+            "local": 139,
+            "unlabelled": 0
+          },
+          "open_writing": {
+            "economy": 67,
+            "frontier": 42,
+            "local": 91,
+            "unlabelled": 0
+          },
+          "summarisation": {
+            "economy": 24,
+            "frontier": 8,
+            "local": 168,
+            "unlabelled": 0
+          }
+        }
+      }
+    }
+  },
+  "translation": {
+    "numbers_restyled": 31,
+    "rejected": 10,
+    "review": {
+      "rate": 0.0,
+      "reviewed": 40,
+      "wrong": 0
+    },
+    "translator": "mistralai/mistral-medium-3.1"
+  },
+  "validation": {
+    "corpus_pairs_with_full_grades": 3750,
+    "holdout_es": {
+      "compared": 0,
+      "labelled": 0,
+      "status": "pending"
+    },
+    "inter_judge_kappa": 0.6169714961382676,
+    "position_flip_rate": {
+      "deepseek/deepseek-chat-v3-0324": 0.08106666666666666,
+      "google/gemini-2.5-flash": 0.1248
+    },
+    "rule_selection": {
+      "chosen": "R3_ordinal_mean",
+      "compared": 22,
+      "human_not_substitutable": 2,
+      "human_substitutable": 20,
+      "kappas": {
+        "R1_unanimous": -0.015384615384615333,
+        "R2_majority": 0.3265306122448984,
+        "R3_ordinal_mean": 0.645161290322581
+      },
+      "rater": "human-3",
+      "selection": "pairs the pilot chose because two earlier judges disagreed on them",
+      "set": "pilot-en"
+    }
+  }
+}

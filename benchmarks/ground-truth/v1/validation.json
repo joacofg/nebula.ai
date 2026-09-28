@@ -1,0 +1,27 @@
+{
+  "corpus_pairs_with_full_grades": 3750,
+  "holdout_es": {
+    "compared": 0,
+    "labelled": 0,
+    "status": "pending"
+  },
+  "inter_judge_kappa": 0.6169714961382676,
+  "position_flip_rate": {
+    "deepseek/deepseek-chat-v3-0324": 0.08106666666666666,
+    "google/gemini-2.5-flash": 0.1248
+  },
+  "rule_selection": {
+    "chosen": "R3_ordinal_mean",
+    "compared": 22,
+    "human_not_substitutable": 2,
+    "human_substitutable": 20,
+    "kappas": {
+      "R1_unanimous": -0.015384615384615333,
+      "R2_majority": 0.3265306122448984,
+      "R3_ordinal_mean": 0.645161290322581
+    },
+    "rater": "human-3",
+    "selection": "pairs the pilot chose because two earlier judges disagreed on them",
+    "set": "pilot-en"
+  }
+}
