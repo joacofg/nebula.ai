@@ -93,8 +93,13 @@ def ensure_preregistered(root: Path, run_git: Callable[..., str] = _git) -> None
     if not prereg.exists() or not run_git("log", "-1", "--format=%H", "--", str(prereg)) \
             or run_git("status", "--porcelain", "--", str(prereg)):
         raise RuntimeError(f"{prereg} must be committed, unmodified, before judging the corpus.")
-    if not (holdout.holdout_dir(root) / "pairs.jsonl").exists():
-        raise RuntimeError("Draw the hold-out (python -m scripts.ground_truth.holdout) before judging.")
+    drawn = holdout.holdout_dir(root) / "pairs.jsonl"
+    if (not drawn.exists() or not drawn.read_text(encoding="utf-8").strip()
+            or not run_git("log", "-1", "--format=%H", "--", str(drawn))
+            or run_git("status", "--porcelain", "--", str(drawn))):
+        raise RuntimeError(
+            "Draw the hold-out (python -m scripts.ground_truth.holdout) and commit it before judging."
+        )
 
 
 def pilot_pairs() -> list[Pair]:

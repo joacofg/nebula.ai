@@ -457,7 +457,7 @@ def test_ensure_preregistered_refuses_uncommitted_or_missing_holdout(tmp_path):
     with pytest.raises(RuntimeError, match="hold-out"):
         judge.ensure_preregistered(tmp_path, run_git=_git("abc123"))
     (tmp_path / "holdout").mkdir()
-    (tmp_path / "holdout" / "pairs.jsonl").write_text("")
+    (tmp_path / "holdout" / "pairs.jsonl").write_text("{}\n")
     judge.ensure_preregistered(tmp_path, run_git=_git("abc123"))
 
 
@@ -600,3 +600,69 @@ def test_holdout_file_leaves_fifty_pairs_to_grade_after_calibration(tmp_path):
     assert len(queue) == 50 and not any(pid.startswith("xpr:") for pid in queue)
     assert Counter(p.task_type for p in built if p.pair_id in set(queue)) == {
         t: 10 for t in TASK_TYPES}
+
+
+def test_rule_selection_reports_the_class_balance_it_rests_on():
+    grades = {"a": ["equivalent"] * 4, "b": ["divergent"] * 4, "c": ["equivalent"] * 4}
+    human = {"a": "equivalent", "b": "partial", "c": "minor_loss"}
+    got = validate.rule_selection(grades, human)
+    assert got["compared"] == 3 and got["human_substitutable"] == 2
+    assert got["human_not_substitutable"] == 1 and got["chosen"] == "R1_unanimous"
+
+
+def test_holdout_agreement_survives_a_single_class_sample():
+    grades = {"p": ["equivalent"] * 4, "q": ["equivalent"] * 4}
+    human = {"p": "equivalent", "q": "equivalent"}
+    got = validate.holdout_agreement(grades, human, "R1_unanimous", seed=1)
+    assert got["kappa"] is None and got["compared"] == 2
+
+
+def test_tier_files_cover_every_rule_for_sensitivity():
+    files = tiers.tier_files("R2_majority")
+    assert ("qwen7b", "R2_majority", "tiers.jsonl") in files
+    assert ("llama3b", "R2_majority", "tiers.llama3b.jsonl") in files
+    assert {rule for role, rule, name in files if name.startswith("tiers.R")} == set(ensemble.RULES)
+
+
+def _summary(reviewed=0, holdout_status="pending"):
+    holdout_es = {"status": holdout_status, "labelled": 0, "compared": 0}
+    if holdout_status != "pending":
+        holdout_es.update(compared=30, kappa=0.5, ci95=[0.2, 0.7], judge_limited=False)
+    return {
+        "prompts": {"es": {"code": 200}, "en": {"code": 50}},
+        "translation": {"translator": "m", "rejected": 1, "numbers_restyled": 2,
+                        "review": {"reviewed": reviewed, "wrong": 0, "rate": 0.0}},
+        "validation": {
+            "rule_selection": {"compared": 22, "human_substitutable": 20,
+                               "human_not_substitutable": 2, "chosen": "R2_majority",
+                               "kappas": {"R1_unanimous": 0.1, "R2_majority": 0.3,
+                                          "R3_ordinal_mean": 0.2}},
+            "holdout_es": holdout_es,
+            "position_flip_rate": {"a/b": 0.1},
+        },
+    }
+
+
+def test_thesis_text_says_pending_instead_of_claiming_an_empty_review():
+    assert "pendiente" in report.thesis_corpus(_summary(reviewed=0)).lower()
+    assert "0 infieles" not in report.thesis_corpus(_summary(reviewed=0))
+
+
+def test_thesis_text_discloses_how_the_english_pairs_were_chosen():
+    text = report.thesis_judges(_summary())
+    assert "desacuerdo" in text and "20" in text and "2 no" in text
+    assert "parcial" in report.thesis_judges(_summary(holdout_status="partial")).lower()
+
+
+def test_ensure_preregistered_requires_the_holdout_committed(tmp_path):
+    (tmp_path / "preregistration.md").write_text("x")
+    (tmp_path / "holdout").mkdir()
+    (tmp_path / "holdout" / "pairs.jsonl").write_text("{}\n")
+
+    def git(*args):
+        if args[0] == "log":
+            return "" if args[-1].endswith("pairs.jsonl") else "abc"
+        return ""
+
+    with pytest.raises(RuntimeError, match="hold-out"):
+        judge.ensure_preregistered(tmp_path, run_git=git)

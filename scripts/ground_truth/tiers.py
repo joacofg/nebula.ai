@@ -50,6 +50,16 @@ def build_tiers(
     return out
 
 
+def tier_files(chosen: str) -> list[tuple[str, str, str]]:
+    """(local role, rule, file): the chosen rule for both local models, and
+    every rule for qwen as the pre-registered sensitivity analysis."""
+    return [
+        ("qwen7b", chosen, "tiers.jsonl"),
+        ("llama3b", chosen, "tiers.llama3b.jsonl"),
+        *(("qwen7b", rule, f"tiers.{rule}.jsonl") for rule in ensemble.RULES),
+    ]
+
+
 def prompts_by_lang(root: Path) -> dict[str, list[records.PromptRow]]:
     es = records.read_rows(root / "prompts.es.jsonl", records.PromptRow)
     en_all = {r.prompt_id: r for r in records.read_rows(root / "prompts.en.jsonl", records.PromptRow)}
@@ -66,11 +76,11 @@ def main() -> int:
         judgements += records.read_rows(judge.judgements_path(root, model, "corpus"), records.Judgement)
     grades = ensemble.grades_by_pair(judgements, judges=judge.JUDGES, orientations=judge.ORIENTATIONS)
     prompts = prompts_by_lang(root)
-    for local_role, name in (("qwen7b", "tiers.jsonl"), ("llama3b", "tiers.llama3b.jsonl")):
-        rows = build_tiers(prompts, grades, rule, local_role=local_role)
+    for local_role, file_rule, name in tier_files(rule):
+        rows = build_tiers(prompts, grades, file_rule, local_role=local_role)
         (root / name).write_text("".join(json.dumps(r, sort_keys=True) + "\n" for r in rows), encoding="utf-8")
         labelled = sum(1 for r in rows if r["tier"] is not None)
-        print(f"{name}: {labelled}/{len(rows)} labelled ({labelled / len(rows):.1%}) with {rule}")
+        print(f"{name}: {labelled}/{len(rows)} labelled ({labelled / len(rows):.1%}) with {file_rule}")
     return 0
 
 

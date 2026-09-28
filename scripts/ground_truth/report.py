@@ -54,7 +54,10 @@ def summarise(root: Path) -> dict:
     spend_by_stage: dict[str, float] = defaultdict(float)
     for row in _jsonl(root / "spend.jsonl"):
         spend_by_stage[row["stage"]] += row["cost_usd"]
-    tier_rows = {name: _jsonl(root / name) for name in ("tiers.jsonl", "tiers.llama3b.jsonl")}
+    validation = json.loads((root / "validation.json").read_text()) if (root / "validation.json").exists() else None
+    names = ([name for _, _, name in tiers.tier_files(validation["rule_selection"]["chosen"])]
+             if validation else ["tiers.jsonl", "tiers.llama3b.jsonl"])
+    tier_rows = {name: _jsonl(root / name) for name in names}
     return {
         "prompts": {lang: {t: sum(1 for r in rows if r.task_type == t) for t in sorted({r.task_type for r in rows})}
                     for lang, rows in prompts.items()},
@@ -64,7 +67,7 @@ def summarise(root: Path) -> dict:
                         "review": review.error_rate(root / "translation_review.jsonl")},
         "capture": capture_stats,
         "pairs_skipped": skipped,
-        "validation": json.loads((root / "validation.json").read_text()) if (root / "validation.json").exists() else None,
+        "validation": validation,
         "tiers": {name: {"distribution": tier_distribution(rows),
                          "coverage": sum(1 for r in rows if r["tier"]) / len(rows) if rows else 0.0}
                   for name, rows in tier_rows.items()},
@@ -92,18 +95,22 @@ def render_markdown(s: dict) -> str:
     v = s["validation"]
     if v:
         sel = v["rule_selection"]
-        out += [f"Rule selection on {sel['compared']} EN pilot pairs graded by `{sel['rater']}`:", "",
+        out += [f"Rule selection on {sel['compared']} EN pilot pairs graded by `{sel['rater']}` "
+                f"({sel['human_substitutable']} substitutable / {sel['human_not_substitutable']} not; "
+                f"{sel['selection']}):", "",
                 "| rule | kappa |", "|---|---|"]
         out += [f"| {r} | {_fmt(k)} |" for r, k in sel["kappas"].items()]
         out += ["", f"**Chosen: `{sel['chosen']}`.**", ""]
         h = v["holdout_es"]
         if h["status"] == "pending":
             out.append("**Spanish hold-out: PENDING** (no human labels yet).")
+        elif h["kappa"] is None:
+            out.append(f"Spanish hold-out ({h['compared']} pairs, {h['status']}): kappa undefined (one class).")
         else:
             out.append(f"Spanish hold-out ({h['compared']} pairs, {h['status']}): kappa {h['kappa']:.3f} "
                        f"[{h['ci95'][0]:.3f}, {h['ci95'][1]:.3f}]" + (" — **judge-limited**" if h["judge_limited"] else ""))
         out += ["", "Position flip rate: " + ", ".join(f"`{m}` {r:.1%}" for m, r in v["position_flip_rate"].items()),
-                f"Inter-judge kappa: {v['inter_judge_kappa']:.3f}", ""]
+                f"Inter-judge kappa: {_fmt(v['inter_judge_kappa'])}", ""]
     out += ["## Tiers", ""]
     for name, tier in s["tiers"].items():
         out += [f"### {name} (coverage {tier['coverage']:.1%})", "", "| lang | task | local | economy | frontier | unlabelled |",
@@ -121,16 +128,22 @@ def thesis_corpus(s: dict) -> str:
     srcs = "; ".join(f"{src.name} ({src.license})" for src in sources.SOURCES.values())
     es = s["prompts"]["es"]
     en_total = sum(s["prompts"]["en"].values())
-    rv = s["translation"]["review"]
-    return (
+    tr = s["translation"]
+    rv = tr["review"]
+    text = (
         f"El corpus combina tres conjuntos públicos: {srcs}. Se muestrearon {sum(es.values())} prompts "
         f"estratificados por tarea ({', '.join(f'{t} {n}' for t, n in es.items())}) con semilla fija, "
         f"y un subconjunto pareado de {en_total} en inglés. La traducción al español la hizo "
-        f"`{s['translation']['translator']}`, de una familia ajena a candidatos y jueces; "
-        f"{s['translation']['rejected']} traducciones fueron rechazadas por el control mecánico de números y código "
-        f"y reemplazadas desde la reserva del mismo estrato. Una revisión humana de {rv['reviewed']} traducciones "
-        f"encontró {rv['wrong']} infieles ({rv['rate']:.0%})."
+        f"`{tr['translator']}`, de una familia ajena a candidatos y jueces. En razonamiento y código, "
+        f"donde los números son la tarea, {tr['rejected']} traducciones fueron rechazadas por el control "
+        f"mecánico de números y código y reemplazadas desde la reserva del mismo estrato; en las tareas "
+        f"de Dolly, {tr.get('numbers_restyled', 0)} traducciones reescribieron números por estilo "
+        f"(p. ej. «siglo XV») y quedaron marcadas para la revisión humana. "
     )
+    if rv["reviewed"] == 0:
+        return text + "La revisión humana de una muestra de traducciones está pendiente."
+    return text + (f"Una revisión humana de {rv['reviewed']} traducciones encontró {rv['wrong']} "
+                   f"infieles ({rv['rate']:.0%}).")
 
 
 def thesis_judges(s: dict) -> str:
@@ -140,15 +153,24 @@ def thesis_judges(s: dict) -> str:
     sel, h = v["rule_selection"], v["holdout_es"]
     kappas = ", ".join(f"{r.split('_')[0]} {_fmt(k)}" for r, k in sel["kappas"].items())
     text = (
-        f"Cada par candidato–referencia recibe cuatro notas (dos jueces, dos posiciones). Sobre los "
-        f"{sel['compared']} pares en inglés etiquetados por un lector humano, el kappa binario de las reglas "
-        f"pre-registradas fue {kappas}; se eligió {sel['chosen'].split('_')[0]}. "
+        f"Cada par candidato–referencia recibe cuatro notas (dos jueces, dos posiciones). La regla se "
+        f"eligió sobre {sel['compared']} pares en inglés etiquetados por un lector humano; esos pares se "
+        f"eligieron en el piloto por desacuerdo entre dos jueces previos y quedaron "
+        f"{sel['human_substitutable']} sustituibles y {sel['human_not_substitutable']} no, así que el kappa "
+        f"de selección descansa en muy pocos negativos. Kappa binario por regla: {kappas}; se eligió "
+        f"{sel['chosen'].split('_')[0]}. Como análisis de sensibilidad pre-registrado, los niveles se "
+        f"reportan bajo las tres reglas. "
     )
     if h["status"] == "pending":
         text += "La validación sobre el hold-out en español está pendiente."
+    elif h["kappa"] is None:
+        text += (f"Sobre el hold-out en español ({h['compared']} pares) el kappa es indefinido: "
+                 f"una de las dos partes asignó una sola clase.")
     else:
-        text += (f"Sobre el hold-out en español ({h['compared']} pares, sorteados antes de correr los jueces) "
-                 f"la regla elegida obtuvo kappa {h['kappa']:.2f} (IC 95 % {h['ci95'][0]:.2f}–{h['ci95'][1]:.2f}).")
+        partial = "" if h["status"] == "complete" else ", resultado parcial"
+        text += (f"Sobre el hold-out en español ({h['compared']} pares sorteados antes de correr los "
+                 f"jueces{partial}) la regla elegida obtuvo kappa {h['kappa']:.2f} "
+                 f"(IC 95 % {h['ci95'][0]:.2f}–{h['ci95'][1]:.2f}).")
         if h["judge_limited"]:
             text += " Al quedar por debajo de 0.4, el ground truth se declara limitado por los jueces."
     flips = ", ".join(f"{m.split('/')[-1]} {r:.0%}" for m, r in v["position_flip_rate"].items())

@@ -34,6 +34,22 @@ def rule_kappas(pair_grades: dict[str, list[str]], human: dict[str, str]) -> dic
     return out
 
 
+def rule_selection(pair_grades: dict[str, list[str]], human: dict[str, str]) -> dict:
+    common = sorted(set(pair_grades) & set(human))
+    kappas = rule_kappas(pair_grades, human)
+    positives = sum(1 for p in common if rubric.is_substitutable(human[p]))
+    return {
+        "set": "pilot-en",
+        "rater": judge.PILOT_RATER,
+        "selection": "pairs the pilot chose because two earlier judges disagreed on them",
+        "compared": len(common),
+        "human_substitutable": positives,
+        "human_not_substitutable": len(common) - positives,
+        "kappas": kappas,
+        "chosen": ensemble.choose_rule(kappas),
+    }
+
+
 def position_flip_rate(judgements: list[records.Judgement], judge_model: str) -> float:
     latest = records.latest(
         (r for r in judgements if r.judge == judge_model and r.status == "ok"),
@@ -49,15 +65,18 @@ def position_flip_rate(judgements: list[records.Judgement], judge_model: str) ->
     return flips / len(both)
 
 
-def inter_judge_kappa(judgements: list[records.Judgement]) -> float:
+def inter_judge_kappa(judgements: list[records.Judgement]) -> float | None:
     latest = records.latest((r for r in judgements if r.status == "ok"),
                             key=lambda r: (r.pair_id, r.orientation, r.judge))
     first, second = judge.JUDGES
     keys = sorted({(k[0], k[1]) for k in latest if (k[0], k[1], first) in latest and (k[0], k[1], second) in latest})
-    return stats.cohens_kappa(
-        [rubric.is_substitutable(latest[(*k, first)].grade) for k in keys],
-        [rubric.is_substitutable(latest[(*k, second)].grade) for k in keys],
-    )
+    try:
+        return stats.cohens_kappa(
+            [rubric.is_substitutable(latest[(*k, first)].grade) for k in keys],
+            [rubric.is_substitutable(latest[(*k, second)].grade) for k in keys],
+        )
+    except ValueError:
+        return None
 
 
 def holdout_agreement(pair_grades: dict[str, list[str]], human: dict[str, str], rule: str, *, seed: int) -> dict:
@@ -65,20 +84,28 @@ def holdout_agreement(pair_grades: dict[str, list[str]], human: dict[str, str], 
     if not common:
         return {"status": "pending", "labelled": len(human), "compared": 0}
     sample = [(ensemble.substitutable(rule, pair_grades[p]), rubric.is_substitutable(human[p])) for p in common]
-    interval = stats.bootstrap_ci(
-        sample, lambda draw: stats.cohens_kappa([a for a, _ in draw], [b for _, b in draw]), seed=seed
-    )
-    per_rule = rule_kappas(pair_grades, human)
-    return {
+    base = {
         "status": "complete" if len(common) >= holdout.HOLDOUT_PER_TASK * 5 else "partial",
         "labelled": len(human),
         "compared": len(common),
         "excluded_without_full_grades": len(set(human) - set(pair_grades)),
+        "all_rules_for_reference": rule_kappas(pair_grades, human),
+    }
+    try:
+        interval = stats.bootstrap_ci(
+            sample, lambda draw: stats.cohens_kappa([a for a, _ in draw], [b for _, b in draw]),
+            seed=seed,
+        )
+    except ValueError:
+        # One class on either side: agreement is not measurable, and saying
+        # so beats aborting the stage.
+        return {**base, "kappa": None, "ci95": None, "resamples_used": 0, "judge_limited": None}
+    return {
+        **base,
         "kappa": interval.point,
         "ci95": [interval.low, interval.high],
         "resamples_used": interval.resamples_used,
         "judge_limited": interval.point < JUDGE_LIMITED_BELOW,
-        "all_rules_for_reference": per_rule,
     }
 
 
@@ -93,8 +120,8 @@ def validate(root: Path) -> dict:
     pilot = _judgements(root, "pilot")
     pilot_grades = ensemble.grades_by_pair(pilot, judges=judge.JUDGES, orientations=judge.ORIENTATIONS)
     human3 = {lab.pair_id: lab.grade for lab in mv_labels.read(judge.PILOT_ROOT / "labels" / f"{judge.PILOT_RATER}.jsonl")}
-    en = rule_kappas(pilot_grades, human3)
-    chosen = ensemble.choose_rule(en)
+    selection = rule_selection(pilot_grades, human3)
+    chosen = selection["chosen"]
 
     corpus = _judgements(root, "corpus")
     corpus_grades = ensemble.grades_by_pair(corpus, judges=judge.JUDGES, orientations=judge.ORIENTATIONS)
@@ -102,8 +129,7 @@ def validate(root: Path) -> dict:
     human_es = {lab.pair_id: lab.grade for lab in mv_labels.read(label_path) if not lab.pair_id.startswith("xpr:")}
 
     return {
-        "rule_selection": {"set": "pilot-en", "rater": judge.PILOT_RATER,
-                           "compared": len(set(pilot_grades) & set(human3)), "kappas": en, "chosen": chosen},
+        "rule_selection": selection,
         "holdout_es": holdout_agreement(corpus_grades, human_es, chosen, seed=SEED),
         "position_flip_rate": {m: position_flip_rate(corpus, m) for m in judge.JUDGES},
         "inter_judge_kappa": inter_judge_kappa(corpus),
