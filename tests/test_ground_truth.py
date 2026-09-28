@@ -557,3 +557,25 @@ def test_problems_ignore_trailing_whitespace_inside_code():
     src = "Write f.\n```python\nassert divisor(15) == 4 \n```"
     dst = "Escribe f.\n```python\nassert divisor(15) == 4\n```"
     assert translate.translation_problems(src, dst) == []
+
+
+def test_numbers_are_strict_only_where_numbers_are_the_task():
+    src = "Chess emerged at the end of the 15th century."
+    dst = "El ajedrez surgió a fines del siglo XV."
+    assert translate.translation_problems(src, dst, task_type="summarisation") == []
+    assert translate.translation_warnings(src, dst, task_type="summarisation") == ["numbers differ"]
+    assert translate.translation_problems(src, dst, task_type="multistep_reasoning") == [
+        "numbers differ"]
+    assert translate.translation_warnings(src, dst, task_type="code") == []
+
+
+async def test_translate_all_keeps_a_restyled_number_as_a_warning(tmp_path):
+    async def chat(prompt):
+        return llm.Completion("El ajedrez surgió en el siglo XV.", "stop", 1, 1, 0.0, "m")
+
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    rows = [records.PromptRow("s", "summarisation", "x", "Chess arose in the 15th century.",
+                              "corpus")]
+    got = await translate.translate_all(rows, chat=chat, cache_path=tmp_path / "t.jsonl",
+                                        ledger=ledger, concurrency=1)
+    assert got["s"].status == "ok" and got["s"].warnings == ["numbers differ"]

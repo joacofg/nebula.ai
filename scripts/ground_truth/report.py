@@ -60,6 +60,7 @@ def summarise(root: Path) -> dict:
                     for lang, rows in prompts.items()},
         "translation": {"translator": translate.TRANSLATOR,
                         "rejected": sum(1 for t in translations.values() if t.status != "ok"),
+                        "numbers_restyled": sum(1 for t in translations.values() if t.warnings),
                         "review": review.error_rate(root / "translation_review.jsonl")},
         "capture": capture_stats,
         "pairs_skipped": skipped,

@@ -49,6 +49,7 @@ class TranslationRow:
     text: str
     problems: list[str] = field(default_factory=list)
     attempts: int = 1
+    warnings: list[str] = field(default_factory=list)
 
 
 def _code_spans(text: str) -> list[str]:
@@ -68,18 +69,38 @@ def clean(reply: str) -> str:
     return text
 
 
-def translation_problems(source: str, translated: str) -> list[str]:
+# Where the numbers are the task, a changed number is a broken prompt. In the
+# Dolly tasks Spanish style rewrites them ("15th century" -> "siglo XV"), so
+# there a mismatch is only a warning, counted and left to the human review.
+STRICT_NUMBER_TASKS = frozenset({"multistep_reasoning", "code"})
+
+
+def _numbers_differ(source: str, translated: str) -> bool:
+    # Digit runs, not numbers: "1,000.50" and "1.000,50" are the same runs.
+    return Counter(_DIGITS.findall(_CODE.sub("", source))) != Counter(
+        _DIGITS.findall(_CODE.sub("", translated))
+    )
+
+
+def translation_problems(
+    source: str, translated: str, *, task_type: str = "multistep_reasoning"
+) -> list[str]:
     if not translated.strip():
         return ["empty"]
     problems: list[str] = []
-    # Digit runs, not numbers: "1,000.50" and "1.000,50" are the same runs.
-    if Counter(_DIGITS.findall(_CODE.sub("", source))) != Counter(_DIGITS.findall(_CODE.sub("", translated))):
+    if task_type in STRICT_NUMBER_TASKS and _numbers_differ(source, translated):
         problems.append("numbers differ")
     if _code_spans(source) != _code_spans(translated):
         problems.append("code spans changed")
     if len(translated) > ANSWER_RATIO * len(source) + 40:
         problems.append("looks like an answer, not a translation")
     return problems
+
+
+def translation_warnings(source: str, translated: str, *, task_type: str) -> list[str]:
+    if task_type not in STRICT_NUMBER_TASKS and _numbers_differ(source, translated):
+        return ["numbers differ"]
+    return []
 
 
 async def translate_all(
@@ -105,11 +126,12 @@ async def translate_all(
                     return  # nothing recorded: the next run retries it
                 ledger.record(stage="translate", model=TRANSLATOR, completion=completion)
                 text = clean(completion.text)
-                problems = translation_problems(row.prompt, text)
+                problems = translation_problems(row.prompt, text, task_type=row.task_type)
                 if not problems:
                     break
             result = TranslationRow(
-                row.prompt_id, "rejected" if problems else "ok", "" if problems else text, problems, attempt
+                row.prompt_id, "rejected" if problems else "ok", "" if problems else text, problems, attempt,
+                [] if problems else translation_warnings(row.prompt, text, task_type=row.task_type),
             )
             records.append_row(result, cache_path)
             done[row.prompt_id] = result
