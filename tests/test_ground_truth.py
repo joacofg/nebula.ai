@@ -551,3 +551,9 @@ def test_tier_distribution_table_counts_unlabelled():
             {"lang": "es", "task_type": "code", "tier": "frontier"}]
     got = report.tier_distribution(rows)
     assert got == {"es": {"code": {"local": 1, "economy": 0, "frontier": 1, "unlabelled": 1}}}
+
+
+def test_problems_ignore_trailing_whitespace_inside_code():
+    src = "Write f.\n```python\nassert divisor(15) == 4 \n```"
+    dst = "Escribe f.\n```python\nassert divisor(15) == 4\n```"
+    assert translate.translation_problems(src, dst) == []

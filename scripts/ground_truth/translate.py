@@ -51,6 +51,11 @@ class TranslationRow:
     attempts: int = 1
 
 
+def _code_spans(text: str) -> list[str]:
+    # Trailing whitespace is not code: translators tidy it, and MBPP tests carry it.
+    return ["\n".join(line.rstrip() for line in span.splitlines()) for span in _CODE.findall(text)]
+
+
 def translation_prompt(text: str) -> str:
     return _INSTRUCTIONS.format(prompt=text)
 
@@ -70,7 +75,7 @@ def translation_problems(source: str, translated: str) -> list[str]:
     # Digit runs, not numbers: "1,000.50" and "1.000,50" are the same runs.
     if Counter(_DIGITS.findall(_CODE.sub("", source))) != Counter(_DIGITS.findall(_CODE.sub("", translated))):
         problems.append("numbers differ")
-    if _CODE.findall(source) != _CODE.findall(translated):
+    if _code_spans(source) != _code_spans(translated):
         problems.append("code spans changed")
     if len(translated) > ANSWER_RATIO * len(source) + 40:
         problems.append("looks like an answer, not a translation")
