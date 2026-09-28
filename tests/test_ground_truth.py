@@ -14,6 +14,7 @@ from scripts.ground_truth import (
     judge,
     llm,
     records,
+    report,
     review,
     sample,
     sources,
@@ -535,3 +536,18 @@ def test_build_tiers_uses_the_named_local_role():
     q = tiers.build_tiers(prompts, grades, "R1_unanimous", local_role="qwen7b")
     lo = tiers.build_tiers(prompts, grades, "R1_unanimous", local_role="llama3b")
     assert q[0]["tier"] == "economy" and lo[0]["tier"] == "local"
+
+
+def test_replace_block_replaces_only_between_markers():
+    text = "a\n<!-- GEN:x -->\nold\n<!-- /GEN:x -->\nb\n"
+    assert report.replace_block(text, "x", "new") == "a\n<!-- GEN:x -->\nnew\n<!-- /GEN:x -->\nb\n"
+    with pytest.raises(ValueError, match="y"):
+        report.replace_block(text, "y", "new")
+
+
+def test_tier_distribution_table_counts_unlabelled():
+    rows = [{"lang": "es", "task_type": "code", "tier": "local"},
+            {"lang": "es", "task_type": "code", "tier": None},
+            {"lang": "es", "task_type": "code", "tier": "frontier"}]
+    got = report.tier_distribution(rows)
+    assert got == {"es": {"code": {"local": 1, "economy": 0, "frontier": 1, "unlabelled": 1}}}

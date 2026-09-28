@@ -7,12 +7,16 @@ RQ3 ¿Cuánto se aproximan los jueces LLM a un lector humano, en inglés y en es
 RQ4 ¿Cómo cambia la frontera con el tamaño del modelo local (3B vs 7B)?
 
 ## 6.2 Corpus
+<!-- GEN:corpus-fase2 -->
 > PENDIENTE (fase 2): origen público, estratificación por tarea, traducción, tamaño.
+<!-- /GEN:corpus-fase2 -->
 
 ## 6.3 Jueces y validación contra humanos
 Antecedente ya medido: sobre 22 pares en inglés, sustituibles según gpt-4o-mini 32 %, gemini-2.5-flash 68 %,
 lector humano 91 % (p = 1.2e-4). <!-- GEN: judge-vs-human -->
+<!-- GEN:judges-fase2 -->
 > PENDIENTE (fase 2): ensamble, rúbrica "lector satisfecho", 50 pares en español.
+<!-- /GEN:judges-fase2 -->
 
 ## 6.4 Resultados de ruteo
 Línea de base (heurística de dos reglas, 14 escenarios, 2026-08-19): 41.2 % (corrida 20260819T225557Z), 38.2 % (20260819T225703Z) y 40.0 % (20260819T225713Z) de gasto

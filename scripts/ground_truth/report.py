@@ -1,0 +1,173 @@
+"""Stage 8: the report, and the thesis paragraphs that cite it.
+
+    python -m scripts.ground_truth.report
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+from collections import defaultdict
+from pathlib import Path
+
+from scripts.ground_truth import capture, cli, pairs, records, review, sources, tiers, translate
+
+THESIS = Path("docs/tfc/tesis/06-evaluacion.md")
+
+
+def replace_block(text: str, name: str, content: str) -> str:
+    pattern = re.compile(rf"(<!-- GEN:{re.escape(name)} -->\n)(.*?)(\n<!-- /GEN:{re.escape(name)} -->)", re.DOTALL)
+    if not pattern.search(text):
+        raise ValueError(f"No GEN block {name!r} in the thesis source.")
+    return pattern.sub(lambda m: m.group(1) + content + m.group(3), text, count=1)
+
+
+def tier_distribution(rows: list[dict]) -> dict:
+    out: dict = defaultdict(lambda: defaultdict(lambda: {t: 0 for t in (*tiers.TIERS, "unlabelled")}))
+    for row in rows:
+        out[row["lang"]][row["task_type"]][row["tier"] or "unlabelled"] += 1
+    return json.loads(json.dumps(out))
+
+
+def _jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+
+
+def summarise(root: Path) -> dict:
+    prompts = tiers.prompts_by_lang(root)
+    translations = records.latest(records.read_rows(root / "translations.jsonl", translate.TranslationRow),
+                                  key=lambda r: r.prompt_id)
+    capture_stats: dict = {}
+    skipped: dict = {}
+    for lang, rows in prompts.items():
+        responses = capture.load_responses(root, lang)
+        capture_stats[lang] = {
+            role: {"ok": sum(1 for r in by.values() if r.status == "ok"),
+                   "failed": sum(1 for r in by.values() if r.status != "ok"),
+                   "truncated": sum(1 for r in by.values() if r.finish_reason == "length")}
+            for role, by in responses.items()
+        }
+        skipped[lang] = pairs.build_pairs(lang, rows, responses)[1]
+    spend_by_stage: dict[str, float] = defaultdict(float)
+    for row in _jsonl(root / "spend.jsonl"):
+        spend_by_stage[row["stage"]] += row["cost_usd"]
+    tier_rows = {name: _jsonl(root / name) for name in ("tiers.jsonl", "tiers.llama3b.jsonl")}
+    return {
+        "prompts": {lang: {t: sum(1 for r in rows if r.task_type == t) for t in sorted({r.task_type for r in rows})}
+                    for lang, rows in prompts.items()},
+        "translation": {"translator": translate.TRANSLATOR,
+                        "rejected": sum(1 for t in translations.values() if t.status != "ok"),
+                        "review": review.error_rate(root / "translation_review.jsonl")},
+        "capture": capture_stats,
+        "pairs_skipped": skipped,
+        "validation": json.loads((root / "validation.json").read_text()) if (root / "validation.json").exists() else None,
+        "tiers": {name: {"distribution": tier_distribution(rows),
+                         "coverage": sum(1 for r in rows if r["tier"]) / len(rows) if rows else 0.0}
+                  for name, rows in tier_rows.items()},
+        "spend_usd": {"by_stage": dict(spend_by_stage), "total": sum(spend_by_stage.values())},
+    }
+
+
+def _fmt(value: float | None) -> str:
+    return "—" if value is None else f"{value:.3f}"
+
+
+def render_markdown(s: dict) -> str:
+    out = ["# Ground truth — fase 2", "", "## Corpus", "", "| lang | " + " | ".join(sorted(s["prompts"]["es"])) + " |",
+           "|---|" + "---|" * len(s["prompts"]["es"])]
+    for lang, counts in s["prompts"].items():
+        out.append(f"| {lang} | " + " | ".join(str(counts.get(t, 0)) for t in sorted(s["prompts"]["es"])) + " |")
+    t = s["translation"]
+    out += ["", f"Translator `{t['translator']}`: {t['rejected']} rejected by the number/code check; "
+                f"human review {t['review']['wrong']}/{t['review']['reviewed']} wrong.", "",
+            "## Capture", "", "| lang | role | ok | failed | truncated |", "|---|---|---|---|---|"]
+    for lang, roles in s["capture"].items():
+        for role, c in roles.items():
+            out.append(f"| {lang} | {role} | {c['ok']} | {c['failed']} | {c['truncated']} |")
+    out += ["", f"Pairs skipped: {s['pairs_skipped']}", "", "## Judges", ""]
+    v = s["validation"]
+    if v:
+        sel = v["rule_selection"]
+        out += [f"Rule selection on {sel['compared']} EN pilot pairs graded by `{sel['rater']}`:", "",
+                "| rule | kappa |", "|---|---|"]
+        out += [f"| {r} | {_fmt(k)} |" for r, k in sel["kappas"].items()]
+        out += ["", f"**Chosen: `{sel['chosen']}`.**", ""]
+        h = v["holdout_es"]
+        if h["status"] == "pending":
+            out.append("**Spanish hold-out: PENDING** (no human labels yet).")
+        else:
+            out.append(f"Spanish hold-out ({h['compared']} pairs, {h['status']}): kappa {h['kappa']:.3f} "
+                       f"[{h['ci95'][0]:.3f}, {h['ci95'][1]:.3f}]" + (" — **judge-limited**" if h["judge_limited"] else ""))
+        out += ["", "Position flip rate: " + ", ".join(f"`{m}` {r:.1%}" for m, r in v["position_flip_rate"].items()),
+                f"Inter-judge kappa: {v['inter_judge_kappa']:.3f}", ""]
+    out += ["## Tiers", ""]
+    for name, tier in s["tiers"].items():
+        out += [f"### {name} (coverage {tier['coverage']:.1%})", "", "| lang | task | local | economy | frontier | unlabelled |",
+                "|---|---|---|---|---|---|"]
+        for lang, tasks in tier["distribution"].items():
+            for task, c in sorted(tasks.items()):
+                out.append(f"| {lang} | {task} | {c['local']} | {c['economy']} | {c['frontier']} | {c['unlabelled']} |")
+        out.append("")
+    out += ["## Spend", "", f"Total USD {s['spend_usd']['total']:.2f}: " +
+            ", ".join(f"{k} {v:.2f}" for k, v in s["spend_usd"]["by_stage"].items()), ""]
+    return "\n".join(out)
+
+
+def thesis_corpus(s: dict) -> str:
+    srcs = "; ".join(f"{src.name} ({src.license})" for src in sources.SOURCES.values())
+    es = s["prompts"]["es"]
+    en_total = sum(s["prompts"]["en"].values())
+    rv = s["translation"]["review"]
+    return (
+        f"El corpus combina tres conjuntos públicos: {srcs}. Se muestrearon {sum(es.values())} prompts "
+        f"estratificados por tarea ({', '.join(f'{t} {n}' for t, n in es.items())}) con semilla fija, "
+        f"y un subconjunto pareado de {en_total} en inglés. La traducción al español la hizo "
+        f"`{s['translation']['translator']}`, de una familia ajena a candidatos y jueces; "
+        f"{s['translation']['rejected']} traducciones fueron rechazadas por el control mecánico de números y código "
+        f"y reemplazadas desde la reserva del mismo estrato. Una revisión humana de {rv['reviewed']} traducciones "
+        f"encontró {rv['wrong']} infieles ({rv['rate']:.0%})."
+    )
+
+
+def thesis_judges(s: dict) -> str:
+    v = s["validation"]
+    if not v:
+        return "> PENDIENTE: validación de jueces."
+    sel, h = v["rule_selection"], v["holdout_es"]
+    kappas = ", ".join(f"{r.split('_')[0]} {_fmt(k)}" for r, k in sel["kappas"].items())
+    text = (
+        f"Cada par candidato–referencia recibe cuatro notas (dos jueces, dos posiciones). Sobre los "
+        f"{sel['compared']} pares en inglés etiquetados por un lector humano, el kappa binario de las reglas "
+        f"pre-registradas fue {kappas}; se eligió {sel['chosen'].split('_')[0]}. "
+    )
+    if h["status"] == "pending":
+        text += "La validación sobre el hold-out en español está pendiente."
+    else:
+        text += (f"Sobre el hold-out en español ({h['compared']} pares, sorteados antes de correr los jueces) "
+                 f"la regla elegida obtuvo kappa {h['kappa']:.2f} (IC 95 % {h['ci95'][0]:.2f}–{h['ci95'][1]:.2f}).")
+        if h["judge_limited"]:
+            text += " Al quedar por debajo de 0.4, el ground truth se declara limitado por los jueces."
+    flips = ", ".join(f"{m.split('/')[-1]} {r:.0%}" for m, r in v["position_flip_rate"].items())
+    return text + f" Tasa de cambio de veredicto al invertir posiciones: {flips}."
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--root", type=Path, default=cli.DEFAULT_ROOT)
+    root = parser.parse_args().root
+    summary = summarise(root)
+    (root / "report.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    (root / "report.md").write_text(render_markdown(summary), encoding="utf-8")
+    text = THESIS.read_text(encoding="utf-8")
+    text = replace_block(text, "corpus-fase2", thesis_corpus(summary))
+    text = replace_block(text, "judges-fase2", thesis_judges(summary))
+    THESIS.write_text(text, encoding="utf-8")
+    print(f"report → {root / 'report.md'}; thesis blocks updated")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
