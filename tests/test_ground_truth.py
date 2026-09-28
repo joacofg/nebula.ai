@@ -10,6 +10,7 @@ from scripts.ground_truth import (
     capture,
     cli,
     holdout,
+    judge,
     llm,
     records,
     review,
@@ -19,7 +20,7 @@ from scripts.ground_truth import (
     translate,
 )
 from scripts.ground_truth import pairs as gt_pairs
-from scripts.metric_validation.corpus import TASK_TYPES
+from scripts.metric_validation.corpus import TASK_TYPES, Pair, ResponseSide
 
 
 def test_rows_round_trip_and_latest_wins(tmp_path):
@@ -389,3 +390,68 @@ async def test_translate_all_leaves_a_failed_call_for_the_next_run(tmp_path, mon
                                         concurrency=2)
     assert set(got) == {"b"}
     assert [r.prompt_id for r in records.read_rows(cache, translate.TranslationRow)] == ["b"]
+
+
+def _pair(pid="es:qwen7b:p1"):
+    return Pair(pid, "local_vs_premium", "code", "PROMPT", ResponseSide("qwen7b", "q", "CAND"),
+                ResponseSide("reference", "g", "REF"), {}, "unbanded")
+
+
+def test_payload_orientations_and_no_provenance():
+    ab, ba = judge.payload(_pair(), "ab"), judge.payload(_pair(), "ba")
+    assert (ab["response_a"], ab["response_b"]) == ("CAND", "REF")
+    assert (ba["response_a"], ba["response_b"]) == ("REF", "CAND")
+    prompt = judge.judge_prompt_for(_pair(), "ab").lower()
+    for leak in ("qwen", "reference", "gpt", "local", "premium"):
+        assert leak not in prompt
+
+
+async def test_judge_records_missing_after_parse_retries_and_never_defaults(tmp_path):
+    replies = iter(["no idea", "still no", '{"grade": "maybe"}', '{"grade": "partial"}'])
+
+    async def chat(prompt):
+        return llm.Completion(next(replies), "stop", 1, 1, 0.0, "m")
+
+    out = tmp_path / "j.jsonl"
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    kwargs = dict(judge_model="google/gemini-2.5-flash", chat=chat, out_path=out,
+                  ledger=ledger, concurrency=1, orientations=("ab",))
+    await judge.judge_pairs([_pair()], **kwargs)
+    rows = records.read_rows(out, records.Judgement)
+    assert [(r.status, r.grade) for r in rows] == [("missing", None)]
+    await judge.judge_pairs([_pair()], **kwargs)
+    latest = records.latest(records.read_rows(out, records.Judgement),
+                            key=lambda r: (r.pair_id, r.orientation))
+    assert latest[("es:qwen7b:p1", "ab")].grade == "partial"
+
+
+async def test_judge_does_not_repay_ok_rows(tmp_path):
+    calls = []
+
+    async def chat(prompt):
+        calls.append(prompt)
+        return llm.Completion('{"grade": "equivalent"}', "stop", 1, 1, 0.0, "m")
+
+    out = tmp_path / "j.jsonl"
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    for _ in range(2):
+        await judge.judge_pairs([_pair()], judge_model="google/gemini-2.5-flash", chat=chat,
+                                out_path=out, ledger=ledger, concurrency=1)
+    assert len(calls) == 2  # ab + ba, once
+
+
+def _git(log, status=""):
+    return lambda *args: log if args[0] == "log" else status
+
+
+def test_ensure_preregistered_refuses_uncommitted_or_missing_holdout(tmp_path):
+    (tmp_path / "preregistration.md").write_text("x")
+    with pytest.raises(RuntimeError, match="committed"):
+        judge.ensure_preregistered(tmp_path, run_git=_git(""))
+    with pytest.raises(RuntimeError, match="committed"):
+        judge.ensure_preregistered(tmp_path, run_git=_git("abc123", " M preregistration.md"))
+    with pytest.raises(RuntimeError, match="hold-out"):
+        judge.ensure_preregistered(tmp_path, run_git=_git("abc123"))
+    (tmp_path / "holdout").mkdir()
+    (tmp_path / "holdout" / "pairs.jsonl").write_text("")
+    judge.ensure_preregistered(tmp_path, run_git=_git("abc123"))
