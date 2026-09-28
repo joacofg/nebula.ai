@@ -587,3 +587,16 @@ async def test_an_empty_completion_that_did_not_finish_is_a_failure():
     async with httpx.AsyncClient(transport=transport, base_url="http://x") as client:
         with pytest.raises(llm.CallFailed):
             await llm.openrouter_chat(client, "m", max_tokens=5)("q")
+
+
+def test_holdout_file_leaves_fifty_pairs_to_grade_after_calibration(tmp_path):
+    from scripts.metric_validation import label
+
+    built = holdout.build_holdout(_corpus_pairs(), seed=3, rater_id=holdout.RATER)
+    calibration = label.calibration_items(built, rater_id=holdout.RATER)
+    assert [item.kind for item in calibration].count("off_topic") == 2
+    queue = label.scored_queue(built, tmp_path / "none.jsonl", rater_id=holdout.RATER,
+                               calibration=calibration)
+    assert len(queue) == 50 and not any(pid.startswith("xpr:") for pid in queue)
+    assert Counter(p.task_type for p in built if p.pair_id in set(queue)) == {
+        t: 10 for t in TASK_TYPES}

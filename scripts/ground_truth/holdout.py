@@ -19,7 +19,7 @@ from dataclasses import replace
 from pathlib import Path
 
 from scripts.ground_truth import capture, cli, pairs, records
-from scripts.metric_validation import raters
+from scripts.metric_validation import blinding, raters
 from scripts.metric_validation.corpus import Pair, TASK_TYPES, write_pairs
 
 HOLDOUT_PER_TASK = 10
@@ -75,25 +75,45 @@ def calibration_negatives(pairs_es: list[Pair], *, seed: int, count: int = 2) ->
     return out
 
 
+def calibration_positive(pairs_es: list[Pair], *, rater_id: str) -> Pair:
+    """The pair label.py will turn into its identical and truncated items.
+
+    label.py takes the first local-vs-premium pair in the rater's presentation
+    order, and a pair shown with its answer is not graded. Taking the corpus-wide
+    first one, and keeping it out of the draw, leaves all 50 drawn pairs graded.
+    """
+    local = [p for p in pairs_es if p.kind == "local_vs_premium"]
+    first = blinding.presentation_order([p.pair_id for p in local], rater_id=rater_id)[0]
+    return next(p for p in local if p.pair_id == first)
+
+
+def build_holdout(pairs_es: list[Pair], *, seed: int, rater_id: str) -> list[Pair]:
+    positive = calibration_positive(pairs_es, rater_id=rater_id)
+    graded = select_holdout(
+        [p for p in pairs_es if p.pair_id != positive.pair_id], per_task=HOLDOUT_PER_TASK, seed=seed
+    )
+    return graded + [positive] + calibration_negatives(pairs_es, seed=seed)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", type=Path, default=cli.DEFAULT_ROOT)
     root = parser.parse_args().root
     prompts = records.read_rows(root / "prompts.es.jsonl", records.PromptRow)
     corpus_pairs, _ = pairs.build_pairs("es", prompts, capture.load_responses(root, "es"))
-    chosen = select_holdout(corpus_pairs, per_task=HOLDOUT_PER_TASK, seed=SEED)
+    built = build_holdout(corpus_pairs, seed=SEED, rater_id=RATER)
     target = holdout_dir(root) / "pairs.jsonl"
     if target.exists():
         raise RuntimeError(f"{target} exists; the hold-out is drawn once.")
     target.parent.mkdir(parents=True, exist_ok=True)
-    write_pairs(chosen + calibration_negatives(corpus_pairs, seed=SEED), target)
+    write_pairs(built, target)
     raters.write_roster(
         {RATER: raters.RaterProfile(RATER, "human", "rater-a", "active",
                                     "Spanish hold-out, 50 pairs drawn before any judge ran")},
         holdout_dir(root) / "raters.json",
     )
     cli.update_provenance(root, holdout_seed=SEED, holdout_sha256=cli.sha256_of(target))
-    print(f"{len(chosen)} hold-out pairs → {target}")
+    print(f"{len(built)} hold-out pairs (50 graded + 3 calibration) → {target}")
     return 0
 
 
