@@ -134,9 +134,9 @@ def thesis_corpus(s: dict) -> str:
         f"El corpus combina tres conjuntos públicos: {srcs}. Se muestrearon {sum(es.values())} prompts "
         f"estratificados por tarea ({', '.join(f'{t} {n}' for t, n in es.items())}) con semilla fija, "
         f"y un subconjunto pareado de {en_total} en inglés. La traducción al español la hizo "
-        f"`{tr['translator']}`, de una familia ajena a candidatos y jueces. En razonamiento y código, "
-        f"donde los números son la tarea, {tr['rejected']} traducciones fueron rechazadas por el control "
-        f"mecánico de números y código y reemplazadas desde la reserva del mismo estrato; en las tareas "
+        f"`{tr['translator']}`, de una familia ajena a candidatos y jueces. Un control mecánico rechazó "
+        f"{tr['rejected']} traducciones que alteraban bloques de código, o números en razonamiento y "
+        f"código (donde los números son la tarea), y se reemplazaron desde la reserva del mismo estrato; en las tareas "
         f"de Dolly, {tr.get('numbers_restyled', 0)} traducciones reescribieron números por estilo "
         f"(p. ej. «siglo XV») y quedaron marcadas para la revisión humana. "
     )
