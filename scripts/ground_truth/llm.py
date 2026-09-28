@@ -90,8 +90,9 @@ async def with_retries(
     *,
     attempts: int = 4,
     backoff: float = 2.0,
-    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    sleep: Callable[[float], Awaitable[None]] | None = None,
 ) -> Completion:
+    pause = sleep or asyncio.sleep  # looked up per call, so tests can stub it
     last: Exception | None = None
     for attempt in range(attempts):
         try:
@@ -99,5 +100,5 @@ async def with_retries(
         except (httpx.HTTPError, CallFailed, KeyError, ValueError) as error:
             last = error
             if attempt + 1 < attempts:
-                await sleep(backoff * (2**attempt))
+                await pause(backoff * (2**attempt))
     raise CallFailed(str(last)[:300]) from last

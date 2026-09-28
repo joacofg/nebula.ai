@@ -8,7 +8,17 @@ from collections import Counter
 import httpx
 import pytest
 
-from scripts.ground_truth import cli, llm, records, review, sample, sources, spend, translate
+from scripts.ground_truth import (
+    capture,
+    cli,
+    llm,
+    records,
+    review,
+    sample,
+    sources,
+    spend,
+    translate,
+)
 from scripts.metric_validation.corpus import TASK_TYPES
 
 
@@ -255,3 +265,53 @@ def test_review_sample_is_deterministic_and_bounded():
     assert review.review_sample(rows, size=40, seed=1) == review.review_sample(
         list(reversed(rows)), size=40, seed=1)
     assert len(review.review_sample(rows, size=40, seed=1)) == 40
+
+
+def test_items_for_uses_spanish_corpus_and_english_subset():
+    en = [records.PromptRow("a", "code", "s", "EN a", "corpus"),
+          records.PromptRow("b", "code", "s", "EN b", "corpus"),
+          records.PromptRow("c", "code", "s", "EN c", "reserve")]
+    es = [records.PromptRow("a", "code", "s", "ES a", "corpus", en_subset=True),
+          records.PromptRow("c", "code", "s", "ES c", "corpus", en_subset=False)]
+    assert capture.items_for("es", en, es) == [("a", "ES a"), ("c", "ES c")]
+    assert capture.items_for("en", en, es) == [("a", "EN a")]
+
+
+async def test_capture_resumes_without_repaying_and_retries_failures(tmp_path, monkeypatch):
+    async def no_sleep(_):
+        return None
+
+    monkeypatch.setattr(llm.asyncio, "sleep", no_sleep)
+    calls = []
+    fail = {"b"}
+
+    async def chat(prompt):
+        calls.append(prompt)
+        if prompt in fail:
+            raise llm.CallFailed("down")
+        return llm.Completion(f"r:{prompt}", "stop", 1, 2, 0.001, "m")
+
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1)
+    out = tmp_path / "gpt41.es.jsonl"
+    items = [("a", "a"), ("b", "b")]
+    got = await capture.capture_role(items, lang="es", model="openai/gpt-4.1", chat=chat,
+                                     out_path=out, ledger=ledger, concurrency=1)
+    assert got["a"].status == "ok" and got["b"].status == "failed"
+    fail.clear()
+    got = await capture.capture_role(items, lang="es", model="openai/gpt-4.1", chat=chat,
+                                     out_path=out, ledger=ledger, concurrency=1)
+    assert calls.count("a") == 1 and got["b"].status == "ok"
+    assert ledger.total == pytest.approx(0.002)
+
+
+async def test_capture_stops_at_the_cap_and_keeps_what_was_paid(tmp_path):
+    async def chat(prompt):
+        return llm.Completion("x", "stop", 1, 1, 0.6, "m")
+
+    ledger = spend.SpendLedger(tmp_path / "spend.jsonl", cap_usd=1.0)
+    out = tmp_path / "haiku.es.jsonl"
+    with pytest.raises(spend.BudgetExceeded):
+        await capture.capture_role([("a", "a"), ("b", "b"), ("c", "c")], lang="es",
+                                   model="anthropic/claude-haiku-4.5", chat=chat,
+                                   out_path=out, ledger=ledger, concurrency=1)
+    assert [r.prompt_id for r in records.read_rows(out, records.ResponseRow)] == ["a", "b"]
