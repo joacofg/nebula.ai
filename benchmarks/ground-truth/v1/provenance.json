@@ -1,5 +1,6 @@
 {
   "prompts_en_sha256": "41b87ffdb2fc139bb066183fefdfe8c8d67a21fe775bf40746537617fb434c71",
+  "prompts_es_sha256": "a1e2736f17d4f14d39b324ca576827a1561ef92c53527f6e266f0f77d7894626",
   "sample_seed": 20260927,
   "sources": {
     "dolly": {
@@ -17,5 +18,7 @@
       "sha256": "ccf64ceae9c5403bf50a044cb6d505bfd2a2963ee58338ba268fd65beab92a9f",
       "url": "https://raw.githubusercontent.com/google-research/google-research/master/mbpp/mbpp.jsonl"
     }
-  }
+  },
+  "translations_rejected": 10,
+  "translator": "mistralai/mistral-medium-3.1"
 }
