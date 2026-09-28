@@ -9,6 +9,7 @@ import pytest
 from scripts.ground_truth import (
     capture,
     cli,
+    ensemble,
     holdout,
     judge,
     llm,
@@ -18,6 +19,7 @@ from scripts.ground_truth import (
     sources,
     spend,
     translate,
+    validate,
 )
 from scripts.ground_truth import pairs as gt_pairs
 from scripts.metric_validation.corpus import TASK_TYPES, Pair, ResponseSide
@@ -455,3 +457,63 @@ def test_ensure_preregistered_refuses_uncommitted_or_missing_holdout(tmp_path):
     (tmp_path / "holdout").mkdir()
     (tmp_path / "holdout" / "pairs.jsonl").write_text("")
     judge.ensure_preregistered(tmp_path, run_git=_git("abc123"))
+
+
+def test_rules_on_hand_worked_grades():
+    g = ["equivalent", "minor_loss", "minor_loss", "partial"]  # idx 0,1,1,2 -> mean 1.0
+    assert not ensemble.substitutable("R1_unanimous", g)
+    assert ensemble.substitutable("R2_majority", g)
+    assert ensemble.substitutable("R3_ordinal_mean", g)
+    h = ["minor_loss", "minor_loss", "partial", "divergent"]  # idx 1,1,2,3 -> mean 1.75
+    assert not ensemble.substitutable("R2_majority", h)
+    assert not ensemble.substitutable("R3_ordinal_mean", h)
+    k = ["equivalent", "equivalent", "partial", "partial"]  # mean 1.0, 2 of 4
+    assert not ensemble.substitutable("R2_majority", k)
+    assert ensemble.substitutable("R3_ordinal_mean", k)
+    with pytest.raises(ValueError):
+        ensemble.substitutable("R1_unanimous", g[:3])
+
+
+def _j(pid, judge_, o, grade, status="ok"):
+    return records.Judgement(pid, judge_, o, status, grade, "")
+
+
+def test_grades_by_pair_requires_all_four_and_latest_wins():
+    rows = [_j("p", "A", "ab", "partial"), _j("p", "A", "ab", "equivalent"),
+            _j("p", "A", "ba", "equivalent"), _j("p", "B", "ab", "equivalent"),
+            _j("p", "B", "ba", "equivalent"),
+            _j("q", "A", "ab", "equivalent"), _j("q", "A", "ba", "equivalent"),
+            _j("q", "B", "ab", "equivalent"), _j("q", "B", "ba", None, "missing")]
+    got = ensemble.grades_by_pair(rows, judges=("A", "B"), orientations=("ab", "ba"))
+    assert got == {"p": ["equivalent"] * 4}
+
+
+def test_choose_rule_prefers_conservative_on_ties_and_skips_undefined():
+    tie = {"R1_unanimous": 0.5, "R2_majority": 0.5, "R3_ordinal_mean": 0.4}
+    assert ensemble.choose_rule(tie) == "R1_unanimous"
+    partial = {"R1_unanimous": None, "R2_majority": 0.2, "R3_ordinal_mean": 0.3}
+    assert ensemble.choose_rule(partial) == "R3_ordinal_mean"
+    with pytest.raises(ValueError):
+        ensemble.choose_rule({r: None for r in ensemble.RULES})
+
+
+def test_rule_kappas_against_human():
+    grades = {"a": ["equivalent"] * 4, "b": ["divergent"] * 4,
+              "c": ["equivalent", "equivalent", "equivalent", "partial"]}
+    human = {"a": "equivalent", "b": "partial", "c": "minor_loss", "z": "equivalent"}
+    got = validate.rule_kappas(grades, human)
+    assert got["R2_majority"] == pytest.approx(1.0)
+    assert got["R3_ordinal_mean"] == pytest.approx(1.0)
+    assert got["R1_unanimous"] < 1.0
+
+
+def test_position_flip_rate_counts_binary_changes_only():
+    rows = [_j("p", "A", "ab", "equivalent"), _j("p", "A", "ba", "minor_loss"),
+            _j("q", "A", "ab", "equivalent"), _j("q", "A", "ba", "divergent"),
+            _j("r", "A", "ab", "equivalent")]
+    assert validate.position_flip_rate(rows, "A") == pytest.approx(0.5)
+
+
+def test_holdout_agreement_pending_without_labels():
+    got = validate.holdout_agreement({"p": ["equivalent"] * 4}, {}, "R1_unanimous", seed=1)
+    assert got["status"] == "pending" and got["labelled"] == 0
