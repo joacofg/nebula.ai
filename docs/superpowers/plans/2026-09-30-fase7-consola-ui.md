@@ -34,6 +34,57 @@
 4. `prefers-reduced-motion`: el camino de señal y el punto de la frontera aparecen sin animación. → Tasks 6, 9.
 5. Teclado: foco visible en todo control; Dialog con trap de foco y Escape; slider operable con flechas. → Tasks 4, 7, 9.
 
+## Detalles de diseño (de /plan-design-review)
+
+Aplican a todas las tareas del PR (c); cada tarea de página los cumple.
+
+**Escala tipográfica (Barlow, px):** display 44/600 (valor del slider) · h1 26/600 · h2 18/600 · h3 16/600 · cuerpo 16/400 · tablas y readouts 14/500 · rótulos 13/500 Semi Condensed · ejes/ids 12 mono. Interlineado 1.45 cuerpo, 1.15 títulos. Espaciado base 4 px: 4 · 8 · 12 · 16 · 24 · 32 · 48.
+
+**Controles:** alto 40 px (botón, input, select); foco `outline 2px var(--color-mark)` con offset 2 px; nunca `outline: none` sin reemplazo.
+
+**Navegación:** sin números de referencia (01–06 eran decoración); grupos "Operar" y "Configurar" con rótulo de 13 px; activo = fondo surface + líneas arriba/abajo + texto ink 600.
+
+**Jerarquía por página (qué se ve 1.º, 2.º, 3.º):**
+
+```
+Evaluación      1. Figura 1 frontera + punto elegido   2. Calidad objetivo (0.95) y readouts   3. Tabla de características (31 %, IC)
+                ┌ PageHeader ───────────────────────────────────────────────┐
+                │ Figura 1 (frontera, 2/3)          │ Control (slider, readouts, reparto, Aplicar) │
+                ├ Tabla de características (valor + IC 95 %) ──────────────────────────────────────┤
+                └ Figura 2 replay ──────────────────────────────────────────────────────────────────┘
+Playground      1. Respuesta   2. Por qué {nivel} (DecisionPath)   3. Readouts de costo/modelo
+                │ Prompt + ejemplos + Enviar (2/5) │ Respuesta / Por qué / Readout (3/5) │
+Observabilidad  1. Ledger   2. Detalle con DecisionPath   3. Tabs de contexto
+                │ Ledger (2/3) │ Detalle (1/3) │  →  Tabs debajo, ancho completo
+Política        1. Campos de la sección Ruteo   2. Vista previa   3. Resto de secciones
+Tenants/Claves  1. Tabla   2. Editor/acción   3. Filtros
+```
+
+**Tabla de estados (lo que se ve):**
+
+```
+VISTA            | CARGA                  | VACÍO                                        | ERROR                         | ÉXITO
+-----------------|------------------------|----------------------------------------------|-------------------------------|-------------------------------
+Evaluación       | Skeleton de figura     | "No hay replay del router." + comando        | ErrorAlert con el mensaje     | Figura + tabla
+Playground       | botón "Enviando…"      | "Enviar un prompt para ver la respuesta y la decisión." | ErrorAlert; errorDetail en Alert | respuesta + DecisionPath animado
+Ledger           | LoadingRows(8)         | "No hay pedidos en este rango." + Abrir Playground | ErrorAlert                  | fila 1 seleccionada
+Detalle ledger   | Skeleton               | "Elegir un pedido del ledger."               | —                             | DecisionPath (sin p → "sin dato")
+Tabs contexto    | Skeleton por tab       | una línea por tab ("Sin recomendaciones.")   | ErrorAlert dentro del tab     | contenido
+Política         | Skeleton de formulario | "No hay tenants. Crear uno en Tenants."      | ErrorAlert                    | Alert "Política guardada." 4 s
+Simulación       | "Simulando…"           | "Sin pedidos recientes para comparar."       | ErrorAlert                    | cambiados / sin cambio
+Tenants / Claves | LoadingRows(6)         | "Todavía no hay tenants." + Crear tenant     | ErrorAlert                    | tabla
+Login            | botón "Entrando…"      | —                                            | Alert destructive             | redirige a /evaluacion
+```
+
+**Recorrido del jurado (demo, 5 min):** login (5 s, sin fricción) → Evaluación: mover el slider y ver el punto, los readouts y el reparto moverse (el "wow") → Aplicar al tenant → Playground: tres ejemplos, ver local/economy/frontier con el camino de señal → Observabilidad: la misma fila en el ledger con su costo → Política: el objetivo aplicado. Cada paso deja la evidencia a la vista sin leer texto.
+
+**Playground — ejemplos:** tres botones debajo del prompt con los prompts del runbook ("¿Cuál es la capital de Australia?", "¿Por qué los boletos de avión están tan caros ahora?", "Escribe una función en Python … criba de Eratóstenes, con tests."); un clic carga el texto (no envía).
+
+**Teclado y a11y:** filas del ledger enfocables (`tabIndex=0`, `aria-selected`, Enter/Espacio seleccionan, flechas arriba/abajo mueven); landmarks `nav`/`main`; cada `Tabs` con nombre; contraste AA en todo texto (ink-3 `#5c646e` es el mínimo, nunca más claro); figuras con alternativa en tabla.
+
+**Responsive:** diseño objetivo 1280–1440. De 1024 a 1279 el detalle del ledger y el panel de control de Evaluación pasan debajo; por debajo de 1024 el riel se colapsa (`SidebarTrigger`) y las tablas hacen scroll horizontal dentro de su contenedor, nunca la página.
+
+
 ---
 
 ## PR (a) — Tailwind 4, roles de color y codemod
@@ -288,7 +339,7 @@ Branch: `fase7c-paginas`. En cada página: **shape** (leer el mockup y la secci�
 
 - [ ] **Step 1:** `@theme` a los valores de DESIGN.md: surface `#ffffff`, canvas/rail `#f3f4f5`, panel `#f3f4f5`, ink `#111418`, ink-2 `#4a525c`, ink-3 `#5c646e`, ink-4 `#5c646e`, line `#d3d8dd`, line-strong `#111418`, mark `#c62f1d`, mark-soft `#fbf1ef`, mark-line `#e9b9b2`, danger `#9f2616`, danger-soft `#fbf1ef`, danger-line `#e9b9b2`, warn `#7a4b00`, warn-soft `#fdf6e8`, warn-line `#ecd3a1`, ok `#1f5f32`, ok-soft `#eef6f0`, ok-line `#b9d8c1`, on-panel `#111418`, on-panel-2 `#4a525c`, tier-local `#86b6ef`, tier-economy `#2f73cc`, tier-frontier `#103f82`, tier-cache `#aab2bb`. Borrar el gradiente del `body` (`background: var(--color-surface)`); `::selection` con `color-mix(in srgb, var(--color-mark) 16%, transparent)`; scrollbars y `caret-color` desde roles; `font-variant-numeric: tabular-nums` en `body`.
 - [ ] **Step 2:** `layout.tsx`: `next/font/google` Barlow (400–700) `--font-sans`, Barlow_Semi_Condensed (500, 600) `--font-label`, Red_Hat_Mono (400, 500) `--font-mono`; `lang="es"`; `metadata.title = "Nebula · consola"`. En `@theme`: `--font-sans`, `--font-label`, `--font-mono`. Reemplazar las 59 `font-[var(--font-fira-code)]` por nada (títulos en sans) o `font-mono` solo en ids/código.
-- [ ] **Step 3:** Shell con `Sidebar` de shadcn: marca "Nebula" + "gateway local"; grupos "Operar" (Evaluación, Playground, Observabilidad) y "Configurar" (Tenants, Claves de API, Política); ítem activo `aria-current="page"`, fondo surface con líneas arriba/abajo y número de referencia en `text-mark`; pie "Sesión en memoria" + botón "Cerrar sesión". Por debajo de `lg`, `SidebarTrigger` en una barra superior. Test `operator-shell.test.tsx`: los 6 links con sus nombres en español, el activo con `aria-current`, "Cerrar sesión" llama a `signOut` y navega a `/?reason=signed_out`.
+- [ ] **Step 3:** Shell con `Sidebar` de shadcn: marca "Nebula" + "gateway local"; grupos "Operar" (Evaluación, Playground, Observabilidad) y "Configurar" (Tenants, Claves de API, Política); ítem activo `aria-current="page"`, fondo surface con líneas arriba/abajo, sin números de referencia; pie "Sesión en memoria" + botón "Cerrar sesión". Por debajo de `lg`, `SidebarTrigger` en una barra superior. Test `operator-shell.test.tsx`: los 6 links con sus nombres en español, el activo con `aria-current`, "Cerrar sesión" llama a `signOut` y navega a `/?reason=signed_out`.
 - [ ] **Step 4:** Login: una hoja centrada (máx. 440 px) con `PageHeader title="Nebula"` y celda "Consola del gateway"; `Field` "Clave de admin", placeholder `nb-admin-…`, ayuda "Se guarda solo en memoria: al recargar se cierra la sesión."; botón "Entrar"; mensajes: sesión vencida → "La sesión se cerró. Ingresar la clave de admin otra vez."; salida → "Sesión cerrada."; vacío → "Falta la clave de admin." Tras login, `router.replace("/evaluacion")`. Actualizar `admin-login-form.test.tsx` a estos textos y al destino `/evaluacion`.
 - [ ] **Step 5:** Captura + critique/audit, corregir, vitest verde, commit `style(console): Plano system, fonts, shell and login`.
 
@@ -309,7 +360,7 @@ Branch: `fase7c-paginas`. En cada página: **shape** (leer el mockup y la secci�
 - Modify: `app/(console)/playground/page.tsx`, `components/playground/*.tsx`
 - Test: `components/playground/*.test.tsx`
 
-- [ ] **Step 1 (shape):** `PageHeader` (Playground · Tenant [select] · Modelo [select] · "Sin streaming"); izquierda: `Field` prompt (textarea), botón "Enviar"; derecha: respuesta, **Por qué {nivel}** con `DecisionPath animate` (usa p/τ del registro del ledger), `Readout` (modelo, proveedor, costo, tokens, latencia, caché, fallback, request id en mono, headers `X-Nebula-*`). Sin párrafo introductorio; estado vacío "Enviar un prompt para ver la respuesta y la decisión."
+- [ ] **Step 1 (shape):** `PageHeader` (Playground · Tenant [select] · Modelo [select] · "Sin streaming"); izquierda: `Field` prompt (textarea), tres botones de ejemplo (ver Detalles de diseño) y botón "Enviar"; test: clic en un ejemplo carga el prompt y no envía; derecha: respuesta, **Por qué {nivel}** con `DecisionPath animate` (usa p/τ del registro del ledger), `Readout` (modelo, proveedor, costo, tokens, latencia, caché, fallback, request id en mono, headers `X-Nebula-*`). Sin párrafo introductorio; estado vacío "Enviar un prompt para ver la respuesta y la decisión."
 - [ ] **Step 2:** Review Focus 3: test con un prompt de 2000 caracteres y un modelo largo: la respuesta envuelve (`overflow-wrap:anywhere`) y el Readout no desborda (clase presente).
 - [ ] **Step 3:** Copy + tests; captura + critique/audit + fix; commit `style(console): playground with decision path`.
 
@@ -385,3 +436,25 @@ numerando según el orden de aparición en cada capítulo (10.5 política en 10.
 - [ ] **Step 2:** Subagente opus con la spec, el plan y el diff de las fases 7a–7d: review de correctitud, a11y y fidelidad al DESIGN.md. Corregir lo confirmado.
 - [ ] **Step 3:** Suites completas (una por vez, con darwin-throttle): `make test`, vitest, Playwright. Push, PR "Fase 7d: cierre", CI, merge.
 - [ ] **Step 4:** Actualizar la memoria `tesis-fase7-consola-ui` con lo mergeado y diferidos.
+
+## GSTACK REVIEW REPORT
+
+| Run | Status | Findings |
+|---|---|---|
+| plan-design-review 2026-09-30 | issues_found → resolved in plan | 7 |
+
+| Pass | Before | After | Change |
+|---|---|---|---|
+| 1 Information architecture | 6 | 9 | jerarquía 1.º/2.º/3.º y esquema por página |
+| 2 Interaction states | 5 | 9 | tabla de estados por vista |
+| 3 User journey | 6 | 9 | recorrido del jurado + ejemplos en Playground (decisión de Joaquín) |
+| 4 AI slop risk | 8 | 9 | fuera los números de la navegación |
+| 5 Design system | 7 | 9 | escala tipográfica, espaciado, alto de controles |
+| 6 Responsive & a11y | 5 | 9 | teclado en el ledger, landmarks, cortes 1024/1280 |
+| 7 Unresolved decisions | — | — | una: ejemplos en Playground → sí |
+
+Mockups de IA y voces externas omitidos: gastan la cuenta de OpenAI y ya hay mockups HTML aprobados (`docs/superpowers/fase7/direcciones/`).
+
+VERDICT: plan listo para ejecutar.
+
+NO UNRESOLVED DECISIONS
