@@ -37,7 +37,7 @@ export function PlaygroundMetadata({
     <section className="panel space-y-4 px-6 py-5">
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Metadata</div>
-        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+        <h3 className="mt-2 text-xl font-semibold text-ink">
           Immediate response evidence
         </h3>
         <p className="mt-2 text-sm text-ink-3">
@@ -78,7 +78,7 @@ function MetadataRow({
       <dd
         className={[
           "mt-2 text-sm text-ink wrap-anywhere",
-          mono ? "font-(--font-fira-code)" : "",
+          mono ? "font-mono" : "",
         ].join(" ")}
       >
         {value}

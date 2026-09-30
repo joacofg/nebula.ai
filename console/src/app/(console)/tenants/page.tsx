@@ -94,7 +94,7 @@ export default function TenantsPage() {
       <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Tenants</div>
-          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
             Tenant operations
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -103,7 +103,7 @@ export default function TenantsPage() {
             team conventions you capture in tenant names, key names, or notes rather than as product objects.
           </p>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            This console surface stays grounded in <span className="font-(--font-fira-code)">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
+            This console surface stays grounded in <span className="font-mono">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
           </p>
         </div>
         <button

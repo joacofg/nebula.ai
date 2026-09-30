@@ -118,7 +118,7 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Decisión</div>
         <h3
           id="playground-decision-heading"
-          className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
+          className="mt-2 font-mono text-xl font-semibold text-ink"
         >
           Por qué este nivel
         </h3>

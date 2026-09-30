@@ -26,7 +26,7 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
           Recorded outcome
         </div>
-        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+        <h3 className="mt-2 text-xl font-semibold text-ink">
           Recorded outcome
         </h3>
         <p className="mt-2 text-sm text-ink-3">

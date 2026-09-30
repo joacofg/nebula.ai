@@ -385,7 +385,7 @@ export function PolicyForm({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Policy</div>
-            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+            <h2 className="mt-2 text-2xl font-semibold text-ink">
               Policy for {tenantName}
             </h2>
             <p className="mt-2 text-sm text-ink-3">
@@ -434,7 +434,7 @@ export function PolicyForm({
       <section className="panel px-6 py-5" aria-live="polite">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">Preview before save</h3>
+            <h3 className="text-lg font-semibold text-ink">Preview before save</h3>
             <p className="mt-2 text-sm text-ink-4">
               Compare the current draft against the tenant&apos;s recent persisted baseline before deciding whether to save.
             </p>
@@ -482,7 +482,7 @@ export function PolicyForm({
                 </span>
                 <span className="text-xs font-medium text-ink-3">Preview only — save stays separate.</span>
               </div>
-              <h4 className="mt-3 font-(--font-fira-code) text-base font-semibold text-ink">
+              <h4 className="mt-3 text-base font-semibold text-ink">
                 {previewDecision?.title}
               </h4>
               <p className="mt-2 text-sm text-ink-2">{previewDecision?.body}</p>
@@ -531,7 +531,7 @@ export function PolicyForm({
             ) : (
               <div className="space-y-3">
                 <div>
-                  <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
+                  <h4 className="text-base font-semibold text-ink">
                     Changed request sample
                   </h4>
                   <p className="mt-1 text-sm text-ink-4">
@@ -576,7 +576,7 @@ export function PolicyForm({
       <section className="panel px-6 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">
+            <h3 className="text-lg font-semibold text-ink">
               Runtime-enforced controls
             </h3>
             <p className="mt-2 text-sm text-ink-4">
@@ -593,7 +593,7 @@ export function PolicyForm({
         <div className="mt-4 rounded-2xl border border-line bg-canvas px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
+              <h4 className="text-base font-semibold text-ink">
                 Effective evidence boundary
               </h4>
               <p className="mt-2 text-sm text-ink-3">
@@ -777,7 +777,7 @@ export function PolicyForm({
 
           {runtimeEnforcedFields.has("allowed_premium_models") ? (
             <div>
-              <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
+              <h4 className="text-base font-semibold text-ink">
                 Premium model allowlist
               </h4>
               <p className="mt-2 text-sm text-ink-4">
@@ -924,7 +924,7 @@ export function PolicyForm({
 
       {softSignalFields.has("soft_budget_usd") ? (
         <section className="panel px-6 py-5">
-          <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">Soft budget advisory</h3>
+          <h3 className="text-lg font-semibold text-ink">Soft budget advisory</h3>
           <p className="mt-2 text-sm text-ink-4">
             Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
           </p>

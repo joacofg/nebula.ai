@@ -145,7 +145,7 @@ export default function ObservabilityPage() {
     <section className="space-y-6">
       <header className="panel px-6 py-5">
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Observability</div>
-        <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+        <h2 className="mt-2 text-2xl font-semibold text-ink">
           Selected request evidence first
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -178,7 +178,7 @@ export default function ObservabilityPage() {
       <section className="space-y-4">
         <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Selected request</div>
-          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
             Inspect one persisted ledger row before reading tenant context
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -210,7 +210,7 @@ export default function ObservabilityPage() {
       <section className="space-y-4">
         <header className="panel px-6 py-5">
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Next operator step</div>
-          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 className="mt-2 text-2xl font-semibold text-ink">
             Follow-up context for the selected request
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -226,7 +226,7 @@ export default function ObservabilityPage() {
               <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Follow-up guidance</div>
               <h3
                 id="selected-request-follow-up-heading"
-                className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
+                className="mt-2 font-mono text-xl font-semibold text-ink"
               >
                 Grounded follow-up guidance for the selected request
               </h3>
@@ -290,7 +290,7 @@ export default function ObservabilityPage() {
                           <div className="text-xs font-semibold uppercase tracking-[0.24em] opacity-80">
                             {recommendation.category} recommendation • priority {recommendation.priority}
                           </div>
-                          <h4 className="mt-2 font-(--font-fira-code) text-lg font-semibold">
+                          <h4 className="mt-2 text-lg font-semibold">
                             {recommendation.title}
                           </h4>
                         </div>
@@ -329,7 +329,7 @@ export default function ObservabilityPage() {
               <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Next comparison</div>
               <h3
                 id="policy-preview-follow-up-heading"
-                className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
+                className="mt-2 font-mono text-xl font-semibold text-ink"
               >
                 Policy preview follow-up for the same request
               </h3>
@@ -348,7 +348,7 @@ export default function ObservabilityPage() {
                       <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
                         Calibration evidence
                       </div>
-                      <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+                      <h3 className="mt-2 text-xl font-semibold text-ink">
                         Tenant-scoped replay readiness context
                       </h3>
                     </div>
@@ -413,7 +413,7 @@ export default function ObservabilityPage() {
                 <section className="panel space-y-4 px-6 py-5">
                   <div>
                     <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Semantic cache</div>
-                    <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+                    <h3 className="mt-2 text-xl font-semibold text-ink">
                       Cache effectiveness and runtime controls
                     </h3>
                     <p className="mt-2 text-sm text-ink-3">
@@ -475,7 +475,7 @@ export default function ObservabilityPage() {
                               <div className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
                                 {insight.level} cache insight
                               </div>
-                              <h4 className="mt-2 font-(--font-fira-code) text-base font-semibold">
+                              <h4 className="mt-2 text-base font-semibold">
                                 {insight.title}
                               </h4>
                             </div>
@@ -507,7 +507,7 @@ export default function ObservabilityPage() {
                     <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
                       Dependency health
                     </div>
-                    <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+                    <h3 className="mt-2 text-xl font-semibold text-ink">
                       Dependency health context
                     </h3>
                     <p className="mt-2 max-w-2xl text-sm text-ink-3">
@@ -534,7 +534,7 @@ export default function ObservabilityPage() {
               <section className="space-y-4">
                 <header className="panel px-6 py-5">
                   <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Dependency health</div>
-                  <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
+                  <h3 className="mt-2 text-xl font-semibold text-ink">
                     Dependency health context
                   </h3>
                 </header>

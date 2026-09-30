@@ -81,15 +81,15 @@ export function CreateApiKeyDialog({
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">New API key</div>
           <DialogTitle className="text-xl font-semibold text-ink">Issue client credentials with tenant scope</DialogTitle>
           <DialogDescription className="text-sm text-ink-4">
-            Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
-            {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
+            Creates a client API key through <span className="font-mono">{API_KEYS_ENDPOINT}</span>.
+            {" "}Use <span className="font-mono">allowed_tenant_ids</span> to define every tenant the
             key may access.
           </DialogDescription>
           <p className="text-sm text-ink-4">
-            Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
-            when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
+            Nebula resolves requests by honoring an explicit <span className="font-mono">X-Nebula-Tenant-ID</span>
+            when it matches an allowed tenant; otherwise it falls back to <span className="font-mono">tenant_id</span>,
             then to the only allowed tenant. If you authorize multiple tenants without a default
-            <span className="font-(--font-fira-code)"> tenant_id</span>, public callers must send the tenant header.
+            <span className="font-mono"> tenant_id</span>, public callers must send the tenant header.
           </p>
         </DialogHeader>
 
@@ -129,7 +129,7 @@ export function CreateApiKeyDialog({
               ))}
             </select>
             <p className="mt-2 text-xs leading-5 text-ink-4">
-              Default tenant for callers that omit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>.
+              Default tenant for callers that omit <span className="font-mono">X-Nebula-Tenant-ID</span>.
               Leave the key single-tenant or send the header when requests should resolve elsewhere.
             </p>
           </div>

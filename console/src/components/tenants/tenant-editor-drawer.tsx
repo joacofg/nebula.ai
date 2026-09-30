@@ -101,7 +101,7 @@ export function TenantEditorDrawer({
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
             {isEditMode ? "Tenant detail" : "New tenant"}
           </div>
-          <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">{heading}</h3>
+          <h3 className="mt-2 text-xl font-semibold text-ink">{heading}</h3>
           <p className="mt-2 text-sm text-ink-4">
             {isEditMode
               ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"} and keep this tenant as the authoritative runtime boundary.`
@@ -134,7 +134,7 @@ export function TenantEditorDrawer({
           </label>
           <input
             id="tenant-id"
-            className="field-input font-(--font-fira-code) text-xs"
+            className="field-input font-mono text-xs"
             value={formState.id}
             readOnly={isEditMode}
             onChange={(event) => setFormState((current) => ({ ...current, id: event.target.value }))}
@@ -182,7 +182,7 @@ export function TenantEditorDrawer({
           </label>
           <textarea
             id="tenant-metadata"
-            className="field-input min-h-40 resize-y font-(--font-fira-code) text-xs"
+            className="field-input min-h-40 resize-y font-mono text-xs"
             value={formState.metadata}
             onChange={(event) => setFormState((current) => ({ ...current, metadata: event.target.value }))}
           />

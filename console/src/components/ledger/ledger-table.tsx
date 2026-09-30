@@ -60,7 +60,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                     className={selected ? "group w-full rounded-xl border border-mark-line bg-surface/90 px-3 py-2 text-left shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-line hover:bg-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark"}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-(--font-fira-code) text-xs text-ink-2">{row.request_id}</span>
+                      <span className="font-mono text-xs text-ink-2">{row.request_id}</span>
                       {selected ? (
                         <span className="rounded-full border border-mark-line bg-mark-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-mark">
                           Current investigation

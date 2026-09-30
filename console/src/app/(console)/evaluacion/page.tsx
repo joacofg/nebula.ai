@@ -131,7 +131,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
       <section className="panel space-y-6 px-6 py-5" aria-labelledby="frontier-heading">
         <div>
           <Eyebrow>Frontera costo / calidad</Eyebrow>
-          <h2 id="frontier-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 id="frontier-heading" className="mt-2 text-2xl font-semibold text-ink">
             Elegí la calidad; el router elige el punto más barato que la cumple
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -206,7 +206,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
       <section className="panel space-y-4 px-6 py-5" aria-labelledby="replay-heading">
         <div>
           <Eyebrow>Replay acelerado</Eyebrow>
-          <h2 id="replay-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 id="replay-heading" className="mt-2 text-2xl font-semibold text-ink">
             {replay.rows.length} prompts del corpus, sin llamar a ningún modelo
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -220,7 +220,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
       <section className="panel space-y-4 px-6 py-5" aria-labelledby="apply-heading">
         <div>
           <Eyebrow>Aplicar</Eyebrow>
-          <h2 id="apply-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+          <h2 id="apply-heading" className="mt-2 text-2xl font-semibold text-ink">
             Usar este objetivo en un tenant
           </h2>
         </div>
@@ -249,7 +249,7 @@ export default function EvaluationPage() {
     <section className="space-y-6">
       <header className="panel px-6 py-5">
         <Eyebrow>Evaluación</Eyebrow>
-        <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
+        <h2 className="mt-2 text-2xl font-semibold text-ink">
           Router aprendido: costo vs calidad
         </h2>
         <p className="mt-2 max-w-3xl text-sm text-ink-3">
@@ -266,7 +266,7 @@ export default function EvaluationPage() {
         <EvaluationBody replay={replayQuery.data} adminKey={adminKey ?? ""} />
       ) : (
         <div className="panel px-6 py-8 text-center">
-          <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">No hay replay del router</h3>
+          <h3 className="text-lg font-semibold text-ink">No hay replay del router</h3>
           <p className="mx-auto mt-2 max-w-xl text-sm text-ink-3">
             El gateway no encontró el archivo de replay. Generalo con{" "}
             <code className="font-mono text-xs">python -m scripts.router.train</code> o apuntá{" "}

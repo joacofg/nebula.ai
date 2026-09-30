@@ -19,17 +19,17 @@ describe("AdminLoginForm", () => {
     vi.restoreAllMocks();
   });
 
-  it("requires the Nebula admin key on blur", async () => {
+  it("requires the admin key on blur", async () => {
     renderWithProviders(<AdminLoginForm />);
 
-    const input = screen.getByLabelText("Nebula admin key");
+    const input = screen.getByLabelText("Clave de admin");
     await userEvent.click(input);
     await userEvent.tab();
 
-    expect(screen.getByRole("alert")).toHaveTextContent("Nebula admin key is required.");
+    expect(screen.getByRole("alert")).toHaveTextContent("Falta la clave de admin.");
   });
 
-  it("signs in and routes to tenants", async () => {
+  it("signs in and lands on the evaluation page", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockResolvedValue({
@@ -40,10 +40,10 @@ describe("AdminLoginForm", () => {
 
     renderWithProviders(<AdminLoginForm />);
 
-    await userEvent.type(screen.getByLabelText("Nebula admin key"), "valid-admin-key");
-    await userEvent.click(screen.getByRole("button", { name: "Enter console" }));
+    await userEvent.type(screen.getByLabelText("Clave de admin"), "valid-admin-key");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    await waitFor(() => expect(replace).toHaveBeenCalledWith("/tenants"));
+    await waitFor(() => expect(replace).toHaveBeenCalledWith("/evaluacion"));
   });
 
   it("renders backend validation errors", async () => {
@@ -57,10 +57,10 @@ describe("AdminLoginForm", () => {
 
     renderWithProviders(<AdminLoginForm reason="session-expired" />);
 
-    expect(screen.getByText(/Enter the Nebula admin key again/)).toBeInTheDocument();
+    expect(screen.getByText("La sesión se cerró. Ingresar la clave de admin otra vez.")).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Nebula admin key"), "bad-key");
-    await userEvent.click(screen.getByRole("button", { name: "Enter console" }));
+    await userEvent.type(screen.getByLabelText("Clave de admin"), "bad-key");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
     await waitFor(() => {
       expect(screen.getByText("Missing or invalid admin API key.")).toBeInTheDocument();

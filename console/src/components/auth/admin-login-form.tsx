@@ -1,15 +1,19 @@
 "use client";
 
-import { LoaderCircle, ShieldCheck } from "lucide-react";
+import { LoaderCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
+import { PageHeader } from "@/components/system/page-header";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const REAUTH_MESSAGES: Record<string, string> = {
-  "session-expired": "Your in-memory admin session is gone. Enter the Nebula admin key again.",
-  signed_out: "You signed out of the operator console.",
+  "session-expired": "La sesión se cerró. Ingresar la clave de admin otra vez.",
+  signed_out: "Sesión cerrada.",
 };
 
 type AdminLoginFormProps = {
@@ -23,12 +27,12 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
   const [touched, setTouched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const validationError = touched && adminKey.trim().length === 0 ? "Nebula admin key is required." : null;
+  const validationError = touched && adminKey.trim().length === 0 ? "Falta la clave de admin." : null;
   const helperMessage = useMemo(() => (reason ? REAUTH_MESSAGES[reason] ?? null : null), [reason]);
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.replace("/tenants");
+      router.replace("/evaluacion");
     }
   }, [isAuthenticated, router]);
 
@@ -42,33 +46,21 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
     try {
       await signIn(adminKey.trim());
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : "Unable to validate the admin key.");
+      setError(nextError instanceof Error ? nextError.message : "No se pudo validar la clave de admin.");
     }
   }
 
   return (
-    <div className="panel w-full max-w-md overflow-hidden">
-      <div className="bg-panel px-6 py-5 text-surface">
-        <div className="inline-flex items-center gap-2 rounded-full border border-surface/10 bg-surface/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-mark-line">
-          <ShieldCheck className="h-3.5 w-3.5" />
-          Nebula control plane
-        </div>
-        <h1 className="mt-4 font-(--font-fira-code) text-2xl font-semibold text-surface">
-          Operator Console
-        </h1>
-        <p className="mt-2 text-sm text-on-panel-2">
-          Paste the deployment admin key to open the focused governance surface for tenants, API keys,
-          and policy management.
-        </p>
-      </div>
+    <div className="w-full max-w-[440px] border border-line-strong bg-surface">
+      <PageHeader title="Nebula" cells={[{ label: "Consola", value: "gateway local" }]} />
 
       {/* method="post" keeps the admin key out of the URL if the form ever
           submits natively (e.g. before hydration), instead of a GET query string. */}
-      <form className="space-y-5 px-6 py-6" method="post" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4 px-6 py-6" method="post" onSubmit={handleSubmit}>
         {helperMessage ? (
-          <div className="rounded-xl border border-mark-line bg-mark-soft px-4 py-3 text-sm text-mark">
-            {helperMessage}
-          </div>
+          <Alert>
+            <AlertDescription>{helperMessage}</AlertDescription>
+          </Alert>
         ) : null}
 
         {error ? (
@@ -78,36 +70,36 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
         ) : null}
 
         <div>
-          <label className="field-label" htmlFor="admin-key">
-            Nebula admin key
-          </label>
-          <input
+          <Label htmlFor="admin-key" className="mb-1.5 font-label text-[13px] font-medium text-ink-2">
+            Clave de admin
+          </Label>
+          <Input
             id="admin-key"
             name="admin-key"
             type="password"
             autoComplete="off"
-            className="field-input"
-            placeholder="nb-admin-live-..."
+            placeholder="nb-admin-…"
             value={adminKey}
             onBlur={() => setTouched(true)}
             onChange={(event) => setAdminKey(event.target.value)}
             aria-invalid={validationError ? "true" : "false"}
+            aria-describedby="admin-key-help"
           />
           {validationError ? (
-            <p className="mt-2 text-sm text-danger" role="alert">
+            <p id="admin-key-help" className="mt-1.5 text-sm text-danger" role="alert">
               {validationError}
             </p>
           ) : (
-            <p className="mt-2 text-sm text-ink-4">
-              Stored in browser memory only. Refreshing or closing the tab clears this session.
+            <p id="admin-key-help" className="mt-1.5 text-sm text-ink-3">
+              Se guarda solo en memoria: al recargar se cierra la sesión.
             </p>
           )}
         </div>
 
-        <button className="action-button w-full gap-2" disabled={isSigningIn} type="submit">
-          {isSigningIn ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-          Enter console
-        </button>
+        <Button type="submit" size="lg" disabled={isSigningIn} className="w-full">
+          {isSigningIn ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : null}
+          {isSigningIn ? "Entrando…" : "Entrar"}
+        </Button>
       </form>
     </div>
   );

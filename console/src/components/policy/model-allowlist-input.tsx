@@ -44,7 +44,7 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
 
       <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <input
-          className="field-input font-(--font-fira-code) text-xs"
+          className="field-input font-mono text-xs"
           placeholder="Add model"
           value={draftModel}
           onChange={(event) => setDraftModel(event.target.value)}

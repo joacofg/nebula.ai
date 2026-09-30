@@ -30,7 +30,7 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
         <DialogTitle className="text-xl font-semibold text-ink">Raw API key</DialogTitle>
         <DialogDescription className="text-sm text-ink-3">This key will not be shown again.</DialogDescription>
 
-        <div className="mt-5 rounded-2xl border border-line bg-ink px-4 py-4 font-(--font-fira-code) text-sm text-mark-soft">
+        <div className="mt-5 rounded-2xl border border-line bg-ink px-4 py-4 font-mono text-sm text-mark-soft">
           {revealedApiKey}
         </div>
 

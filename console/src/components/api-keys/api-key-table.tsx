@@ -62,7 +62,7 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
               return (
                 <tr key={apiKey.id} className={revoked ? "bg-canvas/70 text-ink-4" : "hover:bg-canvas"}>
                   <td className="border-b border-line/70 px-4 py-4 font-semibold text-ink">{apiKey.name}</td>
-                  <td className="border-b border-line/70 px-4 py-4 font-(--font-fira-code) text-xs text-ink-2">
+                  <td className="border-b border-line/70 px-4 py-4 font-mono text-xs text-ink-2">
                     {apiKey.key_prefix}
                   </td>
                   <td className="border-b border-line/70 px-4 py-4 text-ink-3">
