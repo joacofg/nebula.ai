@@ -28,21 +28,21 @@ export function OperatorShell({ children }: OperatorShellProps) {
 
   return (
     <div className="grid min-h-screen lg:grid-cols-[280px_minmax(0,1fr)]">
-      <aside className="bg-panel px-4 py-4 text-slate-100 sm:px-6 lg:px-5 lg:py-6">
+      <aside className="bg-panel px-4 py-4 text-on-panel sm:px-6 lg:px-5 lg:py-6">
         <div className="flex items-start justify-between gap-4 lg:block">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-sky-200">
+            <div className="text-xs font-semibold uppercase tracking-[0.28em] text-mark-line">
               Nebula operator
             </div>
             <h1 className="mt-3 font-(--font-fira-code) text-xl font-semibold">Control Plane</h1>
-            <p className="mt-2 max-w-xs text-sm text-slate-300">
+            <p className="mt-2 max-w-xs text-sm text-on-panel-2">
               Compact governance workflows for the self-hosted runtime.
             </p>
           </div>
 
           <button
             type="button"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-300/60"
+            className="inline-flex items-center gap-2 rounded-xl border border-surface/10 bg-surface/5 px-3 py-2 text-sm font-semibold text-surface transition hover:bg-surface/10 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark-line/60"
             onClick={() => {
               signOut();
               router.push("/?reason=signed_out");
@@ -61,16 +61,16 @@ export function OperatorShell({ children }: OperatorShellProps) {
                 key={href}
                 href={href}
                 className={[
-                  "group inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-300/60",
+                  "group inline-flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark-line/60",
                   active
-                    ? "bg-sky-500/15 text-white ring-1 ring-inset ring-sky-300/30"
-                    : "text-slate-300 hover:bg-white/5 hover:text-white",
+                    ? "bg-mark/15 text-surface ring-1 ring-inset ring-mark-line/30"
+                    : "text-on-panel-2 hover:bg-surface/5 hover:text-surface",
                 ].join(" ")}
               >
                 <span
                   className={[
                     "inline-flex h-9 w-9 items-center justify-center rounded-xl transition",
-                    active ? "bg-sky-400/20 text-sky-200" : "bg-white/5 text-slate-400 group-hover:text-sky-200",
+                    active ? "bg-mark/20 text-mark-line" : "bg-surface/5 text-on-panel-2 group-hover:text-mark-line",
                   ].join(" ")}
                 >
                   <Icon className="h-4 w-4" />

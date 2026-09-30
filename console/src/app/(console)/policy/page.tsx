@@ -81,7 +81,7 @@ export default function PolicyPage() {
   });
 
   if (tenantsQuery.isLoading || optionsQuery.isLoading || policyQuery.isLoading) {
-    return <div className="panel px-6 py-8 text-sm text-slate-500">Loading policy editor...</div>;
+    return <div className="panel px-6 py-8 text-sm text-ink-4">Loading policy editor...</div>;
   }
 
   if (tenantsQuery.isError || optionsQuery.isError || policyQuery.isError) {
@@ -90,20 +90,20 @@ export default function PolicyPage() {
       (optionsQuery.error as Error | undefined)?.message ||
       (policyQuery.error as Error | undefined)?.message ||
       "Unable to load policy editor.";
-    return <div className="panel border-rose-200 bg-rose-50 px-6 py-8 text-sm text-rose-900">{error}</div>;
+    return <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">{error}</div>;
   }
 
   const selectedTenant = tenantsQuery.data?.find((tenant) => tenant.id === selectedTenantId) ?? null;
   if (!selectedTenant || !policyQuery.data || !optionsQuery.data) {
-    return <div className="panel px-6 py-8 text-sm text-slate-500">No tenant policy available.</div>;
+    return <div className="panel px-6 py-8 text-sm text-ink-4">No tenant policy available.</div>;
   }
 
   return (
     <section className="space-y-6">
       <div className="panel flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Policy</div>
-          <p className="mt-2 text-sm text-slate-600">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Policy</div>
+          <p className="mt-2 text-sm text-ink-3">
             Load a tenant policy, compare the current baseline against a candidate draft using recent persisted traffic, and save explicitly only after the preview evidence supports the change.
           </p>
         </div>

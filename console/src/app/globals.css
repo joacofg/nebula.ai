@@ -4,12 +4,35 @@
   --font-sans: var(--font-fira-sans), sans-serif;
   --font-mono: var(--font-fira-code), ui-monospace, monospace;
 
-  --color-panel: #0f172a;
+  /* Design roles (DESIGN.md). Values still match the pre-fase-7 palette. */
   --color-surface: #ffffff;
-  --color-text: #0f172a;
-  --color-accent: #0369a1;
-  --color-accentStrong: #020617;
-  --color-border: #cbd5e1;
+  --color-canvas: #f8fafc;
+  --color-rail: #0f172a;
+  --color-panel: #0f172a;
+  --color-ink: #020617;
+  --color-ink-2: #334155;
+  --color-ink-3: #475569;
+  --color-ink-4: #64748b;
+  --color-line: #cbd5e1;
+  --color-line-strong: #94a3b8;
+  --color-mark: #0369a1;
+  --color-mark-soft: #f0f9ff;
+  --color-mark-line: #bae6fd;
+  --color-danger: #881337;
+  --color-danger-soft: #fff1f2;
+  --color-danger-line: #fecdd3;
+  --color-warn: #78350f;
+  --color-warn-soft: #fffbeb;
+  --color-warn-line: #fde68a;
+  --color-ok: #064e3b;
+  --color-ok-soft: #ecfdf5;
+  --color-ok-line: #a7f3d0;
+  --color-on-panel: #f1f5f9;
+  --color-on-panel-2: #cbd5e1;
+  --color-tier-local: #2a78d6;
+  --color-tier-economy: #eb6834;
+  --color-tier-frontier: #1baf7a;
+  --color-tier-cache: #94a3b8;
 
   --shadow-panel: 0 4px 20px rgba(2, 6, 23, 0.07);
 }
@@ -28,32 +51,32 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--color-line, currentcolor);
   }
 }
 
 @utility panel {
-  @apply rounded-2xl border border-border/80 bg-surface shadow-panel;
+  @apply rounded-2xl border border-line/80 bg-surface shadow-panel;
 }
 
 @utility shell-card {
-  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm;
+  @apply rounded-2xl border border-surface/10 bg-surface/5 backdrop-blur-sm;
 }
 
 @utility field-label {
-  @apply mb-2 block text-sm font-semibold text-slate-800;
+  @apply mb-2 block text-sm font-semibold text-ink-2;
 }
 
 @utility field-input {
-  @apply w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-slate-950 outline-hidden transition focus:border-accent focus:ring-2 focus:ring-accent/20;
+  @apply w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink outline-hidden transition focus:border-mark focus:ring-2 focus:ring-mark/20;
 }
 
 @utility action-button {
-  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-hidden focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-mark px-4 py-2.5 text-sm font-semibold text-surface transition hover:bg-mark focus:outline-hidden focus:ring-2 focus:ring-mark/30 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 @utility secondary-button {
-  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60;
+  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink-4 hover:bg-canvas focus:outline-hidden focus:ring-2 focus:ring-line disabled:cursor-not-allowed disabled:opacity-60;
 }
 
 @layer base {
@@ -80,7 +103,7 @@
         rgba(248, 250, 252, 0.98) 0%,
         rgba(226, 232, 240, 0.9) 100%
       );
-    color: var(--color-text);
+    color: var(--color-ink);
     font-family: var(--font-fira-sans), sans-serif;
   }
 

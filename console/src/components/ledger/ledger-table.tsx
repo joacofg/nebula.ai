@@ -17,17 +17,17 @@ function formatLatency(value: number | null) {
 
 export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }: LedgerTableProps) {
   if (isLoading) {
-    return <div className="panel px-6 py-5 text-sm text-slate-500">Loading usage ledger...</div>;
+    return <div className="panel px-6 py-5 text-sm text-ink-4">Loading usage ledger...</div>;
   }
 
   if (rows.length === 0) {
-    return <div className="panel px-6 py-5 text-sm text-slate-500">No usage ledger rows match these filters.</div>;
+    return <div className="panel px-6 py-5 text-sm text-ink-4">No usage ledger rows match these filters.</div>;
   }
 
   return (
     <div className="panel overflow-hidden">
       <table className="min-w-full border-collapse text-left text-sm">
-        <thead className="bg-slate-50 text-slate-600">
+        <thead className="bg-canvas text-ink-3">
           <tr>
             <th className="px-4 py-3 font-semibold">Timestamp</th>
             <th className="px-4 py-3 font-semibold">Request ID</th>
@@ -48,7 +48,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
               <tr
                 key={row.request_id}
                 aria-selected={selected}
-                className={selected ? "bg-sky-50/70 ring-1 ring-inset ring-sky-200" : "hover:bg-slate-50"}
+                className={selected ? "bg-mark-soft/70 ring-1 ring-inset ring-mark-line" : "hover:bg-canvas"}
               >
                 <td className="px-4 py-3 align-top">{new Date(row.timestamp).toLocaleString()}</td>
                 <td className="px-4 py-3 align-top">
@@ -57,21 +57,21 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                     onClick={() => onSelectRow(row.request_id)}
                     aria-pressed={selected}
                     aria-label={selectionLabel}
-                    className={selected ? "group w-full rounded-xl border border-sky-200 bg-white/90 px-3 py-2 text-left shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500"}
+                    className={selected ? "group w-full rounded-xl border border-mark-line bg-surface/90 px-3 py-2 text-left shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-line hover:bg-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark"}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-(--font-fira-code) text-xs text-slate-700">{row.request_id}</span>
+                      <span className="font-(--font-fira-code) text-xs text-ink-2">{row.request_id}</span>
                       {selected ? (
-                        <span className="rounded-full border border-sky-200 bg-sky-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
+                        <span className="rounded-full border border-mark-line bg-mark-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-mark">
                           Current investigation
                         </span>
                       ) : (
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500 transition group-hover:text-slate-600">
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4 transition group-hover:text-ink-3">
                           Select request
                         </span>
                       )}
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-ink-4">
                       {selected
                         ? "Primary request for the detail view below."
                         : "Promote this request into the primary detail view."}

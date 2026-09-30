@@ -139,14 +139,14 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
           <SkipForward className="h-4 w-4" aria-hidden />
           Paso
         </button>
-        <div role="group" aria-label="Velocidad" className="inline-flex rounded-xl border border-border bg-white p-1">
+        <div role="group" aria-label="Velocidad" className="inline-flex rounded-xl border border-line bg-surface p-1">
           {SPEEDS.map((s) => (
             <button
               key={s}
               type="button"
               aria-pressed={speed === s}
-              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30 ${
-                speed === s ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
+              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-mark/30 ${
+                speed === s ? "bg-ink text-surface" : "text-ink-2 hover:bg-canvas"
               }`}
               onClick={() => setSpeed(s)}
             >
@@ -154,34 +154,34 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
             </button>
           ))}
         </div>
-        <span className="font-mono text-sm tabular-nums text-slate-600">
+        <span className="font-mono text-sm tabular-nums text-ink-3">
           {processed} / {total} prompts
         </span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div role="group" aria-label="Costo acumulado" className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Costo acumulado</div>
-          <div className="mt-1 text-xl font-semibold text-slate-950">{formatPer1000(avgCost)}</div>
-          <div className="text-xs text-slate-500">USD / 1000 prompts, promedio de lo ruteado</div>
+        <div role="group" aria-label="Costo acumulado" className="rounded-xl border border-line bg-canvas px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">Costo acumulado</div>
+          <div className="mt-1 text-xl font-semibold text-ink">{formatPer1000(avgCost)}</div>
+          <div className="text-xs text-ink-4">USD / 1000 prompts, promedio de lo ruteado</div>
         </div>
-        <div role="group" aria-label="Calidad acumulada" className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Calidad acumulada</div>
-          <div className="mt-1 text-xl font-semibold text-slate-950">{formatQuality(quality)}</div>
-          <div className="text-xs text-slate-500">share de respuestas suficientes según la etiqueta</div>
+        <div role="group" aria-label="Calidad acumulada" className="rounded-xl border border-line bg-canvas px-4 py-3">
+          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">Calidad acumulada</div>
+          <div className="mt-1 text-xl font-semibold text-ink">{formatQuality(quality)}</div>
+          <div className="text-xs text-ink-4">share de respuestas suficientes según la etiqueta</div>
         </div>
       </div>
 
       {state.decisions.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border px-4 py-6 text-center text-sm text-slate-500">
+        <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm text-ink-4">
           El replay recorre los prompts del corpus en un orden fijo. Reproducí o avanzá un paso.
         </p>
       ) : (
-        <ol className="divide-y divide-slate-100 rounded-xl border border-border" aria-label="Últimos prompts ruteados">
+        <ol className="divide-y divide-canvas rounded-xl border border-line" aria-label="Últimos prompts ruteados">
           {state.decisions.map((d) => (
             <li key={d.index} className="flex items-start gap-3 px-4 py-2.5 text-sm">
-              <span className="mt-0.5 w-12 shrink-0 font-mono text-xs tabular-nums text-slate-400">#{d.index + 1}</span>
-              <span className="inline-flex w-24 shrink-0 items-center gap-1.5 font-mono text-xs font-semibold text-slate-800">
+              <span className="mt-0.5 w-12 shrink-0 font-mono text-xs tabular-nums text-ink-4">#{d.index + 1}</span>
+              <span className="inline-flex w-24 shrink-0 items-center gap-1.5 font-mono text-xs font-semibold text-ink-2">
                 <span
                   aria-hidden
                   className="inline-block h-2.5 w-2.5 rounded-full"
@@ -189,14 +189,14 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
                 />
                 {d.tier}
               </span>
-              <span className="min-w-0 flex-1 truncate text-slate-700" title={d.row.text}>
-                <span className="mr-2 font-mono text-xs uppercase text-slate-400">{d.row.lang}</span>
+              <span className="min-w-0 flex-1 truncate text-ink-2" title={d.row.text}>
+                <span className="mr-2 font-mono text-xs uppercase text-ink-4">{d.row.lang}</span>
                 {d.row.text}
               </span>
               {d.ok ? (
-                <Check className="h-4 w-4 shrink-0 text-emerald-700" aria-label="suficiente" role="img" />
+                <Check className="h-4 w-4 shrink-0 text-ok" aria-label="suficiente" role="img" />
               ) : (
-                <X className="h-4 w-4 shrink-0 text-rose-700" aria-label="insuficiente" role="img" />
+                <X className="h-4 w-4 shrink-0 text-danger" aria-label="insuficiente" role="img" />
               )}
             </li>
           ))}

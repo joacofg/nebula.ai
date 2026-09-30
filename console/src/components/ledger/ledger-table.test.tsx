@@ -67,7 +67,7 @@ describe("ledger-table", () => {
     );
 
     expect(screen.getByText("Request ID")).toBeInTheDocument();
-    expect(screen.getByRole("row", { selected: true })).toHaveClass("bg-sky-50/70");
+    expect(screen.getByRole("row", { selected: true })).toHaveClass("bg-mark-soft/70");
     expect(screen.getByRole("button", { name: /current investigation: req-001/i })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText("Current investigation")).toBeInTheDocument();
     expect(screen.getByText("Primary request for the detail view below.")).toBeInTheDocument();

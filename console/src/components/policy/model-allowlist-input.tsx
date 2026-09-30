@@ -33,7 +33,7 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
           <button
             key={model}
             type="button"
-            className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-3 py-1.5 text-xs font-semibold text-sky-100"
+            className="inline-flex items-center gap-2 rounded-full bg-ink px-3 py-1.5 text-xs font-semibold text-mark-soft"
             onClick={() => removeModel(model)}
           >
             {model}
@@ -55,7 +55,7 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
         </button>
       </div>
 
-      <div className="grid gap-2 rounded-2xl border border-border bg-slate-50 p-3 sm:grid-cols-2">
+      <div className="grid gap-2 rounded-2xl border border-line bg-canvas p-3 sm:grid-cols-2">
         {knownModels.map((model) => {
           const selected = value.includes(model);
           return (
@@ -65,8 +65,8 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
               className={[
                 "rounded-xl border px-3 py-2 text-left text-sm transition",
                 selected
-                  ? "border-sky-300 bg-sky-50 text-sky-900"
-                  : "border-white bg-white text-slate-700 hover:border-slate-300",
+                  ? "border-mark-line bg-mark-soft text-mark"
+                  : "border-surface bg-surface text-ink-2 hover:border-line",
               ].join(" ")}
               onClick={() => (selected ? removeModel(model) : addModel(model))}
             >

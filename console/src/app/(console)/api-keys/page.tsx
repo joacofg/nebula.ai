@@ -84,17 +84,17 @@ export default function ApiKeysPage() {
     <section className="space-y-6">
       <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">API Keys</div>
-          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-slate-950">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">API Keys</div>
+          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
             Client credentials and tenant resolution
           </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
             Operators issue client API keys backed by <span className="font-(--font-fira-code)">{ADMIN_API_KEYS_ENDPOINT}</span>.
-            {" "}<span className="font-medium text-slate-700">allowed_tenant_ids</span> defines which tenants a key may use,
-            while <span className="font-medium text-slate-700">tenant_id</span> sets the default tenant when public callers omit
+            {" "}<span className="font-medium text-ink-2">allowed_tenant_ids</span> defines which tenants a key may use,
+            while <span className="font-medium text-ink-2">tenant_id</span> sets the default tenant when public callers omit
             <span className="font-(--font-fira-code)"> X-Nebula-Tenant-ID</span>.
           </p>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
             If a key authorizes exactly one tenant, Nebula can infer it. If a key intentionally authorizes multiple
             tenants without a default tenant, public callers must send <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>{" "}
             on each request.
@@ -108,8 +108,8 @@ export default function ApiKeysPage() {
       </header>
 
       <div className="panel flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <KeyRound className="h-4 w-4 text-slate-400" />
+        <div className="inline-flex items-center gap-2 text-sm text-ink-2">
+          <KeyRound className="h-4 w-4 text-ink-4" />
           Keep revoked records visible so operators can audit historical scope and issuance decisions.
         </div>
 
@@ -128,9 +128,9 @@ export default function ApiKeysPage() {
       </div>
 
       {apiKeysQuery.isLoading ? (
-        <div className="panel px-6 py-8 text-sm text-slate-500">Loading API key inventory...</div>
+        <div className="panel px-6 py-8 text-sm text-ink-4">Loading API key inventory...</div>
       ) : apiKeysQuery.isError ? (
-        <div className="panel border-rose-200 bg-rose-50 px-6 py-8 text-sm text-rose-900">
+        <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">
           {apiKeysQuery.error instanceof Error ? apiKeysQuery.error.message : "Unable to load API keys."}
         </div>
       ) : (

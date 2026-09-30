@@ -44,14 +44,14 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
     <div className="panel overflow-hidden">
       <div className="overflow-x-auto">
         <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="bg-slate-50 text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">
+          <thead className="bg-canvas text-xs font-semibold uppercase tracking-[0.22em] text-ink-4">
             <tr>
-              <th className="border-b border-border px-4 py-3">Name</th>
-              <th className="border-b border-border px-4 py-3">Key Prefix</th>
-              <th className="border-b border-border px-4 py-3">Tenant Scope</th>
-              <th className="border-b border-border px-4 py-3">Status</th>
-              <th className="border-b border-border px-4 py-3">Created</th>
-              <th className="border-b border-border px-4 py-3 text-right">Actions</th>
+              <th className="border-b border-line px-4 py-3">Name</th>
+              <th className="border-b border-line px-4 py-3">Key Prefix</th>
+              <th className="border-b border-line px-4 py-3">Tenant Scope</th>
+              <th className="border-b border-line px-4 py-3">Status</th>
+              <th className="border-b border-line px-4 py-3">Created</th>
+              <th className="border-b border-line px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -60,31 +60,31 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
               const scope = getScopeSummary(apiKey);
 
               return (
-                <tr key={apiKey.id} className={revoked ? "bg-slate-50/70 text-slate-500" : "hover:bg-slate-50"}>
-                  <td className="border-b border-border/70 px-4 py-4 font-semibold text-slate-950">{apiKey.name}</td>
-                  <td className="border-b border-border/70 px-4 py-4 font-(--font-fira-code) text-xs text-slate-700">
+                <tr key={apiKey.id} className={revoked ? "bg-canvas/70 text-ink-4" : "hover:bg-canvas"}>
+                  <td className="border-b border-line/70 px-4 py-4 font-semibold text-ink">{apiKey.name}</td>
+                  <td className="border-b border-line/70 px-4 py-4 font-(--font-fira-code) text-xs text-ink-2">
                     {apiKey.key_prefix}
                   </td>
-                  <td className="border-b border-border/70 px-4 py-4 text-slate-600">
+                  <td className="border-b border-line/70 px-4 py-4 text-ink-3">
                     <div className="space-y-1">
-                      <div className="font-medium text-slate-900">{scope.title}</div>
-                      <div className="max-w-md text-xs leading-5 text-slate-500">{scope.detail}</div>
+                      <div className="font-medium text-ink">{scope.title}</div>
+                      <div className="max-w-md text-xs leading-5 text-ink-4">{scope.detail}</div>
                     </div>
                   </td>
-                  <td className="border-b border-border/70 px-4 py-4">
+                  <td className="border-b border-line/70 px-4 py-4">
                     <span
                       className={[
                         "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                        revoked ? "bg-slate-100 text-slate-600" : "bg-emerald-50 text-emerald-700",
+                        revoked ? "bg-canvas text-ink-3" : "bg-ok-soft text-ok",
                       ].join(" ")}
                     >
                       {revoked ? "Revoked" : "Active"}
                     </span>
                   </td>
-                  <td className="border-b border-border/70 px-4 py-4 text-slate-600">
+                  <td className="border-b border-line/70 px-4 py-4 text-ink-3">
                     {dateFormatter.format(new Date(apiKey.created_at))}
                   </td>
-                  <td className="border-b border-border/70 px-4 py-4 text-right">
+                  <td className="border-b border-line/70 px-4 py-4 text-right">
                     <button
                       type="button"
                       className="secondary-button px-3 py-2 text-xs"

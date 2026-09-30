@@ -46,7 +46,7 @@ function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unkn
 
 export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCardsProps) {
   if (isLoading) {
-    return <div className="panel px-6 py-5 text-sm text-slate-500">Loading dependency health...</div>;
+    return <div className="panel px-6 py-5 text-sm text-ink-4">Loading dependency health...</div>;
   }
 
   const entries = Object.entries(dependencies);
@@ -57,7 +57,7 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
   return (
     <section className="space-y-4">
       {hasOptionalDegradation ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-4 text-sm text-amber-900">
+        <div className="rounded-xl border border-warn-line bg-warn-soft px-6 py-4 text-sm text-warn">
           Optional dependency degradation does not block gateway readiness.
         </div>
       ) : null}
@@ -68,17 +68,17 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
 
           return (
             <article key={name} className="panel px-6 py-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">{name}</div>
-              <div className="mt-3 text-lg font-semibold text-slate-950">
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">{name}</div>
+              <div className="mt-3 text-lg font-semibold text-ink">
                 {formatHealthLabel(dependency.status)}
               </div>
-              <p className="mt-2 text-sm text-slate-600">{dependency.detail}</p>
+              <p className="mt-2 text-sm text-ink-3">{dependency.detail}</p>
               {metrics.length > 0 ? (
                 <dl className="mt-4 grid gap-3">
                   {metrics.map(([label, value]) => (
-                    <div key={`${name}-${label}`} className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900 wrap-anywhere">
+                    <div key={`${name}-${label}`} className="rounded-xl border border-line bg-canvas px-4 py-3">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
+                      <dd className="mt-2 text-sm font-medium text-ink wrap-anywhere">
                         {typeof value === "string" ? formatHealthLabel(value) : formatHealthValue(value)}
                       </dd>
                     </div>

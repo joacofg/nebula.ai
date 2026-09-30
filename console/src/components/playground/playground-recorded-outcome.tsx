@@ -23,13 +23,13 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
   return (
     <section className="panel space-y-4 px-6 py-5">
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
           Recorded outcome
         </div>
-        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
           Recorded outcome
         </h3>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-ink-3">
           Persisted ledger evidence for the same request after Nebula records the final route, provider,
           fallback, and policy outcome.
         </p>
@@ -54,9 +54,9 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
 
 function OutcomeRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-      <dd className="mt-2 text-sm text-slate-900 wrap-anywhere">{value}</dd>
+    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
+      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
+      <dd className="mt-2 text-sm text-ink wrap-anywhere">{value}</dd>
     </div>
   );
 }

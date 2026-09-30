@@ -45,18 +45,18 @@ export function PlaygroundForm({
       }}
     >
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Run prompt</div>
-        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Run prompt</div>
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
           Operator playground request
         </h3>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-ink-3">
           Choose the tenant context on purpose, set the target model, and send one admin-session prompt through the
           non-streaming playground path.
         </p>
       </div>
 
       {sessionMissing ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <div className="rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
           Operator session missing.
         </div>
       ) : null}
@@ -101,7 +101,7 @@ export function PlaygroundForm({
       </label>
 
       <div className="flex items-center justify-between gap-4">
-        <p className="max-w-xl text-sm text-slate-500">
+        <p className="max-w-xl text-sm text-ink-4">
           The first response stays immediate and only shows completion content plus the request id; recorded ledger
           evidence appears after Nebula persists the outcome for that same request.
         </p>

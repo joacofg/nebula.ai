@@ -80,20 +80,20 @@ export function CreateApiKeyDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-xs">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/35 px-4 py-6 backdrop-blur-xs">
       <div role="dialog" aria-modal="true" aria-label="Create API key" className="panel w-full max-w-2xl px-6 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">New API key</div>
-            <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">New API key</div>
+            <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
               Issue client credentials with tenant scope
             </h3>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-ink-4">
               Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
               {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
               key may access.
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-ink-4">
               Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
               when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
               then to the only allowed tenant. If you authorize multiple tenants without a default
@@ -107,7 +107,7 @@ export function CreateApiKeyDialog({
 
         <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
           {error ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+            <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
               {error}
             </div>
           ) : null}
@@ -140,7 +140,7 @@ export function CreateApiKeyDialog({
                 </option>
               ))}
             </select>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
+            <p className="mt-2 text-xs leading-5 text-ink-4">
               Default tenant for callers that omit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>.
               Leave the key single-tenant or send the header when requests should resolve elsewhere.
             </p>
@@ -148,13 +148,13 @@ export function CreateApiKeyDialog({
 
           <div>
             <span className="field-label">allowed_tenant_ids</span>
-            <p className="mt-2 text-xs leading-5 text-slate-500">
+            <p className="mt-2 text-xs leading-5 text-ink-4">
               Every tenant this key may access. A single allowed tenant is inferred automatically; multiple
               allowed tenants are an intentional multi-tenant authorization boundary.
             </p>
-            <div className="mt-3 grid gap-2 rounded-2xl border border-border bg-slate-50 p-3 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 rounded-2xl border border-line bg-canvas p-3 sm:grid-cols-2">
               {tenants.map((tenant) => (
-                <label key={tenant.id} className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-800">
+                <label key={tenant.id} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2 text-sm text-ink-2">
                   <input
                     type="checkbox"
                     checked={allowedTenantIds.includes(tenant.id)}

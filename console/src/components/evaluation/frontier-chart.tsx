@@ -8,11 +8,11 @@ import type { CostQuality, ReplayBaselines, ReplayOperatingPoint } from "@/lib/r
 // Chart ink: the console accent for the router, slate for the random baseline
 // and the non-tier references. Validated with the dataviz script (accent vs
 // the tier orange: CVD ΔE 20.4, contrast ≥ 3:1 on white).
-const ROUTER_COLOR = "#0369a1";
-const RANDOM_COLOR = "#94a3b8";
-const GRID_COLOR = "#e2e8f0";
-const AXIS_COLOR = "#cbd5e1";
-const REFERENCE_COLOR = "#475569";
+const ROUTER_COLOR = "var(--color-mark)";
+const RANDOM_COLOR = "var(--color-line-strong)";
+const GRID_COLOR = "var(--color-line)";
+const AXIS_COLOR = "var(--color-line)";
+const REFERENCE_COLOR = "var(--color-ink-3)";
 
 const WIDTH = 640;
 const HEIGHT = 340;
@@ -83,15 +83,15 @@ function MarkerShape({ marker, x, y }: { marker: Marker; x: number; y: number })
       <polygon
         points={`${x},${y - s} ${x + s},${y} ${x},${y + s} ${x - s},${y}`}
         fill={marker.color}
-        stroke="#ffffff"
+        stroke="var(--color-surface)"
         strokeWidth={2}
       />
     );
   }
   if (marker.shape === "ring-3") {
-    return <circle cx={x} cy={y} r={5} fill="#ffffff" stroke={marker.color} strokeWidth={2.5} />;
+    return <circle cx={x} cy={y} r={5} fill="var(--color-surface)" stroke={marker.color} strokeWidth={2.5} />;
   }
-  return <circle cx={x} cy={y} r={5} fill={marker.color} stroke="#ffffff" strokeWidth={2} />;
+  return <circle cx={x} cy={y} r={5} fill={marker.color} stroke="var(--color-surface)" strokeWidth={2} />;
 }
 
 export function FrontierChart({ front, random, baselines, current }: FrontierChartProps) {
@@ -162,7 +162,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
 
   return (
     <figure className="space-y-3">
-      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600" aria-hidden>
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-ink-3" aria-hidden>
         <span className="inline-flex items-center gap-2">
           <span className="inline-block h-0.5 w-5 rounded-sm" style={{ backgroundColor: ROUTER_COLOR }} />
           Router v1 (puntos de operación)
@@ -174,7 +174,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
         <span className="inline-flex items-center gap-2">
           <span
             className="inline-block h-3 w-3 rounded-full border-2"
-            style={{ borderColor: ROUTER_COLOR, backgroundColor: "#ffffff" }}
+            style={{ borderColor: ROUTER_COLOR, backgroundColor: "var(--color-surface)" }}
           />
           Punto actual
         </span>
@@ -192,7 +192,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
           {ys.ticks.map((t) => (
             <g key={`y-${t}`}>
               <line x1={MARGIN.left} x2={WIDTH - MARGIN.right} y1={y(t)} y2={y(t)} stroke={GRID_COLOR} strokeWidth={1} />
-              <text x={MARGIN.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-slate-500 text-[11px] tabular-nums">
+              <text x={MARGIN.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-4 text-[11px] tabular-nums">
                 {t.toFixed(2)}
               </text>
             </g>
@@ -202,7 +202,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
             return (
               <g key={`x-${t}`}>
                 <line x1={px} x2={px} y1={HEIGHT - MARGIN.bottom} y2={HEIGHT - MARGIN.bottom + 4} stroke={AXIS_COLOR} strokeWidth={1} />
-                <text x={px} y={HEIGHT - MARGIN.bottom + 18} textAnchor="middle" className="fill-slate-500 text-[11px] tabular-nums">
+                <text x={px} y={HEIGHT - MARGIN.bottom + 18} textAnchor="middle" className="fill-ink-4 text-[11px] tabular-nums">
                   {t.toFixed(t < 1 && t > 0 ? 2 : 1)}
                 </text>
               </g>
@@ -216,13 +216,13 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
             stroke={AXIS_COLOR}
             strokeWidth={1}
           />
-          <text x={MARGIN.left + PLOT_W / 2} y={HEIGHT - 10} textAnchor="middle" className="fill-slate-600 text-[12px]">
+          <text x={MARGIN.left + PLOT_W / 2} y={HEIGHT - 10} textAnchor="middle" className="fill-ink-3 text-[12px]">
             Costo (USD / 1000 prompts)
           </text>
           <text
             transform={`translate(16 ${MARGIN.top + PLOT_H / 2}) rotate(-90)`}
             textAnchor="middle"
-            className="fill-slate-600 text-[12px]"
+            className="fill-ink-3 text-[12px]"
           >
             Calidad
           </text>
@@ -280,7 +280,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
                 tabIndex={0}
                 role="img"
                 aria-label={`${m.label}: ${lines[0]}`}
-                className="outline-hidden [&>circle:first-child]:focus-visible:stroke-slate-400"
+                className="outline-hidden [&>circle:first-child]:focus-visible:stroke-ink-4"
                 onPointerEnter={() => showPoint(mx, my, m.label, lines)}
                 onFocus={() => showPoint(mx, my, m.label, lines)}
                 onBlur={() => setHover(null)}
@@ -291,7 +291,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
                   x={mx + m.labelDx}
                   y={my + m.labelDy}
                   textAnchor={m.anchor}
-                  className="pointer-events-none fill-slate-700 text-[11px] font-medium"
+                  className="pointer-events-none fill-ink-2 text-[11px] font-medium"
                 >
                   {m.label}
                 </text>
@@ -301,49 +301,49 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
 
           <g data-testid="current-point" pointerEvents="none">
             <circle cx={x(current.cost)} cy={y(current.quality)} r={9} fill={ROUTER_COLOR} fillOpacity={0.15} />
-            <circle cx={x(current.cost)} cy={y(current.quality)} r={6} fill="#ffffff" stroke={ROUTER_COLOR} strokeWidth={3} />
+            <circle cx={x(current.cost)} cy={y(current.quality)} r={6} fill="var(--color-surface)" stroke={ROUTER_COLOR} strokeWidth={3} />
           </g>
         </svg>
 
         {hover ? (
           <div
             role="tooltip"
-            className="pointer-events-none absolute z-10 min-w-44 -translate-x-1/2 -translate-y-full rounded-lg border border-border bg-white px-3 py-2 text-xs shadow-panel"
+            className="pointer-events-none absolute z-10 min-w-44 -translate-x-1/2 -translate-y-full rounded-lg border border-line bg-surface px-3 py-2 text-xs shadow-panel"
             style={{ left: `${(hover.x / WIDTH) * 100}%`, top: `calc(${(hover.y / HEIGHT) * 100}% - 12px)` }}
           >
-            <div className="font-semibold text-slate-950">{hover.lines[0]}</div>
+            <div className="font-semibold text-ink">{hover.lines[0]}</div>
             {hover.lines.slice(1).map((line) => (
-              <div key={line} className="text-slate-600">
+              <div key={line} className="text-ink-3">
                 {line}
               </div>
             ))}
-            <div className="mt-1 text-slate-500">{hover.title}</div>
+            <div className="mt-1 text-ink-4">{hover.title}</div>
           </div>
         ) : null}
       </div>
 
-      <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+      <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs text-ink-4">
         <span>
           Cada vértice de la curva azul es un par de umbrales (τ_local, τ_economy): probabilidades fuera de fold,
           umbrales elegidos sobre el mismo corpus (la cifra fuera de muestra es la anidada). Más arriba y a la izquierda
           es mejor.
         </span>
-        <button type="button" className="font-semibold text-sky-700 hover:underline" onClick={() => setShowTable((v) => !v)}>
+        <button type="button" className="font-semibold text-mark hover:underline" onClick={() => setShowTable((v) => !v)}>
           {showTable ? "Ocultar tabla" : "Ver tabla"}
         </button>
       </figcaption>
 
       {showTable ? (
-        <div className="max-h-72 overflow-auto rounded-xl border border-border">
+        <div className="max-h-72 overflow-auto rounded-xl border border-line">
           <table aria-label="Valores del gráfico" className="w-full text-left text-xs">
-            <thead className="sticky top-0 bg-slate-50 text-slate-600">
+            <thead className="sticky top-0 bg-canvas text-ink-3">
               <tr>
                 <th className="px-3 py-2 font-semibold">Política</th>
                 <th className="px-3 py-2 text-right font-semibold">USD / 1000</th>
                 <th className="px-3 py-2 text-right font-semibold">Calidad</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 font-mono tabular-nums text-slate-800">
+            <tbody className="divide-y divide-canvas font-mono tabular-nums text-ink-2">
               {markers.map((m) => (
                 <tr key={m.id}>
                   <td className="px-3 py-1.5 font-sans">{m.label}</td>

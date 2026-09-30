@@ -28,19 +28,19 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-4 py-6 backdrop-blur-xs">
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/45 px-4 py-6 backdrop-blur-xs">
       <div role="dialog" aria-modal="true" aria-label="Raw API key" className="panel w-full max-w-xl px-6 py-6">
-        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-sky-50 text-sky-700">
+        <div className="inline-flex h-11 w-11 items-center justify-center rounded-2xl bg-mark-soft text-mark">
           <KeyRound className="h-5 w-5" />
         </div>
-        <h3 className="mt-4 font-(--font-fira-code) text-xl font-semibold text-slate-950">
+        <h3 className="mt-4 font-(--font-fira-code) text-xl font-semibold text-ink">
           Raw API key
         </h3>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-ink-3">
           This key will not be shown again.
         </p>
 
-        <div className="mt-5 rounded-2xl border border-border bg-slate-950 px-4 py-4 font-(--font-fira-code) text-sm text-sky-100">
+        <div className="mt-5 rounded-2xl border border-line bg-ink px-4 py-4 font-(--font-fira-code) text-sm text-mark-soft">
           {revealedApiKey}
         </div>
 

@@ -47,15 +47,15 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
 
   return (
     <div className="panel w-full max-w-md overflow-hidden">
-      <div className="bg-panel px-6 py-5 text-white">
-        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-100">
+      <div className="bg-panel px-6 py-5 text-surface">
+        <div className="inline-flex items-center gap-2 rounded-full border border-surface/10 bg-surface/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-mark-line">
           <ShieldCheck className="h-3.5 w-3.5" />
           Nebula control plane
         </div>
-        <h1 className="mt-4 font-(--font-fira-code) text-2xl font-semibold text-white">
+        <h1 className="mt-4 font-(--font-fira-code) text-2xl font-semibold text-surface">
           Operator Console
         </h1>
-        <p className="mt-2 text-sm text-slate-300">
+        <p className="mt-2 text-sm text-on-panel-2">
           Paste the deployment admin key to open the focused governance surface for tenants, API keys,
           and policy management.
         </p>
@@ -65,13 +65,13 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
           submits natively (e.g. before hydration), instead of a GET query string. */}
       <form className="space-y-5 px-6 py-6" method="post" onSubmit={handleSubmit}>
         {helperMessage ? (
-          <div className="rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <div className="rounded-xl border border-mark-line bg-mark-soft px-4 py-3 text-sm text-mark">
             {helperMessage}
           </div>
         ) : null}
 
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
             {error}
           </div>
         ) : null}
@@ -93,11 +93,11 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
             aria-invalid={validationError ? "true" : "false"}
           />
           {validationError ? (
-            <p className="mt-2 text-sm text-rose-700" role="alert">
+            <p className="mt-2 text-sm text-danger" role="alert">
               {validationError}
             </p>
           ) : (
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-ink-4">
               Stored in browser memory only. Refreshing or closing the tab clears this session.
             </p>
           )}

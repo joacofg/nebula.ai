@@ -97,16 +97,16 @@ export function TenantEditorDrawer({
     <aside className="panel h-full min-h-128 px-5 py-5">
       <div className="flex items-start justify-between gap-3">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
             {isEditMode ? "Tenant detail" : "New tenant"}
           </div>
-          <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">{heading}</h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">{heading}</h3>
+          <p className="mt-2 text-sm text-ink-4">
             {isEditMode
               ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"} and keep this tenant as the authoritative runtime boundary.`
               : "Create a real tenant boundary for policy and attribution, then issue API keys separately for the callers that should use it."}
           </p>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-ink-4">
             Use metadata for optional operator notes, ownership hints, or runbook context only. Nebula does not enforce app or workload schema from this field.
           </p>
         </div>
@@ -122,7 +122,7 @@ export function TenantEditorDrawer({
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         {error ? (
-          <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
             {error}
           </div>
         ) : null}
@@ -166,7 +166,7 @@ export function TenantEditorDrawer({
           />
         </div>
 
-        <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
+        <label className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-3 text-sm font-medium text-ink-2">
           <input
             type="checkbox"
             checked={formState.active}

@@ -59,17 +59,17 @@ export default function PlaygroundPage() {
       <header className="panel px-6 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Playground</div>
-            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-slate-950">
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Playground</div>
+            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
               Operator corroboration sandbox
             </h2>
-            <p className="mt-2 max-w-2xl text-sm text-slate-600">
+            <p className="mt-2 max-w-2xl text-sm text-ink-3">
               Use the active admin session to run a non-streaming corroboration request for the tenant you select here.
               This checks the live Nebula routing path without acting as the public <code>POST /v1/chat/completions</code>{" "}
               integration boundary.
             </p>
           </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+          <div className="inline-flex items-center gap-2 rounded-full bg-mark-soft px-3 py-1 text-xs font-semibold text-mark">
             <FlaskConical className="h-3.5 w-3.5" />
             Non-streaming
           </div>
@@ -79,12 +79,12 @@ export default function PlaygroundPage() {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
         <div className="space-y-4">
           {tenantsQuery.isLoading ? (
-            <div className="panel flex items-center gap-3 px-6 py-5 text-sm text-slate-500">
+            <div className="panel flex items-center gap-3 px-6 py-5 text-sm text-ink-4">
               <LoaderCircle className="h-4 w-4 animate-spin" />
               Loading tenant inventory...
             </div>
           ) : tenantsQuery.isError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+            <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
               {tenantsQuery.error instanceof Error ? tenantsQuery.error.message : "Unable to load tenants."}
             </div>
           ) : (
@@ -143,7 +143,7 @@ function PlaygroundResponseCard({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+      <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
         {error.message}
       </div>
     );
@@ -151,7 +151,7 @@ function PlaygroundResponseCard({
 
   if (!result) {
     return (
-      <div className="panel px-6 py-5 text-sm text-slate-500">
+      <div className="panel px-6 py-5 text-sm text-ink-4">
         Submit a prompt to see the assistant response, routing evidence, and request correlation id.
       </div>
     );
@@ -160,7 +160,7 @@ function PlaygroundResponseCard({
   return (
     <div className="space-y-4">
       {result.errorDetail ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+        <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
           {result.errorDetail}
         </div>
       ) : null}
@@ -179,9 +179,9 @@ function PlaygroundResponseCard({
         policyOutcome={result.policyOutcome}
       />
       {recordedOutcomeQuery.isLoading ? (
-        <div className="panel px-6 py-5 text-sm text-slate-500">Loading recorded outcome...</div>
+        <div className="panel px-6 py-5 text-sm text-ink-4">Loading recorded outcome...</div>
       ) : recordedOutcomeQuery.isError ? (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 px-6 py-5 text-sm text-amber-900">
+        <div className="rounded-xl border border-warn-line bg-warn-soft px-6 py-5 text-sm text-warn">
           {recordedOutcomeQuery.error instanceof Error
             ? recordedOutcomeQuery.error.message
             : "Unable to load recorded outcome."}
