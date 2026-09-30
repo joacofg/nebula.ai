@@ -45,23 +45,25 @@ test("operator can create, edit, and keep an inactive tenant visible", async ({ 
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
 
-  await expect(page).toHaveURL(/\/tenants$/, { timeout: 10_000 });
-  await page.locator("header").getByRole("button", { name: "Create tenant" }).click();
-  await page.getByLabel("id").fill("team-b");
-  await page.getByLabel("name").fill("Team B");
-  await page.getByLabel("Description").fill("Created from tenants.spec.ts");
-  await page.locator("form").getByRole("button", { name: "Create tenant" }).click();
+  await expect(page).toHaveURL(/\/evaluacion$/, { timeout: 30_000 });
+  await page.getByRole("link", { name: "Tenants" }).click();
+  await expect(page).toHaveURL(/\/tenants$/, { timeout: 30_000 });
+  await page.locator("header").getByRole("button", { name: "Crear tenant" }).click();
+  await page.getByLabel("Id", { exact: true }).fill("team-b");
+  await page.getByLabel("Nombre").fill("Team B");
+  await page.getByLabel("Descripción").fill("Created from tenants.spec.ts");
+  await page.locator("form").getByRole("button", { name: "Crear tenant" }).click();
 
-  await expect(page.getByRole("heading", { name: "Edit Team B" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Editar Team B" })).toBeVisible();
 
   await page.locator("tbody").getByText("Team B", { exact: true }).click();
-  await page.getByLabel("Description").fill("Updated description");
-  await page.getByRole("checkbox", { name: "active" }).uncheck();
-  await page.getByRole("button", { name: "Save tenant" }).click();
+  await page.getByLabel("Descripción").fill("Updated description");
+  await page.getByRole("checkbox", { name: "Activo" }).uncheck();
+  await page.getByRole("button", { name: "Guardar tenant" }).click();
 
-  await page.locator("select").selectOption("inactive");
+  await page.getByRole("combobox").selectOption("inactive");
   await expect(page.getByText("Updated description")).toBeVisible();
 });

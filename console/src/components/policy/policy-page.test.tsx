@@ -218,6 +218,14 @@ beforeEach(() => {
 });
 
 describe("policy-page", () => {
+  it("links to Tenants when there is no tenant to configure", async () => {
+    listTenantsMock.mockResolvedValue([]);
+    renderPolicyPage();
+
+    expect(await screen.findByText("No hay tenants.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Crear tenant" })).toHaveAttribute("href", "/tenants");
+  });
+
   it("renders grouped policy sections", async () => {
     renderPolicyPage();
 

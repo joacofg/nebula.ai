@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
+import Link from "next/link";
+
 import { PageHeader } from "@/components/system/page-header";
 import { EmptyState, LoadingRows } from "@/components/system/state";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
@@ -73,6 +75,15 @@ export default function PlaygroundPage() {
             <LoadingRows rows={4} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
             <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
+          ) : (tenantsQuery.data ?? []).length === 0 ? (
+            <EmptyState
+              title="No hay tenants."
+              action={
+                <Link href="/tenants" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark">
+                  Crear tenant
+                </Link>
+              }
+            />
           ) : (
             <PlaygroundForm
               tenants={tenantsQuery.data ?? []}

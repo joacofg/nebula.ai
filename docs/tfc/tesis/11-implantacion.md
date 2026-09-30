@@ -59,7 +59,15 @@ Las métricas con que se valida el trabajo son cuatro, y todas se calculan sobre
   dirigido con intervalo de Wilson [36]. Para los clasificadores se reporta además el AUC
   fuera de fold [34].
 
-> CAPTURA (fase 7): vista de observabilidad con la ruta, el nivel y el costo de cada pedido.
+La consola muestra esas magnitudes pedido por pedido. La vista de observabilidad (Figura 11.1)
+lista cada fila del ledger con su nivel, su modelo, su costo y su latencia, y para el pedido
+seleccionado dibuja la decisión del router y el registro completo.
+
+![Figura 11.1](figuras/consola-observabilidad.png)
+
+**Figura 11.1.** Vista de observabilidad: ledger del tenant de demo con el nivel, el modelo, el
+costo y la latencia de cada pedido, y el detalle del pedido seleccionado (objetivo de calidad
+0.90).
 
 ## 11.2 Pruebas y resultados
 
@@ -215,12 +223,12 @@ en USD cada mil prompts.
 | R3 media ordinal (elegida) | 0.56 | 1.01 | 1.70 | 2.47 |
 <!-- /GEN:router-sensitivity -->
 
-La Figura 11.1 muestra la frontera completa y la Tabla 11.8 lista los puntos de operación que el
+La Figura 11.2 muestra la frontera completa y la Tabla 11.8 lista los puntos de operación que el
 operador puede elegir desde la consola.
 
-![Figura 11.1](figuras/frontera.png)
+![Figura 11.2](figuras/frontera.png)
 
-**Figura 11.1.** Frontera costo–calidad del router aprendido, con las políticas fijas y el punto
+**Figura 11.2.** Frontera costo–calidad del router aprendido, con las políticas fijas y el punto
 del objetivo 0.95 en la estimación anidada.
 
 **Tabla 11.8.** Puntos de la frontera: umbrales, costo y reparto de pedidos por nivel.

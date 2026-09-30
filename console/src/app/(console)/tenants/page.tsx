@@ -145,6 +145,8 @@ export default function TenantsPage() {
                 </Button>
               }
             />
+          ) : filteredTenants.length === 0 ? (
+            <EmptyState title="Sin resultados." />
           ) : (
             <TenantTable
               tenants={filteredTenants}

@@ -42,6 +42,14 @@ describe("playground-page", () => {
     expect(screen.getByText("Enviar un prompt para ver la respuesta y la decisión.")).toBeInTheDocument();
   });
 
+  it("points to Tenants when there is no tenant to send from", async () => {
+    adminApi.listTenants.mockResolvedValue([]);
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+
+    expect(await screen.findByText("No hay tenants.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Crear tenant" })).toHaveAttribute("href", "/tenants");
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     adminApi.listTenants.mockResolvedValue([

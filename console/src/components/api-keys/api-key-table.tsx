@@ -27,7 +27,7 @@ function getScopeSummary(apiKey: ApiKeyRecord) {
 
 export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps) {
   return (
-    <div className="overflow-x-auto">
+    <div className="relative overflow-x-auto">
       <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="Claves de API">
         <colgroup>
           <col className="w-[26%]" />

@@ -214,6 +214,20 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByText("vencida")).toBeInTheDocument();
   });
 
+  it("shows the recommendations failure in the cache and calibration tabs too", async () => {
+    const user = userEvent.setup();
+    getTenantRecommendations.mockRejectedValue(new Error("Recommendations unavailable."));
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Caché" }));
+    expect(await screen.findByText("Recommendations unavailable.")).toBeInTheDocument();
+    expect(screen.queryByText("Elegir un tenant para ver su caché.")).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("tab", { name: "Calibración" }));
+    expect(await screen.findByText("Recommendations unavailable.")).toBeInTheDocument();
+    expect(screen.queryByText("Elegir un tenant para ver su calibración.")).not.toBeInTheDocument();
+  });
+
   it("shows the ledger error instead of an empty table", async () => {
     listUsageLedger.mockRejectedValue(new Error("Ledger unavailable."));
     renderPage();

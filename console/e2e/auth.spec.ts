@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("operator can sign in and land on tenants", async ({ page }) => {
+test("operator can sign in and land on the evaluation page", async ({ page }) => {
   await page.route("**/api/admin/tenants", async (route) => {
     await route.fulfill({
       status: 200,
@@ -29,11 +29,11 @@ test("operator can sign in and land on tenants", async ({ page }) => {
 
   await page.goto("/");
 
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
 
-  await expect(page).toHaveURL(/\/tenants$/);
-  await expect(page.getByRole("heading", { name: "Tenant operations" })).toBeVisible();
+  await expect(page).toHaveURL(/\/evaluacion$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Evaluación del router" })).toBeVisible();
 });
 
 test("refresh clears the in-memory admin session", async ({ page }) => {
@@ -64,12 +64,12 @@ test("refresh clears the in-memory admin session", async ({ page }) => {
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
-  await expect(page).toHaveURL(/\/tenants$/);
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page).toHaveURL(/\/evaluacion$/);
 
   await page.reload();
 
   await expect(page).toHaveURL(/\/\?reason=session-expired$/);
-  await expect(page.getByText("Enter the Nebula admin key again")).toBeVisible();
+  await expect(page.getByText("La sesión se cerró. Ingresar la clave de admin otra vez.")).toBeVisible();
 });

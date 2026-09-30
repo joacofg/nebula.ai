@@ -60,8 +60,8 @@ async function mockConsole(page: Page, replay: unknown) {
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
   await expect(page.getByRole("link", { name: "Evaluación" })).toBeVisible({ timeout: 30_000 });
   await page.getByRole("link", { name: "Evaluación" }).click();
   await expect(page).toHaveURL(/\/evaluacion$/, { timeout: 30_000 });
@@ -76,24 +76,24 @@ async function setSlider(page: Page, value: string) {
 test("operator moves the quality target and applies it to a tenant", async ({ page }) => {
   const { writes } = await mockConsole(page, routerReplayFixture);
 
-  const costCard = page.getByRole("group", { name: "Costo por 1000 prompts" });
-  await expect(costCard).toContainText("$2.500");
-  await expect(page.getByRole("img", { name: /Frontera costo\/calidad/ })).toBeVisible();
+  const costCard = page.getByRole("group", { name: "Costo por 1000 pedidos" });
+  await expect(costCard).toContainText("USD 2.50");
+  await expect(page.getByRole("group", { name: /Frontera costo–calidad/ })).toBeVisible();
 
   await setSlider(page, "0.75");
-  await expect(costCard).toContainText("$1.500");
-  await expect(page.getByRole("group", { name: "Ahorro vs todo frontier" })).toContainText("−63 %");
+  await expect(costCard).toContainText("USD 1.50");
+  await expect(page.getByRole("group", { name: "Ahorro vs todo frontier" })).toContainText("63 %");
 
   // Reduced motion: the replay waits for the operator instead of autoplaying.
   await expect(page.getByRole("button", { name: "Reproducir" })).toBeVisible();
   await page.getByRole("button", { name: "Paso" }).click();
-  await expect(page.getByText("1 / 4 prompts")).toBeVisible();
+  await expect(page.getByText("1 / 4 pedidos")).toBeVisible();
 
   await setSlider(page, "0.9");
   await expect(page.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
-  await page.getByRole("button", { name: "Aplicar a este tenant" }).click();
+  await page.getByRole("button", { name: "Aplicar al tenant" }).click();
 
-  await expect(page.getByText("Guardado: routing_quality_target = 0.900 en Default Workspace")).toBeVisible();
+  await expect(page.getByText("Objetivo 0.90 guardado en Default Workspace.")).toBeVisible();
   expect(writes).toHaveLength(1);
   expect(writes[0]).toMatchObject({ routing_quality_target: 0.9, semantic_cache_similarity_threshold: 0.9 });
 });
@@ -104,9 +104,9 @@ test("the real replay at 0.95 matches the phase-3 report", async ({ page }) => {
   await mockConsole(page, replay);
 
   // benchmarks/router/v1/report.md, "Default target q ≥ 0.95": cost 1.696, quality 0.957.
-  await expect(page.getByRole("group", { name: "Costo por 1000 prompts" })).toContainText("$1.696");
-  await expect(page.getByRole("group", { name: "Calidad", exact: true })).toContainText("0.957");
-  await expect(page.getByRole("region", { name: "Cifra anidada" })).toContainText("−31 %");
+  await expect(page.getByRole("group", { name: "Costo por 1000 pedidos" })).toContainText("USD 1.70");
+  await expect(page.getByRole("group", { name: "Calidad medida" })).toContainText("0.957");
+  await expect(page.getByRole("table", { name: "Características a calidad objetivo 0.95" })).toContainText("31 %");
 
   const shots = process.env.EVAL_SCREENSHOT_DIR;
   if (shots) {

@@ -1,6 +1,6 @@
 import { RuntimeHealthDependency } from "@/lib/admin-api";
 import { Readout } from "@/components/system/readout";
-import { LoadingRows } from "@/components/system/state";
+import { EmptyState, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type RuntimeHealthCardsProps = {
@@ -53,6 +53,9 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
   }
 
   const entries = Object.entries(dependencies);
+  if (entries.length === 0) {
+    return <EmptyState title="El gateway no informó dependencias." />;
+  }
   const hasOptionalDegradation = entries.some(
     ([, dependency]) => dependency.required === false && dependency.status === "degraded",
   );

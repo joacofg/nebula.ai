@@ -185,7 +185,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
       </div>
 
       {signals || entry.route_reason === "cache_hit" ? (
-        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} figureNumber={1} />
+        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} figureNumber={1} compact />
       ) : null}
 
       <Readout items={ledgerReadout(entry)} />

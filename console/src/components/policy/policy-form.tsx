@@ -332,12 +332,6 @@ export function PolicyForm({
     <form onSubmit={handleSubmit} aria-label={`Política de ${tenantName}`}>
       <div className="grid xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex min-w-0 flex-col gap-8 px-6 py-6">
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
-
           <FormSection title="Ruteo">
             {has("routing_quality_target") ? (
               <Field id="routing-quality-target" label="Objetivo de calidad" hint="0.5 a 1.0: el router elige el punto más barato que lo cumple; 1.0 manda todo a frontier.">
@@ -565,6 +559,12 @@ export function PolicyForm({
                 Descartar cambios
               </Button>
             </div>
+
+            {error ? (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            ) : null}
 
             {isSimulating ? <LoadingRows rows={3} label="Simulando el borrador" /> : null}
             {simulationError ? (

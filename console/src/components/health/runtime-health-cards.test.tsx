@@ -134,4 +134,9 @@ describe("runtime-health-cards", () => {
     expect(screen.getByText("cleanup query timed out")).toBeInTheDocument();
     expect(screen.queryByText(/retention dashboard/i)).not.toBeInTheDocument();
   });
+
+  it("says so when the gateway reports no dependencies", () => {
+    renderWithProviders(<RuntimeHealthCards dependencies={{}} isLoading={false} />);
+    expect(screen.getByText("El gateway no informó dependencias.")).toBeInTheDocument();
+  });
 });

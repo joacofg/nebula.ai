@@ -9,6 +9,8 @@ type PlaygroundDecisionProps = {
   routeTier: string;
   /** Figure number for the decision path caption on the page that shows it. */
   figureNumber?: number;
+  /** Narrow column (the ledger detail): draw the path in its compact layout. */
+  compact?: boolean;
 };
 
 type Signals = Record<string, unknown>;
@@ -137,7 +139,7 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
   return { kind: "learned", tier, computed, version, steps, path, context, note, fallback };
 }
 
-export function PlaygroundDecision({ entry, routeTier, figureNumber = 1 }: PlaygroundDecisionProps) {
+export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact = false }: PlaygroundDecisionProps) {
   const explanation = explainDecision(entry, routeTier);
 
   return (
@@ -158,7 +160,7 @@ export function PlaygroundDecision({ entry, routeTier, figureNumber = 1 }: Playg
       ) : explanation.kind === "learned" ? (
         <>
           <Figure number={figureNumber} caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
-            <DecisionPath steps={explanation.path} chosen={explanation.computed} animate />
+            <DecisionPath steps={explanation.path} chosen={explanation.computed} animate compact={compact} />
           </Figure>
           {explanation.note ? <p className="m-0 text-sm text-warn">{explanation.note}</p> : null}
           {explanation.fallback ? (

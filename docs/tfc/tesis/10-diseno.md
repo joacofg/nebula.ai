@@ -138,23 +138,29 @@ puntos de operación con su costo y su calidad. Junto a él está el archivo de 
 consola (`router_replay_v1.json`), con las probabilidades fuera de fold de los 1250 prompts. Los
 dos se regeneran con `python -m scripts.router.train`.
 
-> CAPTURA (fase 7): edición de la política del tenant en la consola, con el objetivo de calidad y
-> el límite de pedidos.
+La política de cada tenant se edita desde la consola, en una sola página (Figura 10.3). El
+objetivo de calidad del router y el límite de pedidos por minuto aparecen primero; la vista previa
+compara el borrador con el tráfico reciente del ledger y nada se guarda sin una acción explícita.
+
+![Figura 10.3](figuras/consola-politica.png)
+
+**Figura 10.3.** Edición de la política del tenant en la consola: objetivo de calidad, límite de
+pedidos por minuto y vista previa del borrador.
 
 ## 10.3 Modelo de procesos
 
 Hay dos procesos que conviene distinguir: el que atiende un pedido en línea y el que, fuera de
 línea, produce las etiquetas y entrena el router.
 
-**Atención de un pedido.** La Figura 10.3 muestra la secuencia de un pedido de chat. El orden
+**Atención de un pedido.** La Figura 10.4 muestra la secuencia de un pedido de chat. El orden
 tiene dos consecuencias de diseño. La primera es que el embedding se calcula una sola vez y sirve
 para el router y para el caché. La segunda es que el router decide antes de consultar el caché:
 si hay acierto, la decisión no se usa, pero queda en las señales del ledger, lo que permite
 auditar qué nivel habría atendido ese pedido.
 
-![Figura 10.3](figuras/secuencia-request.png)
+![Figura 10.4](figuras/secuencia-request.png)
 
-**Figura 10.3.** Recorrido de un pedido de chat por el gateway.
+**Figura 10.4.** Recorrido de un pedido de chat por el gateway.
 
 El fallback solo actúa en un sentido: si el modelo local falla y la política lo permite, el
 pedido se reenvía al proveedor premium, y la respuesta lo informa en `X-Nebula-Fallback-Used`. Si
@@ -162,24 +168,33 @@ el que falla es el proveedor premium, el error se devuelve al cliente, porque no
 capaz al que escalar. Si Qdrant no responde, el gateway sigue sin caché; si Ollama no responde, el
 caché y el router aprendido quedan sin vector y la ruta se decide con la regla de respaldo.
 
-**Etiquetado y entrenamiento.** La Figura 10.4 muestra el proceso fuera de línea. A partir de tres
+**Etiquetado y entrenamiento.** La Figura 10.5 muestra el proceso fuera de línea. A partir de tres
 conjuntos de datos públicos se arma un corpus bilingüe, cuatro modelos candidatos responden cada
 prompt, dos jueces comparan cada respuesta con la del frontier en las dos posiciones, y una regla
 fijada de antemano convierte las cuatro notas en un veredicto de sustituible o no. El nivel de
 cada prompt es el más barato cuya respuesta resulta sustituible. Con esas etiquetas se entrenan
 los dos clasificadores, se traza la frontera y se escribe el artefacto que carga el gateway.
 
-![Figura 10.4](figuras/pipeline-ml.png)
+![Figura 10.5](figuras/pipeline-ml.png)
 
-**Figura 10.4.** Pipeline de etiquetado y entrenamiento del router.
+**Figura 10.5.** Pipeline de etiquetado y entrenamiento del router.
 
-**Operación.** El operador trabaja desde la página Evaluación de la consola. Ahí ve la frontera,
-mueve un control entre 0.75 y 1.00 y el simulador reproduce, sin llamar a ningún modelo, cómo se
-repartirían los 1250 prompts del corpus entre los tres niveles y cuánto costarían. Cuando elige un
-punto, lo aplica al tenant, y desde el pedido siguiente el router usa ese objetivo de calidad. En
-el Playground, cada respuesta muestra por qué se eligió su nivel: las dos probabilidades, los
-umbrales del punto vigente y el nivel resultante.
+**Operación.** El operador trabaja desde la página Evaluación de la consola (Figura 10.6). Ahí ve
+la frontera, mueve un control entre 0.75 y 1.00 y el simulador reproduce, sin llamar a ningún
+modelo, cómo se repartirían los 1250 prompts del corpus entre los tres niveles y cuánto costarían.
+Cuando elige un punto, lo aplica al tenant, y desde el pedido siguiente el router usa ese objetivo
+de calidad. En el Playground, cada respuesta muestra por qué se eligió su nivel (Figura 10.7): las dos
+probabilidades, los umbrales del punto vigente y el nivel resultante, dibujados como una cascada
+en la que solo la rama elegida queda marcada.
 
-> CAPTURA (fase 7): página Evaluación con el control de calidad y la frontera.
+![Figura 10.6](figuras/consola-evaluacion.png)
 
-> CAPTURA (fase 7): Playground con el panel "Por qué este nivel".
+**Figura 10.6.** Página Evaluación: frontera costo–calidad con el punto elegido para el objetivo
+0.95 y, a la derecha, el control de calidad con el costo, el ahorro y el reparto por nivel que
+resultan.
+
+![Figura 10.7](figuras/consola-playground.png)
+
+**Figura 10.7.** Playground con el panel "Por qué este nivel": el router mandó el pedido al modelo
+local porque su probabilidad (0.80) superó el umbral del punto vigente (0.76); el tenant de demo
+tiene aplicado el objetivo 0.90.

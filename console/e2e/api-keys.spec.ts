@@ -86,19 +86,20 @@ test("operator can create, reveal once, and revoke an API key", async ({ page })
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
-  await expect(page.getByRole("link", { name: "API Keys" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("link", { name: "API Keys" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("link", { name: "Claves de API" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Claves de API" }).click();
   await expect(page).toHaveURL(/\/api-keys$/, { timeout: 30_000 });
 
-  await page.locator("header").getByRole("button", { name: "Create API key" }).click();
-  await page.getByLabel("name").fill("Tenant-scoped key");
-  await page.locator("form").getByRole("button", { name: "Create API key" }).click();
+  await page.locator("header").getByRole("button", { name: "Crear clave" }).click();
+  await page.getByRole("dialog").getByLabel("Nombre").fill("Tenant-scoped key");
+  await page.getByRole("dialog").getByRole("button", { name: "Crear clave" }).click();
 
-  await expect(page.getByText("This key will not be shown again.")).toBeVisible();
-  await page.getByRole("button", { name: "Close" }).click();
+  await expect(page.getByText("No se vuelve a mostrar.")).toBeVisible();
+  await page.getByRole("button", { name: "Cerrar", exact: true }).click();
 
-  await page.getByRole("button", { name: "Revoke" }).first().click();
-  await expect(page.getByText("Revoked", { exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Revocar", exact: true }).first().click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Revocar clave" }).click();
+  await expect(page.getByText("revocada", { exact: true })).toBeVisible();
 });
