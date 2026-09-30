@@ -11,9 +11,8 @@ una respuesta abierta y cómo se mide si un instrumento de evaluación es confia
 
 La pregunta de qué modelo usar para cada consulta apareció en cuanto los modelos de lenguaje de
 gran escala (LLM) empezaron a consumirse como servicio. Chen, Zaharia y Zou la formularon de
-manera explícita en FrugalGPT: relevaron las tarifas de doce APIs comerciales, encontraron
-diferencias de hasta dos órdenes de magnitud entre proveedores para tareas comparables y
-propusieron tres estrategias para aprovecharlas: adaptar el prompt para que sea más corto,
+manera explícita en FrugalGPT: mostraron que el costo de consultar APIs populares de LLM puede
+diferir en dos órdenes de magnitud y propusieron tres estrategias para aprovecharlas: adaptar el prompt para que sea más corto,
 aproximar el modelo caro con uno barato o con una caché, y encadenar modelos en cascada, de modo
 que una consulta solo llegue al modelo caro si el barato no da una respuesta confiable
 [@frugalgpt]. Su resultado más citado es que una cascada bien calibrada puede igualar al mejor

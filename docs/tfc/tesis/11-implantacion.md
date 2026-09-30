@@ -284,6 +284,15 @@ insuficientes algunas respuestas baratas que en realidad servían, lo que baja l
 del router y lo empuja a mandar más pedidos al frontier. El 31 % de ahorro está medido con esa
 vara: es un resultado conservador.
 
+Hay una segunda razón por la que la cifra es un piso. La hipótesis habla del gateway completo, que
+combina el router con el caché semántico, pero el corpus no tiene consultas repetidas: cada prompt
+aparece una vez por idioma, así que el 31 % sale solo del router. En tráfico real, donde una parte
+de las consultas se repite o se parece a una anterior [@scalm], [@meancache], cada acierto del caché
+evita además la llamada al modelo. Las corridas de agosto, con la heurística, servían 3 de 14
+pedidos desde el caché. El ahorro del caché depende tanto del tráfico que no se puede estimar con
+este corpus, y por eso no se suma; lo que se puede afirmar es que se agrega al del router, no que lo
+reemplaza.
+
 Con el objetivo en 0.90 el router ahorra bastante más (57 %, USD 1.06), pero la calidad cae a
 0.903, casi 10 puntos por debajo de la referencia, y no cumple el segundo criterio. Ese punto
 existe en la consola para el operador que lo prefiera, pero no es el que responde la hipótesis.
