@@ -110,3 +110,6 @@ CLAUDE.md
 # El Markdown de docs/tfc/tesis/ si se trackea: es la fuente de la tesis.
 docs/tfc/*.docx
 docs/tfc/assets/
+
+# Course material (cátedra slides), not versioned
+docs/tfc/consignas/
