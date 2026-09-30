@@ -2,7 +2,11 @@
 
 ## Pre-demo checklist (15 min before)
 
-1. `ollama serve` running — `ollama list` shows `llama3.2:3b`, `nomic-embed-text`.
+1. `ollama serve` running — `ollama list` shows `qwen2.5:7b`, `nomic-embed-text`.
+   `.env` has the three-tier block from `.env.example` uncommented (qwen2.5:7b /
+   claude-haiku-4.5 / gpt-4.1, `NEBULA_LEARNED_ROUTER_ENABLED=true`) and a real
+   `NEBULA_PREMIUM_API_KEY`. If the tenant policy has `allowed_premium_models`,
+   it must list both premium models.
 2. `docker compose up -d qdrant`
 3. **Reset the semantic cache** (gateway must NOT be running yet):
    `curl -s -X DELETE http://localhost:6333/collections/nebula-semantic-cache`

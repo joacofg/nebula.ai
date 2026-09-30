@@ -46,6 +46,10 @@ Nebula supports two main execution paths:
 
 Fallback behavior is intentionally visible. If local execution is unavailable and fallback is allowed, Nebula routes to premium and marks that outcome in response metadata and downstream records.
 
+### Learned three-tier router
+
+With `NEBULA_LEARNED_ROUTER_ENABLED=true`, a `nebula-auto` request is routed by two logistic models over the nomic embedding of the latest user message: one estimates whether the local model's answer would serve the reader as well as the frontier model's, the other whether the economy model's would. A cascade over two thresholds picks `local`, `economy` (`NEBULA_ECONOMY_MODEL`) or `frontier` (`NEBULA_PREMIUM_MODEL`). The thresholds are an operating point measured out of fold during training (`src/nebula/data/learned_router_v1.json`, built by `python -m scripts.router.train`); each tenant chooses one through its policy's `routing_quality_target`, and the router takes the cheapest point that meets it. The prompt is embedded once and the vector is shared with the semantic cache. If embedding fails, routing falls back to the token/keyword heuristic and says so in `route_signals.learned_router`. The ledger target stays `premium` for both premium tiers; the tier is in `route_signals.tier` and in the `X-Nebula-Route-Tier` header. Explicit models, `local_only`/`premium_only` and `calibrated_routing_enabled=false` bypass the learned router.
+
 ### Operator console
 
 The Next.js console is a separate service that proxies same-origin browser traffic to `/v1/admin/*`. It is the operator entrypoint for:
