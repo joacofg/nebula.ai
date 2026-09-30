@@ -66,7 +66,8 @@ seleccionado dibuja la decisión del router y el registro completo.
 ![Figura 11.1](figuras/consola-observabilidad.png)
 
 **Figura 11.1.** Vista de observabilidad: ledger del tenant de demo con el nivel, el modelo, el
-costo y la latencia de cada pedido, y el detalle del pedido seleccionado.
+costo y la latencia de cada pedido, y el detalle del pedido seleccionado (objetivo de calidad
+0.90).
 
 ## 11.2 Pruebas y resultados
 
