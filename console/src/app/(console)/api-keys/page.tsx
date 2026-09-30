@@ -85,18 +85,18 @@ export default function ApiKeysPage() {
       <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">API Keys</div>
-          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-slate-950">
             Client credentials and tenant resolution
           </h2>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            Operators issue client API keys backed by <span className="font-[var(--font-fira-code)]">{ADMIN_API_KEYS_ENDPOINT}</span>.
+            Operators issue client API keys backed by <span className="font-(--font-fira-code)">{ADMIN_API_KEYS_ENDPOINT}</span>.
             {" "}<span className="font-medium text-slate-700">allowed_tenant_ids</span> defines which tenants a key may use,
             while <span className="font-medium text-slate-700">tenant_id</span> sets the default tenant when public callers omit
-            <span className="font-[var(--font-fira-code)]"> X-Nebula-Tenant-ID</span>.
+            <span className="font-(--font-fira-code)"> X-Nebula-Tenant-ID</span>.
           </p>
           <p className="mt-2 max-w-3xl text-sm text-slate-600">
             If a key authorizes exactly one tenant, Nebula can infer it. If a key intentionally authorizes multiple
-            tenants without a default tenant, public callers must send <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>{" "}
+            tenants without a default tenant, public callers must send <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>{" "}
             on each request.
           </p>
         </div>

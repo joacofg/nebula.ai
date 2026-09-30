@@ -94,13 +94,13 @@ export function TenantEditorDrawer({
   }
 
   return (
-    <aside className="panel h-full min-h-[32rem] px-5 py-5">
+    <aside className="panel h-full min-h-128 px-5 py-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
             {isEditMode ? "Tenant detail" : "New tenant"}
           </div>
-          <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{heading}</h3>
+          <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">{heading}</h3>
           <p className="mt-2 text-sm text-slate-500">
             {isEditMode
               ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"} and keep this tenant as the authoritative runtime boundary.`
@@ -133,7 +133,7 @@ export function TenantEditorDrawer({
           </label>
           <input
             id="tenant-id"
-            className="field-input font-[var(--font-fira-code)] text-xs"
+            className="field-input font-(--font-fira-code) text-xs"
             value={formState.id}
             readOnly={isEditMode}
             onChange={(event) => setFormState((current) => ({ ...current, id: event.target.value }))}
@@ -181,7 +181,7 @@ export function TenantEditorDrawer({
           </label>
           <textarea
             id="tenant-metadata"
-            className="field-input min-h-40 resize-y font-[var(--font-fira-code)] text-xs"
+            className="field-input min-h-40 resize-y font-(--font-fira-code) text-xs"
             value={formState.metadata}
             onChange={(event) => setFormState((current) => ({ ...current, metadata: event.target.value }))}
           />

@@ -57,10 +57,10 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                     onClick={() => onSelectRow(row.request_id)}
                     aria-pressed={selected}
                     aria-label={selectionLabel}
-                    className={selected ? "group w-full rounded-xl border border-sky-200 bg-white/90 px-3 py-2 text-left shadow-sm transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"}
+                    className={selected ? "group w-full rounded-xl border border-sky-200 bg-white/90 px-3 py-2 text-left shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-slate-200 hover:bg-white focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-sky-500"}
                   >
                     <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-[var(--font-fira-code)] text-xs text-slate-700">{row.request_id}</span>
+                      <span className="font-(--font-fira-code) text-xs text-slate-700">{row.request_id}</span>
                       {selected ? (
                         <span className="rounded-full border border-sky-200 bg-sky-100 px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-sky-800">
                           Current investigation

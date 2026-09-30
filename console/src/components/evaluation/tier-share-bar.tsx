@@ -6,7 +6,7 @@ export function TierShareBar({ share }: { share: TierShare }) {
   return (
     <div className="space-y-3">
       {/* A 2px surface gap between segments; each segment keeps its own round ends. */}
-      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded bg-slate-100" aria-hidden>
+      <div className="flex h-3 w-full gap-[2px] overflow-hidden rounded-sm bg-slate-100" aria-hidden>
         {visible.map((t) => (
           <div
             key={t}
@@ -18,7 +18,7 @@ export function TierShareBar({ share }: { share: TierShare }) {
       <ul className="flex flex-wrap gap-x-5 gap-y-1 text-sm text-slate-700" aria-label="Reparto por nivel">
         {TIERS.map((t) => (
           <li key={t} className="inline-flex items-center gap-2">
-            <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-sm" style={{ backgroundColor: TIER_COLORS[t] }} />
+            <span aria-hidden className="inline-block h-2.5 w-2.5 rounded-xs" style={{ backgroundColor: TIER_COLORS[t] }} />
             <span className="font-mono text-xs">{t}</span>
             <span className="font-semibold tabular-nums text-slate-950">{formatShare(share[t])}</span>
           </li>

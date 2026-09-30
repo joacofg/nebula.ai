@@ -46,7 +46,7 @@ export function PlaygroundForm({
     >
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Run prompt</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
           Operator playground request
         </h3>
         <p className="mt-2 text-sm text-slate-600">

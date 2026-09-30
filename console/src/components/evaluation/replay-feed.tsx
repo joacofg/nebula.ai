@@ -145,7 +145,7 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
               key={s}
               type="button"
               aria-pressed={speed === s}
-              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/30 ${
+              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-accent/30 ${
                 speed === s ? "bg-slate-900 text-white" : "text-slate-700 hover:bg-slate-100"
               }`}
               onClick={() => setSpeed(s)}

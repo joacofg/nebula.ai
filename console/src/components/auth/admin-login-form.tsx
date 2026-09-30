@@ -52,7 +52,7 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
           <ShieldCheck className="h-3.5 w-3.5" />
           Nebula control plane
         </div>
-        <h1 className="mt-4 font-[var(--font-fira-code)] text-2xl font-semibold text-white">
+        <h1 className="mt-4 font-(--font-fira-code) text-2xl font-semibold text-white">
           Operator Console
         </h1>
         <p className="mt-2 text-sm text-slate-300">

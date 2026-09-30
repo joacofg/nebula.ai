@@ -60,7 +60,7 @@ export default function PlaygroundPage() {
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Playground</div>
-            <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-slate-950">
               Operator corroboration sandbox
             </h2>
             <p className="mt-2 max-w-2xl text-sm text-slate-600">

@@ -21,11 +21,11 @@ export function LoginPageClient() {
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <section className="rounded-[2rem] border border-slate-200/80 bg-slate-950 px-6 py-8 text-white shadow-panel sm:px-8 sm:py-10">
+        <section className="rounded-4xl border border-slate-200/80 bg-slate-950 px-6 py-8 text-white shadow-panel sm:px-8 sm:py-10">
           <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">
             Self-hosted governance
           </div>
-          <h2 className="mt-6 max-w-2xl font-[var(--font-fira-code)] text-3xl font-semibold leading-tight sm:text-4xl">
+          <h2 className="mt-6 max-w-2xl font-(--font-fira-code) text-3xl font-semibold leading-tight sm:text-4xl">
             Precise tenant control without dropping into raw admin calls.
           </h2>
           <p className="mt-4 max-w-xl text-base text-slate-300">

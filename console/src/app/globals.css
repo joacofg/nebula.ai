@@ -1,83 +1,107 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
 
-:root {
-  --color-background: 248 250 252;
-  --color-surface: 255 255 255;
-  --color-panel: 15 23 42;
-  --color-panel-muted: 51 65 85;
-  --color-text: 15 23 42;
-  --color-text-muted: 71 85 105;
-  --color-text-inverse: 248 250 252;
-  --color-accent: 3 105 161;
-  --color-accent-strong: 2 6 23;
-  --color-border: 203 213 225;
-  --color-success: 21 128 61;
-  --color-danger: 190 24 93;
+@theme {
+  --font-sans: var(--font-fira-sans), sans-serif;
+  --font-mono: var(--font-fira-code), ui-monospace, monospace;
+
+  --color-panel: #0f172a;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-accent: #0369a1;
+  --color-accentStrong: #020617;
+  --color-border: #cbd5e1;
+
+  --shadow-panel: 0 4px 20px rgba(2, 6, 23, 0.07);
 }
 
-* {
-  box-sizing: border-box;
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
 }
 
-html {
-  background: rgb(var(--color-background));
+@utility panel {
+  @apply rounded-2xl border border-border/80 bg-surface shadow-panel;
 }
 
-body {
-  margin: 0;
-  min-height: 100vh;
-  background:
-    radial-gradient(circle at top left, rgba(14, 165, 233, 0.09), transparent 28%),
-    linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(226, 232, 240, 0.9) 100%);
-  color: rgb(var(--color-text));
-  font-family: var(--font-fira-sans), sans-serif;
+@utility shell-card {
+  @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
+@utility field-label {
+  @apply mb-2 block text-sm font-semibold text-slate-800;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+@utility field-input {
+  @apply w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-slate-950 outline-hidden transition focus:border-accent focus:ring-2 focus:ring-accent/20;
 }
 
-button {
-  cursor: pointer;
+@utility action-button {
+  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-hidden focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-::selection {
-  background: rgba(3, 105, 161, 0.18);
+@utility secondary-button {
+  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-hidden focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60;
 }
 
-@layer components {
-  .panel {
-    @apply rounded-2xl border border-border/80 bg-surface shadow-panel;
+@layer base {
+
+  * {
+    box-sizing: border-box;
   }
 
-  .shell-card {
-    @apply rounded-2xl border border-white/10 bg-white/5 backdrop-blur;
+  html {
+    background: #f8fafc;
   }
 
-  .field-label {
-    @apply mb-2 block text-sm font-semibold text-slate-800;
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(
+        circle at top left,
+        rgba(14, 165, 233, 0.09),
+        transparent 28%
+      ),
+      linear-gradient(
+        180deg,
+        rgba(248, 250, 252, 0.98) 0%,
+        rgba(226, 232, 240, 0.9) 100%
+      );
+    color: var(--color-text);
+    font-family: var(--font-fira-sans), sans-serif;
   }
 
-  .field-input {
-    @apply w-full rounded-xl border border-border bg-white px-4 py-3 text-sm text-slate-950 outline-none transition focus:border-accent focus:ring-2 focus:ring-accent/20;
+  a {
+    color: inherit;
+    text-decoration: none;
   }
 
-  .action-button {
-    @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:cursor-not-allowed disabled:opacity-60;
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
   }
 
-  .secondary-button {
-    @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-border bg-white px-4 py-2.5 text-sm font-semibold text-slate-900 transition hover:border-slate-400 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-200 disabled:cursor-not-allowed disabled:opacity-60;
+  button {
+    cursor: pointer;
+  }
+
+  ::selection {
+    background: rgba(3, 105, 161, 0.18);
   }
 }
 

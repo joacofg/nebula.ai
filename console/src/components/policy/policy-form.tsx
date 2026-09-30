@@ -384,7 +384,7 @@ export function PolicyForm({
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Policy</div>
-            <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-slate-950">
               Policy for {tenantName}
             </h2>
             <p className="mt-2 text-sm text-slate-600">
@@ -433,7 +433,7 @@ export function PolicyForm({
       <section className="panel px-6 py-5" aria-live="polite">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Preview before save</h3>
+            <h3 className="font-(--font-fira-code) text-lg font-semibold text-slate-950">Preview before save</h3>
             <p className="mt-2 text-sm text-slate-500">
               Compare the current draft against the tenant&apos;s recent persisted baseline before deciding whether to save.
             </p>
@@ -481,7 +481,7 @@ export function PolicyForm({
                 </span>
                 <span className="text-xs font-medium text-slate-600">Preview only — save stays separate.</span>
               </div>
-              <h4 className="mt-3 font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="mt-3 font-(--font-fira-code) text-base font-semibold text-slate-950">
                 {previewDecision?.title}
               </h4>
               <p className="mt-2 text-sm text-slate-700">{previewDecision?.body}</p>
@@ -530,7 +530,7 @@ export function PolicyForm({
             ) : (
               <div className="space-y-3">
                 <div>
-                  <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                  <h4 className="font-(--font-fira-code) text-base font-semibold text-slate-950">
                     Changed request sample
                   </h4>
                   <p className="mt-1 text-sm text-slate-500">
@@ -575,7 +575,7 @@ export function PolicyForm({
       <section className="panel px-6 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
+            <h3 className="font-(--font-fira-code) text-lg font-semibold text-slate-950">
               Runtime-enforced controls
             </h3>
             <p className="mt-2 text-sm text-slate-500">
@@ -592,7 +592,7 @@ export function PolicyForm({
         <div className="mt-4 rounded-2xl border border-border bg-slate-50 px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="font-(--font-fira-code) text-base font-semibold text-slate-950">
                 Effective evidence boundary
               </h4>
               <p className="mt-2 text-sm text-slate-600">
@@ -776,7 +776,7 @@ export function PolicyForm({
 
           {runtimeEnforcedFields.has("allowed_premium_models") ? (
             <div>
-              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="font-(--font-fira-code) text-base font-semibold text-slate-950">
                 Premium model allowlist
               </h4>
               <p className="mt-2 text-sm text-slate-500">
@@ -923,7 +923,7 @@ export function PolicyForm({
 
       {softSignalFields.has("soft_budget_usd") ? (
         <section className="panel px-6 py-5">
-          <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Soft budget advisory</h3>
+          <h3 className="font-(--font-fira-code) text-lg font-semibold text-slate-950">Soft budget advisory</h3>
           <p className="mt-2 text-sm text-slate-500">
             Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
           </p>

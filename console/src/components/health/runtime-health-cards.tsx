@@ -78,7 +78,7 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
                   {metrics.map(([label, value]) => (
                     <div key={`${name}-${label}`} className="rounded-xl border border-border bg-slate-50 px-4 py-3">
                       <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900 [overflow-wrap:anywhere]">
+                      <dd className="mt-2 text-sm font-medium text-slate-900 wrap-anywhere">
                         {typeof value === "string" ? formatHealthLabel(value) : formatHealthValue(value)}
                       </dd>
                     </div>

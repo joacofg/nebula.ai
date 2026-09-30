@@ -7,7 +7,7 @@ export function PlaygroundResponse({ content }: PlaygroundResponseProps) {
     <section className="panel space-y-4 px-6 py-5">
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Response</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
           Assistant output
         </h3>
       </div>

@@ -38,7 +38,7 @@ export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: Tenan
                   ].join(" ")}
                   onClick={() => onSelectTenant(tenant)}
                 >
-                  <td className="border-b border-border/70 px-4 py-4 font-[var(--font-fira-code)] text-xs text-slate-700">
+                  <td className="border-b border-border/70 px-4 py-4 font-(--font-fira-code) text-xs text-slate-700">
                     {tenant.id}
                   </td>
                   <td className="border-b border-border/70 px-4 py-4">

@@ -80,24 +80,24 @@ export function CreateApiKeyDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-sm">
+    <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-xs">
       <div role="dialog" aria-modal="true" aria-label="Create API key" className="panel w-full max-w-2xl px-6 py-6">
         <div className="flex items-start justify-between gap-4">
           <div>
             <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">New API key</div>
-            <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+            <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
               Issue client credentials with tenant scope
             </h3>
             <p className="mt-2 text-sm text-slate-500">
-              Creates a client API key through <span className="font-[var(--font-fira-code)]">{API_KEYS_ENDPOINT}</span>.
-              {" "}Use <span className="font-[var(--font-fira-code)]">allowed_tenant_ids</span> to define every tenant the
+              Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
+              {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
               key may access.
             </p>
             <p className="mt-2 text-sm text-slate-500">
-              Nebula resolves requests by honoring an explicit <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>
-              when it matches an allowed tenant; otherwise it falls back to <span className="font-[var(--font-fira-code)]">tenant_id</span>,
+              Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
+              when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
               then to the only allowed tenant. If you authorize multiple tenants without a default
-              <span className="font-[var(--font-fira-code)]"> tenant_id</span>, public callers must send the tenant header.
+              <span className="font-(--font-fira-code)"> tenant_id</span>, public callers must send the tenant header.
             </p>
           </div>
           <button type="button" className="secondary-button px-3 py-2" onClick={onClose}>
@@ -141,7 +141,7 @@ export function CreateApiKeyDialog({
               ))}
             </select>
             <p className="mt-2 text-xs leading-5 text-slate-500">
-              Default tenant for callers that omit <span className="font-[var(--font-fira-code)]">X-Nebula-Tenant-ID</span>.
+              Default tenant for callers that omit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>.
               Leave the key single-tenant or send the header when requests should resolve elsewhere.
             </p>
           </div>

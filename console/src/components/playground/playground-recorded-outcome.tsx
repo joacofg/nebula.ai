@@ -26,7 +26,7 @@ export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomePr
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
           Recorded outcome
         </div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">
           Recorded outcome
         </h3>
         <p className="mt-2 text-sm text-slate-600">
@@ -56,7 +56,7 @@ function OutcomeRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-border bg-white px-4 py-4">
       <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
-      <dd className="mt-2 text-sm text-slate-900 [overflow-wrap:anywhere]">{value}</dd>
+      <dd className="mt-2 text-sm text-slate-900 wrap-anywhere">{value}</dd>
     </div>
   );
 }

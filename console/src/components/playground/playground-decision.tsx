@@ -118,7 +118,7 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Decisión</div>
         <h3
           id="playground-decision-heading"
-          className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950"
+          className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950"
         >
           Por qué este nivel
         </h3>
@@ -142,7 +142,7 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
             {explanation.steps.map((step) => (
               <li
                 key={step}
-                className="rounded-xl border border-border bg-slate-50 px-4 py-2.5 font-mono text-sm text-slate-900 [overflow-wrap:anywhere]"
+                className="rounded-xl border border-border bg-slate-50 px-4 py-2.5 font-mono text-sm text-slate-900 wrap-anywhere"
               >
                 {step}
               </li>

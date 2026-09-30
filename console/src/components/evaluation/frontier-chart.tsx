@@ -33,7 +33,7 @@ type Marker = {
   cost: number;
   quality: number;
   color: string;
-  shape: "circle" | "diamond" | "ring";
+  shape: "circle" | "diamond" | "ring-3";
   labelDx: number;
   labelDy: number;
   anchor: "start" | "end";
@@ -88,7 +88,7 @@ function MarkerShape({ marker, x, y }: { marker: Marker; x: number; y: number })
       />
     );
   }
-  if (marker.shape === "ring") {
+  if (marker.shape === "ring-3") {
     return <circle cx={x} cy={y} r={5} fill="#ffffff" stroke={marker.color} strokeWidth={2.5} />;
   }
   return <circle cx={x} cy={y} r={5} fill={marker.color} stroke="#ffffff" strokeWidth={2} />;
@@ -105,7 +105,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
       { id: "all_economy", label: "Todo economy", ...baselines.all_economy, color: TIER_COLORS.economy, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
       { id: "all_frontier", label: "Todo frontier", ...baselines.all_frontier, color: TIER_COLORS.frontier, shape: "circle", labelDx: -8, labelDy: -9, anchor: "end" },
       { id: "heuristic", label: "Heurística", ...baselines.heuristic_premium_frontier, color: REFERENCE_COLOR, shape: "diamond", labelDx: 10, labelDy: -8, anchor: "start" },
-      { id: "oracle", label: "Oráculo", ...baselines.oracle, color: REFERENCE_COLOR, shape: "ring", labelDx: 10, labelDy: -6, anchor: "start" },
+      { id: "oracle", label: "Oráculo", ...baselines.oracle, color: REFERENCE_COLOR, shape: "ring-3", labelDx: 10, labelDy: -6, anchor: "start" },
     ],
     [baselines],
   );
@@ -164,11 +164,11 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
     <figure className="space-y-3">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-slate-600" aria-hidden>
         <span className="inline-flex items-center gap-2">
-          <span className="inline-block h-0.5 w-5 rounded" style={{ backgroundColor: ROUTER_COLOR }} />
+          <span className="inline-block h-0.5 w-5 rounded-sm" style={{ backgroundColor: ROUTER_COLOR }} />
           Router v1 (puntos de operación)
         </span>
         <span className="inline-flex items-center gap-2">
-          <span className="inline-block h-0.5 w-5 rounded" style={{ backgroundColor: RANDOM_COLOR }} />
+          <span className="inline-block h-0.5 w-5 rounded-sm" style={{ backgroundColor: RANDOM_COLOR }} />
           Mezcla aleatoria más barata
         </span>
         <span className="inline-flex items-center gap-2">
@@ -280,7 +280,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
                 tabIndex={0}
                 role="img"
                 aria-label={`${m.label}: ${lines[0]}`}
-                className="outline-none focus-visible:[&>circle:first-child]:stroke-slate-400"
+                className="outline-hidden [&>circle:first-child]:focus-visible:stroke-slate-400"
                 onPointerEnter={() => showPoint(mx, my, m.label, lines)}
                 onFocus={() => showPoint(mx, my, m.label, lines)}
                 onBlur={() => setHover(null)}

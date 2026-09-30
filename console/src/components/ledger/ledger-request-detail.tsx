@@ -384,7 +384,7 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
     <section className="panel space-y-4 px-6 py-5">
       <div>
         <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Request detail</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-slate-950">{entry.request_id}</h3>
         <p className="mt-2 text-sm text-slate-600">
           This persisted ledger record is the authoritative evidence row for this request ID while the row still
           exists. It explains the retained route, provider, fallback, cache, and policy outcome that operators first
@@ -530,8 +530,8 @@ function DetailRow({
       <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
       <dd
         className={[
-          "mt-2 text-sm text-slate-900 [overflow-wrap:anywhere]",
-          mono ? "font-[var(--font-fira-code)]" : "",
+          "mt-2 text-sm text-slate-900 wrap-anywhere",
+          mono ? "font-(--font-fira-code)" : "",
         ].join(" ")}
       >
         {value}
