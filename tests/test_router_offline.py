@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from scripts.router import cv, data, embed, logreg
+from scripts.router import cv, data, embed, frontier, knn, logreg
 
 
 def _write(path, rows):
@@ -138,3 +138,58 @@ def test_choose_lambda_returns_a_grid_value_and_losses():
     X, y = _separable(n=60)
     lam, losses = cv.choose_lambda(X, y, [i % 5 for i in range(60)], grid=(0.1, 10.0))
     assert lam in (0.1, 10.0) and set(losses) == {0.1, 10.0}
+
+
+def _e(local_ok, economy_ok, ce=0.1, cf=1.0, text="short", task="code", key="es:x"):
+    return data.Example(key, "es", key.split(":")[1], task, text, local_ok, economy_ok, ce, cf)
+
+
+def test_route_is_the_same_cascade_as_the_runtime():
+    got = frontier.route(np.array([0.9, 0.2, 0.2]), np.array([0.1, 0.8, 0.1]), 0.5, 0.5)
+    assert got == ["local", "economy", "frontier"]
+
+
+def test_evaluate_counts_cost_and_quality():
+    ex = [_e(True, True), _e(False, True, ce=0.2), _e(False, False, cf=2.0)]
+    cost, quality = frontier.evaluate(["local", "economy", "frontier"], ex)
+    assert cost == pytest.approx((0 + 0.2 + 2.0) / 3) and quality == pytest.approx(1.0)
+    cost, quality = frontier.evaluate(["local", "local", "local"], ex)
+    assert cost == 0 and quality == pytest.approx(1 / 3)
+
+
+def test_pareto_drops_dominated_points_and_cost_at_quality():
+    pts = [{"cost": 1.0, "quality": 0.9}, {"cost": 2.0, "quality": 0.8},
+           {"cost": 0.5, "quality": 0.7}, {"cost": 3.0, "quality": 1.0}]
+    front = frontier.pareto(pts)
+    assert [p["cost"] for p in front] == [0.5, 1.0, 3.0]
+    assert frontier.cost_at_quality(front, 0.85) == 1.0
+    assert frontier.cost_at_quality(front, 1.01) is None
+
+
+def test_heuristic_follows_the_gateway_rule():
+    ex = [_e(True, True, text="hi"), _e(True, True, text="please analyze this"),
+          _e(True, True, text="x" * 2100)]
+    assert frontier.heuristic_tiers(ex) == ["local", "frontier", "frontier"]
+    assert frontier.heuristic_tiers(ex, premium_tier="economy")[1] == "economy"
+
+
+def test_oracle_is_perfect_and_no_dearer_than_frontier():
+    ex = [_e(True, True), _e(False, True), _e(False, False)]
+    corners = frontier.corner_points(ex)
+    assert corners["oracle"][1] == pytest.approx(1.0)
+    assert corners["oracle"][0] <= corners["all_frontier"][0]
+
+
+def test_random_mixture_interpolates_between_corners():
+    # economy is dominated (dearer than frontier here), so the hull is local<->frontier
+    ex = [_e(True, False, ce=5.0, cf=1.0), _e(False, False, ce=5.0, cf=1.0)]
+    # all-local: cost 0, quality 0.5; all-frontier: cost 1, quality 1
+    assert frontier.random_cost_at_quality(ex, 0.75) == pytest.approx(0.5)
+    assert frontier.random_cost_at_quality(ex, 0.4) == pytest.approx(0.0)
+
+
+def test_knn_with_one_neighbour_copies_the_nearest_label():
+    X = np.array([[1.0, 0.0], [0.9, 0.1], [0.0, 1.0], [0.1, 0.9]])
+    y = np.array([1.0, 1.0, 0.0, 0.0])
+    p = knn.oof_probabilities(X, y, [0, 1, 0, 1], k=1)
+    assert p.tolist() == [1.0, 1.0, 0.0, 0.0]
