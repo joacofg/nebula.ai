@@ -63,3 +63,11 @@ def test_dimension_mismatch_and_bad_artifacts_are_refused():
         LearnedRouterModel.from_dict({**_raw(), "version": 2})
     with pytest.raises(ValueError, match="operating"):
         LearnedRouterModel.from_dict({**_raw(), "operating_points": []})
+
+
+def test_the_packaged_v1_artifact_loads_and_matches_nomic():
+    from nebula.core.config import Settings
+
+    model = LearnedRouterModel.from_file(Settings().learned_router_path)
+    assert model.dimension == 768 and model.embedding_model == "nomic-embed-text"
+    assert model.operating_point(0.95).quality >= 0.95
