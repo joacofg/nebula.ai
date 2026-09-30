@@ -156,8 +156,49 @@ describe("PlaygroundDecision", () => {
   });
 
   it("explains when no route signals were recorded", () => {
-    render(<PlaygroundDecision entry={entry({ route_reason: "cache_hit", route_signals: null })} routeTier="" />);
+    render(<PlaygroundDecision entry={entry({ route_reason: "token_complexity", route_signals: null })} routeTier="" />);
 
     expect(screen.getByText(/no registró señales de ruteo/)).toBeInTheDocument();
+  });
+
+  it("explains a cache hit as a cache hit even when learned signals are present", () => {
+    const { container } = render(
+      <PlaygroundDecision
+        entry={entry({ route_reason: "cache_hit", final_route_target: "cache",
+                       route_signals: { ...entry().route_signals, cache_similarity_score: 0.93 } })}
+        routeTier="cache"
+      />,
+    );
+    expect(panelText(container)).toMatch(/caché/);
+    expect(panelText(container)).toMatch(/0\.93/);
+    expect(panelText(container)).not.toMatch(/embedding/);
+  });
+
+  it("explains a local failure fallback on top of the learned decision", () => {
+    const { container } = render(
+      <PlaygroundDecision entry={entry({ route_reason: "local_provider_error_fallback", fallback_used: true })}
+                          routeTier="economy" />,
+    );
+    expect(panelText(container)).toMatch(/falló el modelo local/i);
+    expect(screen.getByText("p_local 0.69 < τ_local 0.76 → no alcanza el local")).toBeInTheDocument();
+  });
+
+  it("tells a dimension mismatch apart from an unavailable embedding", () => {
+    const { container } = render(
+      <PlaygroundDecision
+        entry={entry({ route_reason: "token_complexity",
+                       route_signals: { learned_router: "embedding_dimension_mismatch", token_count: 3 } })}
+        routeTier="local"
+      />,
+    );
+    expect(panelText(container)).toMatch(/dimensión/);
+  });
+
+  it("does not invent a probability that was not recorded", () => {
+    const signals = { ...entry().route_signals } as Record<string, unknown>;
+    delete signals.p_local;
+    const { container } = render(<PlaygroundDecision entry={entry({ route_signals: signals })} routeTier="economy" />);
+    expect(panelText(container)).not.toMatch(/p_local 0\.00/);
+    expect(panelText(container)).toMatch(/p_local —/);
   });
 });

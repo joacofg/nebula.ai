@@ -324,8 +324,9 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
 
       <figcaption className="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
         <span>
-          Cada punto azul es un par de umbrales (τ_local, τ_economy) medido fuera de fold. Más arriba y a la izquierda es
-          mejor.
+          Cada vértice de la curva azul es un par de umbrales (τ_local, τ_economy): probabilidades fuera de fold,
+          umbrales elegidos sobre el mismo corpus (la cifra fuera de muestra es la anidada). Más arriba y a la izquierda
+          es mejor.
         </span>
         <button type="button" className="font-semibold text-sky-700 hover:underline" onClick={() => setShowTable((v) => !v)}>
           {showTable ? "Ocultar tabla" : "Ver tabla"}
