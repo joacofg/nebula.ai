@@ -17,8 +17,11 @@ test("operator can update tenant policy from the console", async ({ page }) => {
 
   let policy = {
     routing_mode_default: "auto",
+    calibrated_routing_enabled: true,
     allowed_premium_models: ["openai/gpt-4o-mini"],
     semantic_cache_enabled: true,
+    semantic_cache_similarity_threshold: 0.9,
+    semantic_cache_max_entry_age_hours: 168,
     fallback_enabled: true,
     max_premium_cost_per_request: null,
     hard_budget_limit_usd: null,
@@ -26,6 +29,8 @@ test("operator can update tenant policy from the console", async ({ page }) => {
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
+    evidence_retention_window: "30d",
+    metadata_minimization_level: "standard",
     routing_quality_target: 0.95,
   };
 
@@ -99,11 +104,6 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await expect(page.getByLabel("Hard budget enforcement")).toBeDisabled();
   await expect(
     page.getByText("Set a hard cumulative budget limit first to activate this enforcement choice."),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "Capture settings are deferred for a future governance/privacy phase and are not editable in Phase 4.",
-    ),
   ).toBeVisible();
   await expect(page.getByLabel("Prompt capture enabled")).not.toBeVisible();
   await expect(page.getByLabel("Response capture enabled")).not.toBeVisible();

@@ -103,9 +103,9 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
     () => [
       { id: "all_local", label: "Todo local", ...baselines.all_local, color: TIER_COLORS.local, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
       { id: "all_economy", label: "Todo economy", ...baselines.all_economy, color: TIER_COLORS.economy, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
-      { id: "all_frontier", label: "Todo frontier", ...baselines.all_frontier, color: TIER_COLORS.frontier, shape: "circle", labelDx: -10, labelDy: 18, anchor: "end" },
+      { id: "all_frontier", label: "Todo frontier", ...baselines.all_frontier, color: TIER_COLORS.frontier, shape: "circle", labelDx: -8, labelDy: -9, anchor: "end" },
       { id: "heuristic", label: "Heurística", ...baselines.heuristic_premium_frontier, color: REFERENCE_COLOR, shape: "diamond", labelDx: 10, labelDy: -8, anchor: "start" },
-      { id: "oracle", label: "Oráculo", ...baselines.oracle, color: REFERENCE_COLOR, shape: "ring", labelDx: 10, labelDy: 16, anchor: "start" },
+      { id: "oracle", label: "Oráculo", ...baselines.oracle, color: REFERENCE_COLOR, shape: "ring", labelDx: 10, labelDy: -6, anchor: "start" },
     ],
     [baselines],
   );
