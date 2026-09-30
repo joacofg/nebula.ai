@@ -37,14 +37,13 @@ describe("ledger-filters", () => {
       />,
     );
 
-    expect(screen.getByText("Tenant")).toBeInTheDocument();
-    expect(screen.getByText("Route target")).toBeInTheDocument();
-    expect(screen.getByText("Terminal status")).toBeInTheDocument();
-    expect(screen.getByText("From")).toBeInTheDocument();
-    expect(screen.getByText("To")).toBeInTheDocument();
+    for (const name of ["Tenant", "Ruta", "Estado", "Desde", "Hasta"]) {
+      expect(screen.getByLabelText(name)).toBeInTheDocument();
+    }
+    expect(screen.getByRole("option", { name: "Todos los tenants" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "embeddings" })).toBeInTheDocument();
 
-    await user.click(screen.getByRole("button", { name: "Refresh" }));
+    await user.click(screen.getByRole("button", { name: "Actualizar" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 
@@ -71,14 +70,14 @@ describe("ledger-filters", () => {
 
     const { rerender } = renderWithProviders(filters(""));
 
-    await user.selectOptions(screen.getByRole("combobox", { name: "Route target" }), "embeddings");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Ruta" }), "embeddings");
 
     expect(onRouteTargetChange).toHaveBeenCalledWith("embeddings");
     // The select is controlled by the routeTarget prop, so picking an option does
     // not move it on its own; the parent owns the value and passes it back down.
-    expect(screen.getByRole("combobox", { name: "Route target" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "Ruta" })).toHaveValue("");
 
     rerender(filters("embeddings"));
-    expect(screen.getByRole("combobox", { name: "Route target" })).toHaveValue("embeddings");
+    expect(screen.getByRole("combobox", { name: "Ruta" })).toHaveValue("embeddings");
   });
 });

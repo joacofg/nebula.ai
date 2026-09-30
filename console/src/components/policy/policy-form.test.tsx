@@ -159,25 +159,25 @@ describe("policy-form", () => {
   it("shows and clears dirty state with Reset changes", async () => {
     renderPolicyForm();
 
-    await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
-    expect(screen.getByText("Unsaved changes")).toBeInTheDocument();
+    await userEvent.selectOptions(screen.getByLabelText("Modo de ruteo"), "premium_only");
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Reset changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Descartar cambios" }));
 
-    expect(screen.queryByText("Unsaved changes")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cambios sin guardar")).not.toBeInTheDocument();
   });
 
   it("submits the updated policy payload", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
-    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback enabled" }));
-    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
-    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.82");
-    await userEvent.clear(screen.getByLabelText("Semantic cache max entry age hours"));
-    await userEvent.type(screen.getByLabelText("Semantic cache max entry age hours"), "48");
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.selectOptions(screen.getByLabelText("Modo de ruteo"), "premium_only");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "0.82");
+    await userEvent.clear(screen.getByLabelText("Antigüedad máxima (h)"));
+    await userEvent.type(screen.getByLabelText("Antigüedad máxima (h)"), "48");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
     await waitFor(() => {
       expect(onSave).toHaveBeenCalledWith(
@@ -197,11 +197,11 @@ describe("policy-form", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSimulate, onSave });
 
-    await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
-    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback enabled" }));
-    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
-    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.88");
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await userEvent.selectOptions(screen.getByLabelText("Modo de ruteo"), "premium_only");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "0.88");
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
     await waitFor(() => {
       expect(onSimulate).toHaveBeenCalledWith(
@@ -215,51 +215,26 @@ describe("policy-form", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("renders a decision-first preview with bounded evidence and explicit save separation", () => {
+  it("renders a decision-first preview with the sample and an explicit save", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 
-    const previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
-    expect(previewSection).not.toBeNull();
-    const preview = within(previewSection as HTMLElement);
-
-    expect(preview.getByText("Review before save")).toBeInTheDocument();
-    expect(preview.getByText("Preview only — save stays separate.")).toBeInTheDocument();
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByText("Revisar antes de guardar")).toBeInTheDocument();
+    expect(preview.getByText("Este borrador cambiaría 1 pedido de la muestra.")).toBeInTheDocument();
     expect(
-      preview.getByText(
-        "Compared with the current baseline, this draft would change 1 sampled request.",
-      ),
+      preview.getByText("1 pedido rutearía distinto; 1 pedido quedaría denegado; el gasto premium subiría USD 0.1000."),
     ).toBeInTheDocument();
-    expect(
-      preview.getByText(
-        /Operator consequence: 1 sampled request would route differently; 1 request would become denied; premium spend would increase by \$0\.1000\./i,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      preview.getByText(
-        "Next step: keep iterating if those denials are not intentional, or save only when you want that draft enforced live.",
-      ),
-    ).toBeInTheDocument();
-    expect(preview.getByText("Save remains explicit")).toBeInTheDocument();
-    expect(preview.getByText("Evaluated requests")).toBeInTheDocument();
-    expect(preview.getByText("Changed routes")).toBeInTheDocument();
-    expect(preview.getByText("Newly denied")).toBeInTheDocument();
-    expect(preview.getByText("Premium cost delta")).toBeInTheDocument();
-    expect(preview.getByText("Changed request sample")).toBeInTheDocument();
+    for (const name of ["Pedidos evaluados", "Rutas que cambian", "Nuevas denegaciones", "Δ costo premium"]) {
+      expect(preview.getByRole("group", { name })).toBeInTheDocument();
+    }
+    expect(preview.getByText("Pedidos que cambian")).toBeInTheDocument();
     expect(preview.getByText("req-1")).toBeInTheDocument();
-    expect(preview.getByText(/route local → premium/i)).toBeInTheDocument();
-    expect(preview.getByText(/status completed → policy_denied/i)).toBeInTheDocument();
-    expect(preview.getByText(/routing parity: auto \(calibrated, score 0\.61\) → premium_only/i)).toBeInTheDocument();
-    expect(
-      preview.getByText(
-        /Supporting evidence only: bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
-      ),
-    ).toBeInTheDocument();
+    expect(preview.getByText(/ruta local → premium/i)).toBeInTheDocument();
+    expect(preview.getByText(/estado completed → policy_denied/i)).toBeInTheDocument();
+    expect(preview.getByText(/paridad de ruteo: auto \(calibrated, score 0\.61\) → premium_only/i)).toBeInTheDocument();
     expect(preview.getByText(/Replay uses stored route signals rather than raw prompt text\./i)).toBeInTheDocument();
-    expect(preview.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
-    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
-    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
+    expect(preview.getByText("Comparado contra 2 pedidos recientes. No se guardó nada.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar política" })).toBeInTheDocument();
   });
 
   it("keeps unchanged, empty, loading, and failed preview states explicit and non-saving", () => {
@@ -276,22 +251,14 @@ describe("policy-form", () => {
 
     const { rerender } = renderPolicyForm({ simulationResult: unchangedResult });
 
-    let previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
+    let previewSection = screen.getByRole("heading", { name: "Vista previa" }).closest("aside");
     expect(previewSection).not.toBeNull();
     let preview = within(previewSection as HTMLElement);
 
-    expect(preview.getByText("No decision pressure")).toBeInTheDocument();
-    expect(preview.getByText("This draft leaves the sampled baseline unchanged.")).toBeInTheDocument();
-    expect(
-      preview.getByText(
-        "Keep iterating if you expected a different outcome, or save when you want these settings persisted without changing recent request outcomes.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      preview.getByText("Next step: save only if the unchanged replay matches your intent."),
-    ).toBeInTheDocument();
-    expect(preview.getByText("No request outcomes changed in this replay window.")).toBeInTheDocument();
-    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
+    expect(preview.getByText("Sin cambios")).toBeInTheDocument();
+    expect(preview.getByText("El borrador no cambia los pedidos de la muestra.")).toBeInTheDocument();
+    expect(preview.getByText("Ningún pedido cambia de resultado en esta ventana.")).toBeInTheDocument();
+    expect(preview.getByText(/No se guardó nada\./i)).toBeInTheDocument();
 
     rerender(
       <PolicyForm
@@ -357,24 +324,16 @@ describe("policy-form", () => {
       />,
     );
 
-    previewSection = screen.getByRole("heading", { name: "Preview before save" }).closest("section");
+    previewSection = screen.getByRole("heading", { name: "Vista previa" }).closest("aside");
     expect(previewSection).not.toBeNull();
     preview = within(previewSection as HTMLElement);
 
-    expect(preview.getByText("No comparison window")).toBeInTheDocument();
-    expect(preview.getByText("No recent baseline matched this preview window.")).toBeInTheDocument();
+    expect(preview.getByText("Sin ventana")).toBeInTheDocument();
+    expect(preview.getByText("No hay tráfico reciente para comparar.")).toBeInTheDocument();
     expect(
-      preview.getByText(
-        "Keep iterating in the editor if the draft still needs work, or save only when you intend to publish without replay evidence.",
-      ),
+      preview.getByText("No hubo tráfico reciente en la ventana de la simulación."),
     ).toBeInTheDocument();
-    expect(
-      preview.getByText("Next step: preview again after recent persisted traffic is available."),
-    ).toBeInTheDocument();
-    expect(
-      preview.getByText("No recent traffic matched the replay window, so there was nothing to preview."),
-    ).toBeInTheDocument();
-    expect(preview.getByText(/This preview did not save the policy\./i)).toBeInTheDocument();
+    expect(preview.getByText(/No se guardó nada\./i)).toBeInTheDocument();
 
     rerender(
       <PolicyForm
@@ -426,8 +385,8 @@ describe("policy-form", () => {
       />,
     );
 
-    expect(screen.getByText("Simulating draft policy against recent tenant traffic...")).toBeInTheDocument();
-    expect(screen.queryByText(/save policy/i)).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Simulando el borrador" })).toBeInTheDocument();
+    expect(screen.queryByText(/guardar política/i)).toBeInTheDocument();
 
     rerender(
       <PolicyForm
@@ -476,7 +435,7 @@ describe("policy-form", () => {
       />,
     );
 
-    expect(screen.getByText("Preview failed: Nebula admin request failed.")).toBeInTheDocument();
+    expect(screen.getByText("La simulación falló: Nebula admin request failed.")).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
@@ -520,103 +479,56 @@ describe("policy-form", () => {
       },
     });
 
-    expect(screen.getByText(/Compared with the current baseline, this draft would change 1 sampled request\./i)).toBeInTheDocument();
+    expect(screen.getByText(/Este borrador cambiaría 1 pedido de la muestra\./i)).toBeInTheDocument();
     expect(screen.getByText(/req-degraded/i)).toBeInTheDocument();
-    expect(screen.getByText(/policy outcome_evidence=sufficient\(route_mode=calibrated\) → outcome_evidence=degraded\(route_mode=unscored reason=missing_route_signals\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/routing parity: unscored → unscored/i)).toBeInTheDocument();
+    expect(screen.getByText(/política outcome_evidence=sufficient\(route_mode=calibrated\) → outcome_evidence=degraded\(route_mode=unscored reason=missing_route_signals\)/i)).toBeInTheDocument();
+    expect(screen.getByText(/paridad de ruteo: unscored → unscored/i)).toBeInTheDocument();
   });
 
-  it("derives runtime-enforced controls from policy options and keeps soft budget outside that section", () => {
+  it("groups the runtime controls into sections and keeps the soft budget as advisory", () => {
     renderPolicyForm();
 
-    const runtimeSection = screen.getByRole("heading", { name: "Runtime-enforced controls" }).closest("section");
-    expect(runtimeSection).not.toBeNull();
-    expect(runtimeSection).toHaveTextContent("Routing mode");
-    expect(runtimeSection).toHaveTextContent("Calibrated routing enabled");
-    expect(runtimeSection).toHaveTextContent("Fallback enabled");
-    expect(runtimeSection).toHaveTextContent("Semantic cache enabled");
-    expect(runtimeSection).toHaveTextContent("Semantic cache similarity threshold");
-    expect(runtimeSection).toHaveTextContent("Semantic cache max entry age hours");
-    expect(runtimeSection).toHaveTextContent("Premium model allowlist");
-    expect(runtimeSection).toHaveTextContent("Max premium cost per request");
-    expect(runtimeSection).toHaveTextContent("Hard cumulative budget limit USD");
-    expect(runtimeSection).toHaveTextContent("Hard budget enforcement");
-    expect(runtimeSection).toHaveTextContent("Applies in live request evaluation");
-    expect(runtimeSection).toHaveTextContent(
-      "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
-    );
-    expect(runtimeSection).toHaveTextContent("Effective evidence boundary");
-    expect(runtimeSection).toHaveTextContent(
-      "Runtime-enforced guidance derived from the retention and minimization controls below.",
-    );
-    expect(runtimeSection).toHaveTextContent("Local runtime evidence");
-    expect(runtimeSection).toHaveTextContent(
-      "Nebula keeps governed request metadata historically inspectable for up to 30 days before expiration markers say it should age out.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every lookup.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Cached answers older than this are ignored on lookup for this tenant.",
-    );
-    expect(runtimeSection).not.toHaveTextContent("Soft budget USD");
+    const routing = screen.getByRole("heading", { name: "Ruteo" }).closest("section") as HTMLElement;
+    expect(routing).toHaveTextContent("Objetivo de calidad");
+    expect(routing).toHaveTextContent("Modo de ruteo");
+    expect(routing).toHaveTextContent("Ruteo calibrado (heurística v0)");
+    expect(routing).toHaveTextContent("Fallback a premium si falla el local");
 
-    expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.",
-      ),
-    ).toBeInTheDocument();
+    const limits = screen.getByRole("heading", { name: "Límites" }).closest("section") as HTMLElement;
+    expect(limits).toHaveTextContent("Costo premium máximo por pedido (USD)");
+    expect(limits).toHaveTextContent("Presupuesto duro acumulado (USD)");
+    expect(limits).toHaveTextContent("Al agotarse el presupuesto");
+    expect(limits).toHaveTextContent("Presupuesto blando (USD)");
+    expect(limits).toHaveTextContent("Solo aviso: no bloquea ni degrada.");
+
+    const cache = screen.getByRole("heading", { name: "Caché semántico" }).closest("section") as HTMLElement;
+    expect(cache).toHaveTextContent("Caché semántico activado");
+    expect(cache).toHaveTextContent("Umbral de similitud");
+    expect(cache).toHaveTextContent("Antigüedad máxima (h)");
+
+    expect(screen.getByRole("heading", { name: "Modelos premium permitidos" })).toBeInTheDocument();
+    const evidence = screen.getByRole("heading", { name: "Evidencia" }).closest("section") as HTMLElement;
+    expect(evidence).toHaveTextContent("Retención de evidencia");
+    expect(evidence).toHaveTextContent("Minimización de metadatos");
   });
 
-  it("updates the effective evidence boundary copy when strict minimization is selected", async () => {
+  it("offers strict metadata minimization", async () => {
     renderPolicyForm();
-
-    await userEvent.selectOptions(screen.getByLabelText("Metadata minimization level"), "strict");
-
-    const runtimeSection = screen.getByRole("heading", { name: "Runtime-enforced controls" }).closest("section");
-    expect(runtimeSection).not.toBeNull();
-    expect(runtimeSection).toHaveTextContent(
-      "While a retained row exists, operators can still inspect bounded ledger metadata such as tenant, model, status, and governance markers.",
-    );
-    expect(runtimeSection).toHaveTextContent(
-      "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger.",
-    );
+    await userEvent.selectOptions(screen.getByLabelText("Minimización de metadatos"), "strict");
+    expect(screen.getByLabelText("Minimización de metadatos")).toHaveValue("strict");
+    expect(screen.getByText("Estricta no guarda las señales de ruteo.")).toBeInTheDocument();
   });
 
   it("blocks save when cache tuning values are outside the enforced bounds", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
-    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "1.2");
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "1.2");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
     expect(
-      await screen.findByText("Semantic cache similarity threshold must be between 0 and 1."),
+      await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1."),
     ).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
   });
@@ -625,11 +537,11 @@ describe("policy-form", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    const field = screen.getByLabelText("Routing quality target");
+    const field = screen.getByLabelText("Objetivo de calidad");
     expect(field).toHaveValue("0.95");
     await userEvent.clear(field);
     await userEvent.type(field, "0.9");
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.9 });
@@ -639,10 +551,10 @@ describe("policy-form", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    const field = screen.getByLabelText("Rate limit (requests per minute)");
+    const field = screen.getByLabelText("Límite de pedidos por minuto");
     expect(field).toHaveValue("");
     await userEvent.type(field, "120");
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toMatchObject({ rate_limit_requests_per_minute: 120 });
 
@@ -652,10 +564,10 @@ describe("policy-form", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave, policyOverrides: { rate_limit_requests_per_minute: 30 } });
 
-    const field = screen.getByLabelText("Rate limit (requests per minute)");
+    const field = screen.getByLabelText("Límite de pedidos por minuto");
     expect(field).toHaveValue("30");
     await userEvent.clear(field);
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toMatchObject({ rate_limit_requests_per_minute: null });
   });
@@ -665,11 +577,11 @@ describe("policy-form", () => {
     renderPolicyForm({ onSave });
 
     for (const value of ["0", "2.5", "100001", "abc"]) {
-      await userEvent.clear(screen.getByLabelText("Rate limit (requests per minute)"));
-      await userEvent.type(screen.getByLabelText("Rate limit (requests per minute)"), value);
-      await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+      await userEvent.clear(screen.getByLabelText("Límite de pedidos por minuto"));
+      await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), value);
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
       expect(
-        await screen.findByText("Rate limit must be a whole number of requests per minute between 1 and 100000."),
+        await screen.findByText("El límite tiene que ser un entero entre 1 y 100000 pedidos por minuto."),
       ).toBeInTheDocument();
     }
     expect(onSave).not.toHaveBeenCalled();
@@ -680,12 +592,12 @@ describe("policy-form", () => {
     renderPolicyForm({ onSave });
 
     for (const value of ["0.4", "1.01", "abc"]) {
-      await userEvent.clear(screen.getByLabelText("Routing quality target"));
-      await userEvent.type(screen.getByLabelText("Routing quality target"), value);
-      await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+      await userEvent.clear(screen.getByLabelText("Objetivo de calidad"));
+      await userEvent.type(screen.getByLabelText("Objetivo de calidad"), value);
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
       expect(
-        await screen.findByText("Routing quality target must be between 0.5 and 1."),
+        await screen.findByText("El objetivo de calidad tiene que estar entre 0.5 y 1."),
       ).toBeInTheDocument();
     }
     expect(onSave).not.toHaveBeenCalled();
@@ -695,37 +607,32 @@ describe("policy-form", () => {
     const onSimulate = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSimulate });
 
-    await userEvent.clear(screen.getByLabelText("Routing quality target"));
-    await userEvent.type(screen.getByLabelText("Routing quality target"), "0.2");
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await userEvent.clear(screen.getByLabelText("Objetivo de calidad"));
+    await userEvent.type(screen.getByLabelText("Objetivo de calidad"), "0.2");
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
-    expect(await screen.findByText("Routing quality target must be between 0.5 and 1.")).toBeInTheDocument();
+    expect(await screen.findByText("El objetivo de calidad tiene que estar entre 0.5 y 1.")).toBeInTheDocument();
     expect(onSimulate).not.toHaveBeenCalled();
   });
 
   it("hides the routing quality target when the runtime does not enforce it", () => {
     renderPolicyForm({ runtimeEnforcedFields: ["routing_mode_default", "allowed_premium_models"] });
 
-    expect(screen.queryByLabelText("Routing quality target")).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Objetivo de calidad")).not.toBeInTheDocument();
   });
 
   it("disables hard-budget enforcement selection until a hard limit is configured", async () => {
     renderPolicyForm();
 
-    const enforcementSelect = screen.getByLabelText("Hard budget enforcement");
+    const enforcementSelect = screen.getByLabelText("Al agotarse el presupuesto");
     expect(enforcementSelect).toBeDisabled();
     expect(
-      screen.getByText("Set a hard cumulative budget limit first to activate this enforcement choice."),
+      screen.getByText("Primero definir el presupuesto duro."),
     ).toBeInTheDocument();
 
-    await userEvent.type(screen.getByLabelText("Hard cumulative budget limit USD"), "25");
+    await userEvent.type(screen.getByLabelText("Presupuesto duro acumulado (USD)"), "25");
 
-    expect(screen.getByLabelText("Hard budget enforcement")).toBeEnabled();
-    expect(
-      screen.getByText(
-        "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed.",
-      ),
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Al agotarse el presupuesto")).toBeEnabled();
+    expect(screen.queryByText("Primero definir el presupuesto duro.")).not.toBeInTheDocument();
   });
 });
-;

@@ -25,9 +25,9 @@ describe("api-keys-page api-key-table", () => {
       />,
     );
 
-    expect(screen.getByText("Single allowed tenant: tenant-a")).toBeInTheDocument();
+    expect(screen.getByText("Único tenant: tenant-a")).toBeInTheDocument();
     expect(
-      screen.getByText(/Public callers can omit X-Nebula-Tenant-ID because the only authorized tenant is inferred/i),
+      screen.getByTitle(/El header X-Nebula-Tenant-ID es opcional/i),
     ).toBeInTheDocument();
   });
 
@@ -51,9 +51,9 @@ describe("api-keys-page api-key-table", () => {
       />,
     );
 
-    expect(screen.getByText("2 authorized tenants")).toBeInTheDocument();
+    expect(screen.getByText("2 tenants permitidos")).toBeInTheDocument();
     expect(
-      screen.getByText(/Public callers must send X-Nebula-Tenant-ID so Nebula can resolve which authorized tenant to use/i),
+      screen.getByTitle(/Los pedidos tienen que enviar X-Nebula-Tenant-ID/i),
     ).toBeInTheDocument();
   });
 
@@ -77,8 +77,8 @@ describe("api-keys-page api-key-table", () => {
       />,
     );
 
-    expect(screen.getByText("Revoked")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Revoke" })).toBeDisabled();
-    expect(screen.getByText("Auto-resolves tenant-a")).toBeInTheDocument();
+    expect(screen.getByText("revocada")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revocar" })).toBeDisabled();
+    expect(screen.getByText("Por defecto: tenant-a")).toBeInTheDocument();
   });
 });

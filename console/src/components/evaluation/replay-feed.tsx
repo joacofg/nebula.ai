@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { Check, Pause, Play, RotateCcw, SkipForward, X } from "lucide-react";
 
-import { TIER_COLORS, formatPer1000, formatQuality } from "@/components/evaluation/format";
+import { formatQuality, formatUsd1000 } from "@/components/evaluation/format";
+import { Readout } from "@/components/system/readout";
+import { TierBadge } from "@/components/system/tier-badge";
 import { routeRow, tierOutcome, type ReplayOperatingPoint, type ReplayRow, type Tier } from "@/lib/router-replay";
 
 const SPEEDS = [1, 10, 100] as const;
@@ -139,13 +141,13 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
           <SkipForward className="h-4 w-4" aria-hidden />
           Paso
         </button>
-        <div role="group" aria-label="Velocidad" className="inline-flex rounded-xl border border-line bg-surface p-1">
+        <div role="group" aria-label="Velocidad" className="inline-flex border border-line bg-surface">
           {SPEEDS.map((s) => (
             <button
               key={s}
               type="button"
               aria-pressed={speed === s}
-              className={`min-h-9 rounded-lg px-3 text-sm font-semibold transition focus:outline-hidden focus-visible:ring-2 focus-visible:ring-mark/30 ${
+              className={`h-10 px-3 text-sm font-semibold transition-colors ${
                 speed === s ? "bg-ink text-surface" : "text-ink-2 hover:bg-canvas"
               }`}
               onClick={() => setSpeed(s)}
@@ -154,49 +156,37 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
             </button>
           ))}
         </div>
-        <span className="font-mono text-sm tabular-nums text-ink-3">
-          {processed} / {total} prompts
+        <span className="font-mono text-sm text-ink-3">
+          {processed} / {total} pedidos
         </span>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <div role="group" aria-label="Costo acumulado" className="rounded-xl border border-line bg-canvas px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">Costo acumulado</div>
-          <div className="mt-1 text-xl font-semibold text-ink">{formatPer1000(avgCost)}</div>
-          <div className="text-xs text-ink-4">USD / 1000 prompts, promedio de lo ruteado</div>
-        </div>
-        <div role="group" aria-label="Calidad acumulada" className="rounded-xl border border-line bg-canvas px-4 py-3">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">Calidad acumulada</div>
-          <div className="mt-1 text-xl font-semibold text-ink">{formatQuality(quality)}</div>
-          <div className="text-xs text-ink-4">share de respuestas suficientes según la etiqueta</div>
-        </div>
-      </div>
+      <Readout
+        className="max-w-xl"
+        items={[
+          { label: "Costo acumulado", value: `${formatUsd1000(avgCost)} / 1000`, detail: "promedio por pedido" },
+          { label: "Calidad acumulada", value: formatQuality(quality), detail: "respuestas aceptadas por los jueces" },
+        ]}
+      />
 
       {state.decisions.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-line px-4 py-6 text-center text-sm text-ink-4">
-          El replay recorre los prompts del corpus en un orden fijo. Reproducí o avanzá un paso.
+        <p className="border border-dashed border-line px-4 py-5 text-sm text-ink-3">
+          Reproducir o avanzar un paso para rutear los pedidos del corpus en orden fijo.
         </p>
       ) : (
-        <ol className="divide-y divide-canvas rounded-xl border border-line" aria-label="Últimos prompts ruteados">
+        <ol className="m-0 list-none divide-y divide-line border-y border-line p-0" aria-label="Últimos pedidos ruteados">
           {state.decisions.map((d) => (
-            <li key={d.index} className="flex items-start gap-3 px-4 py-2.5 text-sm">
-              <span className="mt-0.5 w-12 shrink-0 font-mono text-xs tabular-nums text-ink-4">#{d.index + 1}</span>
-              <span className="inline-flex w-24 shrink-0 items-center gap-1.5 font-mono text-xs font-semibold text-ink-2">
-                <span
-                  aria-hidden
-                  className="inline-block h-2.5 w-2.5 rounded-full"
-                  style={{ backgroundColor: TIER_COLORS[d.tier] }}
-                />
-                {d.tier}
-              </span>
+            <li key={d.index} className="flex items-center gap-4 py-2 text-sm">
+              <span className="w-12 shrink-0 font-mono text-xs text-ink-3">#{d.index + 1}</span>
+              <TierBadge tier={d.tier} className="w-24 shrink-0" />
+              <span className="w-6 shrink-0 font-mono text-xs text-ink-3">{d.row.lang}</span>
               <span className="min-w-0 flex-1 truncate text-ink-2" title={d.row.text}>
-                <span className="mr-2 font-mono text-xs uppercase text-ink-4">{d.row.lang}</span>
                 {d.row.text}
               </span>
               {d.ok ? (
-                <Check className="h-4 w-4 shrink-0 text-ok" aria-label="suficiente" role="img" />
+                <Check className="size-4 shrink-0 text-ok" aria-label="suficiente" role="img" />
               ) : (
-                <X className="h-4 w-4 shrink-0 text-danger" aria-label="insuficiente" role="img" />
+                <X className="size-4 shrink-0 text-danger" aria-label="insuficiente" role="img" />
               )}
             </li>
           ))}

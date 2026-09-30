@@ -32,9 +32,9 @@ describe("tenants-page tenant-table", () => {
       <TenantTable tenants={TENANTS} selectedTenantId={null} onSelectTenant={vi.fn()} />,
     );
 
-    expect(screen.getByText("Tenant ID")).toBeInTheDocument();
-    expect(screen.getByText("Active")).toBeInTheDocument();
-    expect(screen.getByText("Inactive")).toBeInTheDocument();
+    expect(screen.getByRole("columnheader", { name: "Id" })).toBeInTheDocument();
+    expect(screen.getByText("activo")).toBeInTheDocument();
+    expect(screen.getByText("inactivo")).toBeInTheDocument();
   });
 
   it("does not introduce app or workload pseudo-entity columns", () => {
@@ -55,5 +55,18 @@ describe("tenants-page tenant-table", () => {
     await userEvent.click(screen.getByText("Inactive Team"));
 
     expect(onSelectTenant).toHaveBeenCalledWith(expect.objectContaining({ id: "inactive-team" }));
+  });
+  it("keeps a long tenant name on one line with the full name in the title", () => {
+    const longName = "Laboratorio de Robótica Aplicada del Departamento";
+    renderWithProviders(
+      <TenantTable
+        tenants={[{ ...TENANTS[0], name: longName }]}
+        selectedTenantId={null}
+        onSelectTenant={vi.fn()}
+      />,
+    );
+    const cell = screen.getByText(longName);
+    expect(cell).toHaveAttribute("title", longName);
+    expect(cell.className).toContain("truncate");
   });
 });

@@ -7,41 +7,42 @@
 
 
 @theme {
-  --font-sans: var(--font-fira-sans), sans-serif;
-  --font-mono: var(--font-fira-code), ui-monospace, monospace;
-  --font-label: var(--font-fira-sans), sans-serif;
+  --font-sans: var(--font-barlow), ui-sans-serif, sans-serif;
+  --font-mono: var(--font-red-hat-mono), ui-monospace, monospace;
+  --font-label: var(--font-barlow-semi-condensed), var(--font-barlow), sans-serif;
 
-  /* Design roles (DESIGN.md). Values still match the pre-fase-7 palette. */
+  /* Design roles — values from DESIGN.md. Components use only these. */
   --color-surface: #ffffff;
-  --color-canvas: #f8fafc;
-  --color-rail: #0f172a;
-  --color-panel: #0f172a;
-  --color-ink: #020617;
-  --color-ink-2: #334155;
-  --color-ink-3: #475569;
-  --color-ink-4: #64748b;
-  --color-line: #cbd5e1;
-  --color-line-strong: #94a3b8;
-  --color-mark: #0369a1;
-  --color-mark-soft: #f0f9ff;
-  --color-mark-line: #bae6fd;
-  --color-danger: #881337;
-  --color-danger-soft: #fff1f2;
-  --color-danger-line: #fecdd3;
-  --color-warn: #78350f;
-  --color-warn-soft: #fffbeb;
-  --color-warn-line: #fde68a;
-  --color-ok: #064e3b;
-  --color-ok-soft: #ecfdf5;
-  --color-ok-line: #a7f3d0;
-  --color-on-panel: #f1f5f9;
-  --color-on-panel-2: #cbd5e1;
-  --color-tier-local: #2a78d6;
-  --color-tier-economy: #eb6834;
-  --color-tier-frontier: #1baf7a;
-  --color-tier-cache: #94a3b8;
+  --color-canvas: #f3f4f5;
+  --color-rail: #f3f4f5;
+  --color-panel: #f3f4f5;
+  --color-ink: #111418;
+  --color-ink-2: #4a525c;
+  --color-ink-3: #5c646e;
+  --color-ink-4: #5c646e;
+  --color-line: #d3d8dd;
+  --color-line-strong: #111418;
+  --color-mark: #c62f1d;
+  --color-mark-soft: #fbf1ef;
+  --color-mark-line: #e9b9b2;
+  --color-danger: #9f2616;
+  --color-danger-soft: #fbf1ef;
+  --color-danger-line: #e9b9b2;
+  --color-warn: #7a4b00;
+  --color-warn-soft: #fdf6e8;
+  --color-warn-line: #ecd3a1;
+  --color-ok: #1f5f32;
+  --color-ok-soft: #eef6f0;
+  --color-ok-line: #b9d8c1;
+  --color-on-panel: #111418;
+  --color-on-panel-2: #4a525c;
+  --color-tier-local: #86b6ef;
+  --color-tier-economy: #2f73cc;
+  --color-tier-frontier: #103f82;
+  --color-tier-cache: #aab2bb;
 
-  --shadow-panel: 0 4px 20px rgba(2, 6, 23, 0.07);
+  --shadow-panel: none;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /*
@@ -60,70 +61,34 @@
   ::file-selector-button {
     border-color: var(--color-line, currentcolor);
   }
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
   button:not(:disabled), [role="button"]:not(:disabled) {
     cursor: pointer;
   }
-  html {
-    @apply font-sans;
-  }
-}
-
-@utility panel {
-  @apply rounded-2xl border border-line/80 bg-surface shadow-panel;
-}
-
-@utility shell-card {
-  @apply rounded-2xl border border-surface/10 bg-surface/5 backdrop-blur-sm;
-}
-
-@utility field-label {
-  @apply mb-2 block text-sm font-semibold text-ink-2;
-}
-
-@utility field-input {
-  @apply w-full rounded-xl border border-line bg-surface px-4 py-3 text-sm text-ink outline-hidden transition focus:border-mark focus:ring-2 focus:ring-mark/20;
-}
-
-@utility action-button {
-  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl bg-mark px-4 py-2.5 text-sm font-semibold text-surface transition hover:bg-mark focus:outline-hidden focus:ring-2 focus:ring-mark/30 disabled:cursor-not-allowed disabled:opacity-60;
-}
-
-@utility secondary-button {
-  @apply inline-flex min-h-11 items-center justify-center whitespace-nowrap rounded-xl border border-line bg-surface px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-ink-4 hover:bg-canvas focus:outline-hidden focus:ring-2 focus:ring-line disabled:cursor-not-allowed disabled:opacity-60;
-}
-
-@layer base {
-
-  * {
-    box-sizing: border-box;
-  }
 
   html {
-    background: #f8fafc;
+    background: var(--color-surface);
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background:
-      radial-gradient(
-        circle at top left,
-        rgba(14, 165, 233, 0.09),
-        transparent 28%
-      ),
-      linear-gradient(
-        180deg,
-        rgba(248, 250, 252, 0.98) 0%,
-        rgba(226, 232, 240, 0.9) 100%
-      );
+    background: var(--color-surface);
     color: var(--color-ink);
-    font-family: var(--font-fira-sans), sans-serif;
+    font-family: var(--font-sans);
+    font-size: 16px;
+    line-height: 1.45;
+    font-variant-numeric: tabular-nums;
+    caret-color: var(--color-mark);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-mark);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-color: var(--color-line) transparent;
   }
 
   a {
@@ -143,8 +108,33 @@
   }
 
   ::selection {
-    background: rgba(3, 105, 161, 0.18);
+    background: color-mix(in srgb, var(--color-mark) 16%, transparent);
   }
+}
+
+/* Legacy utilities kept while pages migrate to the system components. */
+@utility panel {
+  @apply border border-line bg-surface;
+}
+
+@utility shell-card {
+  @apply border border-line bg-surface;
+}
+
+@utility field-label {
+  @apply mb-1.5 block font-label text-[13px] font-medium text-ink-2;
+}
+
+@utility field-input {
+  @apply min-h-10 w-full rounded-[2px] border border-line bg-surface px-3 py-2 text-[15px] text-ink transition-colors focus:border-ink;
+}
+
+@utility action-button {
+  @apply inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap bg-ink px-4 text-[15px] font-semibold text-surface transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:border disabled:border-line disabled:bg-surface disabled:text-ink-3;
+}
+
+@utility secondary-button {
+  @apply inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap border border-line bg-surface px-4 text-[15px] font-semibold text-ink transition-colors hover:border-ink disabled:cursor-not-allowed disabled:opacity-50;
 }
 
 @media (prefers-reduced-motion: reduce) {

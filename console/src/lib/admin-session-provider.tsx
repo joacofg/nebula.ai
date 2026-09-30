@@ -48,7 +48,7 @@ export function AdminSessionProvider({
           });
           if (!response.ok) {
             const body = (await response.json().catch(() => ({}))) as { detail?: string };
-            throw new Error(body.detail ?? "Unable to validate the Nebula admin key.");
+            throw new Error(body.detail ?? "No se pudo validar la clave de admin.");
           }
           inMemoryAdminKey = nextAdminKey;
           setAdminKey(nextAdminKey);

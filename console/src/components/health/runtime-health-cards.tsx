@@ -1,4 +1,6 @@
 import { RuntimeHealthDependency } from "@/lib/admin-api";
+import { Readout } from "@/components/system/readout";
+import { LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type RuntimeHealthCardsProps = {
@@ -8,10 +10,10 @@ type RuntimeHealthCardsProps = {
 
 function formatHealthValue(value: unknown): string {
   if (value === null || value === undefined) {
-    return "N/A";
+    return "—";
   }
   if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+    return value ? "sí" : "no";
   }
   if (typeof value === "number") {
     return Number.isInteger(value) ? String(value) : value.toFixed(2);
@@ -25,21 +27,21 @@ function formatHealthLabel(value: string): string {
 
 function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unknown]> {
   const metadata: Array<[string, unknown]> = [
-    ["Dependency class", dependency.dependency_class],
-    ["Lifecycle state", dependency.lifecycle_state],
-    ["Serving effect", dependency.serving_effect],
-    ["Reason code", dependency.reason_code],
-    ["Enabled", dependency.enabled],
-    ["Recovering", dependency.recovering],
-    ["Last failure", dependency.last_failure_at],
-    ["Last recovery", dependency.last_recovery_at],
-    ["Last status", dependency.last_status],
-    ["Last run", dependency.last_run_at],
-    ["Last attempt", dependency.last_attempted_run_at],
-    ["Deleted rows", dependency.last_deleted_count],
-    ["Eligible rows", dependency.last_eligible_count],
-    ["Last cutoff", dependency.last_cutoff],
-    ["Last error", dependency.last_error],
+    ["Clase", dependency.dependency_class],
+    ["Ciclo de vida", dependency.lifecycle_state],
+    ["Efecto", dependency.serving_effect],
+    ["Código", dependency.reason_code],
+    ["Activada", dependency.enabled],
+    ["Recuperándose", dependency.recovering],
+    ["Última falla", dependency.last_failure_at],
+    ["Última recuperación", dependency.last_recovery_at],
+    ["Último estado", dependency.last_status],
+    ["Última corrida", dependency.last_run_at],
+    ["Último intento", dependency.last_attempted_run_at],
+    ["Filas borradas", dependency.last_deleted_count],
+    ["Filas elegibles", dependency.last_eligible_count],
+    ["Último corte", dependency.last_cutoff],
+    ["Último error", dependency.last_error],
   ];
 
   return metadata.filter(([, value]) => value !== undefined);
@@ -47,7 +49,7 @@ function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unkn
 
 export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCardsProps) {
   if (isLoading) {
-    return <div className="panel px-6 py-5 text-sm text-ink-4">Loading dependency health...</div>;
+    return <LoadingRows rows={3} label="Cargando dependencias" />;
   }
 
   const entries = Object.entries(dependencies);
@@ -56,35 +58,40 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
   );
 
   return (
-    <section className="space-y-4">
+    <section className="flex flex-col gap-3">
       {hasOptionalDegradation ? (
         <Alert variant="warning">
-          <AlertDescription>Optional dependency degradation does not block gateway readiness.</AlertDescription>
+          <AlertDescription>Una dependencia opcional degradada no bloquea el gateway.</AlertDescription>
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid border-t border-l border-line md:grid-cols-2 xl:grid-cols-3">
         {entries.map(([name, dependency]) => {
           const metrics = buildMetadata(dependency);
+          const tone =
+            dependency.status === "ready" ? "bg-ok" : dependency.status === "degraded" ? "bg-warn" : "bg-danger";
 
           return (
-            <article key={name} className="panel px-6 py-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">{name}</div>
-              <div className="mt-3 text-lg font-semibold text-ink">
-                {formatHealthLabel(dependency.status)}
+            <article key={name} className="flex flex-col gap-2 border-r border-b border-line px-4 py-3">
+              <div className="flex items-baseline justify-between gap-3">
+                <h3 className="m-0 font-mono text-[13px] font-medium text-ink">{name}</h3>
+                <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-semibold text-ink">
+                  <span aria-hidden className={`size-2 rounded-full ${tone}`} />
+                  {formatHealthLabel(dependency.status)}
+                </span>
               </div>
-              <p className="mt-2 text-sm text-ink-3">{dependency.detail}</p>
+              <p className="m-0 text-sm text-ink-2">{dependency.detail}</p>
               {metrics.length > 0 ? (
-                <dl className="mt-4 grid gap-3">
-                  {metrics.map(([label, value]) => (
-                    <div key={`${name}-${label}`} className="rounded-xl border border-line bg-canvas px-4 py-3">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
-                      <dd className="mt-2 text-sm font-medium text-ink wrap-anywhere">
+                <Readout
+                  items={metrics.map(([label, value]) => ({
+                    label,
+                    value: (
+                      <span className="text-sm font-medium">
                         {typeof value === "string" ? formatHealthLabel(value) : formatHealthValue(value)}
-                      </dd>
-                    </div>
-                  ))}
-                </dl>
+                      </span>
+                    ),
+                  }))}
+                />
               ) : null}
             </article>
           );

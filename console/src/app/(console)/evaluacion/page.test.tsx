@@ -56,8 +56,8 @@ const tenants = [
   },
 ];
 
-function costCard() {
-  return screen.getByRole("group", { name: "Costo por 1000 prompts" });
+function readout(name: string) {
+  return screen.getByRole("group", { name });
 }
 
 describe("evaluation page", () => {
@@ -74,31 +74,42 @@ describe("evaluation page", () => {
     adminApi.getRouterEvaluation.mockResolvedValue(routerReplayFixture);
   });
 
-  it("shows the nested held-out figures and per-model latency in the header", async () => {
+  it("titles the page and states the corpus in the header cells", async () => {
     renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
 
-    const header = await screen.findByRole("region", { name: "Cifra anidada" });
-    expect(within(header).getByText("−31 %")).toBeInTheDocument();
-    expect(within(header).getByText("IC 95 % [28 %, 35 %]")).toBeInTheDocument();
-    expect(within(header).getByText("−17 %")).toBeInTheDocument();
-    expect(within(header).getByText("IC 95 % [12 %, 21 %]")).toBeInTheDocument();
-    expect(within(header).getByText("qwen2.5:7b")).toBeInTheDocument();
-    expect(within(header).getByText("21.3 s")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Evaluación del router" })).toBeInTheDocument();
+    expect(screen.getByText("v1 · 3 niveles")).toBeInTheDocument();
+    expect(await screen.findByText("4 pedidos")).toBeInTheDocument();
+    expect(screen.getByText("Sin red ni Ollama")).toBeInTheDocument();
   });
 
-  it("updates the cost card when the slider moves", async () => {
+  it("lists the nested held-out figures and per-model latency as a characteristics table", async () => {
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    const table = await screen.findByRole("table", { name: "Características a calidad objetivo 0.95" });
+    const saving = within(table).getByRole("row", { name: /Ahorro vs todo frontier/ });
+    expect(saving).toHaveTextContent("31 %");
+    expect(saving).toHaveTextContent("28–35 %");
+    const random = within(table).getByRole("row", { name: /Ahorro vs mezcla aleatoria/ });
+    expect(random).toHaveTextContent("17 %");
+    expect(random).toHaveTextContent("12–21 %");
+    expect(within(table).getByRole("row", { name: /qwen2\.5:7b · n = 30/ })).toHaveTextContent("21.3 s");
+    expect(within(table).getByRole("row", { name: /Costo/ })).toHaveTextContent("USD 1.70");
+  });
+
+  it("updates the cost readout when the slider moves", async () => {
     renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
 
     const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
     expect(slider).toHaveValue("0.95");
-    expect(within(costCard()).getByText("$2.500")).toBeInTheDocument();
+    expect(readout("Costo por 1000 pedidos")).toHaveTextContent("USD 2.50");
 
     fireEvent.change(slider, { target: { value: "0.75" } });
-    expect(within(costCard()).getByText("$1.500")).toBeInTheDocument();
+    expect(readout("Costo por 1000 pedidos")).toHaveTextContent("USD 1.50");
 
     fireEvent.change(slider, { target: { value: "1" } });
-    expect(within(costCard()).getByText("$4.000")).toBeInTheDocument();
-    expect(screen.getByText("Punto elegido: todo frontier (τ_local = ∞, τ_economy = ∞)")).toBeInTheDocument();
+    expect(readout("Costo por 1000 pedidos")).toHaveTextContent("USD 4.00");
+    expect(readout("Umbrales τ local · economy")).toHaveTextContent("todo frontier");
   });
 
   it("shows savings against all-frontier and random at the same quality", async () => {
@@ -106,9 +117,28 @@ describe("evaluation page", () => {
 
     const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
     fireEvent.change(slider, { target: { value: "0.75" } });
-    // cost 1.5 vs frontier 4.0 → −62.5 %; random at 0.75 = all-economy 2.0 → −25 %.
-    expect(within(screen.getByRole("group", { name: "Ahorro vs todo frontier" })).getByText("−63 %")).toBeInTheDocument();
-    expect(within(screen.getByRole("group", { name: "Ahorro vs mezcla aleatoria" })).getByText("−25 %")).toBeInTheDocument();
+    // cost 1.5 vs frontier 4.0 → 62.5 % saving; random at 0.75 = all-economy 2.0 → 25 %.
+    expect(readout("Ahorro vs todo frontier")).toHaveTextContent("63 %");
+    expect(readout("Ahorro vs mezcla aleatoria")).toHaveTextContent("25 %");
+  });
+
+  it("does not claim a saving against random when the random mix is free", async () => {
+    adminApi.getRouterEvaluation.mockResolvedValue({
+      ...routerReplayFixture,
+      baselines: { ...routerReplayFixture.baselines, all_local: { cost: 0, quality: 0.8 } },
+    });
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
+    fireEvent.change(slider, { target: { value: "0.75" } });
+    const group = readout("Ahorro vs mezcla aleatoria");
+    expect(group).toHaveTextContent("—");
+    expect(group).toHaveTextContent("la mezcla aleatoria no cuesta nada a esta calidad");
+  });
+
+  it("labels the heuristic baseline as the v0 base", async () => {
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+    expect(await screen.findByText("heurística v0 (base)")).toBeInTheDocument();
   });
 
   it("applies the target to the selected tenant with the rest of its policy intact", async () => {
@@ -120,7 +150,7 @@ describe("evaluation page", () => {
     const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
     fireEvent.change(slider, { target: { value: "0.9" } });
     await screen.findByRole("option", { name: "Default Workspace" });
-    await user.click(screen.getByRole("button", { name: "Aplicar a este tenant" }));
+    await user.click(screen.getByRole("button", { name: "Aplicar al tenant" }));
 
     await waitFor(() =>
       expect(adminApi.updateTenantPolicy).toHaveBeenCalledWith("nebula-admin-key", "default", {
@@ -128,9 +158,7 @@ describe("evaluation page", () => {
         routing_quality_target: 0.9,
       }),
     );
-    expect(
-      await screen.findByText("Guardado: routing_quality_target = 0.900 en Default Workspace"),
-    ).toBeInTheDocument();
+    expect(await screen.findByText("Objetivo 0.90 guardado en Default Workspace.")).toBeInTheDocument();
   });
 
   it("does not write when the tenant policy cannot be read", async () => {
@@ -139,17 +167,25 @@ describe("evaluation page", () => {
     renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
 
     await screen.findByRole("option", { name: "Default Workspace" });
-    await user.click(await screen.findByRole("button", { name: "Aplicar a este tenant" }));
+    await user.click(await screen.findByRole("button", { name: "Aplicar al tenant" }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Tenant policy unavailable.");
     expect(adminApi.updateTenantPolicy).not.toHaveBeenCalled();
+  });
+
+  it("says why there is no tenant to apply to when the tenant list fails", async () => {
+    adminApi.listTenants.mockRejectedValue(new Error("Gateway unreachable."));
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Gateway unreachable.");
+    expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeDisabled();
   });
 
   it("shows an empty state when the gateway has no replay", async () => {
     adminApi.getRouterEvaluation.mockResolvedValue(null);
     renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
 
-    expect(await screen.findByText("No hay replay del router")).toBeInTheDocument();
+    expect(await screen.findByText("No hay replay del router.")).toBeInTheDocument();
     expect(screen.getByText(/python -m scripts\.router\.train/)).toBeInTheDocument();
     expect(screen.queryByRole("slider")).not.toBeInTheDocument();
   });

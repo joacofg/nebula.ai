@@ -22,7 +22,7 @@ vi.mock("@/lib/admin-api", async () => {
 });
 
 describe("playground-page", () => {
-  it("frames playground as an operator corroboration surface instead of the public integration boundary", async () => {
+  it("titles the playground and starts with an empty result", async () => {
     adminApi.listTenants.mockResolvedValue([
       {
         id: "default",
@@ -37,14 +37,9 @@ describe("playground-page", () => {
 
     renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
 
-    expect(await screen.findByRole("heading", { name: "Operator corroboration sandbox" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Use the active admin session to run a non-streaming corroboration request for the tenant you select here/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/This checks the live Nebula routing path without acting as the public/i)).toBeInTheDocument();
-    expect(screen.getByText(/POST \/v1\/chat\/completions/i)).toBeInTheDocument();
-    expect(screen.queryByText(/public adoption target/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Playground" })).toBeInTheDocument();
+    expect(screen.getByText("Sin streaming")).toBeInTheDocument();
+    expect(screen.getByText("Enviar un prompt para ver la respuesta y la decisión.")).toBeInTheDocument();
   });
 
   beforeEach(() => {
@@ -122,17 +117,14 @@ describe("playground-page", () => {
       expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
     });
     await user.type(screen.getByLabelText("Prompt"), "Follow up in the ledger");
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-123");
     });
-    expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
-    expect(screen.getAllByText("Route reason")).toHaveLength(2);
-    expect(await screen.findByText("Policy mode")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Recorded outcome" })).toBeInTheDocument();
-    expect(await screen.findByText("Terminal status")).toBeInTheDocument();
-    expect(await screen.findByText("fallback_completed")).toBeInTheDocument();
+    expect(await screen.findByText("Detalle de la respuesta")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Registro en el ledger" })).toBeInTheDocument();
+    expect(await screen.findByText("completado con fallback")).toBeInTheDocument();
   });
 
   it("explains the learned router's tier from the recorded route signals", async () => {
@@ -186,11 +178,10 @@ describe("playground-page", () => {
       expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
     });
     await user.type(screen.getByLabelText("Prompt"), "Route me");
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(await screen.findByRole("heading", { name: "Por qué este nivel" })).toBeInTheDocument();
-    expect(screen.getByText("p_economy 0.91 ≥ τ_economy 0.90 → economy (objetivo 0.90)")).toBeInTheDocument();
-    expect(screen.getByText("Route tier")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /economy elegido \(0\.91 ≥ 0\.90\)/ })).toBeInTheDocument();
   });
 
   it("keeps the immediate response visible while the ledger lookup is pending", async () => {
@@ -208,10 +199,10 @@ describe("playground-page", () => {
       expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
     });
     await user.type(screen.getByLabelText("Prompt"), "Pending ledger data");
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(await screen.findByText("Metadata-first response")).toBeInTheDocument();
-    expect(screen.getByText("Loading recorded outcome...")).toBeInTheDocument();
+    expect(screen.getByRole("status", { name: "Esperando el registro del ledger" })).toBeInTheDocument();
 
     resolveEntry?.({
       request_id: "req-123",
@@ -234,9 +225,7 @@ describe("playground-page", () => {
     });
 
     expect(
-      await screen.findByText(
-        "Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome.",
-      ),
+      await screen.findByRole("heading", { name: "Registro en el ledger" }),
     ).toBeInTheDocument();
   });
 
@@ -282,17 +271,17 @@ describe("playground-page", () => {
       expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
     });
     await user.type(screen.getByLabelText("Prompt"), "Recover failed response metadata");
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(await screen.findByText("Local provider failed.")).toBeInTheDocument();
-    expect(await screen.findByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
+    expect(await screen.findByText("Detalle de la respuesta")).toBeInTheDocument();
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
-    expect(screen.getAllByText("local_provider_error_fallback")).toHaveLength(2);
-    expect(screen.getAllByText("allowed").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("fallback por error local")).toHaveLength(2);
+    expect(screen.getAllByText("allowed")).toHaveLength(1);
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
     });
-    expect(await screen.findByText("provider_error")).toBeInTheDocument();
+    expect(await screen.findByText("error del proveedor")).toBeInTheDocument();
   });
 });

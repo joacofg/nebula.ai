@@ -17,9 +17,9 @@ describe("reveal-api-key-dialog", () => {
   it("renders the reveal-once warning and copies the raw key", async () => {
     renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={vi.fn()} />);
 
-    expect(screen.getByText("This key will not be shown again.")).toBeInTheDocument();
+    expect(screen.getByText("No se vuelve a mostrar.")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Copy key" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copiar" }));
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith("nbk_secret");

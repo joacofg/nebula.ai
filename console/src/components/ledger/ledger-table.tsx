@@ -1,3 +1,13 @@
+"use client";
+
+import type { KeyboardEvent } from "react";
+
+import Link from "next/link";
+import { cn } from "cn";
+
+import { statusLabel } from "@/components/system/labels";
+import { TierBadge } from "@/components/system/tier-badge";
+import { EmptyState, LoadingRows } from "@/components/system/state";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
 type LedgerTableProps = {
@@ -7,83 +17,128 @@ type LedgerTableProps = {
   isLoading: boolean;
 };
 
-function formatEstimatedCost(value: number | null) {
-  return value === null ? "N/A" : `$${value.toFixed(4)}`;
+/** The level a row was served at: the learned router's tier for premium traffic, the route otherwise. */
+export function rowTier(row: UsageLedgerRecord) {
+  const signals = row.route_signals as Record<string, unknown> | null;
+  if (row.final_route_target === "premium" && typeof signals?.tier === "string") {
+    return signals.tier;
+  }
+  return row.final_route_target;
 }
 
-function formatLatency(value: number | null) {
-  return value === null ? "N/A" : `${Math.round(value)} ms`;
+function formatTime(value: string) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString("es-AR", { hourCycle: "h23" });
 }
+
+function formatCost(value: number | null) {
+  return value === null ? "—" : value.toFixed(4);
+}
+
+export function formatLatency(value: number | null) {
+  if (value === null) {
+    return "—";
+  }
+  return value >= 1000 ? `${(value / 1000).toFixed(1)} s` : `${Math.round(value)} ms`;
+}
+
+const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }: LedgerTableProps) {
   if (isLoading) {
-    return <div className="panel px-6 py-5 text-sm text-ink-4">Loading usage ledger...</div>;
+    return <LoadingRows rows={8} label="Cargando pedidos" />;
   }
 
   if (rows.length === 0) {
-    return <div className="panel px-6 py-5 text-sm text-ink-4">No usage ledger rows match these filters.</div>;
+    return (
+      <EmptyState
+        title="No hay pedidos en este rango."
+        action={
+          <Link href="/playground" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark">
+            Abrir Playground
+          </Link>
+        }
+      />
+    );
+  }
+
+  function onRowKeyDown(event: KeyboardEvent<HTMLTableRowElement>, index: number) {
+    const move = event.key === "ArrowDown" ? 1 : event.key === "ArrowUp" ? -1 : 0;
+    if (move !== 0) {
+      event.preventDefault();
+      const next = rows[index + move];
+      if (next) {
+        onSelectRow(next.request_id);
+        const sibling = move > 0 ? event.currentTarget.nextElementSibling : event.currentTarget.previousElementSibling;
+        (sibling as HTMLElement | null)?.focus();
+      }
+      return;
+    }
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      onSelectRow(rows[index].request_id);
+    }
   }
 
   return (
-    <div className="panel overflow-hidden">
-      <table className="min-w-full border-collapse text-left text-sm">
-        <thead className="bg-canvas text-ink-3">
-          <tr>
-            <th className="px-4 py-3 font-semibold">Timestamp</th>
-            <th className="px-4 py-3 font-semibold">Request ID</th>
-            <th className="px-4 py-3 font-semibold">Tenant</th>
-            <th className="px-4 py-3 font-semibold">Route target</th>
-            <th className="px-4 py-3 font-semibold">Provider</th>
-            <th className="px-4 py-3 font-semibold">Status</th>
-            <th className="px-4 py-3 font-semibold">Latency</th>
-            <th className="px-4 py-3 font-semibold">Estimated cost</th>
+    <div className="max-h-[620px] overflow-auto">
+      <table className="w-full min-w-[760px] table-fixed border-collapse text-sm" aria-label="Ledger de pedidos">
+        <colgroup>
+          <col className="w-[84px]" />
+          <col className="w-[104px]" />
+          <col className="w-[104px]" />
+          <col />
+          <col className="w-[68px]" />
+          <col className="w-[76px]" />
+          <col className="w-[76px]" />
+          <col className="w-[132px]" />
+        </colgroup>
+        <thead>
+          <tr className="sticky top-0 z-10 border-b border-line-strong bg-surface shadow-[inset_0_-1px_0_var(--color-line-strong)]">
+            <th scope="col" className={HEAD}>Hora</th>
+            <th scope="col" className={HEAD}>Pedido</th>
+            <th scope="col" className={HEAD}>Nivel</th>
+            <th scope="col" className={HEAD}>Modelo</th>
+            <th scope="col" className={cn(HEAD, "text-right")}>Tokens</th>
+            <th scope="col" className={cn(HEAD, "text-right")}>USD</th>
+            <th scope="col" className={cn(HEAD, "text-right")}>Latencia</th>
+            <th scope="col" className={HEAD}>Estado</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => {
+          {rows.map((row, index) => {
             const selected = row.request_id === selectedRequestId;
-            const selectionLabel = selected ? `Current investigation: ${row.request_id}` : `Inspect request ${row.request_id}`;
-
             return (
               <tr
                 key={row.request_id}
+                tabIndex={0}
                 aria-selected={selected}
-                className={selected ? "bg-mark-soft/70 ring-1 ring-inset ring-mark-line" : "hover:bg-canvas"}
+                aria-label={`Pedido ${row.request_id}`}
+                onClick={() => onSelectRow(row.request_id)}
+                onKeyDown={(event) => onRowKeyDown(event, index)}
+                className={cn(
+                  "cursor-pointer border-b border-line transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-mark",
+                  selected ? "bg-mark-soft shadow-[inset_0_1px_0_var(--color-mark-line),inset_0_-1px_0_var(--color-mark-line)]" : "hover:bg-canvas",
+                )}
               >
-                <td className="px-4 py-3 align-top">{new Date(row.timestamp).toLocaleString()}</td>
-                <td className="px-4 py-3 align-top">
-                  <button
-                    type="button"
-                    onClick={() => onSelectRow(row.request_id)}
-                    aria-pressed={selected}
-                    aria-label={selectionLabel}
-                    className={selected ? "group w-full rounded-xl border border-mark-line bg-surface/90 px-3 py-2 text-left shadow-xs transition focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark" : "group w-full rounded-xl border border-transparent px-3 py-2 text-left transition hover:border-line hover:bg-surface focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-mark"}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-(--font-fira-code) text-xs text-ink-2">{row.request_id}</span>
-                      {selected ? (
-                        <span className="rounded-full border border-mark-line bg-mark-soft px-2 py-0.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-mark">
-                          Current investigation
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-semibold uppercase tracking-[0.18em] text-ink-4 transition group-hover:text-ink-3">
-                          Select request
-                        </span>
-                      )}
-                    </div>
-                    <p className="mt-2 text-xs text-ink-4">
-                      {selected
-                        ? "Primary request for the detail view below."
-                        : "Promote this request into the primary detail view."}
-                    </p>
-                  </button>
+                <td className="truncate px-3 py-2 font-mono text-[12px] text-ink-3">{formatTime(row.timestamp)}</td>
+                <td className="truncate px-3 py-2 font-mono text-[12px] text-ink-2" title={row.request_id}>
+                  {row.request_id.slice(0, 8)}
                 </td>
-                <td className="px-4 py-3 align-top">{row.tenant_id}</td>
-                <td className="px-4 py-3 align-top">{row.final_route_target}</td>
-                <td className="px-4 py-3 align-top">{row.final_provider ?? "N/A"}</td>
-                <td className="px-4 py-3 align-top">{row.terminal_status}</td>
-                <td className="px-4 py-3 align-top">{formatLatency(row.latency_ms)}</td>
-                <td className="px-4 py-3 align-top">{formatEstimatedCost(row.estimated_cost)}</td>
+                <td className="px-3 py-2">
+                  <TierBadge tier={rowTier(row)} />
+                </td>
+                <td className="px-3 py-2">
+                  <span className="block truncate font-mono text-[12px] text-ink-2" title={row.response_model ?? ""}>
+                    {row.response_model ?? "—"}
+                  </span>
+                </td>
+                <td className="px-3 py-2 text-right font-medium">{row.total_tokens}</td>
+                <td className="px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
+                <td className="px-3 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
+                <td className="truncate px-3 py-2 font-label text-[13px] text-ink-2" title={row.terminal_status}>
+                  {statusLabel(row.terminal_status)}
+                </td>
               </tr>
             );
           })}

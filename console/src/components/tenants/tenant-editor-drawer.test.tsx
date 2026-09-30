@@ -25,31 +25,15 @@ describe("tenant-editor-drawer", () => {
       />,
     );
 
-    expect(screen.getByLabelText("id")).toHaveAttribute("readonly");
+    expect(screen.getByLabelText("Id")).toHaveAttribute("readonly");
   });
 
-  it("renders runtime-truth guidance for tenant boundaries and metadata", () => {
+  it("titles a new tenant and keeps one line of help for metadata", () => {
     renderWithProviders(
-      <TenantEditorDrawer
-        mode="create"
-        tenant={null}
-        isSaving={false}
-        onClose={vi.fn()}
-        onSubmit={vi.fn().mockResolvedValue(undefined)}
-      />,
+      <TenantEditorDrawer mode="create" tenant={null} isSaving={false} onClose={vi.fn()} onSubmit={vi.fn()} />,
     );
-
-    expect(
-      screen.getByText(/Create a real tenant boundary for policy and attribution/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/issue API keys separately for the callers that should use it/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Use metadata for optional operator notes, ownership hints, or runbook context only/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Nebula does not enforce app or workload schema from this field/i)).toBeInTheDocument();
-    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nuevo tenant" })).toBeInTheDocument();
+    expect(screen.getByText("Notas del operador; Nebula no valida su esquema.")).toBeInTheDocument();
   });
 
   it("validates metadata JSON before submit", async () => {
@@ -63,13 +47,13 @@ describe("tenant-editor-drawer", () => {
       />,
     );
 
-    await userEvent.type(screen.getByLabelText("id"), "new-team");
-    await userEvent.type(screen.getByLabelText("name"), "New Team");
-    await userEvent.clear(screen.getByLabelText("metadata"));
-    await userEvent.type(screen.getByLabelText("metadata"), "bad json");
-    await userEvent.click(screen.getByRole("button", { name: "Create tenant" }));
+    await userEvent.type(screen.getByLabelText("Id"), "new-team");
+    await userEvent.type(screen.getByLabelText("Nombre"), "New Team");
+    await userEvent.clear(screen.getByLabelText("Metadatos"));
+    await userEvent.type(screen.getByLabelText("Metadatos"), "bad json");
+    await userEvent.click(screen.getByRole("button", { name: "Crear tenant" }));
 
-    expect(screen.getByText("metadata must be valid JSON.")).toBeInTheDocument();
+    expect(screen.getByText("Los metadatos tienen que ser JSON válido.")).toBeInTheDocument();
   });
 
   it("submits normalized tenant payload", async () => {
@@ -85,9 +69,9 @@ describe("tenant-editor-drawer", () => {
       />,
     );
 
-    await userEvent.type(screen.getByLabelText("id"), "tenant-b");
-    await userEvent.type(screen.getByLabelText("name"), "Tenant B");
-    await userEvent.click(screen.getByRole("button", { name: "Create tenant" }));
+    await userEvent.type(screen.getByLabelText("Id"), "tenant-b");
+    await userEvent.type(screen.getByLabelText("Nombre"), "Tenant B");
+    await userEvent.click(screen.getByRole("button", { name: "Crear tenant" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith(

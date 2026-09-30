@@ -1,69 +1,77 @@
 import type { TenantRecord } from "@/lib/admin-api";
 
+import { cn } from "cn";
+
 type TenantTableProps = {
   tenants: TenantRecord[];
   selectedTenantId: string | null;
   onSelectTenant: (tenant: TenantRecord) => void;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
+const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: TenantTableProps) {
   return (
-    <div className="panel overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="bg-canvas text-xs font-semibold uppercase tracking-[0.22em] text-ink-4">
-            <tr>
-              <th className="border-b border-line px-4 py-3">Tenant ID</th>
-              <th className="border-b border-line px-4 py-3">Name</th>
-              <th className="border-b border-line px-4 py-3">Status</th>
-              <th className="border-b border-line px-4 py-3">Updated</th>
-            </tr>
-          </thead>
-          <tbody>
-            {tenants.map((tenant) => {
-              const selected = tenant.id === selectedTenantId;
-              return (
-                <tr
-                  key={tenant.id}
-                  className={[
-                    "cursor-pointer transition hover:bg-canvas",
-                    selected ? "bg-mark-soft/80" : "",
-                  ].join(" ")}
-                  onClick={() => onSelectTenant(tenant)}
-                >
-                  <td className="border-b border-line/70 px-4 py-4 font-(--font-fira-code) text-xs text-ink-2">
-                    {tenant.id}
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4">
-                    <div className="font-semibold text-ink">{tenant.name}</div>
-                    <div className="mt-1 text-xs text-ink-4">{tenant.description ?? "No description"}</div>
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4">
-                    <span
-                      className={[
-                        "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                        tenant.active ? "bg-ok-soft text-ok" : "bg-canvas text-ink-3",
-                      ].join(" ")}
-                    >
-                      {tenant.active ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4 text-ink-3">
-                    {dateFormatter.format(new Date(tenant.updated_at))}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[640px] table-fixed border-collapse text-sm" aria-label="Tenants">
+        <colgroup>
+          <col className="w-[34%]" />
+          <col className="w-[26%]" />
+          <col className="w-[16%]" />
+          <col className="w-[24%]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-line-strong">
+            <th scope="col" className={HEAD}>Nombre</th>
+            <th scope="col" className={HEAD}>Id</th>
+            <th scope="col" className={HEAD}>Estado</th>
+            <th scope="col" className={HEAD}>Actualizado</th>
+          </tr>
+        </thead>
+        <tbody>
+          {tenants.map((tenant) => {
+            const selected = tenant.id === selectedTenantId;
+            return (
+              <tr
+                key={tenant.id}
+                tabIndex={0}
+                aria-selected={selected}
+                onClick={() => onSelectTenant(tenant)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onSelectTenant(tenant);
+                  }
+                }}
+                className={cn(
+                  "cursor-pointer border-b border-line transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-mark",
+                  selected ? "bg-mark-soft shadow-[inset_0_1px_0_var(--color-mark-line),inset_0_-1px_0_var(--color-mark-line)]" : "hover:bg-canvas",
+                )}
+              >
+                <td className="px-3 py-2.5">
+                  <span className="block truncate font-semibold text-ink" title={tenant.name}>
+                    {tenant.name}
+                  </span>
+                  <span className="block truncate text-[13px] text-ink-3" title={tenant.description ?? ""}>
+                    {tenant.description || "—"}
+                  </span>
+                </td>
+                <td className="truncate px-3 py-2.5 font-mono text-[12px] text-ink-2" title={tenant.id}>
+                  {tenant.id}
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-medium text-ink">
+                    <span aria-hidden className={cn("size-2 rounded-full", tenant.active ? "bg-ok" : "bg-line-strong/40")} />
+                    {tenant.active ? "activo" : "inactivo"}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-ink-3">{dateFormatter.format(new Date(tenant.updated_at))}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

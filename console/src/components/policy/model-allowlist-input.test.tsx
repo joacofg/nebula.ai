@@ -16,8 +16,8 @@ describe("model-allowlist-input", () => {
       />,
     );
 
-    await userEvent.type(screen.getByPlaceholderText("Add model"), "openai/gpt-4.1-mini");
-    await userEvent.click(screen.getByRole("button", { name: "Add model" }));
+    await userEvent.type(screen.getByRole("textbox", { name: "Agregar modelo" }), "openai/gpt-4.1-mini");
+    await userEvent.click(screen.getByRole("button", { name: "Agregar" }));
 
     expect(onChange).toHaveBeenCalledWith(["openai/gpt-4o-mini", "openai/gpt-4.1-mini"]);
   });

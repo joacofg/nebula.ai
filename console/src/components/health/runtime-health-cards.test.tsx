@@ -35,7 +35,7 @@ describe("runtime-health-cards", () => {
     expect(screen.getByText("not ready")).toBeInTheDocument();
     expect(screen.getByText("premium_provider")).toBeInTheDocument();
     expect(
-      screen.getByText("Optional dependency degradation does not block gateway readiness."),
+      screen.getByText("Una dependencia opcional degradada no bloquea el gateway."),
     ).toBeInTheDocument();
   });
 
@@ -83,25 +83,25 @@ describe("runtime-health-cards", () => {
       />,
     );
 
-    expect(screen.getAllByText("Dependency class")).toHaveLength(3);
+    expect(screen.getAllByText("Clase")).toHaveLength(3);
     expect(screen.getByText("serving critical")).toBeInTheDocument();
     expect(screen.getAllByText("serving optional")).toHaveLength(2);
-    expect(screen.getAllByText("Lifecycle state")).toHaveLength(3);
+    expect(screen.getAllByText("Ciclo de vida")).toHaveLength(3);
     expect(screen.getAllByText("recovering")).toHaveLength(2);
-    expect(screen.getAllByText("Serving effect")).toHaveLength(3);
+    expect(screen.getAllByText("Efecto")).toHaveLength(3);
     expect(screen.getByText("fail closed")).toBeInTheDocument();
     expect(screen.getAllByText("continuity limited")).toHaveLength(2);
-    expect(screen.getAllByText("Reason code")).toHaveLength(3);
+    expect(screen.getAllByText("Código")).toHaveLength(3);
     expect(screen.getByText("governance query failed")).toBeInTheDocument();
     expect(screen.getByText("semantic cache unavailable")).toBeInTheDocument();
     expect(screen.getByText("premium provider recovered")).toBeInTheDocument();
-    expect(screen.getAllByText("Enabled")).toHaveLength(2);
-    expect(screen.getAllByText("Yes")).toHaveLength(3);
-    expect(screen.getAllByText("Recovering")).toHaveLength(3);
-    expect(screen.getAllByText("No")).toHaveLength(2);
-    expect(screen.getAllByText("Last failure")).toHaveLength(2);
+    expect(screen.getAllByText("Activada")).toHaveLength(2);
+    expect(screen.getAllByText("sí")).toHaveLength(3);
+    expect(screen.getAllByText("Recuperándose")).toHaveLength(3);
+    expect(screen.getAllByText("no")).toHaveLength(2);
+    expect(screen.getAllByText("Última falla")).toHaveLength(2);
     expect(screen.getByText("2026-04-12T01:00:00Z")).toBeInTheDocument();
-    expect(screen.getAllByText("Last recovery")).toHaveLength(1);
+    expect(screen.getAllByText("Última recuperación")).toHaveLength(1);
     expect(screen.getByText("2026-04-12T01:03:00Z")).toBeInTheDocument();
   });
 
@@ -126,11 +126,11 @@ describe("runtime-health-cards", () => {
     );
 
     expect(screen.getByText("retention_lifecycle")).toBeInTheDocument();
-    expect(screen.getByText("Last status")).toBeInTheDocument();
+    expect(screen.getByText("Último estado")).toBeInTheDocument();
     expect(screen.getByText("failed")).toBeInTheDocument();
-    expect(screen.getByText("Deleted rows")).toBeInTheDocument();
+    expect(screen.getByText("Filas borradas")).toBeInTheDocument();
     expect(screen.getAllByText("4")).toHaveLength(2);
-    expect(screen.getByText("Last error")).toBeInTheDocument();
+    expect(screen.getByText("Último error")).toBeInTheDocument();
     expect(screen.getByText("cleanup query timed out")).toBeInTheDocument();
     expect(screen.queryByText(/retention dashboard/i)).not.toBeInTheDocument();
   });

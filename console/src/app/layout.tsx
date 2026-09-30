@@ -1,26 +1,32 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Fira_Code, Fira_Sans } from "next/font/google";
+import { Barlow, Barlow_Semi_Condensed, Red_Hat_Mono } from "next/font/google";
 
 import { Providers } from "@/app/providers";
 
 import "./globals.css";
 
-const firaSans = Fira_Sans({
+const barlow = Barlow({
   subsets: ["latin"],
-  variable: "--font-fira-sans",
+  variable: "--font-barlow",
   weight: ["400", "500", "600", "700"],
 });
 
-const firaCode = Fira_Code({
+const barlowSemiCondensed = Barlow_Semi_Condensed({
   subsets: ["latin"],
-  variable: "--font-fira-code",
-  weight: ["400", "500", "600", "700"],
+  variable: "--font-barlow-semi-condensed",
+  weight: ["500", "600"],
+});
+
+const redHatMono = Red_Hat_Mono({
+  subsets: ["latin"],
+  variable: "--font-red-hat-mono",
+  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
-  title: "Nebula Operator Console",
-  description: "Focused control plane for tenant, API key, and policy workflows.",
+  title: "Nebula · consola",
+  description: "Consola del gateway Nebula: ruteo por niveles, ledger de costos y evaluación del router.",
 };
 
 export default function RootLayout({
@@ -29,7 +35,7 @@ export default function RootLayout({
   children: ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${firaSans.variable} ${firaCode.variable}`}>
+    <html lang="es" className={`${barlow.variable} ${barlowSemiCondensed.variable} ${redHatMono.variable}`}>
       <body>
         <Providers>{children}</Providers>
       </body>

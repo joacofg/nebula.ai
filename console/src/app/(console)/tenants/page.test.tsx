@@ -48,22 +48,25 @@ beforeEach(() => {
 });
 
 describe("tenants page", () => {
-  it("explains tenant and API-key runtime truth without inventing app objects", async () => {
+  it("titles the page and counts active tenants", async () => {
     renderWithProviders(<TenantsPage />);
 
-    expect(await screen.findByRole("heading", { name: "Tenant operations" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Tenants are Nebula's enforced runtime boundary for policy, request attribution, and usage/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/Use API keys to segment which callers can reach each tenant/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/treat app or workload names as team conventions/i),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(/create real tenant records here, then issue tenant-scoped API keys separately/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/workspace/i)).not.toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Tenants" })).toBeInTheDocument();
+    expect(await screen.findByText("1 activos")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear tenant" })).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Buscar por id o nombre")).toBeInTheDocument();
   });
+
+  it("shows the error when the tenant list fails", async () => {
+    mockedListTenants.mockRejectedValue(new Error("Tenants unavailable."));
+    renderWithProviders(<TenantsPage />);
+    expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+  });
+
+  it("offers to create the first tenant when there are none", async () => {
+    mockedListTenants.mockResolvedValue([]);
+    renderWithProviders(<TenantsPage />);
+    expect(await screen.findByText("Todavía no hay tenants.")).toBeInTheDocument();
+  });
+
 });

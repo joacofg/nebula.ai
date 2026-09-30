@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { LoaderCircle, PanelRightOpen } from "lucide-react";
+import { LoaderCircle, X } from "lucide-react";
 
 import type { TenantInput, TenantRecord } from "@/lib/admin-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
-const TENANT_UPDATE_HINT = "/api/admin/tenants/";
 
 type TenantEditorDrawerProps = {
   mode: "create" | "edit";
@@ -62,7 +62,7 @@ export function TenantEditorDrawer({
   }, [mode, tenant]);
 
   const heading = useMemo(
-    () => (isEditMode ? `Edit ${tenant?.name ?? "tenant"}` : "Create tenant"),
+    () => (isEditMode ? `Editar ${tenant?.name ?? "tenant"}` : "Nuevo tenant"),
     [isEditMode, tenant?.name],
   );
 
@@ -74,12 +74,12 @@ export function TenantEditorDrawer({
     try {
       metadata = JSON.parse(formState.metadata || "{}") as Record<string, unknown>;
     } catch {
-      setError("metadata must be valid JSON.");
+      setError("Los metadatos tienen que ser JSON válido.");
       return;
     }
 
     if (!formState.id.trim() || !formState.name.trim()) {
-      setError("id and name are required.");
+      setError("Faltan el id o el nombre.");
       return;
     }
 
@@ -90,38 +90,23 @@ export function TenantEditorDrawer({
       active: formState.active,
       metadata,
     }).catch((nextError) => {
-      setError(nextError instanceof Error ? nextError.message : "Unable to save tenant.");
+      setError(nextError instanceof Error ? nextError.message : "No se pudo guardar el tenant.");
     });
   }
 
   return (
-    <aside className="panel h-full min-h-128 px-5 py-5">
+    <aside className="flex flex-col gap-5 px-6 py-6" aria-labelledby="tenant-editor-heading">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
-            {isEditMode ? "Tenant detail" : "New tenant"}
-          </div>
-          <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">{heading}</h3>
-          <p className="mt-2 text-sm text-ink-4">
-            {isEditMode
-              ? `Updates flow through ${TENANT_UPDATE_HINT}${tenant?.id ?? "{tenant_id}"} and keep this tenant as the authoritative runtime boundary.`
-              : "Create a real tenant boundary for policy and attribution, then issue API keys separately for the callers that should use it."}
-          </p>
-          <p className="mt-2 text-sm text-ink-4">
-            Use metadata for optional operator notes, ownership hints, or runbook context only. Nebula does not enforce app or workload schema from this field.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="secondary-button gap-2 px-3 py-2"
-          onClick={onClose}
-        >
-          <PanelRightOpen className="h-4 w-4" />
-          Close
-        </button>
+        <h2 id="tenant-editor-heading" className="m-0 text-lg font-semibold text-ink">
+          {heading}
+        </h2>
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          <X aria-hidden className="size-4" />
+          Cerrar
+        </Button>
       </div>
 
-      <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+      <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
         {error ? (
           <Alert variant="destructive">
             <AlertDescription>{error}</AlertDescription>
@@ -130,11 +115,11 @@ export function TenantEditorDrawer({
 
         <div>
           <label className="field-label" htmlFor="tenant-id">
-            id
+            Id
           </label>
           <input
             id="tenant-id"
-            className="field-input font-(--font-fira-code) text-xs"
+            className="field-input font-mono text-[13px] read-only:bg-canvas read-only:text-ink-2"
             value={formState.id}
             readOnly={isEditMode}
             onChange={(event) => setFormState((current) => ({ ...current, id: event.target.value }))}
@@ -143,7 +128,7 @@ export function TenantEditorDrawer({
 
         <div>
           <label className="field-label" htmlFor="tenant-name">
-            name
+            Nombre
           </label>
           <input
             id="tenant-name"
@@ -155,43 +140,43 @@ export function TenantEditorDrawer({
 
         <div>
           <label className="field-label" htmlFor="tenant-description">
-            Description
+            Descripción
           </label>
           <textarea
             id="tenant-description"
-            className="field-input min-h-24 resize-y"
+            className="field-input min-h-20 resize-y"
             value={formState.description}
-            onChange={(event) =>
-              setFormState((current) => ({ ...current, description: event.target.value }))
-            }
+            onChange={(event) => setFormState((current) => ({ ...current, description: event.target.value }))}
           />
         </div>
 
-        <label className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-3 text-sm font-medium text-ink-2">
+        <label className="flex items-center gap-2.5 text-[15px] font-medium text-ink">
           <input
             type="checkbox"
+            className="size-4 accent-ink"
             checked={formState.active}
             onChange={(event) => setFormState((current) => ({ ...current, active: event.target.checked }))}
           />
-          active
+          Activo
         </label>
 
         <div>
           <label className="field-label" htmlFor="tenant-metadata">
-            metadata
+            Metadatos
           </label>
           <textarea
             id="tenant-metadata"
-            className="field-input min-h-40 resize-y font-(--font-fira-code) text-xs"
+            className="field-input min-h-32 resize-y font-mono text-[13px]"
             value={formState.metadata}
             onChange={(event) => setFormState((current) => ({ ...current, metadata: event.target.value }))}
           />
+          <p className="mt-1.5 text-[13px] text-ink-3">Notas del operador; Nebula no valida su esquema.</p>
         </div>
 
-        <button className="action-button w-full gap-2" disabled={isSaving} type="submit">
-          {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null}
-          {isEditMode ? "Save tenant" : "Create tenant"}
-        </button>
+        <Button type="submit" size="lg" disabled={isSaving} className="w-full">
+          {isSaving ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : null}
+          {isEditMode ? "Guardar tenant" : "Crear tenant"}
+        </Button>
       </form>
     </aside>
   );

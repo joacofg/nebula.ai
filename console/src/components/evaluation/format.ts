@@ -12,6 +12,26 @@ export function formatPer1000(costPerPrompt: number) {
   return usd.format(Number.isFinite(costPerPrompt) ? costPerPrompt * 1000 : 0);
 }
 
+/** USD per prompt → "USD 1.70" per 1000 prompts, the thesis notation. */
+export function formatUsd1000(costPerPrompt: number) {
+  const value = Number.isFinite(costPerPrompt) ? costPerPrompt * 1000 : 0;
+  return `USD ${value.toFixed(2)}`;
+}
+
+/** A saving read as a saving: 0.31 → "31 %", −0.05 → "−5 %" (it costs more). */
+export function formatAhorro(saving: number | null) {
+  if (saving === null || !Number.isFinite(saving)) {
+    return "—";
+  }
+  const pct = Math.round(saving * 100);
+  return pct < 0 ? `−${-pct} %` : `${pct} %`;
+}
+
+/** A 95 % interval as a range: [0.278, 0.345] → "28–35 %". */
+export function formatRange(ci: [number, number]) {
+  return `${Math.round(ci[0] * 100)}–${Math.round(ci[1] * 100)} %`;
+}
+
 export function formatQuality(quality: number) {
   return Number.isFinite(quality) ? quality.toFixed(3) : "—";
 }
@@ -43,8 +63,8 @@ export function formatTau(tau: number | null | undefined) {
   return tau.toFixed(2);
 }
 
-// Categorical slots 1–3 of the dataviz reference palette, validated all-pairs
-// on the light surface (CVD ΔE ≥ 9.2); tier text stays in slate ink.
+// Ordinal blue ramp (DESIGN.md): tiers are ordered by cost, validated with the
+// dataviz script in --ordinal mode; tier text stays in ink.
 export const TIER_COLORS: Record<Tier, string> = {
   local: "var(--color-tier-local)",
   economy: "var(--color-tier-economy)",

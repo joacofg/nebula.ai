@@ -5,9 +5,9 @@ import { LoaderCircle, Plus } from "lucide-react";
 
 import type { ApiKeyCreateInput, TenantRecord } from "@/lib/admin-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
-const API_KEYS_ENDPOINT = "/api/admin/api-keys";
 
 type CreateApiKeyDialogProps = {
   open: boolean;
@@ -49,11 +49,11 @@ export function CreateApiKeyDialog({
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim()) {
-      setError("name is required.");
+      setError("Falta el nombre.");
       return;
     }
     if (allowedTenantIds.length === 0) {
-      setError("allowed_tenant_ids must contain at least one tenant.");
+      setError("Elegir al menos un tenant permitido.");
       return;
     }
 
@@ -62,7 +62,7 @@ export function CreateApiKeyDialog({
       tenant_id: tenantId,
       allowed_tenant_ids: allowedTenantIds,
     }).catch((nextError) => {
-      setError(nextError instanceof Error ? nextError.message : "Unable to create API key.");
+      setError(nextError instanceof Error ? nextError.message : "No se pudo crear la clave.");
     });
   }
 
@@ -76,24 +76,13 @@ export function CreateApiKeyDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
         <DialogHeader>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">New API key</div>
-          <DialogTitle className="text-xl font-semibold text-ink">Issue client credentials with tenant scope</DialogTitle>
-          <DialogDescription className="text-sm text-ink-4">
-            Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
-            {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
-            key may access.
-          </DialogDescription>
-          <p className="text-sm text-ink-4">
-            Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
-            when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
-            then to the only allowed tenant. If you authorize multiple tenants without a default
-            <span className="font-(--font-fira-code)"> tenant_id</span>, public callers must send the tenant header.
-          </p>
+          <DialogTitle className="text-lg font-semibold text-ink">Nueva clave de API</DialogTitle>
+          <DialogDescription className="text-sm text-ink-3">La clave se muestra una sola vez al crearla.</DialogDescription>
         </DialogHeader>
 
-        <form className="mt-2 space-y-4" onSubmit={handleSubmit}>
+        <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
           {error ? (
             <Alert variant="destructive">
               <AlertDescription>{error}</AlertDescription>
@@ -102,19 +91,14 @@ export function CreateApiKeyDialog({
 
           <div>
             <label className="field-label" htmlFor="api-key-name">
-              name
+              Nombre
             </label>
-            <input
-              id="api-key-name"
-              className="field-input"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
+            <input id="api-key-name" className="field-input" value={name} onChange={(event) => setName(event.target.value)} />
           </div>
 
           <div>
             <label className="field-label" htmlFor="tenant-id">
-              tenant_id
+              Tenant por defecto
             </label>
             <select
               id="tenant-id"
@@ -128,23 +112,16 @@ export function CreateApiKeyDialog({
                 </option>
               ))}
             </select>
-            <p className="mt-2 text-xs leading-5 text-ink-4">
-              Default tenant for callers that omit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>.
-              Leave the key single-tenant or send the header when requests should resolve elsewhere.
-            </p>
           </div>
 
-          <div>
-            <span className="field-label">allowed_tenant_ids</span>
-            <p className="mt-2 text-xs leading-5 text-ink-4">
-              Every tenant this key may access. A single allowed tenant is inferred automatically; multiple
-              allowed tenants are an intentional multi-tenant authorization boundary.
-            </p>
-            <div className="mt-3 grid gap-2 rounded-2xl border border-line bg-canvas p-3 sm:grid-cols-2">
+          <fieldset className="m-0 border-0 p-0">
+            <legend className="field-label">Tenants permitidos</legend>
+            <div className="grid gap-2 sm:grid-cols-2">
               {tenants.map((tenant) => (
-                <label key={tenant.id} className="flex items-center gap-3 rounded-xl bg-surface px-3 py-2 text-sm text-ink-2">
+                <label key={tenant.id} className="flex items-center gap-2.5 text-[15px] text-ink">
                   <input
                     type="checkbox"
+                    className="size-4 accent-ink"
                     checked={allowedTenantIds.includes(tenant.id)}
                     onChange={() => toggleAllowedTenant(tenant.id)}
                   />
@@ -152,12 +129,15 @@ export function CreateApiKeyDialog({
                 </label>
               ))}
             </div>
-          </div>
+            <p className="mt-1.5 text-[13px] text-ink-3">
+              Con más de uno y sin tenant por defecto, los pedidos envían X-Nebula-Tenant-ID.
+            </p>
+          </fieldset>
 
-          <button className="action-button w-full gap-2" disabled={isSaving} type="submit">
-            {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Create API key
-          </button>
+          <Button type="submit" size="lg" disabled={isSaving} className="w-full">
+            {isSaving ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : <Plus aria-hidden className="size-4" />}
+            Crear clave
+          </Button>
         </form>
       </DialogContent>
     </Dialog>

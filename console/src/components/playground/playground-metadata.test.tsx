@@ -22,33 +22,18 @@ describe("playground-metadata", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Immediate response evidence" })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "These fields describe the live route, policy, and tenant evidence before the ledger finishes recording the same request.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Request ID")).toBeInTheDocument();
-    expect(screen.getByText("Route target")).toBeInTheDocument();
-    expect(screen.getByText("Route reason")).toBeInTheDocument();
-    expect(screen.getByText("Tenant")).toBeInTheDocument();
-    expect(screen.getByText("Provider")).toBeInTheDocument();
-    expect(screen.getByText("Policy mode")).toBeInTheDocument();
-    expect(screen.getByText("Policy outcome")).toBeInTheDocument();
-    expect(screen.getByText("Cache hit")).toBeInTheDocument();
-    expect(screen.getByText("Fallback used")).toBeInTheDocument();
-    expect(screen.getByText("Latency")).toBeInTheDocument();
+    expect(screen.getByText("Detalle de la respuesta")).toBeInTheDocument();
+    for (const label of ["Request ID", "Tenant", "Ruta", "Motivo", "Nivel", "Proveedor", "Modo de política", "Resultado de política", "Caché", "Fallback", "Latencia"]) {
+      expect(screen.getByRole("group", { name: label })).toBeInTheDocument();
+    }
     expect(screen.getByText("req-play-001")).toBeInTheDocument();
     expect(screen.getByText("tenant-alpha")).toBeInTheDocument();
     expect(screen.getByText("premium")).toBeInTheDocument();
     expect(screen.getByText("complex_prompt")).toBeInTheDocument();
     expect(screen.getByText("openai-compatible")).toBeInTheDocument();
-    expect(screen.getByText("auto")).toBeInTheDocument();
-    expect(screen.getByText("allowed")).toBeInTheDocument();
-    expect(screen.getByText("No")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("no");
+    expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("sí");
     expect(screen.getByText("187 ms")).toBeInTheDocument();
-    expect(screen.getByText("Route tier")).toBeInTheDocument();
-    expect(screen.getByText("economy")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Nivel" })).toHaveTextContent("economy");
   });
 });

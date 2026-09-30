@@ -3,10 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Search, SlidersHorizontal } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import {
-  ADMIN_TENANTS_ENDPOINT,
   createTenant,
   listTenants,
   updateTenant,
@@ -15,9 +14,11 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { PageHeader } from "@/components/system/page-header";
+import { EmptyState, ErrorAlert, LoadingRows } from "@/components/system/state";
+import { Button } from "@/components/ui/button";
 import { TenantEditorDrawer } from "@/components/tenants/tenant-editor-drawer";
 import { TenantTable } from "@/components/tenants/tenant-table";
-import { ErrorAlert } from "@/components/system/state";
 
 type DrawerState =
   | { mode: "create"; tenant: null }
@@ -40,7 +41,7 @@ export default function TenantsPage() {
   const mutation = useMutation({
     mutationFn: async (payload: TenantInput) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       return drawerState.mode === "create"
         ? createTenant(adminKey, payload)
@@ -89,64 +90,61 @@ export default function TenantsPage() {
     });
   }, [searchTerm, statusFilter, tenantsQuery.data]);
 
-  return (
-    <section className="space-y-6">
-      <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Tenants</div>
-          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
-            Tenant operations
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            Tenants are Nebula&apos;s enforced runtime boundary for policy, request attribution, and usage.
-            Use API keys to segment which callers can reach each tenant, and treat app or workload names as
-            team conventions you capture in tenant names, key names, or notes rather than as product objects.
-          </p>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            This console surface stays grounded in <span className="font-(--font-fira-code)">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="action-button gap-2"
-          onClick={() => setDrawerState({ mode: "create", tenant: null })}
-        >
-          <Plus className="h-4 w-4" />
-          Create tenant
-        </button>
-      </header>
+  const activeCount = (tenantsQuery.data ?? []).filter((tenant) => tenant.active).length;
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.7fr)_minmax(320px,0.95fr)]">
-        <div className="space-y-4">
-          <div className="panel flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center">
-            <label className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-4" />
+  return (
+    <section>
+      <PageHeader
+        title="Tenants"
+        cells={[{ label: "Estado", value: tenantsQuery.data ? `${activeCount} activos` : "—" }]}
+        actions={
+          <Button type="button" onClick={() => setDrawerState({ mode: "create", tenant: null })}>
+            <Plus aria-hidden className="size-4" />
+            Crear tenant
+          </Button>
+        }
+      />
+
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_400px]">
+        <div className="flex min-w-0 flex-col gap-4 px-6 py-5">
+          <div className="flex flex-wrap items-center gap-3">
+            <label className="relative min-w-64 flex-1">
+              <span className="sr-only">Buscar</span>
+              <Search aria-hidden className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-3" />
               <input
                 className="field-input pl-9"
-                placeholder="Search tenant id or name"
+                placeholder="Buscar por id o nombre"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
               />
             </label>
-
-            <label className="flex items-center gap-2 text-sm font-semibold text-ink-2">
-              <SlidersHorizontal className="h-4 w-4 text-ink-4" />
+            <label className="flex items-center gap-2">
+              <span className="font-label text-[13px] font-medium text-ink-3">Estado</span>
               <select
                 className="field-input min-w-36"
                 value={statusFilter}
                 onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
               >
-                <option value="all">All statuses</option>
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
+                <option value="all">Todos</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
               </select>
             </label>
           </div>
 
           {tenantsQuery.isLoading ? (
-            <div className="panel px-6 py-8 text-sm text-ink-4">Loading tenant inventory...</div>
+            <LoadingRows rows={6} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
-            <ErrorAlert error={tenantsQuery.error} fallback="Unable to load tenants." />
+            <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
+          ) : (tenantsQuery.data ?? []).length === 0 ? (
+            <EmptyState
+              title="Todavía no hay tenants."
+              action={
+                <Button type="button" variant="outline" onClick={() => setDrawerState({ mode: "create", tenant: null })}>
+                  Crear tenant
+                </Button>
+              }
+            />
           ) : (
             <TenantTable
               tenants={filteredTenants}
@@ -159,15 +157,17 @@ export default function TenantsPage() {
           )}
         </div>
 
-        <TenantEditorDrawer
-          mode={drawerState.mode}
-          tenant={drawerState.tenant}
-          isSaving={mutation.isPending}
-          onClose={() => setDrawerState({ mode: "edit", tenant: drawerState.tenant })}
-          onSubmit={async (payload) => {
-            await mutation.mutateAsync(payload);
-          }}
-        />
+        <div className="border-t border-line xl:border-t-0 xl:border-l">
+          <TenantEditorDrawer
+            mode={drawerState.mode}
+            tenant={drawerState.tenant}
+            isSaving={mutation.isPending}
+            onClose={() => setDrawerState({ mode: "edit", tenant: drawerState.tenant })}
+            onSubmit={async (payload) => {
+              await mutation.mutateAsync(payload);
+            }}
+          />
+        </div>
       </div>
     </section>
   );

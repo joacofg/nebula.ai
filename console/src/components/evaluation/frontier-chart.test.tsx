@@ -29,11 +29,11 @@ describe("FrontierChart", () => {
       />,
     );
 
-    expect(screen.getByRole("img", { name: /Frontera costo\/calidad/ })).toBeInTheDocument();
-    for (const label of ["Todo local", "Todo economy", "Todo frontier", "Heurística", "Oráculo", "Punto actual"]) {
+    expect(screen.getByRole("group", { name: /Frontera costo–calidad/ })).toBeInTheDocument();
+    for (const label of ["todo local", "todo economy", "todo frontier", "heurística v0 (base)", "oráculo", "punto elegido"]) {
       expect(screen.getAllByText(label).length).toBeGreaterThan(0);
     }
-    expect(screen.getByText("Costo (USD / 1000 prompts)")).toBeInTheDocument();
+    expect(screen.getByText("Costo · USD / 1000 pedidos")).toBeInTheDocument();
     expect(screen.getByText("Calidad")).toBeInTheDocument();
     expect(screen.getByTestId("router-curve")).toBeInTheDocument();
     expect(screen.getByTestId("random-mix")).toBeInTheDocument();
@@ -74,7 +74,7 @@ describe("FrontierChart", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Ver tabla" }));
     const table = screen.getByRole("table", { name: "Valores del gráfico" });
-    expect(table).toHaveTextContent("Todo frontier");
+    expect(table).toHaveTextContent("todo frontier");
     expect(table).toHaveTextContent("4.000");
   });
 });

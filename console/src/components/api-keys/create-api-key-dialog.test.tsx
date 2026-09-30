@@ -27,7 +27,7 @@ const TENANTS = [
 ];
 
 describe("create-api-key-dialog", () => {
-  it("explains tenant resolution for multi-tenant keys", () => {
+  it("titles the dialog and explains the tenant header in one line", () => {
     renderWithProviders(
       <CreateApiKeyDialog
         open
@@ -39,14 +39,12 @@ describe("create-api-key-dialog", () => {
       />,
     );
 
-    expect(screen.getByText(/Creates a client API key through/i)).toBeInTheDocument();
-    expect(screen.getAllByText(/allowed_tenant_ids/i).length).toBeGreaterThan(0);
-    expect(screen.getByText((content) => content.includes("Nebula resolves requests by honoring an explicit"))).toBeInTheDocument();
-    expect(screen.getByText(/public callers must send the tenant header/i)).toBeInTheDocument();
-    expect(screen.getByText(/A single allowed tenant is inferred automatically/i)).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nueva clave de API" })).toBeInTheDocument();
+    expect(screen.getByText("La clave se muestra una sola vez al crearla.")).toBeInTheDocument();
+    expect(screen.getByText(/Con más de uno y sin tenant por defecto, los pedidos envían X-Nebula-Tenant-ID/)).toBeInTheDocument();
   });
 
-  it("validates allowed_tenant_ids", async () => {
+  it("requires at least one allowed tenant", async () => {
     renderWithProviders(
       <CreateApiKeyDialog
         open
@@ -58,11 +56,11 @@ describe("create-api-key-dialog", () => {
       />,
     );
 
-    await userEvent.type(screen.getByLabelText("name"), "Test key");
+    await userEvent.type(screen.getByLabelText("Nombre"), "Test key");
     await userEvent.click(screen.getByLabelText("Tenant A"));
-    await userEvent.click(screen.getByRole("button", { name: "Create API key" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear clave" }));
 
-    expect(screen.getByText("allowed_tenant_ids must contain at least one tenant.")).toBeInTheDocument();
+    expect(screen.getByText("Elegir al menos un tenant permitido.")).toBeInTheDocument();
   });
 
   it("submits tenant scope choices", async () => {
@@ -79,9 +77,9 @@ describe("create-api-key-dialog", () => {
       />,
     );
 
-    await userEvent.type(screen.getByLabelText("name"), "Console key");
+    await userEvent.type(screen.getByLabelText("Nombre"), "Console key");
     await userEvent.click(screen.getByLabelText("Tenant B"));
-    await userEvent.click(screen.getByRole("button", { name: "Create API key" }));
+    await userEvent.click(screen.getByRole("button", { name: "Crear clave" }));
 
     await waitFor(() => {
       expect(onSubmit).toHaveBeenCalledWith({

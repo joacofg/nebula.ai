@@ -221,73 +221,12 @@ describe("policy-page", () => {
   it("renders grouped policy sections", async () => {
     renderPolicyPage();
 
-    expect(await screen.findByRole("heading", { name: "Runtime-enforced controls" })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Applies in live request evaluation")).toBeInTheDocument();
-    expect(screen.getByText("Effective evidence boundary")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Runtime-enforced guidance derived from the retention and minimization controls below.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Local runtime evidence")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Nebula keeps governed request metadata historically inspectable for up to 30 days before expiration markers say it should age out.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByLabelText("Semantic cache similarity threshold")).toBeInTheDocument();
-    expect(screen.getByLabelText("Semantic cache max entry age hours")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Load a tenant policy, compare the current baseline against a candidate draft using recent persisted traffic, and save explicitly only after the preview evidence supports the change.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every lookup.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Cached answers older than this are ignored on lookup for this tenant."),
-    ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Soft budget advisory" })).toBeInTheDocument();
-    expect(screen.getByLabelText("Evidence retention window")).toBeInTheDocument();
-    expect(screen.getByLabelText("Metadata minimization level")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Prompt/response capture remains advisory and deferred for a future governance/privacy phase. Evidence retention and metadata minimization are runtime-enforced above; capture toggles are not editable in Phase 4.",
-      ),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: "Ruteo" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Umbral de similitud")).toBeInTheDocument();
+    expect(screen.getByLabelText("Antigüedad máxima (h)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Presupuesto blando (USD)")).toBeInTheDocument();
+    expect(screen.getByLabelText("Retención de evidencia")).toBeInTheDocument();
+    expect(screen.getByLabelText("Minimización de metadatos")).toBeInTheDocument();
     expect(screen.queryByLabelText("Prompt capture enabled")).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Response capture enabled")).not.toBeInTheDocument();
   });
@@ -295,13 +234,13 @@ describe("policy-page", () => {
   it("previews the current draft without saving and keeps save explicit", async () => {
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
-    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
-    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.82");
-    await userEvent.clear(screen.getByLabelText("Semantic cache max entry age hours"));
-    await userEvent.type(screen.getByLabelText("Semantic cache max entry age hours"), "48");
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.selectOptions(screen.getByLabelText("Modo de ruteo"), "premium_only");
+    await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "0.82");
+    await userEvent.clear(screen.getByLabelText("Antigüedad máxima (h)"));
+    await userEvent.type(screen.getByLabelText("Antigüedad máxima (h)"), "48");
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
     await waitFor(() => {
       expect(simulateTenantPolicyMock).toHaveBeenCalledWith(
@@ -320,22 +259,16 @@ describe("policy-page", () => {
     });
 
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
-    expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
+    expect(await screen.findByText("Pedidos que cambian")).toBeInTheDocument();
+    expect(screen.getByText(/Comparado contra 2 pedidos recientes\./i)).toBeInTheDocument();
+    expect(screen.getByText(/No se guardó nada\./i)).toBeInTheDocument();
     expect(
       screen.getByText(
-        /Bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft\./i,
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/Compared 2 recent persisted request\(s\) against this draft baseline\./i)).toBeInTheDocument();
-    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
-    expect(screen.getByText("Save remains explicit")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "routing parity: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)",
+        "paridad de ruteo: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("routing parity: degraded (degraded, score 0.28) → rollout disabled"),
+      screen.getByText("paridad de ruteo: degraded (degraded, score 0.28) → rollout disabled"),
     ).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
@@ -346,12 +279,12 @@ describe("policy-page", () => {
     simulateTenantPolicyMock.mockRejectedValueOnce(new Error("from_timestamp must be less than or equal to to_timestamp."));
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
     expect(
       await screen.findByText(
-        "Preview failed: from_timestamp must be less than or equal to to_timestamp.",
+        "La simulación falló: from_timestamp must be less than or equal to to_timestamp.",
       ),
     ).toBeInTheDocument();
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
@@ -423,13 +356,13 @@ describe("policy-page", () => {
 
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
     expect(
-      await screen.findByText("No recent traffic matched the replay window, so there was nothing to preview."),
+      await screen.findByText("No hubo tráfico reciente en la ventana de la simulación."),
     ).toBeInTheDocument();
-    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
+    expect(screen.getByText(/No se guardó nada\./i)).toBeInTheDocument();
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
@@ -499,35 +432,29 @@ describe("policy-page", () => {
 
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
-    expect(await screen.findByText("No decision pressure")).toBeInTheDocument();
-    expect(screen.getByText("This draft leaves the sampled baseline unchanged.")).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Keep iterating if you expected a different outcome, or save when you want these settings persisted without changing recent request outcomes.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Next step: save only if the unchanged replay matches your intent.")).toBeInTheDocument();
-    expect(screen.getByText(/This preview did not save the policy./i)).toBeInTheDocument();
+    expect(await screen.findByText("Sin cambios")).toBeInTheDocument();
+    expect(screen.getByText("El borrador no cambia los pedidos de la muestra.")).toBeInTheDocument();
+    expect(screen.getByText(/No se guardó nada\./i)).toBeInTheDocument();
     expect(updateTenantPolicyMock).not.toHaveBeenCalled();
   });
 
   it("clears stale preview evidence after a successful save", async () => {
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.selectOptions(screen.getByLabelText("Routing mode"), "premium_only");
-    await userEvent.clear(screen.getByLabelText("Semantic cache similarity threshold"));
-    await userEvent.type(screen.getByLabelText("Semantic cache similarity threshold"), "0.82");
-    await userEvent.clear(screen.getByLabelText("Semantic cache max entry age hours"));
-    await userEvent.type(screen.getByLabelText("Semantic cache max entry age hours"), "48");
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.selectOptions(screen.getByLabelText("Modo de ruteo"), "premium_only");
+    await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "0.82");
+    await userEvent.clear(screen.getByLabelText("Antigüedad máxima (h)"));
+    await userEvent.type(screen.getByLabelText("Antigüedad máxima (h)"), "48");
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
-    expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
+    expect(await screen.findByText("Pedidos que cambian")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
     await waitFor(() => {
       expect(updateTenantPolicyMock).toHaveBeenCalledWith(
@@ -542,20 +469,20 @@ describe("policy-page", () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByText("Changed request sample")).not.toBeInTheDocument();
+      expect(screen.queryByText("Pedidos que cambian")).not.toBeInTheDocument();
     });
     expect(
-      screen.getByText("Run a preview to compare this draft against recent ledger-backed requests before saving."),
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
     ).toBeInTheDocument();
   });
 
   it("clears stale preview evidence when switching tenants", async () => {
     renderPolicyPage();
 
-    await screen.findByRole("heading", { name: "Preview before save" });
-    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
-    expect(await screen.findByText("Changed request sample")).toBeInTheDocument();
+    expect(await screen.findByText("Pedidos que cambian")).toBeInTheDocument();
 
     await userEvent.selectOptions(screen.getByLabelText("Tenant"), "tenant-b");
 
@@ -563,12 +490,11 @@ describe("policy-page", () => {
       expect(getTenantPolicyMock).toHaveBeenCalledWith("admin-key", "tenant-b");
     });
     await waitFor(() => {
-      expect(screen.queryByText("Changed request sample")).not.toBeInTheDocument();
+      expect(screen.queryByText("Pedidos que cambian")).not.toBeInTheDocument();
     });
     expect(
-      screen.getByText("Run a preview to compare this draft against recent ledger-backed requests before saving."),
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
     ).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Policy for Tenant B" })).toBeInTheDocument();
-    expect(screen.getByText("Load a tenant policy, compare the current baseline against a candidate draft using recent persisted traffic, and save explicitly only after the preview evidence supports the change.")).toBeInTheDocument();
+    expect(screen.getByRole("form", { name: "Política de Tenant B" })).toBeInTheDocument();
   });
 });

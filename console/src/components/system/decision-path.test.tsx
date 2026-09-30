@@ -83,4 +83,20 @@ describe("DecisionPath", () => {
     render(<DecisionPath steps={[{ tier: "local", p: 0.9, tau: 0.82 }]} chosen="local" animate />);
     expect(screen.getByRole("img").querySelectorAll(".decision-trace")).toHaveLength(0);
   });
+  it("draws every tier even when local wins, with the untried stages faded", () => {
+    render(
+      <DecisionPath
+        steps={[
+          { tier: "local", p: 0.9, tau: 0.82 },
+          { tier: "economy", p: 0.4, tau: 0.92 },
+        ]}
+        chosen="local"
+      />,
+    );
+    const img = screen.getByRole("img");
+    expect(img).toHaveAccessibleName("Decisión: local elegido (0.90 ≥ 0.82)");
+    expect(img.querySelector('[data-stage="economy"]')).toHaveAttribute("data-evaluated", "false");
+    expect(img.querySelector('[data-stage="frontier"]')).toHaveAttribute("data-evaluated", "false");
+    expect(img.querySelector("[data-chosen=true]")).toHaveTextContent("local");
+  });
 });

@@ -36,8 +36,9 @@ function clears(step: DecisionStep) {
   return step.p !== null && step.tau !== null && step.p >= step.tau;
 }
 
-function describe(steps: DecisionStep[], chosen: DecisionTier) {
-  const parts = steps.map((step) => {
+function describe(steps: DecisionStep[], chosen: DecisionTier, exitRow: number) {
+  const evaluated = steps.filter((_, i) => i <= exitRow);
+  const parts = evaluated.map((step) => {
     if (step.p === null) {
       return `${step.tier} sin dato`;
     }
@@ -46,11 +47,8 @@ function describe(steps: DecisionStep[], chosen: DecisionTier) {
       ? `${step.tier} elegido (${fmt(step.p)} ≥ ${tau})`
       : `${step.tier} descartado (${fmt(step.p)} < ${tau})`;
   });
-  const last = steps[steps.length - 1];
-  if (!last || !clears(last) || last.tier !== chosen) {
-    if (!steps.some((s) => s.tier === chosen && clears(s))) {
-      parts.push(`${tierLabel(chosen)} elegido`);
-    }
+  if (!evaluated.some((s) => s.tier === chosen && clears(s))) {
+    parts.push(`${tierLabel(chosen)} elegido`);
   }
   return `Decisión: ${parts.join(", ")}`;
 }
@@ -73,99 +71,100 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-const BOX_W = 112;
-const BOX_H = 32;
-const ROW = 64;
+const BOX_W = 124;
+const BOX_H = 34;
+const ROW = 62;
 const START_X = 8;
-const BOX_X0 = 64;
-const STEP_X = 136;
-const END_X = 356;
+const BOX_X0 = 56;
+const STEP_X = 150;
+const END_X = 430;
+const WIDTH = 500;
+const TIERS = ["local", "economy", "frontier"] as const;
 
 /**
- * The router cascade drawn as a signal path: each evaluated step is a box with its
- * probability and threshold; the branch that won is inked, the rest stay as hairlines.
+ * The router cascade drawn as a signal path: every tier is on the sheet, the evaluated
+ * steps show their probability and threshold, and only the branch that won is inked.
  */
 export function DecisionPath({ steps, chosen, animate = false, className }: DecisionPathProps) {
   const reduced = usePrefersReducedMotion();
   const trace = animate && !reduced;
   const winnerIndex = steps.findIndex((s) => s.tier === chosen && clears(s));
-  // The row where the path leaves toward the final node.
-  const exitRow = winnerIndex >= 0 ? winnerIndex : steps.length;
-  const height = 24 + (exitRow + 1) * ROW + 8;
-  const traceClass = trace ? "decision-trace" : undefined;
-
-  const ink: string[] = [];
-  const cy = (row: number) => 40 + row * ROW;
+  // The row where the path leaves toward its terminal: the winning step, or frontier.
+  const exitRow = winnerIndex >= 0 ? winnerIndex : Math.max(steps.length, 2);
+  const height = 24 + 3 * ROW;
+  const cy = (row: number) => 36 + row * ROW;
   const boxX = (i: number) => BOX_X0 + i * STEP_X;
+  const chosenRow = TIERS.indexOf(chosen as (typeof TIERS)[number]);
 
-  ink.push(`M${START_X} ${cy(0)} H${boxX(0)}`);
-  steps.forEach((step, i) => {
-    if (i > exitRow) {
-      return;
-    }
+  const ink: string[] = [`M${START_X} ${cy(0)} H${boxX(0)}`];
+  const faint: string[] = [];
+  for (let i = 0; i < 2; i += 1) {
     const x = boxX(i);
-    if (i === exitRow) {
-      ink.push(`M${x + BOX_W} ${cy(i)} H${END_X}`);
-      return;
+    const into = i + 1 < 2 ? boxX(i + 1) : END_X;
+    const drop = `M${x + BOX_W / 2} ${cy(i) + BOX_H / 2} V${cy(i + 1)} H${into}`;
+    const across = `M${x + BOX_W} ${cy(i)} H${END_X}`;
+    if (i < exitRow) {
+      ink.push(drop);
+      faint.push(across);
+    } else if (i === exitRow) {
+      ink.push(across);
+      faint.push(drop);
+    } else {
+      faint.push(drop, across);
     }
-    // Rejected: drop from the box to the next row and run into the next box (or the end).
-    const nextX = i + 1 < steps.length ? boxX(i + 1) : END_X;
-    ink.push(`M${x + BOX_W / 2} ${cy(i) + BOX_H / 2} V${cy(i + 1)} H${nextX}`);
-  });
-
+  }
   return (
     <svg
       role="img"
-      aria-label={describe(steps, chosen)}
-      viewBox={`0 0 400 ${height}`}
-      className={cn("block h-auto w-full max-w-[400px] overflow-visible", className)}
+      aria-label={describe(steps, chosen, exitRow)}
+      viewBox={`0 0 ${WIDTH} ${height}`}
+      className={cn("block h-auto w-full max-w-[600px] overflow-visible", className)}
     >
+      <path d={faint.join(" ")} fill="none" strokeWidth={1} className="stroke-line" />
       <circle cx={START_X} cy={cy(0)} r={4} className="fill-ink" />
-      {steps.map((step, i) => {
+      {steps.slice(0, 2).map((step, i) => {
         const x = boxX(i);
         const evaluated = i <= exitRow;
         const won = i === winnerIndex;
         const tau = step.tau === null ? "∞" : fmt(step.tau);
         return (
-          <g key={step.tier} className={evaluated ? "" : "opacity-40"}>
+          <g key={step.tier} data-stage={step.tier} data-evaluated={String(evaluated)} className={evaluated ? "" : "opacity-40"}>
             <rect
               x={x}
               y={cy(i) - BOX_H / 2}
               width={BOX_W}
               height={BOX_H}
               className={cn("fill-surface", won ? "stroke-ink" : "stroke-line-strong")}
-              strokeWidth={1.5}
+              strokeWidth={won ? 1.5 : 1}
             />
-            <text x={x + BOX_W / 2} y={cy(i) + 4} textAnchor="middle" className="fill-ink font-label text-[12px]">
+            <text x={x + BOX_W / 2} y={cy(i) + 4.5} textAnchor="middle" className="fill-ink font-label text-[13px]">
               {step.p === null ? `p ${step.tier} sin dato` : `p ${step.tier} ${fmt(step.p)}`}
             </text>
-            <text x={x + BOX_W + 6} y={cy(i) - 8} className="fill-ink-3 font-mono text-[11px]">
-              {clears(step) ? `≥ ${tau}` : `< ${tau}`}
+            <text x={x + BOX_W + 8} y={cy(i) - 7} className="fill-ink-3 font-mono text-[11px]">
+              {`τ ${tau}`}
             </text>
-            {!won && evaluated ? (
-              <>
-                <path d={`M${x + BOX_W} ${cy(i)} H${x + BOX_W + 40}`} className="stroke-line" strokeWidth={1.5} fill="none" />
-                <text x={x + BOX_W + 46} y={cy(i) + 4} className="fill-ink-3 font-label text-[12px]">
-                  {`${step.tier} ✕`}
-                </text>
-              </>
-            ) : null}
           </g>
         );
       })}
-      <path
-        d={ink.join(" ")}
-        pathLength={1}
-        fill="none"
-        strokeWidth={1.5}
-        className={cn("stroke-ink", traceClass)}
-      />
-      <g data-chosen="true">
-        <rect x={END_X} y={cy(exitRow) - 7} width={14} height={14} className={SWATCH[chosen] ?? "fill-ink"} />
-        <text x={END_X + 7} y={cy(exitRow) + 24} textAnchor="middle" className="fill-ink font-label text-[13px] font-semibold">
-          {tierLabel(chosen)}
-        </text>
-      </g>
+      <path d={ink.join(" ")} pathLength={1} fill="none" strokeWidth={1.5} className={cn("stroke-ink", trace ? "decision-trace" : undefined)} />
+      {TIERS.map((tier, row) => {
+        const isChosen = row === chosenRow || (chosenRow === -1 && row === exitRow);
+        const reached = row === exitRow;
+        return (
+          <g
+            key={tier}
+            data-stage={tier === "frontier" ? "frontier" : undefined}
+            data-evaluated={tier === "frontier" ? String(reached) : undefined}
+            data-chosen={isChosen ? "true" : undefined}
+            className={isChosen ? "" : "opacity-40"}
+          >
+            <rect x={END_X} y={cy(row) - 7} width={14} height={14} className={isChosen ? (SWATCH[chosen] ?? "fill-ink") : (SWATCH[tier] ?? "fill-line")} />
+            <text x={END_X + 22} y={cy(row) + 4.5} className={cn("fill-ink font-label text-[14px]", isChosen ? "font-semibold" : "")}>
+              {isChosen ? tierLabel(chosen) : tier}
+            </text>
+          </g>
+        );
+      })}
     </svg>
   );
 }

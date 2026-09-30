@@ -1,22 +1,26 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
 
 import { ApplyTarget } from "@/components/evaluation/apply-target";
 import {
-  formatCi,
-  formatPer1000,
+  formatAhorro,
   formatQuality,
-  formatSaving,
+  formatRange,
   formatShare,
   formatTau,
+  formatUsd1000,
 } from "@/components/evaluation/format";
 import { FrontierChart } from "@/components/evaluation/frontier-chart";
 import { QualitySlider } from "@/components/evaluation/quality-slider";
 import { ReplayFeed } from "@/components/evaluation/replay-feed";
 import { TierShareBar } from "@/components/evaluation/tier-share-bar";
+import { Figure } from "@/components/system/figure";
+import { PageHeader } from "@/components/system/page-header";
+import { Readout } from "@/components/system/readout";
+import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { getRouterEvaluation } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
@@ -30,7 +34,6 @@ import {
   replayOrder,
   type RouterReplay,
 } from "@/lib/router-replay";
-import { ErrorAlert } from "@/components/system/state";
 
 const DEFAULT_TARGET = 0.95;
 const REPLAY_SEED = 20260930;
@@ -43,66 +46,61 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function Eyebrow({ children }: { children: ReactNode }) {
-  return <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">{children}</div>;
-}
+type CharacteristicRow = { parameter: string; condition: string; value: string; ci?: string; key?: boolean };
 
-function StatCard({ label, value, detail }: { label: string; value: string; detail?: ReactNode }) {
-  return (
-    <div role="group" aria-label={label} className="rounded-xl border border-line bg-surface px-4 py-4">
-      <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">{label}</div>
-      <div className="mt-2 text-2xl font-semibold text-ink">{value}</div>
-      {detail ? <div className="mt-1 text-xs text-ink-4">{detail}</div> : null}
-    </div>
-  );
-}
-
-function NestedHeader({ replay }: { replay: RouterReplay }) {
+function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
   const nested = replay.nested["0.95"] ?? null;
   const latency = Object.values(replay.latency).sort((a, b) => a.median_s - b.median_s);
+  const rows: CharacteristicRow[] = nested
+    ? [
+        { parameter: "Ahorro vs todo frontier", condition: "cifra anidada", value: formatAhorro(nested.vs_all_frontier), ci: formatRange(nested.vs_all_frontier_ci95), key: true },
+        { parameter: "Ahorro vs mezcla aleatoria", condition: "igual calidad", value: formatAhorro(nested.vs_random), ci: formatRange(nested.vs_random_ci95) },
+        { parameter: "Calidad lograda", condition: "cifra anidada", value: formatQuality(nested.quality) },
+        { parameter: "Costo", condition: "por 1000 pedidos", value: formatUsd1000(nested.cost) },
+      ]
+    : [];
+  latency.forEach((l, i) =>
+    rows.push({
+      parameter: i === 0 ? "Latencia mediana" : "",
+      condition: `${l.model} · n = ${l.n}`,
+      value: `${l.median_s.toFixed(1)} s`,
+    }),
+  );
+
+  const caption = "Características a calidad objetivo 0.95";
   return (
-    <section aria-label="Cifra anidada" className="panel px-6 py-5">
-      <Eyebrow>Cifra anidada · objetivo 0.95</Eyebrow>
-      {nested ? (
-        <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <div>
-            <div className="text-3xl font-semibold text-ink">{formatSaving(nested.vs_all_frontier)}</div>
-            <div className="text-sm text-ink-3">costo vs todo frontier</div>
-            <div className="font-mono text-xs text-ink-4">{formatCi(nested.vs_all_frontier_ci95)}</div>
-          </div>
-          <div>
-            <div className="text-3xl font-semibold text-ink">{formatSaving(nested.vs_random)}</div>
-            <div className="text-sm text-ink-3">costo vs mezcla aleatoria de igual calidad</div>
-            <div className="font-mono text-xs text-ink-4">{formatCi(nested.vs_random_ci95)}</div>
-          </div>
-          <div>
-            <div className="text-3xl font-semibold text-ink">{formatQuality(nested.quality)}</div>
-            <div className="text-sm text-ink-3">calidad lograda</div>
-            <div className="font-mono text-xs text-ink-4">{formatPer1000(nested.cost)} / 1000 prompts</div>
-          </div>
-        </div>
-      ) : (
-        <p className="mt-2 text-sm text-ink-3">El replay no trae la cifra anidada para 0.95.</p>
-      )}
-      <p className="mt-4 max-w-3xl text-sm text-ink-3">
-        Umbrales y pesos elegidos sin ver el fold ruteado: es la cifra que se reporta. El replay de abajo usa las
-        probabilidades fuera de fold sobre el mismo corpus.
-      </p>
-      {latency.length ? (
-        <div className="mt-4">
-          <div className="text-xs font-semibold uppercase tracking-[0.18em] text-ink-4">
-            Latencia mediana por modelo (30 prompts en español, secuencial)
-          </div>
-          <dl className="mt-2 flex flex-wrap gap-x-6 gap-y-2 text-sm">
-            {latency.map((l) => (
-              <div key={l.model} className="flex items-baseline gap-2">
-                <dt className="font-mono text-xs text-ink-3">{l.model}</dt>
-                <dd className="font-semibold tabular-nums text-ink">{`${l.median_s.toFixed(1)} s`}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
-      ) : null}
+    <section aria-labelledby="characteristics-heading" className="flex flex-col gap-2">
+      <h2 id="characteristics-heading" className="m-0 text-lg font-semibold text-ink">
+        {caption}
+      </h2>
+      {nested ? null : <p className="text-sm text-ink-3">El replay no trae la cifra anidada para 0.95.</p>}
+      <table aria-label={caption} className="w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col className="w-[30%]" />
+          <col className="w-[34%]" />
+          <col className="w-[16%]" />
+          <col className="w-[20%]" />
+        </colgroup>
+        <thead>
+          <tr className="border-y-2 border-t-ink border-b-ink">
+            <th scope="col" className="px-2 py-1.5 text-left font-label text-[13px] font-semibold">Parámetro</th>
+            <th scope="col" className="px-2 py-1.5 text-left font-label text-[13px] font-semibold">Condición</th>
+            <th scope="col" className="px-2 py-1.5 text-right font-label text-[13px] font-semibold">Valor</th>
+            <th scope="col" className="px-2 py-1.5 text-left font-label text-[13px] font-semibold">IC 95 %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row) => (
+            <tr key={`${row.parameter}-${row.condition}`} className="border-b border-line">
+              <th scope="row" className="px-2 py-2 text-left font-normal text-ink">{row.parameter}</th>
+              <td className="px-2 py-2 font-label text-ink-3">{row.condition}</td>
+              <td className={`px-2 py-2 text-right font-semibold whitespace-nowrap text-ink ${row.key ? "text-xl" : ""}`}>{row.value}</td>
+              <td className="px-2 py-2 font-label whitespace-nowrap text-ink-3">{row.ci ?? ""}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="m-0 text-[13px] text-ink-3">Cifra de la tesis: umbrales elegidos sin ver los pedidos evaluados (validación cruzada anidada).</p>
     </section>
   );
 }
@@ -123,116 +121,70 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
   const vsFrontier = frontierCost > 0 ? 1 - result.costPerPrompt / frontierCost : null;
   const randomCost = randomCostAtQuality(replay.baselines, result.quality);
   const vsRandom = randomCost && randomCost > 0 ? 1 - result.costPerPrompt / randomCost : null;
+  const randomDetail =
+    randomCost === null
+      ? "ninguna mezcla alcanza esta calidad"
+      : randomCost === 0
+        ? "la mezcla aleatoria no cuesta nada a esta calidad"
+        : `mezcla a la misma calidad: ${formatUsd1000(randomCost)}`;
+
+  const langs = Object.entries(result.byLang).sort(([a], [b]) => b.localeCompare(a));
 
   return (
-    <>
-      <NestedHeader replay={replay} />
-
-      <section className="panel space-y-6 px-6 py-5" aria-labelledby="frontier-heading">
-        <div>
-          <Eyebrow>Frontera costo / calidad</Eyebrow>
-          <h2 id="frontier-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
-            Elegí la calidad; el router elige el punto más barato que la cumple
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            Misma regla que el gateway: entre los puntos de operación con calidad ≥ objetivo, el de menor costo; un
-            objetivo de 1.0 (o uno que ningún punto alcanza) manda todo a frontier. Luego, en cascada: p_local ≥ τ_local
-            → local, si no p_economy ≥ τ_economy → economy, si no frontier.
-          </p>
+    <div className="flex flex-col gap-10 px-6 py-6">
+      <div className="grid border border-line xl:grid-cols-[minmax(0,1fr)_380px]">
+        <div className="min-w-0 border-line p-4 xl:border-r">
+          <Figure number={1} caption="Calidad en función del costo. Cada vértice es un par de umbrales (τ local, τ economy); arriba a la izquierda es mejor.">
+            <FrontierChart
+              front={front}
+              random={random}
+              baselines={replay.baselines}
+              current={{ cost: result.costPerPrompt, quality: result.quality }}
+            />
+          </Figure>
         </div>
-
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)]">
-          <FrontierChart
-            front={front}
-            random={random}
-            baselines={replay.baselines}
-            current={{ cost: result.costPerPrompt, quality: result.quality }}
+        <div className="flex flex-col gap-5 border-t border-line p-5 xl:border-t-0">
+          <QualitySlider value={target} onChange={setTarget} />
+          <Readout
+            items={[
+              { label: "Costo por 1000 pedidos", value: formatUsd1000(result.costPerPrompt), emphasis: true },
+              { label: "Calidad medida", value: formatQuality(result.quality), emphasis: true },
+              { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier) },
+              { label: "Ahorro vs mezcla aleatoria", value: formatAhorro(vsRandom), detail: randomDetail },
+              {
+                label: "Umbrales τ local · economy",
+                value: allFrontier ? "todo frontier (∞ · ∞)" : `${formatTau(point.tau_local)} · ${formatTau(point.tau_economy)}`,
+              },
+              ...langs.map(([lang, figure]) => ({
+                label: `${LANG_LABELS[lang] ?? lang} · ${figure.n}`,
+                value: `${formatQuality(figure.quality)} · ${formatUsd1000(figure.costPerPrompt)}`,
+              })),
+            ]}
           />
-
-          <div className="space-y-5">
-            <QualitySlider value={target} onChange={setTarget} />
-            <p className="font-mono text-xs text-ink-3">
-              {allFrontier
-                ? "Punto elegido: todo frontier (τ_local = ∞, τ_economy = ∞)"
-                : `Punto elegido: τ_local ${formatTau(point.tau_local)} · τ_economy ${formatTau(point.tau_economy)}`}
-            </p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <StatCard label="Costo por 1000 prompts" value={formatPer1000(result.costPerPrompt)} detail="USD" />
-              <StatCard label="Calidad" value={formatQuality(result.quality)} detail="share de respuestas suficientes" />
-              <StatCard
-                label="Ahorro vs todo frontier"
-                value={formatSaving(vsFrontier)}
-                detail={`todo frontier: ${formatPer1000(frontierCost)}`}
-              />
-              <StatCard
-                label="Ahorro vs mezcla aleatoria"
-                value={formatSaving(vsRandom)}
-                detail={
-                  randomCost !== null
-                    ? `aleatoria a la misma calidad: ${formatPer1000(randomCost)}`
-                    : "ninguna mezcla alcanza esa calidad"
-                }
-              />
-            </div>
-            <div>
-              <div className="field-label">Reparto por nivel</div>
-              <TierShareBar share={result.share} />
-            </div>
-            <div>
-              <div className="field-label">Calidad por idioma</div>
-              <dl className="grid grid-cols-2 gap-3">
-                {Object.entries(result.byLang)
-                  .sort(([a], [b]) => a.localeCompare(b))
-                  .reverse()
-                  .map(([lang, figure]) => (
-                    <div key={lang} className="rounded-xl border border-line px-4 py-3">
-                      <dt className="text-xs text-ink-4">
-                        {LANG_LABELS[lang] ?? lang} · {figure.n} prompts
-                      </dt>
-                      <dd className="mt-1 font-semibold text-ink">
-                        {formatQuality(figure.quality)}{" "}
-                        <span className="text-xs font-normal text-ink-4">
-                          {formatPer1000(figure.costPerPrompt)} / 1000
-                        </span>
-                      </dd>
-                    </div>
-                  ))}
-              </dl>
-            </div>
+          <div className="flex flex-col gap-2">
+            <div className="font-label text-[13px] font-medium text-ink-2">Reparto por nivel</div>
+            <TierShareBar share={result.share} />
           </div>
+          <ApplyTarget adminKey={adminKey} target={target} />
         </div>
+      </div>
+
+      <CharacteristicsTable replay={replay} />
+
+      <section aria-labelledby="replay-heading" className="flex flex-col gap-3">
+        <h2 id="replay-heading" className="m-0 text-lg font-semibold text-ink">
+          Replay acelerado · {replay.rows.length} pedidos, {formatShare(result.share.local)} local
+        </h2>
+        <Figure number={2} caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si los jueces aceptaron la respuesta de ese nivel.">
+          <ReplayFeed rows={replay.rows} order={order} point={point} initialPlaying={initialPlaying} />
+        </Figure>
       </section>
 
-      <section className="panel space-y-4 px-6 py-5" aria-labelledby="replay-heading">
-        <div>
-          <Eyebrow>Replay acelerado</Eyebrow>
-          <h2 id="replay-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
-            {replay.rows.length} prompts del corpus, sin llamar a ningún modelo
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            Cada prompt se rutea con el punto de operación actual ({formatShare(result.share.local)} local hoy); ✓/✗ es
-            la etiqueta de la fase 2 para el nivel elegido. Mover el slider re-rutea desde el prompt en curso.
-          </p>
-        </div>
-        <ReplayFeed rows={replay.rows} order={order} point={point} initialPlaying={initialPlaying} />
-      </section>
-
-      <section className="panel space-y-4 px-6 py-5" aria-labelledby="apply-heading">
-        <div>
-          <Eyebrow>Aplicar</Eyebrow>
-          <h2 id="apply-heading" className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
-            Usar este objetivo en un tenant
-          </h2>
-        </div>
-        <ApplyTarget adminKey={adminKey} target={target} />
-      </section>
-
-      <p className="px-1 text-xs text-ink-4">
-        El replay usa los prompts del corpus de evaluación (derivados de Dolly, CC BY-SA 3.0; GSM8K, MIT; MBPP, CC BY
-        4.0), con probabilidades fuera de fold del router {replay.router_label}. La cifra a reportar es la anidada del
-        encabezado, no la de este replay.
+      <p className="m-0 max-w-[75ch] text-[13px] text-ink-3">
+        Corpus derivado de Dolly (CC BY-SA 3.0), GSM8K (MIT) y MBPP (CC BY 4.0); predicciones del router{" "}
+        {replay.router_label} sobre pedidos que no vio al entrenar.
       </p>
-    </>
+    </div>
   );
 }
 
@@ -244,33 +196,39 @@ export default function EvaluationPage() {
     enabled: Boolean(adminKey),
     staleTime: Number.POSITIVE_INFINITY,
   });
+  const replay = replayQuery.data;
+  const counts = replay
+    ? replay.rows.reduce<Record<string, number>>((acc, r) => ({ ...acc, [r.lang]: (acc[r.lang] ?? 0) + 1 }), {})
+    : null;
 
   return (
-    <section className="space-y-6">
-      <header className="panel px-6 py-5">
-        <Eyebrow>Evaluación</Eyebrow>
-        <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
-          Router aprendido: costo vs calidad
-        </h2>
-        <p className="mt-2 max-w-3xl text-sm text-ink-3">
-          Cómo reparte el router entre el modelo local, economy y frontier según la calidad que se le pide, medido sobre
-          el corpus etiquetado de la tesis. Funciona sin Ollama ni red externa.
-        </p>
-      </header>
+    <section>
+      <PageHeader
+        title="Evaluación del router"
+        cells={[
+          { label: "Router", value: `${replay?.router_label ?? "v1"} · 3 niveles` },
+          { label: "Corpus", value: replay ? `${replay.rows.length} pedidos` : "—" },
+          { label: "Idiomas", value: counts ? `${counts.es ?? 0} es · ${counts.en ?? 0} en` : "—" },
+          { label: "Ejecución", value: "Sin red ni Ollama" },
+        ]}
+      />
 
       {replayQuery.isLoading ? (
-        <div className="panel px-6 py-5 text-sm text-ink-4">Cargando el replay del router…</div>
+        <div className="px-6 py-6">
+          <LoadingRows rows={8} label="Cargando el replay del router" />
+        </div>
       ) : replayQuery.isError ? (
-        <ErrorAlert error={replayQuery.error} fallback="No se pudo cargar el replay del router." />
-      ) : replayQuery.data ? (
-        <EvaluationBody replay={replayQuery.data} adminKey={adminKey ?? ""} />
+        <div className="px-6 py-6">
+          <ErrorAlert error={replayQuery.error} fallback="No se pudo cargar el replay del router." />
+        </div>
+      ) : replay ? (
+        <EvaluationBody replay={replay} adminKey={adminKey ?? ""} />
       ) : (
-        <div className="panel px-6 py-8 text-center">
-          <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">No hay replay del router</h3>
-          <p className="mx-auto mt-2 max-w-xl text-sm text-ink-3">
-            El gateway no encontró el archivo de replay. Generalo con{" "}
-            <code className="font-mono text-xs">python -m scripts.router.train</code> o apuntá{" "}
-            <code className="font-mono text-xs">NEBULA_ROUTER_REPLAY_PATH</code> a uno existente.
+        <div className="px-6 py-8">
+          <p className="m-0 text-lg font-semibold text-ink">No hay replay del router.</p>
+          <p className="mt-2 text-sm text-ink-2">
+            Generarlo con <code className="font-mono text-[13px]">python -m scripts.router.train</code> o apuntar{" "}
+            <code className="font-mono text-[13px]">NEBULA_ROUTER_REPLAY_PATH</code> a uno existente.
           </p>
         </div>
       )}
