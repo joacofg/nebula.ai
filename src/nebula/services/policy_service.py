@@ -415,6 +415,7 @@ class PolicyService:
             "X-Nebula-Fallback-Used": "false",
             "X-Nebula-Policy-Mode": policy_mode,
             "X-Nebula-Policy-Outcome": policy_outcome,
+            "X-Nebula-Route-Tier": "denied",
         }
         route_mode = route_signals.get("route_mode")
         if route_mode is not None:

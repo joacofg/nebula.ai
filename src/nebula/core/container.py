@@ -80,6 +80,7 @@ class ServiceContainer:
             provider_registry=self.provider_registry,
             governance_store=self.governance_store,
             policy_service=self.policy_service,
+            embeddings_service=self.embeddings_service,
         )
 
     async def initialize(self) -> None:

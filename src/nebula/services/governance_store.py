@@ -107,7 +107,10 @@ class GovernanceStore:
         )
 
     def default_policy(self) -> TenantPolicy:
-        return TenantPolicy(allowed_premium_models=[self.settings.premium_model])
+        allowed = [self.settings.premium_model]
+        if self.settings.economy_model and self.settings.economy_model not in allowed:
+            allowed.append(self.settings.economy_model)
+        return TenantPolicy(allowed_premium_models=allowed)
 
     def list_tenants(self) -> list[TenantRecord]:
         with self._session() as session:

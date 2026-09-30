@@ -11,11 +11,12 @@ from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
 from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
 from nebula.models.openai import ChatCompletionRequest
+from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.learned_router import LearnedRouterModel
 from nebula.services.policy_service import PolicyService
 from nebula.services.router_service import RouterService
-from tests.support import admin_headers, configured_app, usage
+from tests.support import FakeCacheService, admin_headers, auth_headers, configured_app, usage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -114,7 +115,7 @@ def _artifact() -> dict:
             "economy": {"weights": [0.0, 1.0], "bias": 0.0},
         },
         "operating_points": [
-            {"tau_local": 0.5, "tau_economy": 0.5, "quality": 0.9, "cost_per_prompt": 0.001},
+            {"tau_local": 0.5, "tau_economy": 0.5, "quality": 0.96, "cost_per_prompt": 0.001},
         ],
     }
 
@@ -231,7 +232,7 @@ async def test_learned_decision_carries_probabilities_point_and_heuristic_signal
     assert signals["operating_point"] == {
         "tau_local": 0.5,
         "tau_economy": 0.5,
-        "quality": 0.9,
+        "quality": 0.96,
         "cost_per_prompt": 0.001,
     }
     assert signals["learned_router"] == "v1-test"
@@ -378,3 +379,317 @@ def test_container_fails_loud_on_a_missing_or_invalid_artifact(tmp_path: Path) -
         with pytest.raises(ValueError, match="version"):
             with TestClient(app):
                 pass
+
+
+# --- Task 7: the gateway routes to three tiers with one prompt embedding ------
+
+
+class _EchoProvider:
+    """Answers with the model it was asked for, the way the real providers do."""
+
+    def __init__(self, name: str, configured_model: str, *, fail: bool = False) -> None:
+        self.name = name
+        self.configured_model = configured_model
+        self.fail = fail
+        self.requested_models: list[str] = []
+
+    def _served_model(self, request: ChatCompletionRequest) -> str:
+        return self.configured_model if request.model == "nebula-auto" else request.model
+
+    async def complete(self, request: ChatCompletionRequest) -> CompletionResult:
+        self.requested_models.append(request.model)
+        if self.fail:
+            raise ProviderError(f"{self.name} is down")
+        return CompletionResult(
+            content=f"{self.name} answer",
+            model=self._served_model(request),
+            provider=self.name,
+            usage=usage(1000, 1000),
+        )
+
+    def stream_complete(self, request: ChatCompletionRequest):
+        self.requested_models.append(request.model)
+        model = self._served_model(request)
+
+        async def iterator():
+            if self.fail:
+                raise ProviderError(f"{self.name} is down")
+            yield CompletionChunk(delta=f"{self.name} answer", model=model)
+            yield CompletionChunk(delta="", model=model, finish_reason="stop")
+
+        return iterator()
+
+    async def close(self) -> None:
+        return None
+
+
+class _FakeEmbeddings:
+    VECTORS = {
+        "local prompt": LOCAL_VECTOR,
+        "economy prompt": ECONOMY_VECTOR,
+        "frontier prompt": FRONTIER_VECTOR,
+    }
+
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def embed(self, text: str) -> list[float] | None:
+        self.calls.append(text)
+        return self.VECTORS.get(text)  # anything else: Ollama is down
+
+    async def close(self) -> None:
+        return None
+
+
+class _VectorRecordingCache(FakeCacheService):
+    def __init__(self, cached_response: str | None = None) -> None:
+        super().__init__(cached_response)
+        self.lookup_vectors: list[list[float] | None] = []
+        self.store_vectors: list[list[float] | None] = []
+
+    async def lookup(
+        self, prompt, *, tenant_id, similarity_threshold, max_entry_age_hours, vector=None
+    ):
+        self.lookup_vectors.append(vector)
+        return await super().lookup(
+            prompt,
+            tenant_id=tenant_id,
+            similarity_threshold=similarity_threshold,
+            max_entry_age_hours=max_entry_age_hours,
+        )
+
+    async def store(self, prompt, response, model, *, tenant_id, vector=None):
+        self.store_vectors.append(vector)
+        await super().store(prompt, response, model, tenant_id=tenant_id)
+
+
+def _learned_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
+    env = {
+        "NEBULA_LOCAL_MODEL": LOCAL_MODEL,
+        "NEBULA_PREMIUM_MODEL": FRONTIER_MODEL,
+        "NEBULA_ECONOMY_MODEL": ECONOMY_MODEL,
+        "NEBULA_LEARNED_ROUTER_ENABLED": "true",
+        "NEBULA_LEARNED_ROUTER_PATH": str(_write_artifact(tmp_path)),
+    }
+    env.update(overrides)
+    return env
+
+
+def _mount(app, *, local_fails: bool = False, cached_response: str | None = None):
+    container = app.state.container
+    local = _EchoProvider("ollama", LOCAL_MODEL, fail=local_fails)
+    premium = _EchoProvider("openai-compatible", FRONTIER_MODEL)
+    container.local_provider = local
+    container.provider_registry.local_provider = local
+    container.premium_provider = premium
+    container.provider_registry.premium_provider = premium
+    cache = _VectorRecordingCache(cached_response)
+    container.cache_service = cache
+    container.chat_service.cache_service = cache
+    embeddings = _FakeEmbeddings()
+    container.chat_service.embeddings_service = embeddings
+    return local, premium, cache, embeddings
+
+
+def _chat(client: TestClient, prompt: str, *, stream: bool = False):
+    return client.post(
+        "/v1/chat/completions",
+        headers=auth_headers(),
+        json={
+            "model": "nebula-auto",
+            "messages": [{"role": "user", "content": prompt}],
+            "stream": stream,
+        },
+    )
+
+
+def _ledger_row(client: TestClient, response) -> dict:
+    rows = client.get(
+        f"/v1/admin/usage/ledger?request_id={response.headers['X-Request-ID']}",
+        headers=admin_headers(),
+    ).json()
+    assert len(rows) == 1
+    return rows[0]
+
+
+def test_economy_decision_asks_the_premium_provider_for_the_economy_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            local, premium, _, _ = _mount(app)
+            response = _chat(client, "economy prompt")
+            row = _ledger_row(client, response)
+
+    assert response.status_code == 200
+    assert premium.requested_models == [ECONOMY_MODEL]
+    assert local.requested_models == []
+    assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Route-Reason"] == "learned_router"
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert response.json()["model"] == ECONOMY_MODEL
+    # The ledger prices by the model that actually answered.
+    assert row["final_route_target"] == "premium"
+    assert row["response_model"] == ECONOMY_MODEL
+    assert row["estimated_cost"] == pytest.approx(0.006)
+    assert row["route_signals"]["tier"] == "economy"
+
+
+def test_frontier_decision_uses_the_frontier_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, _, _ = _mount(app)
+            response = _chat(client, "frontier prompt")
+            row = _ledger_row(client, response)
+
+    assert premium.requested_models == [FRONTIER_MODEL]
+    assert response.headers["X-Nebula-Route-Tier"] == "frontier"
+    assert row["response_model"] == FRONTIER_MODEL
+    assert row["estimated_cost"] == pytest.approx(0.010)
+
+
+def test_local_decision_goes_to_the_local_provider(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            local, premium, _, _ = _mount(app)
+            response = _chat(client, "local prompt")
+
+    assert local.requested_models == ["nebula-auto"]
+    assert premium.requested_models == []
+    assert response.headers["X-Nebula-Route-Target"] == "local"
+    assert response.headers["X-Nebula-Route-Tier"] == "local"
+
+
+def test_embedding_failure_falls_back_to_the_heuristic(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, cache, _ = _mount(app)
+            short = _chat(client, "hello there")
+            keyword = _chat(client, "please debug this")
+            row = _ledger_row(client, keyword)
+
+    assert short.status_code == 200 and keyword.status_code == 200
+    assert short.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert short.headers["X-Nebula-Route-Tier"] == "local"
+    assert keyword.headers["X-Nebula-Route-Target"] == "premium"
+    assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
+    assert premium.requested_models == ["nebula-auto"]
+    assert row["route_signals"]["learned_router"] == "embedding_unavailable"
+    # The cache still works as before: with no routing vector it embeds for itself.
+    assert cache.lookup_vectors == [None, None]
+    assert len(cache.lookup_calls) == 2
+
+
+def test_cache_reuses_the_routing_embedding(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, _, cache, embeddings = _mount(app)
+            response = _chat(client, "economy prompt")
+
+    assert response.status_code == 200
+    assert embeddings.calls == ["economy prompt"]
+    assert cache.lookup_vectors == [ECONOMY_VECTOR]
+    assert cache.store_vectors == [ECONOMY_VECTOR]
+
+
+def test_a_prefixed_router_embedding_is_not_reused_by_the_cache(tmp_path: Path) -> None:
+    artifact = tmp_path / "prefixed.json"
+    artifact.write_text(json.dumps({**_artifact(), "prefix": "classification"}), encoding="utf-8")
+    with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
+        with TestClient(app) as client:
+            _, premium, cache, embeddings = _mount(app)
+            embeddings.VECTORS = {"classification: economy prompt": ECONOMY_VECTOR}
+            response = _chat(client, "economy prompt")
+
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert premium.requested_models == [ECONOMY_MODEL]
+    assert embeddings.calls == ["classification: economy prompt"]
+    # The cache indexes the bare prompt, so it embeds on its own.
+    assert cache.lookup_vectors == [None]
+    assert cache.store_vectors == [None]
+
+
+def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app, cached_response="cached answer")
+            response = _chat(client, "economy prompt")
+
+    assert response.headers["X-Nebula-Route-Target"] == "cache"
+    assert response.headers["X-Nebula-Route-Tier"] == "cache"
+
+
+def test_local_failure_falls_back_to_the_economy_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, _, _ = _mount(app, local_fails=True)
+            response = _chat(client, "local prompt")
+            row = _ledger_row(client, response)
+
+    assert response.status_code == 200
+    assert premium.requested_models == [ECONOMY_MODEL]
+    assert response.headers["X-Nebula-Fallback-Used"] == "true"
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert row["response_model"] == ECONOMY_MODEL
+    assert row["estimated_cost"] > 0
+
+
+def test_streaming_routes_to_the_tier_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, cache, _ = _mount(app)
+            response = _chat(client, "economy prompt", stream=True)
+            row = _ledger_row(client, response)
+
+    assert response.status_code == 200
+    assert premium.requested_models == [ECONOMY_MODEL]
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert row["response_model"] == ECONOMY_MODEL
+    assert row["estimated_cost"] > 0
+    assert cache.lookup_vectors == [ECONOMY_VECTOR]
+    assert cache.store_vectors == [ECONOMY_VECTOR]
+
+
+def test_streaming_local_failure_falls_back_to_the_economy_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, _, _ = _mount(app, local_fails=True)
+            response = _chat(client, "local prompt", stream=True)
+            row = _ledger_row(client, response)
+
+    assert response.status_code == 200
+    assert premium.requested_models == [ECONOMY_MODEL]
+    assert response.headers["X-Nebula-Fallback-Used"] == "true"
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert row["response_model"] == ECONOMY_MODEL
+
+
+def test_denied_request_reports_the_denied_tier(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app)
+            store = app.state.container.governance_store
+            store.upsert_policy("default", TenantPolicy(allowed_premium_models=[FRONTIER_MODEL]))
+            response = _chat(client, "economy prompt")
+
+    assert response.status_code == 403
+    assert response.headers["X-Nebula-Route-Tier"] == "denied"
+
+
+def test_default_policy_allows_the_economy_model(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app):
+            policy = app.state.container.governance_store.default_policy()
+
+    assert policy.allowed_premium_models == [FRONTIER_MODEL, ECONOMY_MODEL]
+
+
+def test_route_tier_header_without_the_learned_router() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _, _, _, embeddings = _mount(app)
+            short = _chat(client, "hello there")
+            keyword = _chat(client, "please debug this")
+
+    assert short.headers["X-Nebula-Route-Tier"] == "local"
+    assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
+    # Disabled router: the chat path never embeds for routing.
+    assert embeddings.calls == []

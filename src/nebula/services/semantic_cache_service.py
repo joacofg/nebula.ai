@@ -77,12 +77,15 @@ class SemanticCacheService:
         tenant_id: str,
         similarity_threshold: float,
         max_entry_age_hours: int,
+        vector: list[float] | None = None,
     ) -> CacheHit | None:
         if not self.enabled:
             CACHE_LOOKUPS.labels("disabled").inc()
             return None
 
-        vector = await self.embeddings_service.embed(prompt)
+        # A vector already computed for routing is the same embedding of the same prompt.
+        if vector is None:
+            vector = await self.embeddings_service.embed(prompt)
         if vector is None:
             CACHE_LOOKUPS.labels("embedding_unavailable").inc()
             return None
@@ -137,11 +140,20 @@ class SemanticCacheService:
             age_seconds=max(age_seconds, 0),
         )
 
-    async def store(self, prompt: str, response: str, model: str, *, tenant_id: str) -> None:
+    async def store(
+        self,
+        prompt: str,
+        response: str,
+        model: str,
+        *,
+        tenant_id: str,
+        vector: list[float] | None = None,
+    ) -> None:
         if not self.enabled:
             return
 
-        vector = await self.embeddings_service.embed(prompt)
+        if vector is None:
+            vector = await self.embeddings_service.embed(prompt)
         if vector is None:
             return
 

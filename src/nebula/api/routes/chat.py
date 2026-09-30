@@ -59,6 +59,7 @@ def _nebula_headers(metadata) -> dict[str, str]:
         "X-Nebula-Fallback-Used": str(metadata.fallback_used).lower(),
         "X-Nebula-Policy-Mode": metadata.policy_mode,
         "X-Nebula-Policy-Outcome": metadata.policy_outcome,
+        "X-Nebula-Route-Tier": metadata.route_tier,
     }
     if metadata.route_signals:
         route_mode = metadata.route_signals.get("route_mode")
