@@ -56,6 +56,22 @@ isn't which tier it hits; it's the `X-Nebula-*` header block itself: "It's
 OpenAI-compatible — any existing client works unchanged; the routing story
 rides in the response headers."
 
+## Three-tier beat (learned router)
+
+Set the tenant's `routing_quality_target` (policy API or console JSON) and send
+`nebula-auto` requests; watch `X-Nebula-Route-Tier`:
+
+| target | "¿Cuál es la capital de Australia?" | "¿Por qué los boletos de avión están tan caros ahora?" | "Escribe una función en Python … criba de Eratóstenes, con tests." |
+|---|---|---|---|
+| 0.80 | local | local | local |
+| 0.90 | local | economy | frontier |
+| 1.00 | frontier | frontier | frontier |
+
+Checked live on 2026-09-30. The line for the jury: raising the quality target
+moves traffic up the tiers; the ledger prices each answer by the model that gave it.
+The second prompt comes from the training corpus: it shows the mechanism, not
+held-out accuracy (that is the nested estimate in `benchmarks/router/v1/report.md`).
+
 ## Recovery moves
 
 | Symptom | Move |
