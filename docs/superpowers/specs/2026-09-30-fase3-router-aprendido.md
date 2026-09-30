@@ -14,7 +14,7 @@ Reemplazar la heurística de dos reglas por un router aprendido que elige entre 
 | Decisión | `local` si `p_local ≥ τ_l`; si no `economy` si `p_economy ≥ τ_e`; si no `frontier` |
 | Etiquetas | `tiers.R3_ordinal_mean.jsonl` (regla elegida); R1 y R2 como sensibilidad |
 | Datos | 1250 prompts (1000 ES + 250 EN), CV de 5 folds **agrupada por `prompt_id`** (un prompt y su traducción caen en el mismo fold), estratificada por tarea |
-| Hiperparámetro | λ ∈ {0.01, 0.1, 1, 10}, elegido por log-loss media fuera de fold (declarado) |
+| Hiperparámetro | λ ∈ {0.0001, 0.001, 0.01, 0.1, 1, 10}, elegido por log-loss media fuera de fold (grilla extendida hacia abajo tras la primera corrida, que eligió el borde 0.01; declarado) |
 | Prefijo de embedding | `none` (el mismo vector que usa el caché) salvo que `classification:` mejore el AUC medio de ambos clasificadores en > 0.02; criterio fijado acá, antes de entrenar |
 | Costo | local USD 0; economy/frontier = costo real capturado en la fase 2 para ese prompt |
 | Calidad | fracción de prompts servidos por un nivel sustituible (frontier cuenta como sustituible por definición) |

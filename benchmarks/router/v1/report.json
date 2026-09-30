@@ -1,0 +1,1794 @@
+{
+  "baselines": {
+    "all_economy": {
+      "cost": 0.0018444447999999998,
+      "quality": 0.88
+    },
+    "all_frontier": {
+      "cost": 0.0024725664000000004,
+      "quality": 1.0
+    },
+    "all_local": {
+      "cost": 0.0,
+      "quality": 0.7544
+    },
+    "heuristic_premium_economy": {
+      "cost": 0.0001242384,
+      "learned_cost_at_same_quality": 1.04096e-05,
+      "quality": 0.756,
+      "random_cost_at_same_quality": 1.6107924429967888e-05
+    },
+    "heuristic_premium_frontier": {
+      "cost": 0.00022670719999999997,
+      "learned_cost_at_same_quality": 2.0011200000000002e-05,
+      "quality": 0.7592,
+      "random_cost_at_same_quality": 4.832377328990255e-05
+    },
+    "oracle": {
+      "cost": 0.0005098552,
+      "quality": 1.0
+    }
+  },
+  "examples": 1250,
+  "folds": 5,
+  "knn": {
+    "auc": {
+      "economy": {
+        "all": 0.6252909090909091,
+        "en": 0.6146788990825688,
+        "es": 0.6270706022522003
+      },
+      "local": {
+        "all": 0.6641652360440896,
+        "en": 0.6402680475175144,
+        "es": 0.6666457719551182
+      }
+    },
+    "cost_at": {
+      "0.85": 0.0006406352,
+      "0.9": 0.0010551016,
+      "0.95": 0.0017574592
+    },
+    "pareto": [
+      {
+        "cost": 0.0,
+        "quality": 0.7544,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0,
+          "local": 1.0
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.0
+      },
+      {
+        "cost": 4.6208e-06,
+        "quality": 0.756,
+        "share": {
+          "economy": 0.004,
+          "frontier": 0.0,
+          "local": 0.996
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.26
+      },
+      {
+        "cost": 5.3792e-06,
+        "quality": 0.7568,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.004,
+          "local": 0.996
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.26
+      },
+      {
+        "cost": 9.764800000000002e-06,
+        "quality": 0.7576,
+        "share": {
+          "economy": 0.0072,
+          "frontier": 0.0,
+          "local": 0.9928
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.3
+      },
+      {
+        "cost": 1.4144800000000002e-05,
+        "quality": 0.7584,
+        "share": {
+          "economy": 0.004,
+          "frontier": 0.0032,
+          "local": 0.9928
+        },
+        "tau_economy": 0.6,
+        "tau_local": 0.3
+      },
+      {
+        "cost": 1.6216e-05,
+        "quality": 0.7592,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0072,
+          "local": 0.9928
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.3
+      },
+      {
+        "cost": 2.92792e-05,
+        "quality": 0.76,
+        "share": {
+          "economy": 0.02,
+          "frontier": 0.0,
+          "local": 0.98
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.36
+      },
+      {
+        "cost": 3.0479999999999996e-05,
+        "quality": 0.7608,
+        "share": {
+          "economy": 0.0208,
+          "frontier": 0.0,
+          "local": 0.9792
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 3.48448e-05,
+        "quality": 0.7616,
+        "share": {
+          "economy": 0.0128,
+          "frontier": 0.0072,
+          "local": 0.98
+        },
+        "tau_economy": 0.62,
+        "tau_local": 0.36
+      },
+      {
+        "cost": 3.5750399999999996e-05,
+        "quality": 0.7624,
+        "share": {
+          "economy": 0.0128,
+          "frontier": 0.008,
+          "local": 0.9792
+        },
+        "tau_economy": 0.62,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 4.09952e-05,
+        "quality": 0.7632,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.012,
+          "local": 0.9792
+        },
+        "tau_economy": 0.66,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 4.20088e-05,
+        "quality": 0.764,
+        "share": {
+          "economy": 0.0064,
+          "frontier": 0.0136,
+          "local": 0.98
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.36
+      },
+      {
+        "cost": 4.29144e-05,
+        "quality": 0.7648,
+        "share": {
+          "economy": 0.0064,
+          "frontier": 0.0144,
+          "local": 0.9792
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 4.39064e-05,
+        "quality": 0.7656,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.02,
+          "local": 0.9792
+        },
+        "tau_economy": 0.76,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 4.5703999999999995e-05,
+        "quality": 0.7664,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0208,
+          "local": 0.9792
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.38
+      },
+      {
+        "cost": 5.24064e-05,
+        "quality": 0.7672,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.0232,
+          "local": 0.9752
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 5.3649599999999995e-05,
+        "quality": 0.768,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.024,
+          "local": 0.9752
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 5.39824e-05,
+        "quality": 0.7688,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0248,
+          "local": 0.9752
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 6.37088e-05,
+        "quality": 0.7696,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0272,
+          "local": 0.9728
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.42
+      },
+      {
+        "cost": 8.039839999999999e-05,
+        "quality": 0.772,
+        "share": {
+          "economy": 0.024,
+          "frontier": 0.0184,
+          "local": 0.9576
+        },
+        "tau_economy": 0.68,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 8.53024e-05,
+        "quality": 0.7752,
+        "share": {
+          "economy": 0.0192,
+          "frontier": 0.0232,
+          "local": 0.9576
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 8.634400000000001e-05,
+        "quality": 0.776,
+        "share": {
+          "economy": 0.0176,
+          "frontier": 0.0248,
+          "local": 0.9576
+        },
+        "tau_economy": 0.74,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 9.071679999999999e-05,
+        "quality": 0.7776,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.0336,
+          "local": 0.9576
+        },
+        "tau_economy": 0.76,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 9.333759999999999e-05,
+        "quality": 0.7784,
+        "share": {
+          "economy": 0.0056,
+          "frontier": 0.0368,
+          "local": 0.9576
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 9.666319999999999e-05,
+        "quality": 0.7792,
+        "share": {
+          "economy": 0.0032,
+          "frontier": 0.0392,
+          "local": 0.9576
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 9.6996e-05,
+        "quality": 0.78,
+        "share": {
+          "economy": 0.0024,
+          "frontier": 0.04,
+          "local": 0.9576
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 9.85696e-05,
+        "quality": 0.7808,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0424,
+          "local": 0.9576
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 0.00010897600000000001,
+        "quality": 0.7824,
+        "share": {
+          "economy": 0.0032,
+          "frontier": 0.0432,
+          "local": 0.9536
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.5
+      },
+      {
+        "cost": 0.00011136959999999998,
+        "quality": 0.7832,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0464,
+          "local": 0.9536
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.5
+      },
+      {
+        "cost": 0.00012742719999999999,
+        "quality": 0.784,
+        "share": {
+          "economy": 0.0176,
+          "frontier": 0.04,
+          "local": 0.9424
+        },
+        "tau_economy": 0.78,
+        "tau_local": 0.54
+      },
+      {
+        "cost": 0.0001309528,
+        "quality": 0.7848,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.0464,
+          "local": 0.9448
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.52
+      },
+      {
+        "cost": 0.00013117440000000002,
+        "quality": 0.7856,
+        "share": {
+          "economy": 0.0128,
+          "frontier": 0.0448,
+          "local": 0.9424
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.54
+      },
+      {
+        "cost": 0.00013438,
+        "quality": 0.7864,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.0488,
+          "local": 0.9424
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.54
+      },
+      {
+        "cost": 0.00013537439999999998,
+        "quality": 0.788,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0552,
+          "local": 0.9448
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.52
+      },
+      {
+        "cost": 0.0001388016,
+        "quality": 0.7896,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0576,
+          "local": 0.9424
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.54
+      },
+      {
+        "cost": 0.0001893392,
+        "quality": 0.7976,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0816,
+          "local": 0.9184
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.56
+      },
+      {
+        "cost": 0.0002510624,
+        "quality": 0.8016,
+        "share": {
+          "economy": 0.0328,
+          "frontier": 0.0776,
+          "local": 0.8896
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.00025774239999999996,
+        "quality": 0.8072,
+        "share": {
+          "economy": 0.016,
+          "frontier": 0.0944,
+          "local": 0.8896
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.0002596528,
+        "quality": 0.8112,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.1104,
+          "local": 0.8896
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.000297612,
+        "quality": 0.8128,
+        "share": {
+          "economy": 0.024,
+          "frontier": 0.1032,
+          "local": 0.8728
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00030338399999999997,
+        "quality": 0.8144,
+        "share": {
+          "economy": 0.0176,
+          "frontier": 0.1096,
+          "local": 0.8728
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00030466959999999997,
+        "quality": 0.8152,
+        "share": {
+          "economy": 0.024,
+          "frontier": 0.1056,
+          "local": 0.8704
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.64
+      },
+      {
+        "cost": 0.0003052784,
+        "quality": 0.8168,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.1272,
+          "local": 0.8728
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00031233599999999997,
+        "quality": 0.8192,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.1296,
+          "local": 0.8704
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.64
+      },
+      {
+        "cost": 0.00046924480000000006,
+        "quality": 0.8224,
+        "share": {
+          "economy": 0.1032,
+          "frontier": 0.1008,
+          "local": 0.796
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.00047089280000000005,
+        "quality": 0.8264,
+        "share": {
+          "economy": 0.0872,
+          "frontier": 0.1168,
+          "local": 0.796
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0004779864,
+        "quality": 0.8328,
+        "share": {
+          "economy": 0.0552,
+          "frontier": 0.1488,
+          "local": 0.796
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0004806304,
+        "quality": 0.8352,
+        "share": {
+          "economy": 0.04,
+          "frontier": 0.164,
+          "local": 0.796
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.00048283200000000004,
+        "quality": 0.8424,
+        "share": {
+          "economy": 0.0024,
+          "frontier": 0.2016,
+          "local": 0.796
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0006311712,
+        "quality": 0.844,
+        "share": {
+          "economy": 0.0576,
+          "frontier": 0.2072,
+          "local": 0.7352
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0006385464,
+        "quality": 0.8496,
+        "share": {
+          "economy": 0.032,
+          "frontier": 0.2328,
+          "local": 0.7352
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0006406352,
+        "quality": 0.8568,
+        "share": {
+          "economy": 0.0048,
+          "frontier": 0.26,
+          "local": 0.7352
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0007752528,
+        "quality": 0.8712,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.3168,
+          "local": 0.6744
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.72
+      },
+      {
+        "cost": 0.0007836192,
+        "quality": 0.872,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.32,
+          "local": 0.6712
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.74
+      },
+      {
+        "cost": 0.0009983744000000001,
+        "quality": 0.8784,
+        "share": {
+          "economy": 0.1792,
+          "frontier": 0.264,
+          "local": 0.5568
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0010203584,
+        "quality": 0.8832,
+        "share": {
+          "economy": 0.1312,
+          "frontier": 0.312,
+          "local": 0.5568
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0010420712,
+        "quality": 0.8912,
+        "share": {
+          "economy": 0.0768,
+          "frontier": 0.3664,
+          "local": 0.5568
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0010551016,
+        "quality": 0.9024,
+        "share": {
+          "economy": 0.02,
+          "frontier": 0.4232,
+          "local": 0.5568
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0011932144,
+        "quality": 0.9104,
+        "share": {
+          "economy": 0.1088,
+          "frontier": 0.4008,
+          "local": 0.4904
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.8
+      },
+      {
+        "cost": 0.0012319464,
+        "quality": 0.9232,
+        "share": {
+          "economy": 0.0304,
+          "frontier": 0.4792,
+          "local": 0.4904
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.8
+      },
+      {
+        "cost": 0.0013725448,
+        "quality": 0.924,
+        "share": {
+          "economy": 0.1496,
+          "frontier": 0.4432,
+          "local": 0.4072
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0014302248,
+        "quality": 0.9376,
+        "share": {
+          "economy": 0.0392,
+          "frontier": 0.5504,
+          "local": 0.4104
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.8200000000000001
+      },
+      {
+        "cost": 0.0014371304,
+        "quality": 0.9384,
+        "share": {
+          "economy": 0.0392,
+          "frontier": 0.5536,
+          "local": 0.4072
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0016451999999999999,
+        "quality": 0.94,
+        "share": {
+          "economy": 0.2296,
+          "frontier": 0.5056,
+          "local": 0.2648
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.86
+      },
+      {
+        "cost": 0.0017531512,
+        "quality": 0.9456,
+        "share": {
+          "economy": 0.272,
+          "frontier": 0.5248,
+          "local": 0.2032
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.9
+      },
+      {
+        "cost": 0.0017552391999999997,
+        "quality": 0.9472,
+        "share": {
+          "economy": 0.2704,
+          "frontier": 0.5264,
+          "local": 0.2032
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.9
+      },
+      {
+        "cost": 0.0017574592,
+        "quality": 0.956,
+        "share": {
+          "economy": 0.0728,
+          "frontier": 0.6624,
+          "local": 0.2648
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.86
+      },
+      {
+        "cost": 0.0018798279999999998,
+        "quality": 0.964,
+        "share": {
+          "economy": 0.0976,
+          "frontier": 0.6992,
+          "local": 0.2032
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.9
+      },
+      {
+        "cost": 0.002040808,
+        "quality": 0.9744,
+        "share": {
+          "economy": 0.1168,
+          "frontier": 0.756,
+          "local": 0.1272
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.92
+      },
+      {
+        "cost": 0.00223352,
+        "quality": 0.9856,
+        "share": {
+          "economy": 0.1696,
+          "frontier": 0.7984,
+          "local": 0.032
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.96
+      }
+    ]
+  },
+  "learned": {
+    "auc": {
+      "economy": {
+        "all": 0.6544363636363636,
+        "en": 0.6169724770642202,
+        "es": 0.6633325646642838
+      },
+      "local": {
+        "all": 0.6626160185975178,
+        "en": 0.6779368463803431,
+        "es": 0.6543649052424831
+      }
+    },
+    "by_lang_at_default": {
+      "en": {
+        "cost": 0.001208056,
+        "quality": 0.94,
+        "share": {
+          "economy": 0.008,
+          "frontier": 0.5,
+          "local": 0.492
+        }
+      },
+      "es": {
+        "cost": 0.0018179989999999998,
+        "quality": 0.961,
+        "share": {
+          "economy": 0.075,
+          "frontier": 0.713,
+          "local": 0.212
+        }
+      }
+    },
+    "cost_at": {
+      "0.85": 0.0005601207999999999,
+      "0.9": 0.0010119664,
+      "0.95": 0.0016960104
+    },
+    "default_point": {
+      "cost": 0.0016960104,
+      "quality": 0.9568,
+      "share": {
+        "economy": 0.0616,
+        "frontier": 0.6704,
+        "local": 0.268
+      },
+      "tau_economy": 0.92,
+      "tau_local": 0.8200000000000001
+    },
+    "default_target": 0.95,
+    "pareto": [
+      {
+        "cost": 0.0,
+        "quality": 0.7544,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0,
+          "local": 1.0
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.0
+      },
+      {
+        "cost": 1.6039999999999998e-06,
+        "quality": 0.7552,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.0,
+          "local": 0.9992
+        },
+        "tau_economy": 0.0,
+        "tau_local": 0.34
+      },
+      {
+        "cost": 1.04096e-05,
+        "quality": 0.756,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0024,
+          "local": 0.9976
+        },
+        "tau_economy": 0.76,
+        "tau_local": 0.36
+      },
+      {
+        "cost": 1.6260800000000002e-05,
+        "quality": 0.7568,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.0032,
+          "local": 0.9952
+        },
+        "tau_economy": 0.7000000000000001,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 1.64184e-05,
+        "quality": 0.7576,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.004,
+          "local": 0.9952
+        },
+        "tau_economy": 0.74,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 1.86144e-05,
+        "quality": 0.7584,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0048,
+          "local": 0.9952
+        },
+        "tau_economy": 0.76,
+        "tau_local": 0.4
+      },
+      {
+        "cost": 2.0011200000000002e-05,
+        "quality": 0.7592,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0064,
+          "local": 0.9936
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.44
+      },
+      {
+        "cost": 2.40208e-05,
+        "quality": 0.76,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.008,
+          "local": 0.992
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.46
+      },
+      {
+        "cost": 2.6689600000000003e-05,
+        "quality": 0.7608,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0096,
+          "local": 0.9904
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.48
+      },
+      {
+        "cost": 2.88984e-05,
+        "quality": 0.7624,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.0104,
+          "local": 0.988
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.5
+      },
+      {
+        "cost": 3.0784e-05,
+        "quality": 0.7632,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.012,
+          "local": 0.988
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.5
+      },
+      {
+        "cost": 3.4459200000000004e-05,
+        "quality": 0.764,
+        "share": {
+          "economy": 0.0048,
+          "frontier": 0.0104,
+          "local": 0.9848
+        },
+        "tau_economy": 0.8,
+        "tau_local": 0.52
+      },
+      {
+        "cost": 3.9664e-05,
+        "quality": 0.7656,
+        "share": {
+          "economy": 0.0024,
+          "frontier": 0.0128,
+          "local": 0.9848
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.52
+      },
+      {
+        "cost": 4.8184e-05,
+        "quality": 0.7696,
+        "share": {
+          "economy": 0.0048,
+          "frontier": 0.0168,
+          "local": 0.9784
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.54
+      },
+      {
+        "cost": 6.98992e-05,
+        "quality": 0.7736,
+        "share": {
+          "economy": 0.0104,
+          "frontier": 0.0216,
+          "local": 0.968
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.56
+      },
+      {
+        "cost": 7.981439999999999e-05,
+        "quality": 0.7744,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.032,
+          "local": 0.968
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.56
+      },
+      {
+        "cost": 9.3008e-05,
+        "quality": 0.776,
+        "share": {
+          "economy": 0.0184,
+          "frontier": 0.0256,
+          "local": 0.956
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.58
+      },
+      {
+        "cost": 0.00011204400000000001,
+        "quality": 0.7776,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.0352,
+          "local": 0.956
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.58
+      },
+      {
+        "cost": 0.0001124512,
+        "quality": 0.7792,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.0432,
+          "local": 0.956
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.58
+      },
+      {
+        "cost": 0.00012310560000000002,
+        "quality": 0.7832,
+        "share": {
+          "economy": 0.0304,
+          "frontier": 0.0312,
+          "local": 0.9384
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.000147316,
+        "quality": 0.7856,
+        "share": {
+          "economy": 0.0176,
+          "frontier": 0.044,
+          "local": 0.9384
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.0001512104,
+        "quality": 0.788,
+        "share": {
+          "economy": 0.0032,
+          "frontier": 0.0584,
+          "local": 0.9384
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.6
+      },
+      {
+        "cost": 0.0001682216,
+        "quality": 0.7904,
+        "share": {
+          "economy": 0.048,
+          "frontier": 0.0368,
+          "local": 0.9152
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00020054720000000002,
+        "quality": 0.7936,
+        "share": {
+          "economy": 0.0288,
+          "frontier": 0.056,
+          "local": 0.9152
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00020863360000000002,
+        "quality": 0.7976,
+        "share": {
+          "economy": 0.0056,
+          "frontier": 0.0792,
+          "local": 0.9152
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.00021632319999999997,
+        "quality": 0.7984,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.0848,
+          "local": 0.9152
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.62
+      },
+      {
+        "cost": 0.0002595472,
+        "quality": 0.8024,
+        "share": {
+          "economy": 0.044,
+          "frontier": 0.0664,
+          "local": 0.8896
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.64
+      },
+      {
+        "cost": 0.00027466480000000004,
+        "quality": 0.808,
+        "share": {
+          "economy": 0.0088,
+          "frontier": 0.1016,
+          "local": 0.8896
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.64
+      },
+      {
+        "cost": 0.0002856504,
+        "quality": 0.8088,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.1096,
+          "local": 0.8896
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.64
+      },
+      {
+        "cost": 0.0002942936,
+        "quality": 0.8096,
+        "share": {
+          "economy": 0.0992,
+          "frontier": 0.0512,
+          "local": 0.8496
+        },
+        "tau_economy": 0.8200000000000001,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0003339232,
+        "quality": 0.816,
+        "share": {
+          "economy": 0.0672,
+          "frontier": 0.0832,
+          "local": 0.8496
+        },
+        "tau_economy": 0.84,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0003544232,
+        "quality": 0.824,
+        "share": {
+          "economy": 0.0136,
+          "frontier": 0.1368,
+          "local": 0.8496
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.0003701584,
+        "quality": 0.8248,
+        "share": {
+          "economy": 0.0024,
+          "frontier": 0.148,
+          "local": 0.8496
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.66
+      },
+      {
+        "cost": 0.00044403039999999996,
+        "quality": 0.8296,
+        "share": {
+          "economy": 0.0504,
+          "frontier": 0.1408,
+          "local": 0.8088
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.68
+      },
+      {
+        "cost": 0.00044944239999999996,
+        "quality": 0.836,
+        "share": {
+          "economy": 0.0176,
+          "frontier": 0.1736,
+          "local": 0.8088
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.68
+      },
+      {
+        "cost": 0.000463976,
+        "quality": 0.8376,
+        "share": {
+          "economy": 0.004,
+          "frontier": 0.1872,
+          "local": 0.8088
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.68
+      },
+      {
+        "cost": 0.00046478320000000004,
+        "quality": 0.8384,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.1896,
+          "local": 0.8088
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.68
+      },
+      {
+        "cost": 0.0005415375999999999,
+        "quality": 0.8416,
+        "share": {
+          "economy": 0.0704,
+          "frontier": 0.1648,
+          "local": 0.7648
+        },
+        "tau_economy": 0.86,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0005480207999999999,
+        "quality": 0.8496,
+        "share": {
+          "economy": 0.0256,
+          "frontier": 0.2096,
+          "local": 0.7648
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0005601207999999999,
+        "quality": 0.8528,
+        "share": {
+          "economy": 0.0064,
+          "frontier": 0.2288,
+          "local": 0.7648
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.0005620792,
+        "quality": 0.8544,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.2336,
+          "local": 0.7648
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.7000000000000001
+      },
+      {
+        "cost": 0.000704584,
+        "quality": 0.8672,
+        "share": {
+          "economy": 0.0416,
+          "frontier": 0.2584,
+          "local": 0.7
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.72
+      },
+      {
+        "cost": 0.000714564,
+        "quality": 0.872,
+        "share": {
+          "economy": 0.012,
+          "frontier": 0.288,
+          "local": 0.7
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.72
+      },
+      {
+        "cost": 0.0007218071999999999,
+        "quality": 0.8744,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.2984,
+          "local": 0.7
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.72
+      },
+      {
+        "cost": 0.0008479792,
+        "quality": 0.8816,
+        "share": {
+          "economy": 0.0704,
+          "frontier": 0.3008,
+          "local": 0.6288
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.74
+      },
+      {
+        "cost": 0.0008567656,
+        "quality": 0.8888,
+        "share": {
+          "economy": 0.0232,
+          "frontier": 0.348,
+          "local": 0.6288
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.74
+      },
+      {
+        "cost": 0.0008708552000000001,
+        "quality": 0.8912,
+        "share": {
+          "economy": 0.0016,
+          "frontier": 0.3696,
+          "local": 0.6288
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.74
+      },
+      {
+        "cost": 0.0010119664,
+        "quality": 0.9,
+        "share": {
+          "economy": 0.0432,
+          "frontier": 0.4016,
+          "local": 0.5552
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0010372208,
+        "quality": 0.9024,
+        "share": {
+          "economy": 0.0056,
+          "frontier": 0.4392,
+          "local": 0.5552
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.76
+      },
+      {
+        "cost": 0.0011904408,
+        "quality": 0.916,
+        "share": {
+          "economy": 0.1728,
+          "frontier": 0.3688,
+          "local": 0.4584
+        },
+        "tau_economy": 0.88,
+        "tau_local": 0.78
+      },
+      {
+        "cost": 0.0012134840000000001,
+        "quality": 0.9248,
+        "share": {
+          "economy": 0.0784,
+          "frontier": 0.4632,
+          "local": 0.4584
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.78
+      },
+      {
+        "cost": 0.0012541536,
+        "quality": 0.9304,
+        "share": {
+          "economy": 0.0192,
+          "frontier": 0.5224,
+          "local": 0.4584
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.78
+      },
+      {
+        "cost": 0.0012771567999999998,
+        "quality": 0.9328,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.5416,
+          "local": 0.4584
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.78
+      },
+      {
+        "cost": 0.001422184,
+        "quality": 0.9392,
+        "share": {
+          "economy": 0.1232,
+          "frontier": 0.52,
+          "local": 0.3568
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.8
+      },
+      {
+        "cost": 0.001487556,
+        "quality": 0.9448,
+        "share": {
+          "economy": 0.0384,
+          "frontier": 0.6048,
+          "local": 0.3568
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.8
+      },
+      {
+        "cost": 0.0015310536,
+        "quality": 0.9472,
+        "share": {
+          "economy": 0.0008,
+          "frontier": 0.6424,
+          "local": 0.3568
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.8
+      },
+      {
+        "cost": 0.0016008512,
+        "quality": 0.948,
+        "share": {
+          "economy": 0.1744,
+          "frontier": 0.5576,
+          "local": 0.268
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.8200000000000001
+      },
+      {
+        "cost": 0.0016960104,
+        "quality": 0.9568,
+        "share": {
+          "economy": 0.0616,
+          "frontier": 0.6704,
+          "local": 0.268
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.8200000000000001
+      },
+      {
+        "cost": 0.00175904,
+        "quality": 0.96,
+        "share": {
+          "economy": 0.0056,
+          "frontier": 0.7264,
+          "local": 0.268
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.8200000000000001
+      },
+      {
+        "cost": 0.0017625184000000002,
+        "quality": 0.9608,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.732,
+          "local": 0.268
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.8200000000000001
+      },
+      {
+        "cost": 0.0017852159999999998,
+        "quality": 0.9624,
+        "share": {
+          "economy": 0.2376,
+          "frontier": 0.5928,
+          "local": 0.1696
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0019159984,
+        "quality": 0.968,
+        "share": {
+          "economy": 0.2848,
+          "frontier": 0.6152,
+          "local": 0.1
+        },
+        "tau_economy": 0.9,
+        "tau_local": 0.86
+      },
+      {
+        "cost": 0.0019186991999999997,
+        "quality": 0.972,
+        "share": {
+          "economy": 0.0936,
+          "frontier": 0.7368,
+          "local": 0.1696
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0019997087999999996,
+        "quality": 0.9776,
+        "share": {
+          "economy": 0.0096,
+          "frontier": 0.8208,
+          "local": 0.1696
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0020071024000000003,
+        "quality": 0.9784,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.8304,
+          "local": 0.1696
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.84
+      },
+      {
+        "cost": 0.0021741176,
+        "quality": 0.9864,
+        "share": {
+          "economy": 0.0144,
+          "frontier": 0.8856,
+          "local": 0.1
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.86
+      },
+      {
+        "cost": 0.0021899951999999998,
+        "quality": 0.9872,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.9,
+          "local": 0.1
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.86
+      },
+      {
+        "cost": 0.0022688976000000004,
+        "quality": 0.9888,
+        "share": {
+          "economy": 0.1712,
+          "frontier": 0.8216,
+          "local": 0.0072
+        },
+        "tau_economy": 0.92,
+        "tau_local": 0.92
+      },
+      {
+        "cost": 0.0023093384,
+        "quality": 0.9936,
+        "share": {
+          "economy": 0.0216,
+          "frontier": 0.9328,
+          "local": 0.0456
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.88
+      },
+      {
+        "cost": 0.0023315840000000003,
+        "quality": 0.9952,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.9544,
+          "local": 0.0456
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.88
+      },
+      {
+        "cost": 0.0023737408000000003,
+        "quality": 0.9968,
+        "share": {
+          "economy": 0.0256,
+          "frontier": 0.9504,
+          "local": 0.024
+        },
+        "tau_economy": 0.9400000000000001,
+        "tau_local": 0.9
+      },
+      {
+        "cost": 0.0023994688,
+        "quality": 0.9984,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.976,
+          "local": 0.024
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.9
+      },
+      {
+        "cost": 0.0024477104,
+        "quality": 1.0,
+        "share": {
+          "economy": 0.0,
+          "frontier": 0.9928,
+          "local": 0.0072
+        },
+        "tau_economy": 0.96,
+        "tau_local": 0.92
+      }
+    ]
+  },
+  "prefix": {
+    "chosen": "none",
+    "margin": 0.02,
+    "results": {
+      "classification": {
+        "auc": {
+          "economy": {
+            "all": 0.6706363636363636,
+            "en": 0.6767488532110092,
+            "es": 0.6692128828932703
+          },
+          "local": {
+            "all": 0.6793758916204089,
+            "en": 0.698751142247944,
+            "es": 0.6723970413088447
+          }
+        },
+        "lambdas": {
+          "economy": 0.001,
+          "local": 0.001
+        },
+        "log_loss": {
+          "economy": {
+            "0.0001": 0.35996383077852134,
+            "0.001": 0.34948683472894904,
+            "0.01": 0.36343065423034016,
+            "0.1": 0.3672028640947723,
+            "1.0": 0.3676518322737787,
+            "10.0": 0.3676976442597005
+          },
+          "local": {
+            "0.0001": 0.549610329832493,
+            "0.001": 0.5215087855431686,
+            "0.01": 0.5442324706342427,
+            "0.1": 0.5560941000243862,
+            "1.0": 0.5578378718506855,
+            "10.0": 0.5580211334620218
+          }
+        },
+        "mean_auc": 0.6750061276283863
+      },
+      "none": {
+        "auc": {
+          "economy": {
+            "all": 0.6544363636363636,
+            "en": 0.6169724770642202,
+            "es": 0.6633325646642838
+          },
+          "local": {
+            "all": 0.6626160185975178,
+            "en": 0.6779368463803431,
+            "es": 0.6543649052424831
+          }
+        },
+        "lambdas": {
+          "economy": 0.001,
+          "local": 0.001
+        },
+        "log_loss": {
+          "economy": {
+            "0.0001": 0.37106355185935935,
+            "0.001": 0.3516192738111666,
+            "0.01": 0.3641547192845265,
+            "0.1": 0.36729025365779483,
+            "1.0": 0.36766069576626526,
+            "10.0": 0.36769853177896344
+          },
+          "local": {
+            "0.0001": 0.574166835752251,
+            "0.001": 0.5254485101319903,
+            "0.01": 0.5460430494090653,
+            "0.1": 0.5563994624929863,
+            "1.0": 0.5578703710366691,
+            "10.0": 0.5580244040482172
+          }
+        },
+        "mean_auc": 0.6585261911169407
+      }
+    }
+  },
+  "random_cost_at": {
+    "0.85": 0.0009624484846905539,
+    "0.9": 0.0014658211231270365,
+    "0.95": 0.0019691937615635177
+  },
+  "sensitivity": {
+    "tiers.R1_unanimous.jsonl": {
+      "all_frontier_cost": 0.0024725664000000004,
+      "cost_at": {
+        "0.85": 0.0013126487999999999,
+        "0.9": 0.0015866712,
+        "0.95": 0.0019658976
+      },
+      "random_at": {
+        "0.85": 0.0016076294597014925,
+        "0.9": 0.0018959417731343289,
+        "0.95": 0.0021842540865671645
+      }
+    },
+    "tiers.R2_majority.jsonl": {
+      "all_frontier_cost": 0.0024725664000000004,
+      "cost_at": {
+        "0.85": 0.0010362304,
+        "0.9": 0.0013233568000000002,
+        "0.95": 0.0018292232000000001
+      },
+      "random_at": {
+        "0.85": 0.0013334848275184275,
+        "0.9": 0.0017131786850122855,
+        "0.95": 0.0020928725425061424
+      }
+    }
+  }
+}

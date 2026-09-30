@@ -5,7 +5,7 @@ import json
 import numpy as np
 import pytest
 
-from scripts.router import cv, data, embed, frontier, knn, logreg
+from scripts.router import cv, data, embed, frontier, knn, logreg, train
 
 
 def _write(path, rows):
@@ -193,3 +193,41 @@ def test_knn_with_one_neighbour_copies_the_nearest_label():
     y = np.array([1.0, 1.0, 0.0, 0.0])
     p = knn.oof_probabilities(X, y, [0, 1, 0, 1], k=1)
     assert p.tolist() == [1.0, 1.0, 0.0, 0.0]
+
+
+def test_choose_prefix_needs_a_clear_margin():
+    assert train.choose_prefix({"none": 0.70, "classification": 0.71}) == "none"
+    assert train.choose_prefix({"none": 0.70, "classification": 0.73}) == "classification"
+
+
+def test_artifact_round_trips_through_the_runtime():
+    from nebula.services.learned_router import LearnedRouterModel
+
+    front = [{"tau_local": 0.6, "tau_economy": 0.4, "cost": 0.001, "quality": 0.9, "share": {}},
+             {"tau_local": 0.8, "tau_economy": 0.5, "cost": 0.002, "quality": 0.95, "share": {}}]
+    points = train.operating_points(front)
+    assert points == [
+        {"tau_local": 0.6, "tau_economy": 0.4, "quality": 0.9, "cost_per_prompt": 0.001},
+        {"tau_local": 0.8, "tau_economy": 0.5, "quality": 0.95, "cost_per_prompt": 0.002},
+    ]
+    raw = train.artifact(
+        weights={"local": (np.array([1.0, 2.0]), 0.5), "economy": (np.array([0.0, 1.0]), -0.5)},
+        lambdas={"local": 1.0, "economy": 0.1}, prefix="none", points=points,
+        labels={"file": "tiers.R3_ordinal_mean.jsonl", "sha256": "x"},
+    )
+    model = LearnedRouterModel.from_dict(json.loads(json.dumps(raw)))
+    assert model.operating_point(0.93).tau_local == 0.8
+    assert model.probabilities([0.0, 0.0])[0] == pytest.approx(1 / (1 + np.exp(-0.5)))
+
+
+def test_latency_sample_is_balanced_and_summary_is_ordered():
+    from scripts.ground_truth import records as gt_records
+    from scripts.router import latency
+
+    rows = [gt_records.PromptRow(f"{t}-{i:04d}", t, "s", "p", "corpus")
+            for t in ("code", "factual_qa") for i in range(10)]
+    got = latency.sample(rows, 6)
+    assert [r.prompt_id for r in got] == ["code-0000", "code-0001", "code-0002",
+                                          "factual_qa-0000", "factual_qa-0001", "factual_qa-0002"]
+    s = latency.summarise([3.0, 1.0, 2.0])
+    assert s["median_s"] == 2.0 and s["n"] == 3

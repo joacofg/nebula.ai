@@ -21,6 +21,8 @@ Cada par candidato–referencia recibe cuatro notas (dos jueces, dos posiciones)
 ## 6.4 Resultados de ruteo
 Línea de base (heurística de dos reglas, 14 escenarios, 2026-08-19): 41.2 % (corrida 20260819T225557Z), 38.2 % (20260819T225703Z) y 40.0 % (20260819T225713Z) de gasto
 premium evitado. <!-- GEN: baseline-savings -->
-> PENDIENTE (fase 3): curva costo/calidad del router aprendido vs heurística.
+<!-- GEN:router-fase3 -->
+El router aprendido son dos regresiones logísticas sobre el embedding del prompt (prefijo `none`), evaluadas con validación cruzada de 5 folds agrupada por prompt sobre 1250 prompts. AUC fuera de fold: local 0.66, economy 0.65. Con calidad ≥ 0.95, cuesta USD 1.70 cada mil prompts, contra USD 2.47 de enviar todo al modelo frontier (31% menos) y USD 1.97 de la mejor mezcla aleatoria de niveles a igual calidad. La heurística de dos reglas logra calidad 0.76 a USD 0.23; el router aprendido alcanza esa calidad a USD 0.02. El costo local se cuenta en cero y la latencia se reporta aparte. Los resultados bajo las reglas de etiquetado R1 y R2 se reportan como sensibilidad.
+<!-- /GEN:router-fase3 -->
 
 ## 6.5 Amenazas a la validez

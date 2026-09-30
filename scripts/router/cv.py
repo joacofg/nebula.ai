@@ -16,7 +16,9 @@ from scripts.metric_validation import stats
 from scripts.router import logreg
 from scripts.router.data import Example
 
-LAMBDA_GRID: tuple[float, ...] = (0.01, 0.1, 1.0, 10.0)
+# Extended below 0.01 after the first run chose the grid edge (nomic vectors are
+# unit-norm, so their components are small and a given λ shrinks hard).
+LAMBDA_GRID: tuple[float, ...] = (0.0001, 0.001, 0.01, 0.1, 1.0, 10.0)
 SEED = 20260930
 
 
