@@ -70,3 +70,19 @@ def test_limit_must_be_positive() -> None:
 
     with pytest.raises(ValueError):
         asyncio.run(RateLimiter().acquire("t", limit_per_minute=0))
+
+
+async def test_reset_counts_to_the_next_token_not_to_a_full_bucket() -> None:
+    limiter = RateLimiter(clock=Clock())
+    for _ in range(2):
+        drained = await limiter.acquire("t", limit_per_minute=2)
+    assert drained.reset_seconds == 30
+
+
+@pytest.mark.parametrize("limit", [11, 21, 22, 42])
+async def test_float_error_does_not_add_a_second(limit: int) -> None:
+    limiter = RateLimiter(clock=Clock())
+    for _ in range(limit):
+        await limiter.acquire("t", limit_per_minute=limit)
+    denied = await limiter.acquire("t", limit_per_minute=limit)
+    assert denied.retry_after_seconds == -(-60 // limit)  # ceil(60 / limit)

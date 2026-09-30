@@ -58,6 +58,8 @@ class GovernanceStore:
         "explicit_premium_model": "explicit_model_override",
         "policy_local_only": "policy_forced_routing",
         "policy_premium_only": "policy_forced_routing",
+        # Rejected before routing: no route was chosen, so it is neither evidence nor degradation.
+        "rate_limited": "rate_limited",
     }
     _CALIBRATION_GATED_ROUTE_REASONS = {
         "calibrated_routing_disabled": "calibrated_routing_disabled",

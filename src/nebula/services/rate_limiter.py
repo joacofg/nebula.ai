@@ -53,8 +53,11 @@ class RateLimiter:
             allowed = bucket.tokens >= 1.0
             if allowed:
                 bucket.tokens -= 1.0
-            retry_after = 0 if allowed else max(1, math.ceil((1.0 - bucket.tokens) / rate))
-            reset = math.ceil((capacity - bucket.tokens) / rate) if bucket.tokens < capacity else 0
+            # ceil(x - 1e-9): 1/(11/60) must round to 6 s, not 7, despite float error.
+            retry_after = 0 if allowed else max(1, math.ceil((1.0 - bucket.tokens) / rate - 1e-9))
+            # Seconds until the next token (0 when the bucket is full).
+            fraction = bucket.tokens - math.floor(bucket.tokens)
+            reset = 0 if bucket.tokens >= capacity else math.ceil((1.0 - fraction) / rate - 1e-9)
             return RateLimitResult(
                 allowed=allowed,
                 limit=limit_per_minute,

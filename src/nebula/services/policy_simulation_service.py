@@ -59,7 +59,8 @@ class PolicySimulationService:
             limit=payload.limit,
         )
         # Store returns newest first; replay oldest-first for deterministic windows and sampling.
-        records = list(reversed(records))
+        # Rate-limited rows never ran, so replaying them would invent traffic.
+        records = [r for r in reversed(records) if r.terminal_status != "rate_limited"]
 
         replay_inputs = [self._build_replay_input(record) for record in records]
         calibration_summary = self.governance_store.summarize_calibration_evidence(

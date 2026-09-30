@@ -161,3 +161,49 @@ def test_embeddings_are_limited_too() -> None:
 
     assert ok.status_code == 200 and denied.status_code == 429
     assert service.calls == 1
+
+
+def _burst(app, client, rpm=1, n=4):
+    _mount(app)
+    _limit(app, rpm=rpm)
+    return [_chat(client) for _ in range(n)]
+
+
+def test_rate_limited_rows_are_not_degraded_calibration_evidence() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            responses = _burst(app, client)
+            summary = app.state.container.governance_store.summarize_calibration_evidence(tenant_id="default")
+
+    assert [r.status_code for r in responses] == [200, 429, 429, 429]
+    assert summary.degraded_request_count == 0
+    assert summary.excluded_request_count == 3
+
+
+def test_policy_simulation_and_recommendations_ignore_rate_limited_rows() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _burst(app, client)
+            policy = client.get("/v1/admin/tenants/default/policy", headers=admin_headers()).json()
+            simulation = client.post("/v1/admin/tenants/default/policy/simulate", headers=admin_headers(),
+                                     json={"candidate_policy": policy}).json()
+            recommendations = client.get("/v1/admin/tenants/default/recommendations",
+                                         headers=admin_headers()).json()
+
+    assert simulation["summary"]["evaluated_rows"] == 1
+    assert recommendations["window_requests_evaluated"] == 1
+
+
+def test_a_hostile_model_value_still_gets_a_429() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _mount(app)
+            _limit(app, rpm=1)
+            _chat(client)
+            response = client.post("/v1/chat/completions", headers=auth_headers(),
+                                   json={"model": "x" * 5000, "messages": [{"role": "user", "content": "hi"}]})
+            rows = client.get(f"/v1/admin/usage/ledger?request_id={response.headers['X-Request-ID']}",
+                              headers=admin_headers()).json()
+
+    assert response.status_code == 429
+    assert len(rows[0]["requested_model"]) <= 255

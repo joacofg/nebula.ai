@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 from uuid import uuid4
 
@@ -50,6 +51,13 @@ def require_admin(
     return container
 
 
+logger = logging.getLogger(__name__)
+
+
+def _record_rejection(container: ServiceContainer, record: UsageLedgerRecord) -> None:
+    container.governance_store.record_usage(record)
+
+
 def _rate_limit_headers(result) -> dict[str, str]:
     return {
         "X-RateLimit-Limit": str(result.limit),
@@ -80,14 +88,18 @@ async def get_rate_limited_tenant_context(
         return tenant_context
 
     RATE_LIMITED_COUNT.labels(tenant_id).inc()
+    is_embeddings = request.url.path.endswith("/embeddings")
+    requested_model = "unknown" if is_embeddings else "nebula-auto"
     try:
         body = await request.json()
-        requested_model = str(body.get("model") or "unknown") if isinstance(body, dict) else "unknown"
+        model = body.get("model") if isinstance(body, dict) else None
+        if isinstance(model, str) and model:
+            requested_model = model[:255]  # unvalidated input: bounded to the column
     except Exception:  # noqa: BLE001 - a malformed body is still a rate-limited request
-        requested_model = "unknown"
+        pass
     request_id = getattr(request.state, "request_id", None) or f"req-{uuid4().hex}"
-    container.governance_store.record_usage(
-        UsageLedgerRecord(
+    try:
+        _record_rejection(container, UsageLedgerRecord(
             request_id=request_id,
             tenant_id=tenant_id,
             requested_model=requested_model,
@@ -105,9 +117,10 @@ async def get_rate_limited_tenant_context(
             terminal_status="rate_limited",
             route_reason="rate_limited",
             policy_outcome=f"rate_limit={limit}/min",
-            message_type="embeddings" if request.url.path.endswith("/embeddings") else "chat",
-        )
-    )
+            message_type="embeddings" if is_embeddings else "chat",
+        ))
+    except Exception:  # noqa: BLE001 - the 429 must reach the client even if the ledger write fails
+        logger.exception("rate_limit_ledger_write_failed tenant_id=%s", tenant_id)
     raise HTTPException(
         status_code=status.HTTP_429_TOO_MANY_REQUESTS,
         detail=f"Tenant rate limit of {limit} requests per minute exceeded.",
