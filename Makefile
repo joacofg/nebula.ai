@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -87,3 +87,7 @@ console-test:
 
 console-e2e:
 	npm --prefix console run e2e
+
+# Thesis: rewrite every <!-- GEN:... --> block from the committed reports (no network).
+thesis-tables:
+	$(PYTHON) -m scripts.thesis.tables

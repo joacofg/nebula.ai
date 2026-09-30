@@ -18,8 +18,8 @@ from pathlib import Path
 
 import numpy as np
 
-from scripts.ground_truth import report as gt_report
 from scripts.router import cv, data, embed, frontier, knn, logreg
+from scripts.thesis import blocks
 
 PREFIX_MARGIN = 0.02
 TARGETS = ("local", "economy")
@@ -31,7 +31,7 @@ ARTIFACT = Path("src/nebula/data/learned_router_v1.json")
 REPLAY = Path("src/nebula/data/router_replay_v1.json")
 REPLAY_TEXT_CHARS = 160
 OUT = Path("benchmarks/router/v1")
-THESIS = Path("docs/tfc/tesis/06-evaluacion.md")
+THESIS_DIR = Path("docs/tfc/tesis")
 
 
 def choose_prefix(aucs: dict[str, float]) -> str:
@@ -398,8 +398,7 @@ def main() -> int:
         json.dumps({k: v for k, v in r.items() if k not in ("artifact", "replay")}, indent=2, sort_keys=True) + "\n",
         encoding="utf-8")
     (OUT / "report.md").write_text(render_markdown(r), encoding="utf-8")
-    THESIS.write_text(gt_report.replace_block(THESIS.read_text(encoding="utf-8"), "router-fase3", thesis_block(r)),
-                      encoding="utf-8")
+    blocks.update_block("router-fase3", thesis_block(r), THESIS_DIR)
     print(render_markdown(r))
     return 0
 

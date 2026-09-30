@@ -7,20 +7,14 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 from collections import defaultdict
 from pathlib import Path
 
 from scripts.ground_truth import capture, cli, pairs, records, review, sources, tiers, translate
+from scripts.thesis import blocks
 
-THESIS = Path("docs/tfc/tesis/06-evaluacion.md")
-
-
-def replace_block(text: str, name: str, content: str) -> str:
-    pattern = re.compile(rf"(<!-- GEN:{re.escape(name)} -->\n)(.*?)(\n<!-- /GEN:{re.escape(name)} -->)", re.DOTALL)
-    if not pattern.search(text):
-        raise ValueError(f"No GEN block {name!r} in the thesis source.")
-    return pattern.sub(lambda m: m.group(1) + content + m.group(3), text, count=1)
+THESIS_DIR = Path("docs/tfc/tesis")
+replace_block = blocks.replace_block
 
 
 def tier_distribution(rows: list[dict]) -> dict:
@@ -210,10 +204,8 @@ def main() -> int:
     summary = summarise(root)
     (root / "report.json").write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     (root / "report.md").write_text(render_markdown(summary), encoding="utf-8")
-    text = THESIS.read_text(encoding="utf-8")
-    text = replace_block(text, "corpus-fase2", thesis_corpus(summary))
-    text = replace_block(text, "judges-fase2", thesis_judges(summary))
-    THESIS.write_text(text, encoding="utf-8")
+    blocks.update_block("corpus-fase2", thesis_corpus(summary), THESIS_DIR)
+    blocks.update_block("judges-fase2", thesis_judges(summary), THESIS_DIR)
     print(f"report → {root / 'report.md'}; thesis blocks updated")
     return 0
 
