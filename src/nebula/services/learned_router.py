@@ -134,6 +134,10 @@ class LearnedRouterModel:
         return _sigmoid(self._local.score(vector)), _sigmoid(self._economy.score(vector))
 
     def operating_point(self, quality_target: float) -> OperatingPoint:
+        # A measured quality of 1.0 means no cheap pick failed out of fold, not
+        # that none can: a tenant asking for perfection gets the reference model.
+        if quality_target >= 1.0:
+            return ALL_FRONTIER
         for point in self._points:
             if point.quality >= quality_target:
                 return point

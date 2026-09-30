@@ -71,3 +71,13 @@ def test_the_packaged_v1_artifact_loads_and_matches_nomic():
     model = LearnedRouterModel.from_file(Settings().learned_router_path)
     assert model.dimension == 768 and model.embedding_model == "nomic-embed-text"
     assert model.operating_point(0.95).quality >= 0.95
+
+
+def test_a_perfect_quality_target_always_means_all_frontier():
+    from nebula.core.config import Settings
+
+    model = LearnedRouterModel.from_file(Settings().learned_router_path)
+    assert model.operating_point(1.0) is ALL_FRONTIER
+    assert LearnedRouterModel.from_dict(_raw([
+        {"tau_local": 0.9, "tau_economy": 0.9, "quality": 1.0, "cost_per_prompt": 0.001}
+    ])).operating_point(1.0) is ALL_FRONTIER
