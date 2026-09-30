@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -42,6 +42,14 @@ describe("ledger-filters", () => {
     }
     expect(screen.getByRole("option", { name: "Todos los tenants" })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: "embeddings" })).toBeInTheDocument();
+    // Options read in Spanish, like the ledger rows; the values stay the gateway's codes.
+    const route = within(screen.getByRole("combobox", { name: "Ruta" }));
+    const status = within(screen.getByRole("combobox", { name: "Estado" }));
+    expect(route.getByRole("option", { name: "caché" })).toHaveValue("cache");
+    expect(route.getByRole("option", { name: "denegado" })).toHaveValue("denied");
+    expect(status.getByRole("option", { name: "caché" })).toHaveValue("cache_hit");
+    expect(status.getByRole("option", { name: "completado" })).toHaveValue("completed");
+    expect(status.getByRole("option", { name: "error del proveedor" })).toHaveValue("provider_error");
 
     await user.click(screen.getByRole("button", { name: "Actualizar" }));
     expect(onRefresh).toHaveBeenCalledTimes(1);

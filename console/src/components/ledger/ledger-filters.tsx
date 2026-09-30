@@ -1,5 +1,6 @@
 import { RefreshCw } from "lucide-react";
 
+import { routeLabel, statusLabel } from "@/components/system/labels";
 import { Button } from "@/components/ui/button";
 import type { TenantRecord } from "@/lib/admin-api";
 
@@ -66,7 +67,7 @@ export function LedgerFilters({
           <option value="">Todas</option>
           {ROUTE_TARGET_OPTIONS.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {routeLabel(option)}
             </option>
           ))}
         </select>
@@ -78,7 +79,7 @@ export function LedgerFilters({
           <option value="">Todos</option>
           {TERMINAL_STATUS_OPTIONS.map((option) => (
             <option key={option} value={option}>
-              {option}
+              {statusLabel(option)}
             </option>
           ))}
         </select>

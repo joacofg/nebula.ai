@@ -22,6 +22,12 @@ const STATUSES: Record<string, string> = {
   rate_limited: "límite de pedidos",
 };
 
+const ROUTES: Record<string, string> = { cache: "caché", denied: "denegado" };
+
+export function routeLabel(code: string) {
+  return ROUTES[code] ?? code;
+}
+
 export function reasonLabel(code: string | null | undefined) {
   if (!code) {
     return "—";
