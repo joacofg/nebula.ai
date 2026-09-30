@@ -97,6 +97,7 @@ function renderPolicyForm({
   simulationResult = null as PolicySimulationResponse | null,
   simulationError = null as string | null,
   isSimulating = false,
+  runtimeEnforcedFields = null as string[] | null,
 } = {}) {
   return renderWithProviders(
     <PolicyForm
@@ -123,7 +124,8 @@ function renderPolicyForm({
         routing_modes: ["auto", "local_only", "premium_only"],
         known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
         default_premium_model: "openai/gpt-4o-mini",
-        runtime_enforced_fields: [
+        runtime_enforced_fields: runtimeEnforcedFields ?? [
+          "routing_quality_target",
           "routing_mode_default",
           "calibrated_routing_enabled",
           "allowed_premium_models",
@@ -314,6 +316,7 @@ describe("policy-form", () => {
           known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
           default_premium_model: "openai/gpt-4o-mini",
           runtime_enforced_fields: [
+            "routing_quality_target",
             "routing_mode_default",
             "calibrated_routing_enabled",
             "allowed_premium_models",
@@ -396,6 +399,7 @@ describe("policy-form", () => {
           known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
           default_premium_model: "openai/gpt-4o-mini",
           runtime_enforced_fields: [
+            "routing_quality_target",
             "routing_mode_default",
             "calibrated_routing_enabled",
             "allowed_premium_models",
@@ -448,6 +452,7 @@ describe("policy-form", () => {
           known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
           default_premium_model: "openai/gpt-4o-mini",
           runtime_enforced_fields: [
+            "routing_quality_target",
             "routing_mode_default",
             "allowed_premium_models",
             "semantic_cache_enabled",
@@ -611,6 +616,54 @@ describe("policy-form", () => {
       await screen.findByText("Semantic cache similarity threshold must be between 0 and 1."),
     ).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("saves an edited routing quality target", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    const field = screen.getByLabelText("Routing quality target");
+    expect(field).toHaveValue("0.95");
+    await userEvent.clear(field);
+    await userEvent.type(field, "0.9");
+    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.9 });
+  });
+
+  it("blocks save when the routing quality target is outside 0.5-1.0", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    for (const value of ["0.4", "1.01", "abc"]) {
+      await userEvent.clear(screen.getByLabelText("Routing quality target"));
+      await userEvent.type(screen.getByLabelText("Routing quality target"), value);
+      await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+
+      expect(
+        await screen.findByText("Routing quality target must be between 0.5 and 1."),
+      ).toBeInTheDocument();
+    }
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("does not preview a routing quality target outside 0.5-1.0", async () => {
+    const onSimulate = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSimulate });
+
+    await userEvent.clear(screen.getByLabelText("Routing quality target"));
+    await userEvent.type(screen.getByLabelText("Routing quality target"), "0.2");
+    await userEvent.click(screen.getByRole("button", { name: "Preview impact" }));
+
+    expect(await screen.findByText("Routing quality target must be between 0.5 and 1.")).toBeInTheDocument();
+    expect(onSimulate).not.toHaveBeenCalled();
+  });
+
+  it("hides the routing quality target when the runtime does not enforce it", () => {
+    renderPolicyForm({ runtimeEnforcedFields: ["routing_mode_default", "allowed_premium_models"] });
+
+    expect(screen.queryByLabelText("Routing quality target")).not.toBeInTheDocument();
   });
 
   it("disables hard-budget enforcement selection until a hard limit is configured", async () => {

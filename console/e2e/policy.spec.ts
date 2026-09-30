@@ -26,6 +26,7 @@ test("operator can update tenant policy from the console", async ({ page }) => {
     soft_budget_usd: null,
     prompt_capture_enabled: false,
     response_capture_enabled: false,
+    routing_quality_target: 0.95,
   };
 
   await page.route("**/api/admin/session", async (route) => {
@@ -44,6 +45,7 @@ test("operator can update tenant policy from the console", async ({ page }) => {
         known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
         default_premium_model: "openai/gpt-4o-mini",
         runtime_enforced_fields: [
+          "routing_quality_target",
           "routing_mode_default",
           "allowed_premium_models",
           "semantic_cache_enabled",
@@ -113,6 +115,8 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await page.selectOption("#hard-budget-enforcement", "deny");
   await page.getByPlaceholder("Add model").fill("openai/gpt-4.5-mini");
   await page.getByRole("button", { name: "Add model" }).click();
+  await expect(page.getByLabel("Routing quality target")).toHaveValue("0.95");
+  await page.getByLabel("Routing quality target").fill("0.9");
   await page.getByRole("button", { name: "Save policy" }).click();
 
   await page.getByRole("link", { name: "Tenants" }).click();
@@ -121,5 +125,6 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await expect(page.locator("#routing-mode-default")).toHaveValue("premium_only");
   await expect(page.locator("#hard-budget-limit-usd")).toHaveValue("25");
   await expect(page.locator("#hard-budget-enforcement")).toHaveValue("deny");
+  await expect(page.locator("#routing-quality-target")).toHaveValue("0.9");
   await expect(page.getByText("openai/gpt-4.5-mini")).toBeVisible();
 });

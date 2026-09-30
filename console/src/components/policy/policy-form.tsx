@@ -38,7 +38,11 @@ type PolicyFormState = {
   softBudgetUsd: string;
   evidenceRetentionWindow: TenantPolicy["evidence_retention_window"];
   metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"];
+  routingQualityTarget: string;
 };
+
+// Gateway default (TenantPolicy.routing_quality_target) for policies saved before the field existed.
+const DEFAULT_ROUTING_QUALITY_TARGET = 0.95;
 
 function toFormState(policy: TenantPolicy): PolicyFormState {
   return {
@@ -55,6 +59,7 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     softBudgetUsd: policy.soft_budget_usd?.toString() ?? "",
     evidenceRetentionWindow: policy.evidence_retention_window,
     metadataMinimizationLevel: policy.metadata_minimization_level,
+    routingQualityTarget: (policy.routing_quality_target ?? DEFAULT_ROUTING_QUALITY_TARGET).toString(),
   };
 }
 
@@ -78,6 +83,7 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
     soft_budget_usd: state.softBudgetUsd.trim() === "" ? null : Number(state.softBudgetUsd),
     evidence_retention_window: state.evidenceRetentionWindow,
     metadata_minimization_level: state.metadataMinimizationLevel,
+    routing_quality_target: Number(state.routingQualityTarget),
   };
 }
 
@@ -295,6 +301,8 @@ export function PolicyForm({
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
   const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
   const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
+  const qualityTargetText = formState.routingQualityTarget.trim();
+  const qualityTargetValue = qualityTargetText === "" ? Number.NaN : Number(qualityTargetText);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
   const evidenceBoundarySummary = useMemo(
     () =>
@@ -322,6 +330,10 @@ export function PolicyForm({
       setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
       return;
     }
+    if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
+      setError("Routing quality target must be between 0.5 and 1.");
+      return;
+    }
 
     await onSave(nextPolicy).catch((nextError) => {
       setError(nextError instanceof Error ? nextError.message : "Unable to update policy.");
@@ -342,6 +354,10 @@ export function PolicyForm({
     }
     if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
       setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
+      return;
+    }
+    if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
+      setError("Routing quality target must be between 0.5 and 1.");
       return;
     }
 
@@ -639,6 +655,27 @@ export function PolicyForm({
               />
               Fallback enabled
             </label>
+          ) : null}
+
+          {runtimeEnforcedFields.has("routing_quality_target") ? (
+            <div>
+              <label className="field-label" htmlFor="routing-quality-target">
+                Routing quality target
+              </label>
+              <input
+                id="routing-quality-target"
+                className="field-input"
+                inputMode="decimal"
+                value={formState.routingQualityTarget}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, routingQualityTarget: event.target.value }))
+                }
+              />
+              <p className="mt-2 text-sm text-slate-500">
+                Quality the learned router must keep (0.5 to 1.0): it takes the cheapest operating point that meets
+                it, and 1.0 sends every request to the frontier model. Compare targets on the Evaluación page.
+              </p>
+            </div>
           ) : null}
 
           {runtimeEnforcedFields.has("semantic_cache_enabled") ? (

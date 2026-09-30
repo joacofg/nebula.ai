@@ -135,6 +135,64 @@ describe("playground-page", () => {
     expect(await screen.findByText("fallback_completed")).toBeInTheDocument();
   });
 
+  it("explains the learned router's tier from the recorded route signals", async () => {
+    const user = userEvent.setup();
+    adminApi.createPlaygroundCompletion.mockResolvedValue({
+      body: null,
+      errorDetail: null,
+      status: 200,
+      requestId: "req-learned",
+      tenantId: "default",
+      routeTarget: "premium",
+      routeReason: "learned_router",
+      routeTier: "economy",
+      provider: "openai-compatible",
+      cacheHit: false,
+      fallbackUsed: false,
+      policyMode: "auto",
+      policyOutcome: "allowed",
+    });
+    adminApi.getUsageLedgerEntry.mockResolvedValue({
+      request_id: "req-learned",
+      tenant_id: "default",
+      requested_model: "nebula-auto",
+      final_route_target: "premium",
+      final_provider: "openai-compatible",
+      fallback_used: false,
+      cache_hit: false,
+      response_model: "anthropic/claude-haiku-4.5",
+      prompt_tokens: 19,
+      completion_tokens: 8,
+      total_tokens: 27,
+      estimated_cost: 0.001,
+      latency_ms: 900,
+      timestamp: "2026-09-30T12:00:00Z",
+      terminal_status: "completed",
+      route_reason: "learned_router",
+      policy_outcome: "allowed",
+      route_signals: {
+        tier: "economy",
+        p_local: 0.69,
+        p_economy: 0.91,
+        quality_target: 0.9,
+        operating_point: { tau_local: 0.76, tau_economy: 0.9, quality: 0.903, cost_per_prompt: 0.001 },
+        learned_router: "v1",
+      },
+    });
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+
+    await waitFor(() => {
+      expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("default");
+    });
+    await user.type(screen.getByLabelText("Prompt"), "Route me");
+    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+
+    expect(await screen.findByRole("heading", { name: "Por qué este nivel" })).toBeInTheDocument();
+    expect(screen.getByText("p_economy 0.91 ≥ τ_economy 0.90 → economy (objetivo 0.90)")).toBeInTheDocument();
+    expect(screen.getByText("Route tier")).toBeInTheDocument();
+  });
+
   it("keeps the immediate response visible while the ledger lookup is pending", async () => {
     const user = userEvent.setup();
     let resolveEntry: ((value: Awaited<ReturnType<typeof adminApi.getUsageLedgerEntry>>) => void) | undefined;

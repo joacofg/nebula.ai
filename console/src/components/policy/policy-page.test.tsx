@@ -74,6 +74,7 @@ beforeEach(() => {
     known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
     default_premium_model: "openai/gpt-4o-mini",
     runtime_enforced_fields: [
+      "routing_quality_target",
       "routing_mode_default",
       "allowed_premium_models",
       "semantic_cache_enabled",

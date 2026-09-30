@@ -241,6 +241,8 @@ export type PlaygroundCompletionResult = {
   tenantId: string;
   routeTarget: string;
   routeReason: string;
+  /** Learned-router tier (`local` / `economy` / `frontier`); empty for heuristic routes. */
+  routeTier: string;
   provider: string;
   cacheHit: boolean;
   fallbackUsed: boolean;
@@ -486,6 +488,7 @@ export async function createPlaygroundCompletion(
     tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,
     routeTarget: response.headers.get("X-Nebula-Route-Target") ?? "",
     routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
+    routeTier: response.headers.get("X-Nebula-Route-Tier") ?? "",
     provider: response.headers.get("X-Nebula-Provider") ?? "",
     cacheHit: response.headers.get("X-Nebula-Cache-Hit") === "true",
     fallbackUsed: response.headers.get("X-Nebula-Fallback-Used") === "true",

@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { FlaskConical, LoaderCircle } from "lucide-react";
 
+import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { PlaygroundForm } from "@/components/playground/playground-form";
 import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
 import { PlaygroundRecordedOutcome } from "@/components/playground/playground-recorded-outcome";
@@ -169,6 +170,7 @@ function PlaygroundResponseCard({
         tenantId={result.tenantId}
         routeTarget={result.routeTarget}
         routeReason={result.routeReason}
+        routeTier={result.routeTier ?? ""}
         provider={result.provider}
         cacheHit={result.cacheHit}
         fallbackUsed={result.fallbackUsed}
@@ -185,7 +187,10 @@ function PlaygroundResponseCard({
             : "Unable to load recorded outcome."}
         </div>
       ) : recordedOutcomeQuery.data ? (
-        <PlaygroundRecordedOutcome entry={recordedOutcomeQuery.data} />
+        <>
+          <PlaygroundDecision entry={recordedOutcomeQuery.data} routeTier={result.routeTier ?? ""} />
+          <PlaygroundRecordedOutcome entry={recordedOutcomeQuery.data} />
+        </>
       ) : null}
     </div>
   );

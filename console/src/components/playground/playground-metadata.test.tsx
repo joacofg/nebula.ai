@@ -12,6 +12,7 @@ describe("playground-metadata", () => {
         tenantId="tenant-alpha"
         routeTarget="premium"
         routeReason="complex_prompt"
+        routeTier="economy"
         provider="openai-compatible"
         cacheHit={false}
         fallbackUsed
@@ -47,5 +48,7 @@ describe("playground-metadata", () => {
     expect(screen.getByText("No")).toBeInTheDocument();
     expect(screen.getByText("Yes")).toBeInTheDocument();
     expect(screen.getByText("187 ms")).toBeInTheDocument();
+    expect(screen.getByText("Route tier")).toBeInTheDocument();
+    expect(screen.getByText("economy")).toBeInTheDocument();
   });
 });
