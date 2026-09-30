@@ -146,7 +146,7 @@ export default function ObservabilityPage() {
 
       <div className="px-6 py-5">
         <Tabs defaultValue="recommendations">
-          <TabsList variant="line" aria-label="Contexto del tenant" className="h-10 w-full justify-start gap-0 border-b border-line p-0">
+          <TabsList variant="line" aria-label="Contexto del tenant" className="h-10 w-full justify-start gap-0 overflow-x-auto overflow-y-hidden border-b border-line p-0 *:shrink-0">
             <TabsTrigger value="recommendations" className={tabTrigger}>Recomendaciones</TabsTrigger>
             <TabsTrigger value="cache" className={tabTrigger}>Caché</TabsTrigger>
             <TabsTrigger value="calibration" className={tabTrigger}>Calibración</TabsTrigger>
