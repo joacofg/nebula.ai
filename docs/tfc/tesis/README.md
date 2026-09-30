@@ -13,7 +13,8 @@ está en `00-indice.md`, y las secciones 1, 2, 4 y 5 están juntas en `01-prelim
   desde los reportes versionados en `benchmarks/` (no usa la red ni reentrena nada).
   `python -m scripts.thesis.tables --check` falla si algún bloque quedó desactualizado, y la
   suite de tests lo corre. Los bloques GEN no se editan a mano.
-- `make thesis-figures` exporta las fuentes Mermaid de `figuras/` a PNG.
+- `make thesis-figures` dibuja la frontera desde el reporte del router (matplotlib) y exporta las
+  fuentes Mermaid de `figuras/` a PNG.
 
 ## Convenciones
 

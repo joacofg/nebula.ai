@@ -96,4 +96,4 @@ thesis-tables:
 # sources in docs/tfc/tesis/figuras rendered to PNG (downloads mermaid-cli on first run).
 thesis-figures:
 	$(PYTHON) -m scripts.thesis.figures
-	cd docs/tfc/tesis/figuras && for f in *.mmd; do npx -y -p @mermaid-js/mermaid-cli mmdc -q -i "$$f" -o "$${f%.mmd}.png" -b white -s 2 || exit 1; done
+	cd docs/tfc/tesis/figuras && for f in *.mmd; do npx -y -p @mermaid-js/mermaid-cli@12.0.0 mmdc -q -i "$$f" -o "$${f%.mmd}.png" -b white -s 2 || exit 1; done

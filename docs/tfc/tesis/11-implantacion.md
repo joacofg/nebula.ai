@@ -23,7 +23,7 @@ contra qué alternativa se la eligió.
 | nomic-embed-text [30] | Embedding del caché y del router | embeddings de un proveedor pago | Corre local en Ollama, sin costo por pedido y sin sacar los prompts de la máquina. |
 | OpenRouter [44] | Acceso a claude-haiku-4.5 y gpt-4.1 | API directa de cada proveedor | Una sola integración para los dos niveles premium, con el costo real de cada llamada en la respuesta. |
 | Next.js 15 + React 19 | Consola de operación | panel server-side con plantillas | Interfaz interactiva para el simulador de la frontera, que corre en el navegador sin llamar a modelos. |
-| pytest, Vitest, Playwright | Pruebas unitarias, de integración y de extremo a extremo | pruebas manuales | Cada fase se integró solo con la suite en verde. |
+| pytest, Vitest, Playwright | Pruebas unitarias, de integración y de extremo a extremo | pruebas manuales | Cada fase se integró solo con pytest y Vitest en verde. |
 | NumPy + regresión logística propia | Entrenamiento del router | scikit-learn | Dos logísticas con L2 y validación cruzada agrupada se escriben en pocas líneas; el gateway las sirve sin NumPy, con un producto escalar. |
 | Docker Compose | Despliegue self-hosted | Kubernetes | Un solo comando levanta gateway, consola, PostgreSQL y Qdrant, que es lo que necesita un equipo que se aloja a sí mismo. |
 
@@ -95,7 +95,7 @@ español como condición para declarar el ground truth "no limitado por los juec
 ### 11.2.2 Casos de prueba
 
 La Tabla 11.3 resume los casos de prueba. La tabla completa, con la entrada y el test o reporte
-que respalda cada caso, está en el Anexo A. La suite automática tiene 451 pruebas del backend (pytest) y 131 de la consola (Vitest), todas en verde al cierre de esta etapa, más siete archivos de pruebas de extremo a extremo con Playwright.
+que respalda cada caso, está en el Anexo A. La suite automática tiene 453 pruebas del backend (pytest) y 131 de la consola (Vitest), todas en verde al cierre de esta etapa, más siete archivos de pruebas de extremo a extremo con Playwright.
 
 **Tabla 11.3.** Casos de prueba (P = pasó, F = falló).
 
@@ -104,7 +104,7 @@ que respalda cada caso, está en el Anexo A. La suite automática tiene 451 prue
 | CP-01 | Ahorro del router en el objetivo 0.95 | ≥ 30 % contra todo frontier | 31 % (IC 95 % 28–35 %) | P |
 | CP-02 | Calidad del router en el objetivo 0.95 | ≥ 0.95 | 0.957 | P |
 | CP-03 | Router contra mezcla aleatoria de niveles a igual calidad | menor costo | 17 % menos (IC 95 % 12–21 %) | P |
-| CP-04 | Heurística de dos reglas contra todo local | mejor calidad a igual costo | calidad 0.759 contra 0.754 | F |
+| CP-04 | Heurística de dos reglas contra todo local | calidad mayor que todo local | calidad 0.759 contra 0.754 | F |
 | CP-05 | Acuerdo jueces–humano, hold-out en español | κ ≥ 0.4 | κ 0.31 | F |
 | CP-06 | Rechazos de los jueces confirmados por el humano | mayoría | 20 de 25 (80 %) | P |
 | CP-07 | Similitud coseno como métrica de calidad | AUC > 0.5 | AUC 0.25 | F |
@@ -113,7 +113,7 @@ que respalda cada caso, está en el Anexo A. La suite automática tiene 451 prue
 | CP-10 | Caída de Qdrant | el gateway sigue respondiendo sin caché | responde, salud degradada | P |
 | CP-11 | Caída de Ollama con el router activo | decide con la regla de respaldo | heurística, señal registrada | P |
 | CP-12 | Límite de pedidos por minuto | 429 + `Retry-After`, sin llamar al proveedor | 429, fila `rate_limited` en el ledger | P |
-| CP-13 | Objetivo de calidad por tenant | el nivel cambia con el objetivo | 0.8 todo local, 0.9 mezcla, 1.0 todo frontier | P |
+| CP-13 | Objetivo de calidad por tenant | el nivel sigue al vector con el objetivo fijo; un objetivo de 1.0 manda al frontier | se cumple; el reparto por objetivo es el de la Tabla 11.8 | P |
 | CP-14 | Cabeceras `X-Nebula-*` en cada ruta | presentes y coherentes con el ledger | presentes | P |
 | CP-15 | Replay de la consola | coincide con el artefacto del router | coincide | P |
 | CP-16 | Pruebas de extremo a extremo de la consola | todas pasan | 2 fallan (observabilidad, playground) | F |
@@ -256,7 +256,8 @@ cada prompt se eligieron sin mirarlo, así que no se trata de un ajuste a poster
 
 Que el router ahorre contra el frontier no alcanza para decir que aprendió algo, porque cualquier
 mezcla de niveles baratos también ahorra. Por eso la comparación que más importa es contra la
-mezcla aleatoria que llega a la misma calidad: el router es un 17 % más barato (IC 12–21 %). Las
+mezcla aleatoria que llega a la misma calidad: en la estimación anidada, esa mezcla costaría USD
+2.04 cada mil prompts para la calidad de 0.957, y el router es un 17 % más barato (IC 12–21 %). Las
 señales son modestas (AUC 0.66 y 0.65), pero alcanzan para ordenar los prompts mejor que el azar,
 y la diferencia se sostiene en los tres niveles de calidad de la Tabla 11.6 y frente a un
 clasificador distinto como kNN.
@@ -271,20 +272,23 @@ y muy poco del nivel económico (6 %). Esto tiene una explicación en los datos:
 cuesta el 75 % de lo que cuesta gpt-4.1 sobre este corpus (USD 1.84 contra 2.47) y solo es
 sustituible en el 88 % de los prompts, así que mandarle un pedido ahorra poco y arriesga bastante.
 La distribución cambia por idioma: en inglés el local atiende el 49 % de los pedidos, y en español
-el 21 %. El modelo local de 7B es claramente más débil en español, que es la carga principal del
+el 21 %. Parte de la diferencia está en las etiquetas (la respuesta local es sustituible en el 74 %
+de los prompts en español y en el 80 % en inglés), y parte en que el router confía menos en el
+local para el español, que es la carga principal del
 trabajo.
 
 Queda por discutir el instrumento. El κ del hold-out en español (0.31) no llegó al 0.4
 pre-registrado, y el caso CP-05 se reporta como fallado. Pero el tipo de desacuerdo importa más
-que su cantidad. De los nueve desacuerdos, en siete los jueces rechazaron respuestas que el lector
-aceptaba, y el conjunto dirigido confirmó que cuando los jueces rechazan, casi siempre tienen
-razón (20 de 25). Los jueces son más exigentes que el lector, no más arbitrarios. Como el lector
+que su cantidad. En la muestra aleatoria, de los nueve desacuerdos, en siete los jueces rechazaron
+respuestas que el lector aceptaba y solo en dos aceptaron respuestas que el lector rechazaba. Los
+jueces son más exigentes que el lector, y sus rechazos tienen fundamento: en un conjunto dirigido
+sin código, el lector coincidió con 20 de cada 25. Como el lector
 humano es la referencia de lo que le sirve a quien pregunta, un juez más estricto clasifica como
 insuficientes algunas respuestas baratas que en realidad servían, lo que baja la calidad medida
 del router y lo empuja a mandar más pedidos al frontier. El 31 % de ahorro está medido con esa
-vara: es un resultado conservador.
+vara: el ahorro tiende a estar subestimado.
 
-Hay una segunda razón por la que la cifra es un piso. La hipótesis habla del gateway completo, que
+Hay una segunda razón por la que la cifra es conservadora. La hipótesis habla del gateway completo, que
 combina el router con el caché semántico, pero el corpus no tiene consultas repetidas: cada prompt
 aparece una vez por idioma, así que el 31 % sale solo del router. En tráfico real, donde una parte
 de las consultas se repite o se parece a una anterior [19], [14], cada acierto del caché
@@ -309,13 +313,16 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
    negativos (el lector aceptó 45 de 50), y con tan pocos negativos cada desacuerdo pesa mucho. En
    los desacuerdos, los jueces fueron más estrictos 7 veces y más laxos 2. *Efecto:* la calidad
    medida de los niveles baratos tiende a quedar por debajo de la real, y con ella el ahorro.
-   *Mitigación:* un conjunto dirigido de rechazos, que confirmó la dirección del sesgo.
+   *Mitigación:* la dirección del sesgo se estima sobre la muestra aleatoria (7 contra 2), y un
+   conjunto dirigido de rechazos comprobó que esos rechazos tienen fundamento.
 2. **Un único evaluador humano, que es el autor.** Todas las notas humanas son de la misma
    persona. *Efecto:* no se puede medir el acuerdo entre humanos, y el juicio del evaluador podría
    estar influido por conocer el sistema. *Mitigación:* el etiquetado fue ciego a la ruta y al
    modelo que generó cada respuesta, el orden de las respuestas se sorteó, y el evaluador pasó por
-   una ronda de calibración con ítems diseñados para detectar criterios superficiales; dos pasadas
-   anteriores que no la superaron se descartaron y quedaron documentadas en el repositorio.
+   una ronda de calibración con ítems diseñados para detectar criterios superficiales. Hubo dos pasadas
+   anteriores que se descartaron: una previa a esa ronda y otra que la superó pero que el propio
+   evaluador retiró porque juzgaba por el tema y no por la sustituibilidad; las dos quedaron
+   documentadas en el repositorio.
 3. **Selección de la regla sobre 22 pares elegidos por desacuerdo.** Los pares en inglés con que
    se eligió la regla R3 no son una muestra aleatoria: el piloto los seleccionó porque dos jueces
    previos los leían distinto, y quedaron 20 sustituibles y 2 no. *Efecto:* el κ de selección
@@ -325,8 +332,11 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
    menos.
 4. **Conjunto dirigido de 25 + 10 pares.** Es una muestra elegida a propósito entre los rechazos
    y los aceptados del ensamble, sin pares de código. *Efecto:* mide la precisión de los rechazos,
-   no el acuerdo general, y no dice nada del código. *Mitigación:* se lo presenta como control de
-   la dirección del sesgo, con su intervalo de Wilson (61–91 %), no como estimación del κ.
+   no el acuerdo general, y no dice nada del código. Sus tasas de error (5 de 25 rechazos y 1 de 10
+   aceptaciones que el lector no compartió) no se pueden extrapolar al corpus: si se lo hiciera, el
+   balance entre rechazos y aceptaciones erróneas quedaría cerca de cero. *Mitigación:* se lo
+   presenta como evidencia de que los rechazos tienen fundamento, con su intervalo de Wilson
+   (61–91 %); la dirección del sesgo se apoya en la muestra aleatoria.
 5. **Notas humanas de código de baja confianza.** La terminal de etiquetado reenvolvía los bloques
    de código, y el evaluador marcó esas notas como poco confiables. *Efecto:* el κ incluye 10 pares
    con notas dudosas; sin ellos sube a 0.44, un análisis hecho después de ver los datos.
@@ -337,9 +347,9 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
    después de que la primera corrida eligiera su borde. Los umbrales del artefacto que usa el
    gateway salen de la frontera fuera de fold sobre todo el corpus. *Efecto:* la estimación
    anidada deja fuera del fold evaluado los umbrales y los pesos, pero no el λ, así que puede ser
-   levemente optimista. *Mitigación:* el λ es un solo parámetro por clasificador y el punto del
-   artefacto (USD 1.70, calidad 0.957) coincide con la estimación anidada (USD 1.70, calidad
-   0.957).
+   levemente optimista. *Mitigación:* el λ es un solo parámetro por clasificador, elegido de una
+   grilla de seis valores por pérdida logarítmica y no por el costo ni la calidad del ruteo, que son
+   las cifras que se reportan.
 7. **Intervalo del ahorro.** El ahorro puntual es 31 % y su intervalo de confianza va de 28 % a
    35 %. *Efecto:* con esta muestra no se puede excluir, al 95 %, un ahorro algo menor que el 30 %.
    El intervalo, además, remuestrea prompts con la ruta fija y no incorpora la variabilidad de

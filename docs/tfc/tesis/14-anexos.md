@@ -21,7 +21,7 @@ test de la suite (archivo y nombre) o un reporte versionado del repositorio.
 | CP-10 | Caída de Qdrant | caché inalcanzable | responde sin caché, salud degradada | responde, `/health/ready` degradado | P | `tests/test_phase10_outage_safety.py::test_semantic_cache_outage_keeps_chat_completion_serving_and_health_degraded` |
 | CP-11 | Caída de Ollama con el router activo | embedding que falla | decide con la heurística y lo registra | heurística, señal `learned_router` | P | `tests/test_learned_routing.py::test_embedding_failure_falls_back_to_the_heuristic` |
 | CP-12 | Límite de pedidos por minuto | límite 2/min, tercer pedido | 429 + `Retry-After`, sin llamar al proveedor | 429, fila `rate_limited` | P | `tests/test_rate_limiting.py::test_the_request_over_the_limit_is_429_and_never_reaches_a_provider`, `::test_the_rejection_is_in_the_ledger` |
-| CP-13 | Objetivo de calidad por tenant | mismo prompt con objetivos 0.8, 0.9 y 1.0 | el nivel cambia con el objetivo | todo local, mezcla, todo frontier | P | `tests/test_learned_routing.py::test_learned_router_picks_the_tier_from_the_vector`, `::test_quality_target_above_every_point_routes_to_frontier`; demo del runbook |
+| CP-13 | Objetivo de calidad por tenant | vectores distintos con objetivo fijo; objetivo por encima de todo punto medido | el nivel sigue al vector; un objetivo de 1.0 manda al frontier | se cumple | P | `tests/test_learned_routing.py::test_learned_router_picks_the_tier_from_the_vector`, `::test_quality_target_above_every_point_routes_to_frontier` |
 | CP-14 | Cabeceras `X-Nebula-*` | pedidos por cada ruta | presentes y coherentes con el ledger | presentes y coherentes | P | `tests/test_response_headers.py::test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_parity` |
 | CP-15 | Replay de la consola | archivo de replay empaquetado | coincide con el artefacto | coincide | P | `tests/test_evaluation_api.py::test_the_packaged_replay_matches_the_artifact` |
 | CP-16 | Extremo a extremo de la consola | Playwright contra el stack local | todas las pruebas pasan | fallan `observability.spec.ts` y `playground.spec.ts` (selectores ambiguos, previos a esta etapa) | F | `console/e2e/` |
@@ -35,7 +35,9 @@ El lector humano y los jueces responden la misma pregunta con la misma escala, d
 > *Could either response have replaced the other for the person who asked this question, without
 > them being worse off?*
 
-La escala tiene cuatro grados; los dos primeros cuentan como sustituible:
+La escala tiene cuatro grados; los dos primeros cuentan como sustituible (Tabla B.1).
+
+**Tabla B.1.** Escala de la rúbrica de sustituibilidad.
 
 | Grado | Descripción (traducida) |
 |---|---|
@@ -97,9 +99,18 @@ Todo lo que cita este documento se regenera desde el repositorio.
 make setup && cp .env.example .env         # entorno Python 3.12
 docker compose up -d qdrant                 # caché
 make test && make console-test              # suites
-python -m scripts.router.train              # router: artefacto, replay y reporte (sin red)
-make thesis-tables                          # bloques GEN de la tesis
+make thesis-tables                          # bloques GEN de la tesis, desde los reportes versionados
 make thesis-figures                         # figuras
+```
+
+`make thesis-tables` alcanza para reconstruir todas las cifras citadas, porque lee los reportes ya
+versionados. Para reentrenar el router desde cero hacen falta los embeddings del corpus, que no se
+versionan: se calculan con Ollama antes del entrenamiento.
+
+```bash
+ollama pull nomic-embed-text
+python -m scripts.router.embed              # embeddings del corpus (local, sin costo)
+python -m scripts.router.train              # artefacto, replay y reporte del router
 ```
 
 Las etapas que llaman a modelos (traducción, respuestas, jueces) están en `scripts/ground_truth/` y

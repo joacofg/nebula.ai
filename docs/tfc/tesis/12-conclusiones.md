@@ -7,7 +7,8 @@ exige cuidado, porque ninguna de sus cifras se obtuvo en las mismas condiciones.
 ahorros del 59 % al 98 % [1] y el blog de RouteLLM del 35 % al 85 % según el benchmark
 [11], ambos contra usar siempre GPT-4. Las dos cifras son mayores que el 31 % de este
 trabajo, pero se midieron en inglés, sobre tareas con respuesta verificable (clasificación, opción
-múltiple, matemática) o con un juez que no se validó contra personas, y con dos modelos en lugar de
+múltiple, matemática) o con un juez validado en otro trabajo y no sobre su propio corpus, y con dos
+modelos en lugar de
 tres. En el caso de RouteLLM, además, la reducción que reporta el artículo (más de 2 veces) se mide
 contra un router aleatorio y no contra el modelo grande [10]. La comparación más cercana en
 condiciones es Hybrid LLM, que entre modelos de brecha media logra un 40 % de ventaja de costo con
@@ -21,15 +22,15 @@ tareas abiertas, con un instrumento más estricto que un lector humano y con una
 que no deja elegir los umbrales mirando los datos de prueba: cada una de esas decisiones baja la
 cifra, y cada una la vuelve más creíble. En lo que mide, el trabajo va más allá de lo que publican
 tanto la investigación como el mercado. Ninguno de los antecedentes valida su instrumento de calidad
-contra una persona antes de usarlo, ninguno integra el router en un gateway que opera con caché,
+sobre su propio corpus y en español antes de usarlo, ninguno integra el router en un gateway que opera con caché,
 fallas de proveedor y varios clientes, y ninguna de las herramientas de mercado (LiteLLM, Portkey,
 Cloudflare) reporta el ahorro contra una línea base ni la calidad de lo que sirve. La contribución
 del trabajo no es un ahorro más grande, sino un ahorro medido, con su costo en calidad a la vista y
 elegido por el operador.
 
 Para el campo, el resultado aporta una advertencia concreta: una regla de ruteo puede ahorrar mucho
-y no servir. La heurística del gateway ahorraba un 40 % y tenía la calidad de mandar todo al modelo
-local, y la métrica de similitud que se proponía para detectarlo separaba peor que el azar. Mientras
+y no servir. La heurística del gateway ahorraba un 40 % en su suite de escenarios y, sobre el corpus,
+tenía la calidad de mandar todo al modelo local, y la métrica de similitud que se proponía para detectarlo separaba peor que el azar. Mientras
 las evaluaciones de ruteo no midan la calidad con instrumentos validados, las cifras de ahorro no
 son comparables entre sí [8], ni tampoco confiables.
 
@@ -82,8 +83,9 @@ poco y arriesga bastante, y el router lo aprendió solo. El nivel intermedio ser
 modelo económico más barato en relación con el frontier.
 
 La tercera tiene que ver con el idioma. En inglés, el modelo local atiende el 49 % de los pedidos;
-en español, el 21 %. El modelo local de 7B es claramente más débil en español, que es justamente la
-carga principal del trabajo. Esto va en la línea de lo que la literatura documenta sobre la brecha
+en español, el 21 %. La respuesta local es sustituible en el 74 % de los prompts en español y en el
+80 % en inglés, y el router, que confía menos en el local para el español, lo usa menos justamente
+en la carga principal del trabajo. Esto va en la línea de lo que la literatura documenta sobre la brecha
 de los modelos fuera del inglés [23], [24], y muestra por qué evaluar solo en inglés,
 como hacen la mayoría de los trabajos de ruteo, sobreestimaría el ahorro para un equipo que atiende
 usuarios hispanohablantes.
@@ -109,7 +111,7 @@ con el tráfico propio de cada organización.
 1. **El instrumento de calidad descansa en un único lector humano.** Todas las notas humanas son
    del autor, y el κ del hold-out en español quedó por debajo del umbral pre-registrado. *Impacto:*
    no se puede estimar el acuerdo entre personas, y la magnitud exacta del sesgo de los jueces queda
-   abierta, aunque su dirección esté establecida. *Superación:* sumar al menos un segundo lector,
+   abierta, aunque su dirección esté indicada. *Superación:* sumar al menos un segundo lector,
    con la misma calibración, y ampliar el hold-out con más negativos.
 2. **El corpus no es tráfico de producción.** Son 1250 prompts de tres datasets públicos y cinco
    tareas, sin consultas repetidas. *Impacto:* la proporción de pedidos que el local puede atender

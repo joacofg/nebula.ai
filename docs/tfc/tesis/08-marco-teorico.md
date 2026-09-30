@@ -60,7 +60,7 @@ cada trabajo mide con sus propios modelos, benchmarks y criterios de calidad, y 
 publicadas no son comparables entre sí [8]. La mayoría de los benchmarks usados están en
 inglés y tienen respuesta verificable (matemática, código, opción múltiple), donde la calidad se
 reduce a acertar o no. Las consultas abiertas, que son una parte importante del tráfico real, y las
-consultas en otros idiomas quedan subrepresentadas. Esto no es un detalle para este trabajo, cuya
+consultas en otros idiomas quedan subrepresentadas. Para este trabajo el punto pesa, porque su
 carga principal está en español: la literatura sobre sesgo cultural muestra que los modelos de uso
 masivo rinden mejor sobre contenidos de países angloparlantes [21], [22], que la
 brecha crece en idiomas con menos recursos [23], y que para el español hizo falta construir
@@ -268,7 +268,7 @@ La misma línea de trabajo documentó sesgos sistemáticos que hay que controlar
   [37].
 - **Autopreferencia.** Los jueces reconocen y prefieren las respuestas generadas por su propio
   modelo o su familia [40]. Para un sistema que compara la salida de un modelo local con
-  la de un premium, esto no es un detalle: si el juez es de la misma familia que el premium, la
+  la de un premium, el sesgo importa: si el juez es de la misma familia que el premium, la
   comparación arranca inclinada. Se controla usando jueces de familias distintas a las de los
   modelos evaluados.
 
@@ -346,7 +346,7 @@ septiembre de 2026).
 | Caché semántica | Sí | Sí | No (coincidencia exacta) | Sí |
 | Aislamiento del caché | Por clave, equipo o usuario | Por namespace | Por solicitud idéntica | Por tenant, con umbral y antigüedad de la política |
 | Decisión de ruta | Reglas y balanceo configurados | Reglas condicionales sobre metadatos | Reglas | Router aprendido sobre el prompt, con objetivo de calidad por tenant |
-| Calidad de lo servido | No se mide | No se mide | No se mide | Tasa de respuestas sustituibles, con jueces validados contra un lector humano |
+| Calidad de lo servido | No se mide | No se mide | No se mide | Estimada fuera de línea sobre un corpus juzgado, con jueces validados contra un lector humano (no se mide en producción) |
 | Ahorro contra una línea base reproducible | No | No | No | Sí |
 
 El trabajo, por lo tanto, no compite con estas herramientas en cantidad de proveedores ni en

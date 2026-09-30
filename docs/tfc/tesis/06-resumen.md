@@ -28,9 +28,8 @@ haber reemplazado a la del frontier sin que quien preguntó quedara peor. La sim
 métrica propuesta al inicio, resultó no distinguir calidad (AUC 0.25 contra un lector humano), así
 que el instrumento pasó a ser un ensamble de dos jueces LLM de otras familias, con reglas fijadas en
 un pre-registro y validado contra el lector humano antes de usarlo. Los jueces coincidieron con el
-lector en el 82 % de los pares en español, y cuando rechazaron una respuesta casi siempre tuvieron
-razón (20 de 25); en los desacuerdos fueron más estrictos que el lector, así que la calidad que
-miden es un piso.
+lector en el 82 % de los pares en español; en los desacuerdos fueron más estrictos que el lector
+(siete veces contra dos), así que la calidad que miden tiende a subestimarse.
 
 El router se evaluó con una estimación anidada, que no deja que un prompt influya en los parámetros
 que lo rutean. Con el objetivo de calidad en 0.95 entrega una calidad de 0.957 y gasta USD 1.70
@@ -38,8 +37,8 @@ cada mil prompts, un 31 % menos que mandar todo al frontier (intervalo del 95 %:
 17 % menos que una mezcla aleatoria de niveles de igual calidad. La hipótesis se verifica, y con
 una medición conservadora: los jueces son más exigentes que el lector humano, y el caché, que no
 aporta en un corpus sin consultas repetidas, sumaría ahorro en tráfico real. La heurística que usaba
-la versión anterior, que parecía ahorrar un 40 %, resultó tener la calidad de mandar todo al modelo
-local. El ahorro se paga en latencia (21.3 s de mediana del modelo local contra 2.5 s del frontier)
+la versión anterior, que en la suite de escenarios ahorraba un 40 %, resultó tener sobre el corpus
+la calidad de mandar todo al modelo local. El ahorro se paga en latencia (21.3 s de mediana del modelo local contra 2.5 s del frontier)
 y es menor en español que en inglés.
 
 El trabajo aporta un gateway self-hosted funcional, un router con una frontera costo–calidad

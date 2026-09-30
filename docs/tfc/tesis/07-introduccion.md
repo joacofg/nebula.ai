@@ -83,7 +83,7 @@ El **proceso de desarrollo** fue iterativo e incremental. El entregable se const
 limpieza del gateway y aislamiento del caché, construcción del corpus y de las etiquetas de
 referencia, router de tres niveles, consola de evaluación, limitación de pedidos y cierre de la
 documentación. Cada fase tuvo una especificación y un plan con criterios de aceptación explícitos,
-se desarrolló guiada por pruebas, se integró con un pull request solo con la suite en verde, y pasó
+se desarrolló guiada por pruebas, se integró con un pull request solo con las pruebas unitarias y de integración en verde, y pasó
 por una revisión independiente del código antes de integrarse. El historial del repositorio deja
 registro de todo el proceso.
 
@@ -178,7 +178,7 @@ comparan con las de este trabajo.
 | Trabajo | Tipo | Qué hace | Cifra publicada | Qué no mide |
 |---|---|---|---|---|
 | FrugalGPT [1] | cascada de modelos | prueba modelos de menor a mayor costo y se detiene cuando un puntuador confía en la respuesta | iguala a GPT-4 con hasta un 98 % menos de costo, o mejora su exactitud un 4 % al mismo costo; el ahorro va del 59 % al 98 % según el conjunto de datos | tareas en inglés con respuesta verificable; no opera como servicio |
-| Hybrid LLM [9] | router aprendido de dos niveles | predice la brecha de calidad entre un modelo chico y uno grande | hasta un 40 % menos de llamadas al modelo grande sin caída de calidad (entre dos modelos de calidad parecida) | un solo par de modelos por experimento; sin caché ni fallas |
+| Hybrid LLM [9] | router aprendido de dos niveles | predice la brecha de calidad entre un modelo chico y uno grande | hasta un 40 % menos de llamadas al modelo grande sin caída de calidad; entre modelos de brecha media, 40 % de ventaja de costo con hasta 4 % de caída | un solo par de modelos por experimento; sin caché ni fallas |
 | RouteLLM [10], [11] | router aprendido de dos niveles | aprende la decisión con datos de preferencia humana | el artículo reporta una reducción de costo de más de 2 veces sin perder calidad (contra un router aleatorio); el blog de los autores, reducciones del 85 % en MT-Bench, 45 % en MMLU y 35 % en GSM8K contra usar solo GPT-4, con el 95 % de su desempeño | benchmarks en inglés; dos modelos |
 | AutoMix [12] | cascada con autoverificación | el modelo chico verifica su respuesta y un controlador decide si escalar | más de un 50 % menos de costo computacional a desempeño comparable | paga dos generaciones en las consultas que escalan |
 | GPTCache [13] | caché semántico | devuelve la respuesta de una consulta parecida ya respondida | respuestas de 2 a 10 veces más rápidas en los aciertos; tasa de aciertos de alrededor del 50 % en su prueba | no reporta ahorro en dinero ni calidad de lo servido |
@@ -190,7 +190,7 @@ comparan con las de este trabajo.
 Leídos en conjunto, estos trabajos confirman que la premisa del trabajo es sólida (se puede ahorrar
 mucho si no se trata a todas las consultas por igual) y dejan ver lo que falta. Los trabajos de
 investigación optimizan una sola palanca y la miden en inglés, sobre benchmarks con respuesta
-verificable o con un juez que no se valida contra personas. Las herramientas de mercado integran
+verificable o con un juez validado en otro trabajo, no sobre su propio corpus. Las herramientas de mercado integran
 todas las palancas, pero no miden la calidad de lo que sirven. Este trabajo se ubica entre ambos: un
 gateway que integra ruteo, caché y fallback, cuyo ruteo se apoya en una medición de calidad validada
 y en español.
