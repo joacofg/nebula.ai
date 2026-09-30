@@ -52,14 +52,15 @@ describe("ledger-request-detail", () => {
   it("leads with cost and route, and folds the rest of the persisted evidence", () => {
     renderWithProviders(<LedgerRequestDetail entry={mockEntry} />);
 
-    expect(screen.getByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-embed-001");
+    expect(screen.getByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-embe");
+    expect(group("Request ID")).toHaveTextContent("req-embed-001");
     expect(group("Costo estimado")).toHaveTextContent("USD 0.0005");
     expect(group("Tokens")).toHaveTextContent("24 + 0 = 24");
     expect(group("Modelo")).toHaveTextContent("text-embedding-3-small");
     expect(group("Proveedor")).toHaveTextContent("openai-compatible");
     expect(group("Ruta")).toHaveTextContent("embeddings");
-    expect(group("Motivo")).toHaveTextContent("embeddings_request");
-    expect(group("Estado")).toHaveTextContent("completed");
+    expect(group("Motivo")).toHaveTextContent("embeddings");
+    expect(group("Estado")).toHaveTextContent("completado");
     expect(group("Latencia")).toHaveTextContent("82 ms");
 
     expect(screen.getByText("Evidencia completa")).toBeInTheDocument();

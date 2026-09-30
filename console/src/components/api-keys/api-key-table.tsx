@@ -8,7 +8,7 @@ type ApiKeyTableProps = {
   revokingId: string | null;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" });
+const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
 const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 function getScopeSummary(apiKey: ApiKeyRecord) {
@@ -28,10 +28,9 @@ function getScopeSummary(apiKey: ApiKeyRecord) {
 export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[760px] table-fixed border-collapse text-sm" aria-label="Claves de API">
+      <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="Claves de API">
         <colgroup>
-          <col className="w-[22%]" />
-          <col className="w-[14%]" />
+          <col className="w-[26%]" />
           <col />
           <col className="w-[11%]" />
           <col className="w-[14%]" />
@@ -40,7 +39,6 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
         <thead>
           <tr className="border-b border-line-strong">
             <th scope="col" className={HEAD}>Nombre</th>
-            <th scope="col" className={HEAD}>Prefijo</th>
             <th scope="col" className={HEAD}>Alcance</th>
             <th scope="col" className={HEAD}>Estado</th>
             <th scope="col" className={HEAD}>Creada</th>
@@ -60,12 +58,10 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
                     {apiKey.name}
                   </span>
                 </td>
-                <td className="truncate px-3 py-2.5 font-mono text-[12px] text-ink-2">{apiKey.key_prefix}</td>
                 <td className="px-3 py-2.5">
-                  <div className="truncate font-medium text-ink" title={scope.title}>
+                  <div className="truncate font-medium text-ink" title={`${scope.title}. ${scope.detail}`}>
                     {scope.title}
                   </div>
-                  <div className="text-[13px] text-ink-3">{scope.detail}</div>
                 </td>
                 <td className="px-3 py-2.5">
                   <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-medium text-ink">

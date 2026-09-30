@@ -1,3 +1,4 @@
+import { reasonLabel } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { TierBadge } from "@/components/system/tier-badge";
 
@@ -34,7 +35,7 @@ export function PlaygroundMetadata(props: PlaygroundMetadataProps) {
           { label: "Request ID", value: <span className="font-mono text-[13px] [overflow-wrap:anywhere]">{orDash(props.requestId)}</span> },
           { label: "Tenant", value: <span className="font-mono text-[13px]">{orDash(props.tenantId)}</span> },
           { label: "Ruta", value: orDash(props.routeTarget) },
-          { label: "Motivo", value: orDash(props.routeReason) },
+          { label: "Motivo", value: <span title={props.routeReason}>{reasonLabel(props.routeReason)}</span> },
           { label: "Nivel", value: props.routeTier ? <TierBadge tier={props.routeTier} /> : "—" },
           { label: "Proveedor", value: orDash(props.provider) },
           { label: "Modo de política", value: orDash(props.policyMode) },

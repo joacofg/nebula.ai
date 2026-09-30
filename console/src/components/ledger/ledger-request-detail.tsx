@@ -1,8 +1,8 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
-import { formatLatency } from "@/components/ledger/ledger-table";
 import { formatTimestamp, titleCaseToken } from "@/components/observability/format";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
+import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
 import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
 
@@ -179,33 +179,23 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
     <section aria-labelledby="ledger-detail-heading" className="flex flex-col gap-6">
       <div>
         <h2 id="ledger-detail-heading" className="m-0 text-lg font-semibold text-ink">
-          Pedido <span className="font-mono text-[15px] font-medium">{entry.request_id}</span>
+          Pedido <span className="font-mono text-[15px] font-medium">{entry.request_id.slice(0, 8)}</span>
         </h2>
         <div className="font-label text-[13px] text-ink-3">{formatTimestamp(entry.timestamp)}</div>
       </div>
 
       {signals || entry.route_reason === "cache_hit" ? (
-        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} />
+        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} figureNumber={1} />
       ) : null}
 
-      <Readout
-        items={[
-          { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : `USD ${entry.estimated_cost.toFixed(4)}`, emphasis: true },
-          { label: "Tokens", value: `${entry.prompt_tokens} + ${entry.completion_tokens} = ${entry.total_tokens}` },
-          { label: "Modelo", value: <span className="font-mono text-[13px]">{orDash(entry.response_model)}</span> },
-          { label: "Proveedor", value: orDash(entry.final_provider) },
-          { label: "Ruta", value: entry.final_route_target },
-          { label: "Motivo", value: orDash(entry.route_reason) },
-          { label: "Estado", value: entry.terminal_status },
-          { label: "Latencia", value: formatLatency(entry.latency_ms) },
-        ]}
-      />
+      <Readout items={ledgerReadout(entry)} />
 
       <details className="border-t border-line pt-3">
         <summary className="cursor-pointer text-sm font-semibold text-ink marker:text-ink-3">Evidencia completa</summary>
         <div className="mt-3 flex flex-col gap-5">
           <Readout
             items={[
+              { label: "Request ID", value: <span className="font-mono text-[12px] font-normal">{entry.request_id}</span> },
               { label: "Tenant", value: <span className="font-mono text-[13px]">{entry.tenant_id}</span> },
               { label: "Tipo de mensaje", value: entry.message_type },
               { label: "Modelo pedido", value: <span className="font-mono text-[13px]">{entry.requested_model}</span> },
@@ -215,8 +205,6 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
               { label: "Minimización", value: entry.metadata_minimization_level },
               { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(titleCaseToken).join(", ") : "ninguno" },
               { label: "Fuente de gobierno", value: entry.governance_source },
-              { label: "Caché", value: yesNo(entry.cache_hit) },
-              { label: "Fallback", value: yesNo(entry.fallback_used) },
             ]}
           />
           {sections.map((section) => (

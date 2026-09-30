@@ -1,4 +1,5 @@
 import { DecisionPath, type DecisionStep } from "@/components/system/decision-path";
+import { Figure } from "@/components/system/figure";
 import { TierBadge } from "@/components/system/tier-badge";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
@@ -6,6 +7,8 @@ type PlaygroundDecisionProps = {
   entry: UsageLedgerRecord;
   /** `X-Nebula-Route-Tier` from the live response; empty when the gateway sent none. */
   routeTier: string;
+  /** Figure number for the decision path caption on the page that shows it. */
+  figureNumber?: number;
 };
 
 type Signals = Record<string, unknown>;
@@ -118,12 +121,10 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
       ? "El router eligió economy, pero sin modelo economy configurado el gateway lo sirvió con frontier."
       : null;
 
-  const path: DecisionStep[] = clearsLocal
-    ? [{ tier: "local", p: pLocal, tau: tauLocal }]
-    : [
-        { tier: "local", p: pLocal, tau: tauLocal },
-        { tier: "economy", p: pEconomy, tau: tauEconomy },
-      ];
+  const path: DecisionStep[] = [
+    { tier: "local", p: pLocal, tau: tauLocal },
+    { tier: "economy", p: pEconomy, tau: tauEconomy },
+  ];
   const version = learned ?? "desconocido";
   const context = [
     target === null ? null : `Objetivo ${formatProb(target)}`,
@@ -136,7 +137,7 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
   return { kind: "learned", tier, computed, version, steps, path, context, note, fallback };
 }
 
-export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps) {
+export function PlaygroundDecision({ entry, routeTier, figureNumber = 1 }: PlaygroundDecisionProps) {
   const explanation = explainDecision(entry, routeTier);
 
   return (
@@ -156,8 +157,9 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
         </p>
       ) : explanation.kind === "learned" ? (
         <>
-          <DecisionPath steps={explanation.path} chosen={explanation.computed} animate />
-          <p className="m-0 font-label text-[13px] font-medium text-ink-3">{explanation.context}</p>
+          <Figure number={figureNumber} caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
+            <DecisionPath steps={explanation.path} chosen={explanation.computed} animate />
+          </Figure>
           {explanation.note ? <p className="m-0 text-sm text-warn">{explanation.note}</p> : null}
           {explanation.fallback ? (
             <p className="m-0 text-sm text-warn">Falló el modelo local y se sirvió con el proveedor premium (fallback).</p>

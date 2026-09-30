@@ -369,7 +369,7 @@ export function PolicyForm({
             {has("calibrated_routing_enabled") ? (
               <Check
                 label="Ruteo calibrado (heurística v0)"
-                hint="Apagado, el tráfico automático va a local."
+                hint="Si se apaga, el tráfico automático va a local."
                 checked={formState.calibratedRoutingEnabled}
                 onChange={(checked) => set("calibratedRoutingEnabled", checked)}
               />

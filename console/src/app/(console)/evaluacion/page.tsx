@@ -74,7 +74,13 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
         {caption}
       </h2>
       {nested ? null : <p className="text-sm text-ink-3">El replay no trae la cifra anidada para 0.95.</p>}
-      <table aria-label={caption} className="w-full max-w-4xl border-collapse text-sm">
+      <table aria-label={caption} className="w-full table-fixed border-collapse text-sm">
+        <colgroup>
+          <col className="w-[30%]" />
+          <col className="w-[34%]" />
+          <col className="w-[16%]" />
+          <col className="w-[20%]" />
+        </colgroup>
         <thead>
           <tr className="border-y-2 border-t-ink border-b-ink">
             <th scope="col" className="px-2 py-1.5 text-left font-label text-[13px] font-semibold">Parámetro</th>
@@ -94,7 +100,7 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
           ))}
         </tbody>
       </table>
-      <p className="m-0 text-[13px] text-ink-3">Umbrales elegidos sin ver el fold ruteado: es la cifra que reporta la tesis.</p>
+      <p className="m-0 text-[13px] text-ink-3">Cifra de la tesis: umbrales elegidos sin ver los pedidos evaluados (validación cruzada anidada).</p>
     </section>
   );
 }
@@ -169,14 +175,14 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
         <h2 id="replay-heading" className="m-0 text-lg font-semibold text-ink">
           Replay acelerado · {replay.rows.length} pedidos, {formatShare(result.share.local)} local
         </h2>
-        <Figure number={2} caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ es la etiqueta de la fase 2 para ese nivel. Mover el control re-rutea desde el pedido en curso.">
+        <Figure number={2} caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si los jueces aceptaron la respuesta de ese nivel.">
           <ReplayFeed rows={replay.rows} order={order} point={point} initialPlaying={initialPlaying} />
         </Figure>
       </section>
 
       <p className="m-0 max-w-[75ch] text-[13px] text-ink-3">
-        Corpus derivado de Dolly (CC BY-SA 3.0), GSM8K (MIT) y MBPP (CC BY 4.0); probabilidades fuera de fold del router{" "}
-        {replay.router_label}.
+        Corpus derivado de Dolly (CC BY-SA 3.0), GSM8K (MIT) y MBPP (CC BY 4.0); predicciones del router{" "}
+        {replay.router_label} sobre pedidos que no vio al entrenar.
       </p>
     </div>
   );

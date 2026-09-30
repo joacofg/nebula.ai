@@ -124,7 +124,7 @@ describe("playground-page", () => {
     });
     expect(await screen.findByText("Detalle de la respuesta")).toBeInTheDocument();
     expect(await screen.findByRole("heading", { name: "Registro en el ledger" })).toBeInTheDocument();
-    expect(await screen.findByText("fallback_completed")).toBeInTheDocument();
+    expect(await screen.findByText("completado con fallback")).toBeInTheDocument();
   });
 
   it("explains the learned router's tier from the recorded route signals", async () => {
@@ -277,11 +277,11 @@ describe("playground-page", () => {
     expect(await screen.findByText("Detalle de la respuesta")).toBeInTheDocument();
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
-    expect(screen.getAllByText("local_provider_error_fallback")).toHaveLength(2);
-    expect(screen.getAllByText("allowed").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("fallback por error local")).toHaveLength(2);
+    expect(screen.getAllByText("allowed")).toHaveLength(1);
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
     });
-    expect(await screen.findByText("provider_error")).toBeInTheDocument();
+    expect(await screen.findByText("error del proveedor")).toBeInTheDocument();
   });
 });

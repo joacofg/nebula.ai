@@ -11,7 +11,7 @@ export function formatTimestamp(value: string) {
   if (Number.isNaN(timestamp.getTime())) {
     return value;
   }
-  return timestamp.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "medium" });
+  return timestamp.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "medium", hourCycle: "h23" });
 }
 
 export function formatReasonCounts(items: Array<{ reason: string; count: number }> | null | undefined) {

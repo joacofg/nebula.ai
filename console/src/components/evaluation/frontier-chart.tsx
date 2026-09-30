@@ -16,7 +16,7 @@ const REFERENCE_COLOR = "var(--color-ink-3)";
 const CHOSEN_COLOR = "var(--color-mark)";
 
 const WIDTH = 720;
-const HEIGHT = 400;
+const HEIGHT = 440;
 const MARGIN = { top: 28, right: 20, bottom: 48, left: 52 };
 const PLOT_W = WIDTH - MARGIN.left - MARGIN.right;
 const PLOT_H = HEIGHT - MARGIN.top - MARGIN.bottom;
@@ -56,7 +56,7 @@ function niceStep(raw: number) {
 /** x in USD / 1000 prompts; always a finite, non-empty domain starting at 0. */
 export function costScale(maxPer1000: number) {
   const max = maxPer1000 > 0 && Number.isFinite(maxPer1000) ? maxPer1000 : 1;
-  const step = niceStep(max / 4);
+  const step = niceStep(max / 5);
   const top = Math.ceil(max / step - 1e-9) * step;
   const ticks: number[] = [];
   for (let t = 0; t <= top + step / 2; t += step) {
@@ -68,7 +68,7 @@ export function costScale(maxPer1000: number) {
 /** y in quality; 0.05 grid, at least one step tall, capped to [0, 1]. */
 export function qualityScale(minQuality: number) {
   const low = Number.isFinite(minQuality) ? Math.max(0, Math.min(minQuality, 1)) : 0;
-  let min = Math.floor((low - 0.01) * 20) / 20;
+  let min = Math.floor(low * 20 + 1e-9) / 20;
   min = Math.max(0, Math.min(min, 0.95));
   const ticks: number[] = [];
   for (let t = min; t <= 1 + 1e-9; t += 0.05) {
@@ -102,7 +102,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
 
   const markers: Marker[] = useMemo(
     () => [
-      { id: "all_local", label: "todo local", ...baselines.all_local, color: TIER_COLORS.local, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
+      { id: "all_local", label: "todo local", ...baselines.all_local, color: TIER_COLORS.local, shape: "circle", labelDx: 10, labelDy: -8, anchor: "start" },
       { id: "all_economy", label: "todo economy", ...baselines.all_economy, color: TIER_COLORS.economy, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
       { id: "all_frontier", label: "todo frontier", ...baselines.all_frontier, color: TIER_COLORS.frontier, shape: "circle", labelDx: -8, labelDy: -9, anchor: "end" },
       { id: "heuristic", label: "heurística v0 (base)", ...baselines.heuristic_premium_frontier, color: REFERENCE_COLOR, shape: "diamond", labelDx: 10, labelDy: -8, anchor: "start" },
@@ -225,7 +225,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
           {ys.ticks.map((t) => (
             <g key={`y-${t}`}>
               <line x1={MARGIN.left} x2={WIDTH - MARGIN.right} y1={y(t)} y2={y(t)} stroke={GRID_COLOR} strokeWidth={1} />
-              <text x={MARGIN.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-3 font-mono text-[11px]">
+              <text x={MARGIN.left - 8} y={y(t)} dy="0.32em" textAnchor="end" className="fill-ink-3 font-mono text-[12.5px]">
                 {t.toFixed(2)}
               </text>
             </g>
@@ -233,16 +233,16 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
           {xs.ticks.map((t) => {
             const px = MARGIN.left + ((t - xs.min) / (xs.max - xs.min)) * PLOT_W;
             return (
-              <text key={`x-${t}`} x={px} y={HEIGHT - MARGIN.bottom + 18} textAnchor="middle" className="fill-ink-3 font-mono text-[11px]">
-                {t.toFixed(t < 1 && t > 0 ? 2 : 1)}
+              <text key={`x-${t}`} x={px} y={HEIGHT - MARGIN.bottom + 18} textAnchor="middle" className="fill-ink-3 font-mono text-[12.5px]">
+                {t.toFixed(1)}
               </text>
             );
           })}
           <rect x={MARGIN.left} y={MARGIN.top} width={PLOT_W} height={PLOT_H} fill="none" stroke={FRAME_COLOR} strokeWidth={1} />
-          <text x={WIDTH - MARGIN.right} y={HEIGHT - 8} textAnchor="end" className="fill-ink-2 font-label text-[12px]">
+          <text x={WIDTH - MARGIN.right} y={HEIGHT - 8} textAnchor="end" className="fill-ink-2 font-label text-[13px]">
             Costo · USD / 1000 pedidos
           </text>
-          <text x={MARGIN.left} y={MARGIN.top - 10} className="fill-ink-2 font-label text-[12px]">
+          <text x={MARGIN.left} y={MARGIN.top - 10} className="fill-ink-2 font-label text-[13px]">
             Calidad
           </text>
 
@@ -309,7 +309,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
                   x={mx + m.labelDx}
                   y={my + m.labelDy}
                   textAnchor={m.anchor}
-                  className="pointer-events-none fill-ink-2 font-label text-[12px] font-medium"
+                  className="pointer-events-none fill-ink-2 font-label text-[13px] font-medium"
                 >
                   {m.label}
                 </text>

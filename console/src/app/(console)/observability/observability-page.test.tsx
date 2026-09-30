@@ -171,7 +171,7 @@ describe("ObservabilityPage", () => {
     expect(screen.getByRole("group", { name: "Filtros del ledger" })).toBeInTheDocument();
     const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
     expect(within(table).getByRole("row", { selected: true })).toHaveTextContent("req-inte");
-    expect(await screen.findByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-integrated-001");
+    expect(await screen.findByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-inte");
     expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0042");
     expectTextToAppearBefore(container, "req-inte", "Recomendaciones");
   });

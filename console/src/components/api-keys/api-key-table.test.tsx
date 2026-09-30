@@ -27,7 +27,7 @@ describe("api-keys-page api-key-table", () => {
 
     expect(screen.getByText("Único tenant: tenant-a")).toBeInTheDocument();
     expect(
-      screen.getByText(/El header X-Nebula-Tenant-ID es opcional/i),
+      screen.getByTitle(/El header X-Nebula-Tenant-ID es opcional/i),
     ).toBeInTheDocument();
   });
 
@@ -53,7 +53,7 @@ describe("api-keys-page api-key-table", () => {
 
     expect(screen.getByText("2 tenants permitidos")).toBeInTheDocument();
     expect(
-      screen.getByText(/Los pedidos tienen que enviar X-Nebula-Tenant-ID/i),
+      screen.getByTitle(/Los pedidos tienen que enviar X-Nebula-Tenant-ID/i),
     ).toBeInTheDocument();
   });
 

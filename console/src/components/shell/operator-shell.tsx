@@ -130,7 +130,10 @@ export function OperatorShell({ children }: { children: ReactNode }) {
             </SheetContent>
           </Sheet>
         </div>
-        <main className="min-w-0">{children}</main>
+        {/* Pages stretch to the viewport so the sheet rules of their columns reach the bottom. */}
+        <main className="flex min-h-screen min-w-0 flex-col [&>section]:flex [&>section]:flex-1 [&>section]:flex-col [&>section>.grid]:flex-1">
+          {children}
+        </main>
       </div>
     </div>
   );

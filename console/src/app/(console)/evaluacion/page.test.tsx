@@ -158,7 +158,7 @@ describe("evaluation page", () => {
         routing_quality_target: 0.9,
       }),
     );
-    expect(await screen.findByText("Objetivo 0.900 guardado en Default Workspace.")).toBeInTheDocument();
+    expect(await screen.findByText("Objetivo 0.90 guardado en Default Workspace.")).toBeInTheDocument();
   });
 
   it("does not write when the tenant policy cannot be read", async () => {

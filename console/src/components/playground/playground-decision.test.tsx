@@ -55,7 +55,8 @@ describe("PlaygroundDecision", () => {
     expect(
       screen.getByRole("img", { name: "Decisión: local descartado (0.69 < 0.76), economy elegido (0.91 ≥ 0.90)" }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Objetivo 0.90 · router aprendido v1")).toBeInTheDocument();
+    expect(screen.getByText(/Objetivo 0\.90 · router aprendido v1/)).toBeInTheDocument();
+    expect(screen.getByText("Figura 1.")).toBeInTheDocument();
     expect(panelText(container)).not.toMatch(/NaN|undefined/);
   });
 
@@ -78,7 +79,7 @@ describe("PlaygroundDecision", () => {
     );
 
     expect(screen.getByRole("img", { name: "Decisión: local elegido (0.8312 ≥ 0.82)" })).toBeInTheDocument();
-    expect(screen.getByText("Objetivo 0.95 · router aprendido v1")).toBeInTheDocument();
+    expect(screen.getByText(/Objetivo 0\.95 · router aprendido v1/)).toBeInTheDocument();
   });
 
   it("renders an all-frontier operating point as infinite thresholds", () => {
@@ -103,7 +104,7 @@ describe("PlaygroundDecision", () => {
         name: "Decisión: local descartado (0.99 < ∞), economy descartado (0.99 < ∞), frontier elegido",
       }),
     ).toBeInTheDocument();
-    expect(screen.getByText("Objetivo 1.00 · todo frontier · router aprendido v1")).toBeInTheDocument();
+    expect(screen.getByText(/Objetivo 1\.00 · todo frontier · router aprendido v1/)).toBeInTheDocument();
     expect(panelText(container)).not.toMatch(/NaN|null|undefined/);
   });
 

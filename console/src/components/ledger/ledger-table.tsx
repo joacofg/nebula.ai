@@ -5,6 +5,7 @@ import type { KeyboardEvent } from "react";
 import Link from "next/link";
 import { cn } from "cn";
 
+import { statusLabel } from "@/components/system/labels";
 import { TierBadge } from "@/components/system/tier-badge";
 import { EmptyState, LoadingRows } from "@/components/system/state";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
@@ -27,7 +28,7 @@ export function rowTier(row: UsageLedgerRecord) {
 
 function formatTime(value: string) {
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString("es-AR", { hour12: false });
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleTimeString("es-AR", { hourCycle: "h23" });
 }
 
 function formatCost(value: number | null) {
@@ -117,7 +118,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                 onKeyDown={(event) => onRowKeyDown(event, index)}
                 className={cn(
                   "cursor-pointer border-b border-line transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-mark",
-                  selected ? "bg-mark-soft/70 shadow-[inset_2px_0_0_var(--color-mark)]" : "hover:bg-canvas",
+                  selected ? "bg-mark-soft shadow-[inset_0_1px_0_var(--color-mark-line),inset_0_-1px_0_var(--color-mark-line)]" : "hover:bg-canvas",
                 )}
               >
                 <td className="truncate px-3 py-2 font-mono text-[12px] text-ink-3">{formatTime(row.timestamp)}</td>
@@ -136,7 +137,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                 <td className="px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
                 <td className="px-3 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
                 <td className="truncate px-3 py-2 font-label text-[13px] text-ink-2" title={row.terminal_status}>
-                  {row.terminal_status}
+                  {statusLabel(row.terminal_status)}
                 </td>
               </tr>
             );

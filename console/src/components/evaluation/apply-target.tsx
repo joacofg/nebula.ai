@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
+import { formatTarget } from "@/components/evaluation/quality-slider";
 import { ErrorAlert } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -83,7 +84,7 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
       {mutation.isSuccess ? (
         <Alert variant="success" role="status">
           <AlertDescription>
-            {`Objetivo ${mutation.data.routing_quality_target.toFixed(3)} guardado en ${tenantName(mutation.variables.id)}.`}
+            {`Objetivo ${formatTarget(mutation.data.routing_quality_target)} guardado en ${tenantName(mutation.variables.id)}.`}
           </AlertDescription>
         </Alert>
       ) : null}

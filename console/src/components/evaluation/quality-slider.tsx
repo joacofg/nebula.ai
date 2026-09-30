@@ -1,3 +1,8 @@
+/** 0.95 → "0.95", 0.955 → "0.955": the same notation as the characteristics table. */
+export function formatTarget(value: number) {
+  return value.toFixed(3).replace(/0$/, "");
+}
+
 export const QUALITY_MIN = 0.75;
 export const QUALITY_MAX = 1;
 export const QUALITY_STEP = 0.005;
@@ -21,7 +26,7 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
           Calidad objetivo
         </label>
         <output htmlFor="quality-target" className="text-[44px] font-semibold leading-none tracking-[-0.02em] text-ink">
-          {value.toFixed(3)}
+          {formatTarget(value)}
         </output>
       </div>
       <input

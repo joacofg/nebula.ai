@@ -130,7 +130,7 @@
 }
 
 @utility action-button {
-  @apply inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap bg-ink px-4 text-[15px] font-semibold text-surface transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:opacity-50;
+  @apply inline-flex h-10 cursor-pointer items-center justify-center gap-2 whitespace-nowrap bg-ink px-4 text-[15px] font-semibold text-surface transition-colors hover:bg-ink-2 disabled:cursor-not-allowed disabled:border disabled:border-line disabled:bg-surface disabled:text-ink-3;
 }
 
 @utility secondary-button {

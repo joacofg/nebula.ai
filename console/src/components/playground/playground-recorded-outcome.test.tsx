@@ -38,11 +38,10 @@ describe("playground-recorded-outcome", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Registro en el ledger" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Estado" })).toHaveTextContent("fallback_completed");
+    expect(screen.getByRole("group", { name: "Estado" })).toHaveTextContent("completado con fallback");
     expect(screen.getByRole("group", { name: "Ruta" })).toHaveTextContent("premium");
     expect(screen.getByRole("group", { name: "Proveedor" })).toHaveTextContent("openai-compatible");
     expect(screen.getByRole("group", { name: "Motivo" })).toHaveTextContent("fallback");
-    expect(screen.getByRole("group", { name: "Política" })).toHaveTextContent("allowed");
     expect(screen.getByRole("group", { name: "Tokens" })).toHaveTextContent("21 + 12 = 33");
     expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("sí");
     expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("no");

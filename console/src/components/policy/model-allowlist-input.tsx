@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Plus, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 
 type ModelAllowlistInputProps = {
   knownModels: string[];
@@ -57,27 +57,22 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
         </button>
       </div>
 
-      {knownModels.length ? (
+      {knownModels.some((model) => !value.includes(model)) ? (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-label text-[13px] font-medium text-ink-3">Conocidos</span>
-          {knownModels.map((model) => {
-            const selected = value.includes(model);
-            return (
+          <span className="font-label text-[13px] font-medium text-ink-3">Sugeridos</span>
+          {knownModels
+            .filter((model) => !value.includes(model))
+            .map((model) => (
               <button
                 key={model}
                 type="button"
-                aria-pressed={selected}
-                className={[
-                  "inline-flex h-8 items-center gap-1.5 border px-2.5 font-mono text-[12px] transition-colors",
-                  selected ? "border-ink bg-canvas text-ink" : "border-line bg-surface text-ink-2 hover:border-ink",
-                ].join(" ")}
-                onClick={() => (selected ? removeModel(model) : addModel(model))}
+                className="inline-flex h-8 items-center gap-1.5 border border-dashed border-line-strong/50 bg-surface px-2.5 font-mono text-[12px] text-ink-2 transition-colors hover:border-ink hover:text-ink"
+                onClick={() => addModel(model)}
               >
-                {selected ? <Check aria-hidden className="size-3.5" /> : null}
+                <Plus aria-hidden className="size-3.5" />
                 {model}
               </button>
-            );
-          })}
+            ))}
         </div>
       ) : null}
     </div>

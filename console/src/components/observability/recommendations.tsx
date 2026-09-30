@@ -1,5 +1,6 @@
 import type { RecommendationBundle } from "@/lib/admin-api";
 
+import { plural } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
 
@@ -9,7 +10,8 @@ export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {
   return (
     <div className="flex max-w-3xl flex-col gap-5">
       <p className="m-0 font-label text-[13px] font-medium text-ink-3">
-        {bundle.recommendations.length} recomendaciones · ventana de {bundle.window_requests_evaluated} pedidos
+        {plural(bundle.recommendations.length, "recomendación", "recomendaciones")} · ventana de{" "}
+        {plural(bundle.window_requests_evaluated, "pedido", "pedidos")}
       </p>
       {bundle.recommendations.length === 0 ? (
         <EmptyState title="Sin recomendaciones para esta ventana." />

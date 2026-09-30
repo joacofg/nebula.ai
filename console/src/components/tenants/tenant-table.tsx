@@ -8,7 +8,7 @@ type TenantTableProps = {
   onSelectTenant: (tenant: TenantRecord) => void;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" });
+const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
 const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: TenantTableProps) {
@@ -46,7 +46,7 @@ export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: Tenan
                 }}
                 className={cn(
                   "cursor-pointer border-b border-line transition-colors duration-100 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-mark",
-                  selected ? "bg-mark-soft/70 shadow-[inset_2px_0_0_var(--color-mark)]" : "hover:bg-canvas",
+                  selected ? "bg-mark-soft shadow-[inset_0_1px_0_var(--color-mark-line),inset_0_-1px_0_var(--color-mark-line)]" : "hover:bg-canvas",
                 )}
               >
                 <td className="px-3 py-2.5">

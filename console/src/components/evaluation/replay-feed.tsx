@@ -164,8 +164,8 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
       <Readout
         className="max-w-xl"
         items={[
-          { label: "Costo acumulado", value: `${formatUsd1000(avgCost)} / 1000`, detail: "promedio de lo ruteado" },
-          { label: "Calidad acumulada", value: formatQuality(quality), detail: "según la etiqueta de la fase 2" },
+          { label: "Costo acumulado", value: `${formatUsd1000(avgCost)} / 1000`, detail: "promedio por pedido" },
+          { label: "Calidad acumulada", value: formatQuality(quality), detail: "respuestas aceptadas por los jueces" },
         ]}
       />
 
