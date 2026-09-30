@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # The learned-router artifact shipped with the package (see scripts/router/train.py).
 DEFAULT_LEARNED_ROUTER_PATH = str(Path(__file__).resolve().parents[1] / "data" / "learned_router_v1.json")
+# Out-of-fold replay of the training corpus behind the console's Evaluación page.
+DEFAULT_ROUTER_REPLAY_PATH = str(Path(__file__).resolve().parents[1] / "data" / "router_replay_v1.json")
 
 
 class Settings(BaseSettings):
@@ -40,6 +42,10 @@ class Settings(BaseSettings):
     learned_router_path: str = Field(
         default=DEFAULT_LEARNED_ROUTER_PATH,
         alias="NEBULA_LEARNED_ROUTER_PATH",
+    )
+    router_replay_path: str = Field(
+        default=DEFAULT_ROUTER_REPLAY_PATH,
+        alias="NEBULA_ROUTER_REPLAY_PATH",
     )
     premium_base_url: str | None = Field(default=None, alias="NEBULA_PREMIUM_BASE_URL")
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")

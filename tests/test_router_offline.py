@@ -261,3 +261,16 @@ def test_bootstrap_interval_brackets_the_point_estimate():
     low, high = got["vs_all_frontier_ci95"]
     assert low <= got["vs_all_frontier"] <= high
     assert got["quality"] == pytest.approx(1.0)
+
+
+def test_replay_payload_has_one_trimmed_row_per_example():
+    ex = [_e(True, False, text="x" * 400, key="es:a"), _e(False, True, key="en:b")]
+    payload = train.replay_payload(
+        ex, {"local": np.array([0.9, 0.1]), "economy": np.array([0.2, 0.8])},
+        points=[{"tau_local": 0.5, "tau_economy": 0.5, "quality": 0.9, "cost_per_prompt": 0.001}],
+        baselines={"all_local": {"cost": 0.0, "quality": 0.5}}, nested={}, latency={},
+    )
+    assert payload["version"] == 1 and len(payload["rows"]) == 2
+    row = payload["rows"][0]
+    assert len(row["text"]) <= train.REPLAY_TEXT_CHARS + 1
+    assert row["p_local"] == 0.9 and row["local_ok"] is True and row["key"] == "es:a"

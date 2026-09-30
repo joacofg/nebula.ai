@@ -28,6 +28,8 @@ SENSITIVITY_LABELS = ("tiers.R1_unanimous.jsonl", "tiers.R2_majority.jsonl")
 QUALITY_LEVELS = (0.85, 0.90, 0.95)
 DEFAULT_TARGET = 0.95
 ARTIFACT = Path("src/nebula/data/learned_router_v1.json")
+REPLAY = Path("src/nebula/data/router_replay_v1.json")
+REPLAY_TEXT_CHARS = 160
 OUT = Path("benchmarks/router/v1")
 THESIS = Path("docs/tfc/tesis/06-evaluacion.md")
 
@@ -118,6 +120,29 @@ def bootstrap_savings(examples, tiers, *, resamples: int = 1000, seed: int = 202
         "vs_random": (1 - cost / random_cost) if random_cost else None,
         "vs_random_ci95": pct(vs_random) if vs_random else None,
         "resamples": resamples,
+    }
+
+
+def replay_payload(examples, probs, *, points, baselines, nested, latency) -> dict:
+    """What the console's Evaluación page replays: out-of-fold scores, labels and costs."""
+    def trim(text: str) -> str:
+        text = " ".join(text.split())
+        return text if len(text) <= REPLAY_TEXT_CHARS else text[:REPLAY_TEXT_CHARS] + "…"
+
+    return {
+        "version": 1,
+        "router_label": "v1",
+        "rows": [
+            {"key": e.key, "lang": e.lang, "task": e.task_type, "text": trim(e.text),
+             "p_local": float(probs["local"][i]), "p_economy": float(probs["economy"][i]),
+             "local_ok": bool(e.local_ok), "economy_ok": bool(e.economy_ok),
+             "cost_economy": float(e.cost_economy), "cost_frontier": float(e.cost_frontier)}
+            for i, e in enumerate(examples)
+        ],
+        "operating_points": points,
+        "baselines": baselines,
+        "nested": nested,
+        "latency": latency,
     }
 
 
@@ -240,7 +265,18 @@ def run(root: Path = data.GROUND_TRUTH) -> dict:
         block["share"] = {t: tiers.count(t) / len(tiers) for t in ("local", "economy", "frontier")}
         nested[str(q)] = block
 
+    latency_path = OUT / "latency.json"
+    replay = replay_payload(
+        examples, probs, points=raw["operating_points"],
+        baselines={k: {"cost": v["cost"], "quality": v["quality"]} for k, v in baselines.items()},
+        nested={q: {k: n[k] for k in ("quality", "cost", "vs_all_frontier", "vs_all_frontier_ci95",
+                                      "vs_random", "vs_random_ci95", "share", "by_lang")}
+                for q, n in nested.items()},
+        latency=json.loads(latency_path.read_text()) if latency_path.exists() else {},
+    )
+
     return {
+        "replay": replay,
         "nested": nested,
         "examples": len(examples),
         "folds": 5,
@@ -356,9 +392,11 @@ def main() -> int:
     r = run()
     ARTIFACT.parent.mkdir(parents=True, exist_ok=True)
     ARTIFACT.write_text(json.dumps(r["artifact"]) + "\n", encoding="utf-8")
+    REPLAY.write_text(json.dumps(r["replay"]) + "\n", encoding="utf-8")
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "report.json").write_text(
-        json.dumps({k: v for k, v in r.items() if k != "artifact"}, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        json.dumps({k: v for k, v in r.items() if k not in ("artifact", "replay")}, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8")
     (OUT / "report.md").write_text(render_markdown(r), encoding="utf-8")
     THESIS.write_text(gt_report.replace_block(THESIS.read_text(encoding="utf-8"), "router-fase3", thesis_block(r)),
                       encoding="utf-8")

@@ -5,6 +5,7 @@ const RESPONSE_HEADERS = [
   "X-Nebula-Tenant-ID",
   "X-Nebula-Route-Target",
   "X-Nebula-Route-Reason",
+  "X-Nebula-Route-Tier",
   "X-Nebula-Provider",
   "X-Nebula-Cache-Hit",
   "X-Nebula-Fallback-Used",
