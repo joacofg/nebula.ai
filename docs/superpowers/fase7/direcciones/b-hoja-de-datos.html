@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dirección B · Hoja de datos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --paper: #ffffff; --ink: #0d0d0d; --ink-2: #3f3f3f; --ink-3: #5e5e5e; --rule: #0d0d0d; --hair: #cfcfcf; --tint: #f5f3f1;
+  --accent: #cf4f1c;
+  --t-local: #f0a27a; --t-economy: #cf4f1c; --t-frontier: #7a2508; --t-cache: #b9b4ae; --t-denied: #0d0d0d;
+  --f: "Archivo", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #e4e2df; color: var(--ink); font: 400 15px/1.45 var(--f); font-variant-numeric: tabular-nums; }
+::selection { background: rgba(207,79,28,.18); }
+.caption { max-width: 1440px; margin: 28px auto 10px; font: 500 13px var(--f); font-stretch: 85%; color: var(--ink-2); display: flex; justify-content: space-between; }
+.app { width: 1440px; margin: 0 auto 40px; background: var(--paper); }
+header.top { display: flex; align-items: stretch; border-top: 6px solid var(--rule); border-bottom: 1px solid var(--rule); padding: 0 32px; }
+.brand { display: flex; align-items: baseline; gap: 12px; padding: 14px 0; margin-right: 40px; }
+.brand b { font: 800 22px var(--f); font-stretch: 112%; letter-spacing: -.01em; }
+.brand span { font: 500 13px var(--f); font-stretch: 85%; color: var(--ink-3); }
+nav { display: flex; gap: 2px; }
+nav a { display: flex; align-items: center; padding: 0 14px; color: var(--ink-2); text-decoration: none; font: 500 15px var(--f); font-stretch: 90%; border-bottom: 3px solid transparent; margin-bottom: -1px; }
+nav a:hover { color: var(--ink); }
+nav a.on { color: var(--ink); font-weight: 700; border-bottom-color: var(--accent); }
+.session { margin-left: auto; align-self: center; font: 500 13px var(--f); font-stretch: 85%; color: var(--ink-3); }
+.doc { padding: 26px 32px 32px; }
+.doc-head { display: flex; justify-content: space-between; align-items: end; border-bottom: 1px solid var(--rule); padding-bottom: 12px; }
+h1 { margin: 0; font: 750 34px/1.05 var(--f); font-stretch: 108%; letter-spacing: -.02em; }
+.doc-head .meta { font: 500 14px var(--f); font-stretch: 85%; color: var(--ink-2); text-align: right; line-height: 1.5; }
+.cols { display: grid; grid-template-columns: 470px minmax(0, 1fr); gap: 32px; margin-top: 22px; }
+h2 { margin: 0 0 8px; font: 700 17px var(--f); font-stretch: 100%; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+table.spec th { text-align: left; font: 600 13px var(--f); font-stretch: 85%; padding: 6px 8px; border-top: 2px solid var(--rule); border-bottom: 1px solid var(--rule); }
+table.spec td { padding: 7px 8px; border-bottom: 1px solid var(--hair); vertical-align: baseline; }
+table.spec td.v { text-align: right; font-weight: 650; font-size: 15px; white-space: nowrap; }
+table.spec td.c { color: var(--ink-3); font-stretch: 85%; }
+table.spec td.u { color: var(--ink-3); font-stretch: 85%; white-space: nowrap; }
+table.spec tr.key td.v { font-size: 20px; font-weight: 750; }
+.control { margin-top: 22px; padding-top: 14px; border-top: 2px solid var(--rule); }
+.control .row { display: flex; justify-content: space-between; align-items: baseline; }
+.control output { font: 750 40px/1 var(--f); font-stretch: 100%; letter-spacing: -.02em; }
+input[type=range] { width: 100%; accent-color: var(--accent); }
+.ends { display: flex; justify-content: space-between; font: 500 12px var(--f); font-stretch: 85%; color: var(--ink-3); }
+.share { display: flex; gap: 2px; height: 12px; margin-top: 14px; }
+.share span { flex-basis: 0; }
+.share-legend { display: flex; gap: 16px; font: 500 13px var(--f); font-stretch: 90%; color: var(--ink-2); margin-top: 6px; }
+.sw { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.apply { display: flex; gap: 8px; margin-top: 16px; }
+.apply select { flex: 1; font: 500 15px var(--f); padding: 9px 10px; border: 1px solid var(--rule); background: #fff; border-radius: 2px; }
+.btn { font: 700 15px var(--f); font-stretch: 95%; background: #b3431a; color: #fff; border: 0; padding: 10px 18px; border-radius: 2px; cursor: pointer; }
+.btn:hover { background: #963714; }
+.btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; }
+figure { margin: 0; }
+figure svg { width: 100%; height: auto; display: block; }
+figcaption { margin-top: 6px; font: 400 14px var(--f); color: var(--ink-2); }
+figcaption b { font-weight: 700; color: var(--ink); }
+.legend { display: flex; gap: 18px; font: 500 13px var(--f); font-stretch: 90%; color: var(--ink-2); margin-bottom: 6px; }
+.legend i { display: inline-block; width: 18px; border-top: 2px solid var(--ink); vertical-align: middle; margin-right: 6px; }
+.legend i.r { border-top: 1.5px dashed var(--ink-3); }
+.legend i.c { width: 10px; height: 10px; background: var(--accent); border: 0; border-radius: 50%; }
+svg .g-major { stroke: #e6e6e6; }
+svg .g-frame { stroke: var(--ink); stroke-width: 1; }
+svg .tick { font: 500 12px var(--f); font-stretch: 85%; fill: var(--ink-3); }
+svg .axis { font: 600 13px var(--f); font-stretch: 85%; fill: var(--ink-2); }
+svg .s-router { stroke: var(--ink); stroke-width: 2; }
+svg .s-random { stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .m-base { fill: #fff; stroke: var(--ink); stroke-width: 1.5; }
+svg .m-label { font: 500 12px var(--f); font-stretch: 85%; fill: var(--ink-2); }
+svg .m-cross { stroke: var(--accent); stroke-width: 1; }
+svg .m-current { fill: var(--accent); }
+svg .m-current-ring { fill: none; stroke: #fff; stroke-width: 2; }
+/* ledger */
+.obs-filters { display: flex; gap: 24px; margin-top: 16px; padding-bottom: 12px; border-bottom: 1px solid var(--hair); }
+.obs-filters label { display: flex; flex-direction: column; font: 600 12px var(--f); font-stretch: 85%; color: var(--ink-3); gap: 3px; }
+.obs-filters select { font: 500 15px var(--f); border: 1px solid var(--hair); padding: 6px 8px; border-radius: 2px; min-width: 160px; background: #fff; }
+.obs { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 32px; margin-top: 18px; }
+table.ledger { table-layout: fixed; }
+table.ledger th { text-align: left; font: 600 13px var(--f); font-stretch: 85%; padding: 6px 8px; border-top: 2px solid var(--rule); border-bottom: 1px solid var(--rule); }
+table.ledger td { padding: 8px; border-bottom: 1px solid var(--hair); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+table.ledger .num { text-align: right; }
+table.ledger td.id { font-stretch: 80%; color: var(--ink-3); }
+table.ledger tr.sel td { background: var(--tint); font-weight: 600; }
+table.ledger tbody tr:hover td { background: #faf9f8; cursor: pointer; }
+.detail h2 { font-size: 20px; }
+.detail .sub { font: 500 13px var(--f); font-stretch: 85%; color: var(--ink-3); margin: -4px 0 12px; }
+.cascade { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cascade th { text-align: left; font: 600 13px var(--f); font-stretch: 85%; padding: 6px 8px; border-top: 2px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.cascade td { padding: 8px; border-bottom: 1px solid var(--hair); }
+.cascade td.num { text-align: right; font-weight: 600; }
+.cascade tr.win td { background: var(--tint); font-weight: 700; }
+.cascade .res { font-stretch: 85%; color: var(--ink-3); }
+.cascade tr.win .res { color: var(--ink); }
+dl.kv { display: grid; grid-template-columns: 110px 1fr; margin: 16px 0 0; font-size: 14px; }
+dl.kv dt, dl.kv dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--hair); }
+dl.kv dt { color: var(--ink-3); font-stretch: 85%; }
+dl.kv dd { font-weight: 500; }
+</style>
+</head>
+<body>
+<div class="caption"><span>Dirección B · Hoja de datos — cada vista se lee como la ficha técnica de un componente</span><span>Evaluación con datos reales del replay · ledger ilustrativo</span></div>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Nebula</b><span>gateway local</span></div>
+    <nav aria-label="Principal">
+      <a href="#">Tenants</a><a href="#">Claves de API</a><a href="#">Política</a><a href="#">Playground</a><a href="#">Observabilidad</a><a href="#" class="on" aria-current="page">Evaluación</a>
+    </nav>
+    <div class="session">Sesión de admin en memoria</div>
+  </header>
+  <div class="doc">
+    <div class="doc-head">
+      <h1>Router v1 · tres niveles</h1>
+      <div class="meta">1250 pedidos del corpus · 1000 es, 250 en<br>replay sin red ni Ollama</div>
+    </div>
+    <div class="cols">
+      <section>
+        <h2>Características a calidad objetivo 0.95</h2>
+        <table class="spec">
+          <thead><tr><th>Parámetro</th><th>Condición</th><th style="text-align:right">Valor</th><th>IC 95 %</th></tr></thead>
+          <tbody>
+            <tr class="key"><td>Ahorro vs todo frontier</td><td class="c">cifra anidada</td><td class="v">31 %</td><td class="u">28–35 %</td></tr>
+            <tr><td>Ahorro vs mezcla aleatoria</td><td class="c">igual calidad</td><td class="v">17 %</td><td class="u">12–21 %</td></tr>
+            <tr><td>Calidad lograda</td><td class="c">cifra anidada</td><td class="v">0.957</td><td class="u"></td></tr>
+            <tr><td>Costo</td><td class="c">por 1000 pedidos</td><td class="v">USD 1.70</td><td class="u"></td></tr>
+            <tr><td>Latencia mediana</td><td class="c">gpt-4.1</td><td class="v">2.5 s</td><td class="u"></td></tr>
+            <tr><td></td><td class="c">claude-haiku-4.5</td><td class="v">3.9 s</td><td class="u"></td></tr>
+            <tr><td></td><td class="c">qwen2.5:7b</td><td class="v">21.3 s</td><td class="u"></td></tr>
+          </tbody>
+        </table>
+        <div class="control">
+          <div class="row"><h2>Calidad objetivo</h2><output data-bind="target"></output></div>
+          <input type="range" min="75" max="100" value="95" data-slider aria-label="Calidad objetivo">
+          <div class="ends"><span>0.75</span><span>1.00</span></div>
+          <table class="spec" style="margin-top:12px">
+            <tbody>
+              <tr><td>Costo por 1000 pedidos</td><td class="v" data-bind="cost"></td></tr>
+              <tr><td>Calidad en el replay</td><td class="v" data-bind="quality"></td></tr>
+              <tr><td>Umbrales τ local · economy</td><td class="v"><span data-bind="tl"></span> · <span data-bind="te"></span></td></tr>
+            </tbody>
+          </table>
+          <div class="share"><span data-share="local" style="background:var(--t-local)"></span><span data-share="economy" style="background:var(--t-economy)"></span><span data-share="frontier" style="background:var(--t-frontier)"></span></div>
+          <div class="share-legend"><span><i class="sw" style="background:var(--t-local)"></i>local <b data-bind="share-local"></b></span><span><i class="sw" style="background:var(--t-economy)"></i>economy <b data-bind="share-economy"></b></span><span><i class="sw" style="background:var(--t-frontier)"></i>frontier <b data-bind="share-frontier"></b></span></div>
+          <div class="apply"><select aria-label="Tenant"><option>Acme Robotics</option></select><button class="btn">Aplicar al tenant</button></div>
+        </div>
+      </section>
+      <figure>
+        <div class="legend"><span><i></i>router v1</span><span><i class="r"></i>mezcla aleatoria</span><span><i class="c"></i>punto elegido</span></div>
+        <svg data-chart role="img" aria-label="Figura 1: calidad en función del costo"></svg>
+        <figcaption><b>Figura 1.</b> Calidad en función del costo por 1000 pedidos. Cada escalón es un par de umbrales (τ local, τ economy); arriba a la izquierda es mejor.</figcaption>
+      </figure>
+    </div>
+  </div>
+</div>
+
+<div class="caption"><span>Observabilidad · ledger con el pedido seleccionado</span><span>filas ilustrativas</span></div>
+<div class="app">
+  <header class="top">
+    <div class="brand"><b>Nebula</b><span>gateway local</span></div>
+    <nav aria-label="Principal">
+      <a href="#">Tenants</a><a href="#">Claves de API</a><a href="#">Política</a><a href="#">Playground</a><a href="#" class="on" aria-current="page">Observabilidad</a><a href="#">Evaluación</a>
+    </nav>
+    <div class="session">Sesión de admin en memoria</div>
+  </header>
+  <div class="doc">
+    <div class="doc-head">
+      <h1>Ledger de pedidos</h1>
+      <div class="meta">Acme Robotics · últimas 24 h<br>9 pedidos · USD 0.0145</div>
+    </div>
+    <div class="obs-filters">
+      <label>Tenant<select><option>Acme Robotics</option></select></label>
+      <label>Nivel<select><option>Todos</option></select></label>
+      <label>Estado<select><option>Todos</option></select></label>
+      <label>Rango<select><option>Últimas 24 h</option></select></label>
+    </div>
+    <div class="obs">
+      <table class="ledger">
+        <colgroup><col style="width:74px"><col><col style="width:104px"><col style="width:136px"><col style="width:62px"><col style="width:72px"><col style="width:64px"></colgroup>
+        <thead><tr><th>Hora</th><th>Prompt</th><th>Nivel</th><th>Modelo</th><th class="num">Tokens</th><th class="num">USD</th><th class="num">Latencia</th></tr></thead>
+        <tbody data-ledger></tbody>
+      </table>
+      <aside class="detail">
+        <h2>Por qué economy</h2>
+        <div class="sub">Pedido b91e4d17 · 14:31:52 · objetivo 0.95</div>
+        <table class="cascade">
+          <thead><tr><th>Paso</th><th style="text-align:right">p</th><th style="text-align:right">τ</th><th>Resultado</th></tr></thead>
+          <tbody>
+            <tr><td>1 · local</td><td class="num">0.41</td><td class="num">0.82</td><td class="res">p &lt; τ, sigue</td></tr>
+            <tr class="win"><td>2 · economy</td><td class="num">0.95</td><td class="num">0.92</td><td class="res">p ≥ τ, elegido</td></tr>
+            <tr><td>3 · frontier</td><td class="num">—</td><td class="num">—</td><td class="res">no evaluado</td></tr>
+          </tbody>
+        </table>
+        <dl class="kv">
+          <dt>Modelo</dt><dd>anthropic/claude-haiku-4.5</dd>
+          <dt>Costo</dt><dd>USD 0.0018</dd>
+          <dt>Tokens</dt><dd>58 entrada · 354 salida</dd>
+          <dt>Latencia</dt><dd>3.6 s</dd>
+          <dt>Header</dt><dd>X-Nebula-Route-Tier: economy</dd>
+        </dl>
+      </aside>
+    </div>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="ledger.js"></script>
+<script src="chart.js"></script>
+<script>
+const TIER = { local: ["var(--t-local)", "local"], economy: ["var(--t-economy)", "economy"], frontier: ["var(--t-frontier)", "frontier"], cache: ["var(--t-cache)", "caché"], denied: ["var(--t-denied)", "límite"] };
+renderLedger(document.querySelector("[data-ledger]"), (r) => `<tr class="${r.id === "b91e4d17" ? "sel" : ""}"><td class="id">${r.t}</td><td>${r.prompt}</td><td><i class="sw" style="background:${TIER[r.tier][0]}"></i>${TIER[r.tier][1]}</td><td class="id">${r.model}</td><td class="num">${r.tok}</td><td class="num">${r.cost ? r.cost.toFixed(4) : "0"}</td><td class="num">${r.lat ? r.lat + " s" : "—"}</td></tr>`);
+Nebula.mount({ chart: { w: 860, h: 520, pad: { l: 48, r: 12, t: 26, b: 38 }, grid: "datasheet" } });
+</script>
+</body>
+</html>

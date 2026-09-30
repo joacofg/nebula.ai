@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dirección A · Plano</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Semi+Condensed:wght@500;600&family=Red+Hat+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sheet: #ffffff; --rail: #f3f4f5; --ink: #111418; --ink-2: #4a525c; --ink-3: #5c646e;
+  --line: #d3d8dd; --line-strong: #111418; --mark: #c62f1d;
+  --t-local: #86b6ef; --t-economy: #2f73cc; --t-frontier: #103f82; --t-cache: #aab2bb; --t-denied: #c62f1d;
+  --f-body: "Barlow", sans-serif; --f-label: "Barlow Semi Condensed", sans-serif; --f-mono: "Red Hat Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #e9ebed; color: var(--ink); font: 15px/1.45 var(--f-body); font-variant-numeric: tabular-nums; }
+::selection { background: rgba(198,47,29,.16); }
+.caption { max-width: 1440px; margin: 28px auto 10px; padding: 0 4px; font: 500 13px var(--f-label); color: var(--ink-2); display: flex; justify-content: space-between; }
+.app { width: 1440px; margin: 0 auto 40px; display: grid; grid-template-columns: 216px 1fr; background: var(--sheet); border: 1px solid var(--line-strong);  }
+nav { background: var(--rail); border-right: 1px solid var(--line-strong); padding: 20px 0; display: flex; flex-direction: column; }
+.brand { padding: 0 20px 20px; border-bottom: 1px solid var(--line); }
+.brand b { font: 700 20px var(--f-body); letter-spacing: -.01em; }
+.brand span { display: block; font: 500 13px var(--f-label); color: var(--ink-3); }
+nav ol { list-style: none; margin: 14px 0 0; padding: 0; }
+nav li a { display: grid; grid-template-columns: 28px 1fr; align-items: center; padding: 8px 20px; color: var(--ink-2); text-decoration: none; font-weight: 500; }
+nav li a .ref { font: 400 11px var(--f-mono); color: var(--ink-3); }
+nav li a.on { color: var(--ink); background: var(--sheet); box-shadow: inset 0 1px 0 var(--line), inset 0 -1px 0 var(--line); font-weight: 600; }
+nav li a.on .ref { color: var(--mark); }
+nav .who { margin-top: auto; padding: 14px 20px 0; border-top: 1px solid var(--line); font-size: 13px; color: var(--ink-3); }
+main { padding: 0; }
+/* title block */
+.tb { display: grid; border-bottom: 1px solid var(--line-strong); }
+.tb > div { padding: 12px 18px; border-left: 1px solid var(--line); }
+.tb > div:first-child { border-left: 0; }
+.tb label { display: block; font: 500 12px var(--f-label); color: var(--ink-3); }
+.tb .v { font-weight: 600; }
+.tb h1 { margin: 0; font: 600 26px/1.15 var(--f-body); letter-spacing: -.015em; }
+select.v { font: 600 15px var(--f-body); border: 0; background: transparent; padding: 0; color: var(--ink); }
+.body { padding: 22px 24px 26px; }
+.grid-eval { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 0; border: 1px solid var(--line); }
+.chart { padding: 14px 16px 8px; border-right: 1px solid var(--line); }
+.chart h2, .panel h2 { margin: 0 0 6px; font: 600 16px var(--f-body); }
+.chart .legend { display: flex; gap: 18px; font: 500 13px var(--f-label); color: var(--ink-2); margin-bottom: 4px; }
+.chart .legend i { display: inline-block; width: 18px; height: 0; border-top: 2px solid var(--ink); vertical-align: middle; margin-right: 6px; }
+.chart .legend i.r { border-top: 1.5px dashed var(--ink-3); }
+.chart .legend i.c { width: 10px; height: 10px; border: 2px solid var(--mark); border-radius: 50%; }
+svg .g-major { stroke: #e3e7ea; stroke-width: 1; }
+svg .g-minor { stroke: #c9cfd5; stroke-width: 1; }
+svg .g-frame { stroke: var(--ink); }
+svg .tick { font: 400 11px var(--f-mono); fill: var(--ink-3); }
+svg .axis { font: 500 12px var(--f-label); fill: var(--ink-2); }
+svg .s-router { stroke: var(--ink); stroke-width: 2; }
+svg .s-random { stroke: var(--ink-3); stroke-width: 1.5; stroke-dasharray: 5 4; }
+svg .m-base { fill: var(--sheet); stroke: var(--ink); stroke-width: 1.5; }
+svg .m-label { font: 500 12px var(--f-label); fill: var(--ink-2); }
+svg .m-cross { stroke: var(--mark); stroke-width: 1; stroke-dasharray: 2 3; }
+svg .m-current { fill: var(--mark); }
+svg .m-current-ring { fill: none; stroke: var(--mark); stroke-width: 1.5; }
+.panel { padding: 14px 18px; display: flex; flex-direction: column; gap: 16px; }
+.target { display: flex; align-items: baseline; justify-content: space-between; }
+.target output { font: 600 44px/1 var(--f-body); letter-spacing: -.02em; }
+input[type=range] { width: 100%; accent-color: var(--mark); margin: 4px 0 0; }
+.range-ends { display: flex; justify-content: space-between; font: 400 11px var(--f-mono); color: var(--ink-3); }
+.readout { border-top: 1px solid var(--line); }
+.readout div { display: flex; justify-content: space-between; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); }
+.readout dt { color: var(--ink-2); font-size: 14px; }
+.readout dd { margin: 0; font: 600 16px var(--f-body); }
+.readout dd.big { font-size: 22px; color: var(--ink); }
+.share { display: flex; gap: 2px; height: 14px; }
+.share span { flex-basis: 0; }
+.share-legend { display: flex; gap: 14px; font: 500 13px var(--f-label); color: var(--ink-2); margin-top: 6px; }
+.sw { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; }
+.btn { font: 600 15px var(--f-body); background: var(--ink); color: #fff; border: 0; padding: 10px 16px; cursor: pointer; }
+.btn:hover { background: #2a3038; }
+.btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--mark); outline-offset: 2px; }
+.apply { display: flex; gap: 8px; align-items: center; }
+.apply select { flex: 1; font: 500 15px var(--f-body); padding: 9px 10px; border: 1px solid var(--ink); background: #fff; border-radius: 0; }
+.notes { margin-top: 18px; display: grid; grid-template-columns: 90px 1fr; gap: 0 12px; font-size: 14px; }
+.notes b { font: 600 13px var(--f-label); color: var(--ink-3); }
+.notes ol { margin: 0; padding-left: 18px; color: var(--ink-2); }
+.notes ol li { padding: 2px 0; }
+.notes strong { color: var(--ink); font-weight: 600; }
+/* ledger */
+.grid-obs { display: grid; grid-template-columns: minmax(0, 1fr) 380px; border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; font-size: 14px; table-layout: fixed; }
+th { text-align: left; font: 500 12px var(--f-label); color: var(--ink-3); padding: 9px 10px; border-bottom: 1px solid var(--ink); background: var(--sheet); }
+td { padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+td.num, th.num { text-align: right; } td.num { font-weight: 500; }
+td.id { font: 400 12px var(--f-mono); color: var(--ink-3); }
+td.p { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+tr.sel td { background: #fbf1ef; }
+tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--mark); }
+tbody tr:hover td { background: #f6f7f8; cursor: pointer; }
+.tier { font: 500 13px var(--f-label); white-space: nowrap; }
+.detail { border-left: 1px solid var(--line); padding: 14px 18px; }
+.detail h2 { margin: 0; font: 600 18px var(--f-body); }
+.detail .sub { font: 400 12px var(--f-mono); color: var(--ink-3); margin-top: 2px; }
+.path svg { width: 100%; height: auto; margin: 14px 0 6px; }
+.path text { font: 500 12px var(--f-label); fill: var(--ink-2); }
+.path .mono { font: 400 11px var(--f-mono); }
+.kv { display: grid; grid-template-columns: 130px 1fr; border-top: 1px solid var(--line); font-size: 14px; }
+.kv dt, .kv dd { margin: 0; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.kv dt { color: var(--ink-3); }
+.kv dd { font-weight: 500; overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<div class="caption"><span>Dirección A · Plano — la consola como hoja de ingeniería</span><span>Evaluación con datos reales del replay · ledger ilustrativo</span></div>
+<div class="app">
+  <nav aria-label="Principal">
+    <div class="brand"><b>Nebula</b><span>gateway local · v1</span></div>
+    <ol>
+      <li><a href="#"><span class="ref">01</span>Tenants</a></li>
+      <li><a href="#"><span class="ref">02</span>Claves de API</a></li>
+      <li><a href="#"><span class="ref">03</span>Política</a></li>
+      <li><a href="#"><span class="ref">04</span>Playground</a></li>
+      <li><a href="#"><span class="ref">05</span>Observabilidad</a></li>
+      <li><a href="#" class="on" aria-current="page"><span class="ref">06</span>Evaluación</a></li>
+    </ol>
+    <div class="who">Sesión de admin · en memoria</div>
+  </nav>
+  <main>
+    <div class="tb" style="grid-template-columns: 1.6fr repeat(4, 1fr)">
+      <div><h1>Evaluación del router</h1></div>
+      <div><label>Router</label><span class="v">v1 · 3 niveles</span></div>
+      <div><label>Corpus</label><span class="v">1250 pedidos</span></div>
+      <div><label>Idiomas</label><span class="v">1000 es · 250 en</span></div>
+      <div><label>Ejecución</label><span class="v">sin red ni Ollama</span></div>
+    </div>
+    <div class="body">
+      <div class="grid-eval">
+        <div class="chart">
+          <h2>Frontera costo–calidad</h2>
+          <div class="legend"><span><i></i>router v1</span><span><i class="r"></i>mezcla aleatoria</span><span><i class="c"></i>punto elegido</span></div>
+          <svg data-chart role="img" aria-label="Frontera de costo y calidad del router" style="width:100%;height:auto"></svg>
+        </div>
+        <div class="panel">
+          <div>
+            <div class="target"><h2>Calidad objetivo</h2><output data-bind="target">0.95</output></div>
+            <input type="range" min="75" max="100" value="95" data-slider aria-label="Calidad objetivo">
+            <div class="range-ends"><span>0.75</span><span>1.00</span></div>
+          </div>
+          <dl class="readout">
+            <div><dt>Costo por 1000 pedidos</dt><dd class="big" data-bind="cost"></dd></div>
+            <div><dt>Calidad medida</dt><dd class="big" data-bind="quality"></dd></div>
+            <div><dt>Ahorro vs todo frontier</dt><dd data-bind="saving"></dd></div>
+            <div><dt>Umbrales τ local · economy</dt><dd><span data-bind="tl"></span> · <span data-bind="te"></span></dd></div>
+          </dl>
+          <div>
+            <div class="share"><span data-share="local" style="background:var(--t-local)"></span><span data-share="economy" style="background:var(--t-economy)"></span><span data-share="frontier" style="background:var(--t-frontier)"></span></div>
+            <div class="share-legend"><span><i class="sw" style="background:var(--t-local)"></i>local <b data-bind="share-local"></b></span><span><i class="sw" style="background:var(--t-economy)"></i>economy <b data-bind="share-economy"></b></span><span><i class="sw" style="background:var(--t-frontier)"></i>frontier <b data-bind="share-frontier"></b></span></div>
+          </div>
+          <div class="apply"><select aria-label="Tenant"><option>Acme Robotics</option></select><button class="btn">Aplicar</button></div>
+        </div>
+      </div>
+      <div class="notes">
+        <b>Notas</b>
+        <ol>
+          <li>Cifra reportada (anidada, objetivo 0.95): <strong>31 % menos</strong> que todo frontier, IC 95 % 28–35 %; <strong>17 % menos</strong> que una mezcla aleatoria de igual calidad, IC 12–21 %.</li>
+          <li>Latencia mediana: gpt-4.1 2.5 s · claude-haiku-4.5 3.9 s · qwen2.5:7b 21.3 s.</li>
+        </ol>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="caption"><span>Observabilidad · ledger con el pedido seleccionado</span><span>filas ilustrativas</span></div>
+<div class="app">
+  <nav aria-label="Principal">
+    <div class="brand"><b>Nebula</b><span>gateway local · v1</span></div>
+    <ol>
+      <li><a href="#"><span class="ref">01</span>Tenants</a></li>
+      <li><a href="#"><span class="ref">02</span>Claves de API</a></li>
+      <li><a href="#"><span class="ref">03</span>Política</a></li>
+      <li><a href="#"><span class="ref">04</span>Playground</a></li>
+      <li><a href="#" class="on" aria-current="page"><span class="ref">05</span>Observabilidad</a></li>
+      <li><a href="#"><span class="ref">06</span>Evaluación</a></li>
+    </ol>
+    <div class="who">Sesión de admin · en memoria</div>
+  </nav>
+  <main>
+    <div class="tb" style="grid-template-columns: 1.6fr repeat(4, 1fr)">
+      <div><h1>Observabilidad</h1></div>
+      <div><label>Tenant</label><select class="v"><option>Acme Robotics</option></select></div>
+      <div><label>Nivel</label><select class="v"><option>Todos</option></select></div>
+      <div><label>Estado</label><select class="v"><option>Todos</option></select></div>
+      <div><label>Rango</label><select class="v"><option>Últimas 24 h</option></select></div>
+    </div>
+    <div class="body">
+      <div class="grid-obs">
+        <table>
+          <colgroup><col style="width:78px"><col style="width:84px"><col><col style="width:92px"><col style="width:62px"><col style="width:70px"><col style="width:70px"></colgroup><thead><tr><th>Hora</th><th>Pedido</th><th>Prompt</th><th>Nivel</th><th class="num">Tokens</th><th class="num">USD</th><th class="num">Latencia</th></tr></thead>
+          <tbody data-ledger></tbody>
+        </table>
+        <aside class="detail">
+          <h2>Por qué economy</h2>
+          <div class="sub">b91e4d17 · 14:31:52 · objetivo 0.95</div>
+          <div class="path">
+            <svg viewBox="0 0 384 170" role="img" aria-label="Cascada de decisión: local descartado, economy elegido">
+              <g stroke="#111418" fill="none" stroke-width="1.5">
+                <path d="M8 40 H70"/><rect x="70" y="24" width="96" height="32"/>
+                <path d="M166 40 H214" stroke="#c9cfd5"/><path d="M118 56 V104 H214"/>
+                <rect x="214" y="88" width="96" height="32"/>
+                <path d="M310 104 H340"/><path d="M262 120 V150 H340" stroke="#c9cfd5"/>
+              </g>
+              <circle cx="8" cy="40" r="4" fill="#111418"/>
+              <text x="118" y="44" text-anchor="middle">p local 0.41</text>
+              <text x="190" y="32" text-anchor="middle" class="mono">&lt; 0.82</text>
+              <text x="218" y="44" fill="#5c646e">local ✕</text>
+              <text x="262" y="108" text-anchor="middle">p economy 0.95</text>
+              <text x="170" y="98" text-anchor="middle" class="mono">≥ 0.92</text>
+              <rect x="340" y="98" width="12" height="12" fill="#2f73cc"/><text x="344" y="126" text-anchor="middle" style="font-weight:600;fill:#111418">economy</text>
+              <text x="346" y="154" fill="#5c646e">frontier</text>
+            </svg>
+          </div>
+          <dl class="kv">
+            <dt>Modelo</dt><dd>anthropic/claude-haiku-4.5</dd>
+            <dt>Costo</dt><dd>USD 0.0018</dd>
+            <dt>Tokens</dt><dd>58 entrada · 354 salida</dd>
+            <dt>Latencia</dt><dd>3.6 s</dd>
+            <dt>Header</dt><dd>X-Nebula-Route-Tier: economy</dd>
+          </dl>
+        </aside>
+      </div>
+    </div>
+  </main>
+</div>
+<script src="data.js"></script>
+<script src="ledger.js"></script>
+<script src="chart.js"></script>
+<script>
+const TIER = { local: ["var(--t-local)", "local"], economy: ["var(--t-economy)", "economy"], frontier: ["var(--t-frontier)", "frontier"], cache: ["var(--t-cache)", "caché"], denied: ["var(--t-denied)", "denegado"] };
+renderLedger(document.querySelector("[data-ledger]"), (r) => `<tr class="${r.id === "b91e4d17" ? "sel" : ""}"><td class="id">${r.t}</td><td class="id">${r.id}</td><td class="p">${r.prompt}</td><td class="tier"><i class="sw" style="background:${TIER[r.tier][0]}"></i>${TIER[r.tier][1]}</td><td class="num">${r.tok}</td><td class="num">${r.cost ? r.cost.toFixed(4) : "0"}</td><td class="num">${r.lat ? r.lat + " s" : "—"}</td></tr>`);
+Nebula.mount({ chart: { w: 760, h: 420, pad: { l: 46, r: 16, t: 24, b: 34 }, grid: "graticule" } });
+</script>
+</body>
+</html>

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nebula · tres direcciones</title>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..100,400..700&display=swap" rel="stylesheet">
+<style>
+:root { --ink: #141414; --ink-2: #4a4a4a; --line: #d6d6d6; --bg: #ffffff; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 16px/1.5 "Archivo", sans-serif; }
+main { max-width: 1320px; margin: 0 auto; padding: 40px 32px 64px; }
+h1 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.01em; }
+.lead { color: var(--ink-2); margin: 0 0 32px; max-width: 70ch; }
+.dir { display: grid; grid-template-columns: 540px 1fr; gap: 32px; padding: 28px 0; border-top: 1px solid var(--ink); }
+.dir img { width: 100%; border: 1px solid var(--line); display: block; }
+.dir h2 { margin: 0; font-size: 24px; }
+.dir .tag { font-stretch: 85%; color: var(--ink-2); margin: 2px 0 14px; }
+dl { display: grid; grid-template-columns: 150px 1fr; margin: 0; }
+dt, dd { margin: 0; padding: 7px 0; border-bottom: 1px solid var(--line); }
+dt { color: var(--ink-2); font-stretch: 85%; }
+.chips { display: flex; gap: 4px; }
+.chips i { width: 22px; height: 22px; display: inline-block; border: 1px solid rgba(0,0,0,.1); }
+a.open { display: inline-block; margin-top: 14px; color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+.canon { border-top: 1px solid var(--ink); padding-top: 18px; color: var(--ink-2); }
+</style>
+</head>
+<body>
+<main>
+<h1>Nebula · tres direcciones visuales</h1>
+<p class="lead">Mismas dos pantallas (Evaluación y Observabilidad) en cada dirección, con los números reales del replay (USD 1.70, calidad 0.957, −31 %). El slider funciona. Las filas del ledger son ilustrativas.</p>
+
+<section class="dir">
+  <a href="a-plano.html"><img src="a-plano.png" alt="Dirección A, Plano"></a>
+  <div>
+    <h2>A · Plano</h2>
+    <div class="tag">La consola como hoja de ingeniería: rótulo de plano arriba, grilla de osciloscopio, la decisión dibujada como un camino de señal.</div>
+    <dl>
+      <dt>Mundo</dt><dd>Tinta negra sobre blanco, líneas de 1 px, esquinas rectas, riel gris claro. El rojo de corrección marca solo lo que eligió el operador.</dd>
+      <dt>Tipografía</dt><dd>Barlow (rotulado técnico tipo DIN) + Red Hat Mono solo para ids y ejes.</dd>
+      <dt>Niveles</dt><dd><span class="chips"><i style="background:#86b6ef"></i><i style="background:#2f73cc"></i><i style="background:#103f82"></i><i style="background:#c62f1d"></i></span> rampa azul ordinal (local → frontier) + rojo de selección</dd>
+      <dt>Firma</dt><dd>"Por qué este nivel" como esquema: pedido → p local &lt; τ → p economy ≥ τ → economy.</dd>
+      <dt>Riesgo</dt><dd>Si se exagera el rótulo de plano se vuelve disfraz; hay que mantenerlo en el encabezado y el esquema, no en cada tarjeta.</dd>
+    </dl>
+    <a class="open" href="a-plano.html">Abrir A →</a>
+  </div>
+</section>
+
+<section class="dir">
+  <a href="b-hoja-de-datos.html"><img src="b-hoja-de-datos.png" alt="Dirección B, Hoja de datos"></a>
+  <div>
+    <h2>B · Hoja de datos</h2>
+    <div class="tag">Cada vista se lee como la ficha técnica de un componente: tabla de características con condición e IC, curva típica con "Figura 1".</div>
+    <dl>
+      <dt>Mundo</dt><dd>Blanco, filete negro grueso arriba, tablas con reglas finas, un solo color cálido. Pasa directo a Word: parece una figura de la tesis.</dd>
+      <dt>Tipografía</dt><dd>Archivo con eje de ancho: expandida en títulos, angosta en tablas y rótulos.</dd>
+      <dt>Niveles</dt><dd><span class="chips"><i style="background:#f0a27a"></i><i style="background:#cf4f1c"></i><i style="background:#7a2508"></i></span> rampa bermellón ordinal; el acento es el mismo tono</dd>
+      <dt>Firma</dt><dd>La cascada de decisión como tabla paso · p · τ · resultado, con la fila ganadora marcada.</dd>
+      <dt>Riesgo</dt><dd>La más cercana a lo que espera un jurado (familiar); puede sentirse más documento que herramienta si las tablas no responden al clic.</dd>
+    </dl>
+    <a class="open" href="b-hoja-de-datos.html">Abrir B →</a>
+  </div>
+</section>
+
+<section class="dir">
+  <a href="c-mosaico.html"><img src="c-mosaico.png" alt="Dirección C, Mosaico"></a>
+  <div>
+    <h2>C · Mosaico</h2>
+    <div class="tag">Todo el estado en una pantalla, en módulos densos con pestaña roja, al estilo de los portales japoneses de alta densidad.</div>
+    <dl>
+      <dt>Mundo</dt><dd>Blanco, módulos con borde gris fino y cabecera con pestaña roja, texto de 13 px, nada de aire decorativo.</dd>
+      <dt>Tipografía</dt><dd>Noto Sans + Noto Sans Mono para ids.</dd>
+      <dt>Niveles</dt><dd><span class="chips"><i style="background:#a9a4e8"></i><i style="background:#5a4cc7"></i><i style="background:#2a1f78"></i><i style="background:#c21d17"></i></span> rampa violeta ordinal + rojo de pestaña</dd>
+      <dt>Firma</dt><dd>Evaluación entera sin scroll: frontera, control, resultado, cifra anidada, latencia y replay a la vez.</dd>
+      <dt>Riesgo</dt><dd>Texto chico: en una captura reducida para Word puede quedar ilegible; las pestañas rojas compiten con el rojo de error.</dd>
+    </dl>
+    <a class="open" href="c-mosaico.html">Abrir C →</a>
+  </div>
+</section>
+
+<p class="canon">También está la salida estándar: consola tipo Vercel/Linear (Geist, grises neutros, un acento azul). Es la más segura y la menos memorable; se puede pedir en lugar de las tres.</p>
+</main>
+</body>
+</html>

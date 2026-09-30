@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dirección C · Mosaico</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;500;600;700&family=Noto+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #ffffff; --ink: #18181d; --ink-2: #44444d; --ink-3: #5f5f69; --line: #d9d9e0; --fill: #f4f4f7;
+  --tab: #c21d17;
+  --t-local: #a9a4e8; --t-economy: #5a4cc7; --t-frontier: #2a1f78; --t-cache: #b3b3bd; --t-denied: #c21d17;
+  --f: "Noto Sans", sans-serif; --m: "Noto Sans Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: #e6e6ea; color: var(--ink); font: 400 13px/1.4 var(--f); font-variant-numeric: tabular-nums; }
+::selection { background: rgba(90,76,199,.18); }
+.caption { max-width: 1440px; margin: 28px auto 10px; font: 500 12px var(--f); color: var(--ink-2); display: flex; justify-content: space-between; }
+.app { width: 1440px; margin: 0 auto 40px; background: var(--bg); }
+header { display: flex; align-items: center; gap: 22px; padding: 0 16px; height: 44px; border-bottom: 1px solid var(--line); }
+header b { font: 700 16px var(--f); }
+header nav { display: flex; height: 100%; }
+header nav a { display: flex; align-items: center; padding: 0 12px; color: var(--ink-2); text-decoration: none; font-weight: 500; font-size: 13px; }
+header nav a.on { color: var(--ink); font-weight: 700; box-shadow: inset 0 -2px 0 var(--tab); }
+header .ctx { margin-left: auto; display: flex; gap: 8px; align-items: center; color: var(--ink-3); }
+header select { font: 500 13px var(--f); border: 1px solid var(--line); padding: 3px 6px; background: #fff; border-radius: 2px; }
+.mosaic { display: grid; gap: 8px; padding: 10px 16px 16px; }
+.mod { border: 1px solid var(--line); background: #fff; min-width: 0; }
+.mod > h2 { display: flex; justify-content: space-between; align-items: center; margin: 0; font: 600 12px var(--f); padding: 0 10px 0 0; border-bottom: 1px solid var(--line); background: var(--fill); height: 28px; }
+.mod > h2 span.tab { background: var(--tab); color: #fff; height: 100%; display: inline-flex; align-items: center; padding: 0 10px; font-weight: 700; }
+.mod > h2 small { font: 400 12px var(--f); color: var(--ink-3); }
+.mod .in { padding: 8px 10px; }
+.big { font: 700 26px/1.1 var(--f); letter-spacing: -.01em; }
+.big small { font: 500 12px var(--f); color: var(--ink-3); margin-left: 4px; letter-spacing: 0; }
+.kv { display: grid; grid-template-columns: 1fr auto; margin: 0; }
+.kv dt, .kv dd { margin: 0; padding: 4px 0; border-bottom: 1px solid var(--line); }
+.kv dt { color: var(--ink-2); }
+.kv dd { font-weight: 600; text-align: right; }
+.kv > :nth-last-child(-n+2) { border-bottom: 0; }
+input[type=range] { width: 100%; accent-color: var(--t-economy); margin: 2px 0; }
+.ends { display: flex; justify-content: space-between; font: 400 11px var(--m); color: var(--ink-3); }
+.share { display: flex; gap: 2px; height: 10px; margin: 6px 0; }
+.share span { flex-basis: 0; }
+.sw { display: inline-block; width: 9px; height: 9px; margin-right: 4px; vertical-align: -1px; }
+.btn { font: 700 13px var(--f); background: var(--ink); color: #fff; border: 0; padding: 6px 12px; border-radius: 2px; cursor: pointer; }
+.btn:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--t-economy); outline-offset: 2px; }
+svg { width: 100%; height: auto; display: block; }
+svg .g-major { stroke: #ececf0; }
+svg .g-frame { stroke: var(--line); }
+svg .tick { font: 400 10px var(--m); fill: var(--ink-3); }
+svg .axis { font: 500 11px var(--f); fill: var(--ink-2); }
+svg .s-router { stroke: var(--t-economy); stroke-width: 2; }
+svg .s-random { stroke: var(--ink-3); stroke-width: 1.2; stroke-dasharray: 4 3; }
+svg .m-base { fill: #fff; stroke: var(--ink); stroke-width: 1.2; }
+svg .m-label { font: 500 11px var(--f); fill: var(--ink-2); }
+svg .m-cross { stroke: var(--tab); stroke-width: 1; stroke-dasharray: 2 2; }
+svg .m-current { fill: var(--tab); }
+svg .m-current-ring { fill: none; stroke: var(--tab); stroke-width: 1.2; }
+table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+th { text-align: left; font: 600 12px var(--f); color: var(--ink-3); padding: 4px 8px; border-bottom: 1px solid var(--line); background: #fff; }
+td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.num { text-align: right; }
+td.id { font: 400 12px var(--m); color: var(--ink-3); }
+tr.sel td { background: #efedfb; }
+tbody tr:hover td { background: var(--fill); cursor: pointer; }
+.feed td { font-size: 12px; }
+.ok { color: #1f6f3a; font-weight: 700; } .ko { color: var(--tab); font-weight: 700; }
+.legend { display: flex; gap: 12px; color: var(--ink-2); font-size: 12px; padding: 2px 0 4px; }
+.legend i { display: inline-block; width: 14px; border-top: 2px solid var(--t-economy); vertical-align: middle; margin-right: 4px; }
+.legend i.r { border-top: 1.2px dashed var(--ink-3); }
+.legend i.c { width: 8px; height: 8px; border: 0; background: var(--tab); border-radius: 50%; }
+</style>
+</head>
+<body>
+<div class="caption"><span>Dirección C · Mosaico — todo el estado del router en una pantalla, en módulos densos</span><span>Evaluación con datos reales del replay · ledger ilustrativo</span></div>
+<div class="app">
+  <header>
+    <b>Nebula</b>
+    <nav aria-label="Principal"><a href="#">Tenants</a><a href="#">Claves de API</a><a href="#">Política</a><a href="#">Playground</a><a href="#">Observabilidad</a><a href="#" class="on" aria-current="page">Evaluación</a></nav>
+    <div class="ctx">Tenant <select><option>Acme Robotics</option></select></div>
+  </header>
+  <div class="mosaic" style="grid-template-columns: repeat(12, 1fr);">
+    <section class="mod" style="grid-column: span 7; grid-row: span 3;">
+      <h2><span class="tab">Frontera costo–calidad</span><small>router v1 · 1250 pedidos</small></h2>
+      <div class="in">
+        <div class="legend"><span><i></i>router v1</span><span><i class="r"></i>mezcla aleatoria</span><span><i class="c"></i>punto elegido</span></div>
+        <svg data-chart role="img" aria-label="Frontera de costo y calidad"></svg>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 5;">
+      <h2><span class="tab">Calidad objetivo</span><small>arrastrar para re-rutear</small></h2>
+      <div class="in">
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="big" data-bind="target"></span><span>τ local <b data-bind="tl"></b> · τ economy <b data-bind="te"></b></span></div>
+        <input type="range" min="75" max="100" value="95" data-slider aria-label="Calidad objetivo">
+        <div class="ends"><span>0.75</span><span>1.00</span></div>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 3;">
+      <h2><span class="tab">Resultado</span><small>replay</small></h2>
+      <div class="in">
+        <dl class="kv">
+          <dt>USD / 1000 pedidos</dt><dd data-bind="cost"></dd>
+          <dt>Calidad</dt><dd data-bind="quality"></dd>
+          <dt>vs todo frontier</dt><dd data-bind="saving"></dd>
+        </dl>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 2;">
+      <h2><span class="tab">Reparto</span></h2>
+      <div class="in">
+        <div class="share"><span data-share="local" style="background:var(--t-local)"></span><span data-share="economy" style="background:var(--t-economy)"></span><span data-share="frontier" style="background:var(--t-frontier)"></span></div>
+        <div><i class="sw" style="background:var(--t-local)"></i>local <b data-bind="share-local"></b></div>
+        <div><i class="sw" style="background:var(--t-economy)"></i>economy <b data-bind="share-economy"></b></div>
+        <div><i class="sw" style="background:var(--t-frontier)"></i>frontier <b data-bind="share-frontier"></b></div>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 3;">
+      <h2><span class="tab">Cifra anidada</span><small>objetivo 0.95</small></h2>
+      <div class="in">
+        <dl class="kv">
+          <dt>vs todo frontier</dt><dd>31 % <small style="font-weight:400;color:var(--ink-3)">28–35</small></dd>
+          <dt>vs mezcla aleatoria</dt><dd>17 % <small style="font-weight:400;color:var(--ink-3)">12–21</small></dd>
+          <dt>Calidad</dt><dd>0.957</dd>
+        </dl>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 2;">
+      <h2><span class="tab">Latencia</span><small>mediana</small></h2>
+      <div class="in">
+        <dl class="kv"><dt>gpt-4.1</dt><dd>2.5 s</dd><dt>haiku-4.5</dt><dd>3.9 s</dd><dt>qwen2.5:7b</dt><dd>21.3 s</dd></dl>
+      </div>
+    </section>
+    <section class="mod" style="grid-column: span 7;">
+      <h2><span class="tab">Replay</span><small>1× · 10× · 100×</small></h2>
+      <table class="feed">
+        <colgroup><col style="width:52px"><col style="width:84px"><col style="width:36px"><col><col style="width:40px"></colgroup>
+        <tbody>
+          <tr><td class="id">#214</td><td><i class="sw" style="background:var(--t-local)"></i>local</td><td>ES</td><td>Escribe una función para encontrar todas las palabras de tres, cuatro y cinco letras…</td><td class="ok">✓</td></tr>
+          <tr><td class="id">#213</td><td><i class="sw" style="background:var(--t-frontier)"></i>frontier</td><td>ES</td><td>Sitti y Juris compraron 34 y 22 naranjas, respectivamente…</td><td class="ok">✓</td></tr>
+          <tr><td class="id">#212</td><td><i class="sw" style="background:var(--t-economy)"></i>economy</td><td>ES</td><td>Escribe una función para encontrar elementos de índice común de tres listas.</td><td class="ok">✓</td></tr>
+          <tr><td class="id">#211</td><td><i class="sw" style="background:var(--t-local)"></i>local</td><td>EN</td><td>Write a function to find the next smallest palindrome of a specified number.</td><td class="ko">✗</td></tr>
+        </tbody>
+      </table>
+    </section>
+    <section class="mod" style="grid-column: span 5;">
+      <h2><span class="tab">Aplicar</span><small>guarda routing_quality_target</small></h2>
+      <div class="in" style="display:flex;gap:8px;align-items:center">
+        <select style="flex:1;font:500 13px var(--f);padding:5px 6px;border:1px solid var(--line)"><option>Acme Robotics</option></select>
+        <button class="btn">Aplicar <span data-bind="target"></span></button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<div class="caption"><span>Observabilidad · ledger con el pedido seleccionado</span><span>filas ilustrativas</span></div>
+<div class="app">
+  <header>
+    <b>Nebula</b>
+    <nav aria-label="Principal"><a href="#">Tenants</a><a href="#">Claves de API</a><a href="#">Política</a><a href="#">Playground</a><a href="#" class="on" aria-current="page">Observabilidad</a><a href="#">Evaluación</a></nav>
+    <div class="ctx">Tenant <select><option>Acme Robotics</option></select> <select><option>Últimas 24 h</option></select></div>
+  </header>
+  <div class="mosaic" style="grid-template-columns: repeat(12, 1fr);">
+    <section class="mod" style="grid-column: span 2;"><h2><span class="tab">Pedidos</span></h2><div class="in"><div class="big">9</div></div></section>
+    <section class="mod" style="grid-column: span 2;"><h2><span class="tab">Costo</span></h2><div class="in"><div class="big">0.0145<small>USD</small></div></div></section>
+    <section class="mod" style="grid-column: span 4;"><h2><span class="tab">Por nivel</span></h2><div class="in">
+      <div class="share"><span style="flex-grow:3;background:var(--t-local)"></span><span style="flex-grow:2;background:var(--t-economy)"></span><span style="flex-grow:2;background:var(--t-frontier)"></span><span style="flex-grow:1;background:var(--t-cache)"></span><span style="flex-grow:1;background:var(--t-denied)"></span></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><span><i class="sw" style="background:var(--t-local)"></i>local 3</span><span><i class="sw" style="background:var(--t-economy)"></i>economy 2</span><span><i class="sw" style="background:var(--t-frontier)"></i>frontier 2</span><span><i class="sw" style="background:var(--t-cache)"></i>caché 1</span><span><i class="sw" style="background:var(--t-denied)"></i>límite 1</span></div>
+    </div></section>
+    <section class="mod" style="grid-column: span 2;"><h2><span class="tab">Caché</span></h2><div class="in"><dl class="kv"><dt>Aciertos</dt><dd>11 %</dd><dt>Umbral</dt><dd>0.90</dd></dl></div></section>
+    <section class="mod" style="grid-column: span 2;"><h2><span class="tab">Dependencias</span></h2><div class="in"><dl class="kv"><dt>Ollama</dt><dd>listo</dd><dt>Qdrant</dt><dd>listo</dd></dl></div></section>
+    <section class="mod" style="grid-column: span 8;">
+      <h2><span class="tab">Ledger</span><small>clic en una fila para ver la decisión</small></h2>
+      <table>
+        <colgroup><col style="width:78px"><col style="width:80px"><col><col style="width:90px"><col style="width:120px"><col style="width:54px"><col style="width:62px"><col style="width:58px"></colgroup>
+        <thead><tr><th>Hora</th><th>Pedido</th><th>Prompt</th><th>Nivel</th><th>Modelo</th><th class="num">Tokens</th><th class="num">USD</th><th class="num">Lat.</th></tr></thead>
+        <tbody data-ledger></tbody>
+      </table>
+    </section>
+    <section class="mod" style="grid-column: span 4;">
+      <h2><span class="tab">Por qué economy</span><small>b91e4d17</small></h2>
+      <div class="in">
+        <table style="margin-bottom:8px">
+          <thead><tr><th>Nivel</th><th class="num">p</th><th class="num">τ</th><th>→</th></tr></thead>
+          <tbody>
+            <tr><td><i class="sw" style="background:var(--t-local)"></i>local</td><td class="num">0.41</td><td class="num">0.82</td><td style="color:var(--ink-3)">sigue</td></tr>
+            <tr class="sel"><td><i class="sw" style="background:var(--t-economy)"></i><b>economy</b></td><td class="num"><b>0.95</b></td><td class="num">0.92</td><td><b>elegido</b></td></tr>
+            <tr><td><i class="sw" style="background:var(--t-frontier)"></i>frontier</td><td class="num">—</td><td class="num">—</td><td style="color:var(--ink-3)">—</td></tr>
+          </tbody>
+        </table>
+        <dl class="kv">
+          <dt>Modelo</dt><dd>claude-haiku-4.5</dd><dt>Costo</dt><dd>USD 0.0018</dd><dt>Tokens</dt><dd>58 + 354</dd><dt>Latencia</dt><dd>3.6 s</dd><dt>Objetivo</dt><dd>0.95</dd>
+        </dl>
+      </div>
+    </section>
+  </div>
+</div>
+<script src="data.js"></script>
+<script src="ledger.js"></script>
+<script src="chart.js"></script>
+<script>
+const TIER = { local: ["var(--t-local)", "local"], economy: ["var(--t-economy)", "economy"], frontier: ["var(--t-frontier)", "frontier"], cache: ["var(--t-cache)", "caché"], denied: ["var(--t-denied)", "límite"] };
+renderLedger(document.querySelector("[data-ledger]"), (r) => `<tr class="${r.id === "b91e4d17" ? "sel" : ""}"><td class="id">${r.t}</td><td class="id">${r.id}</td><td>${r.prompt}</td><td><i class="sw" style="background:${TIER[r.tier][0]}"></i>${TIER[r.tier][1]}</td><td class="id">${r.model}</td><td class="num">${r.tok}</td><td class="num">${r.cost ? r.cost.toFixed(4) : "0"}</td><td class="num">${r.lat ? r.lat + " s" : "—"}</td></tr>`);
+Nebula.mount({ chart: { w: 780, h: 380, pad: { l: 42, r: 10, t: 20, b: 32 }, grid: "minimal" } });
+</script>
+</body>
+</html>
