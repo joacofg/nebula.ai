@@ -1,8 +1,12 @@
 from functools import lru_cache
+from pathlib import Path
 from typing import Literal
 
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# The learned-router artifact shipped with the package (see scripts/router/train.py).
+DEFAULT_LEARNED_ROUTER_PATH = str(Path(__file__).resolve().parents[1] / "data" / "learned_router_v1.json")
 
 
 class Settings(BaseSettings):
@@ -30,6 +34,13 @@ class Settings(BaseSettings):
         alias="NEBULA_PREMIUM_PROVIDER",
     )
     premium_model: str = Field(default="gpt-4o-mini", alias="NEBULA_PREMIUM_MODEL")
+    # Economy tier: a cheaper model served by the premium provider. Unset means two tiers.
+    economy_model: str | None = Field(default=None, alias="NEBULA_ECONOMY_MODEL")
+    learned_router_enabled: bool = Field(default=False, alias="NEBULA_LEARNED_ROUTER_ENABLED")
+    learned_router_path: str = Field(
+        default=DEFAULT_LEARNED_ROUTER_PATH,
+        alias="NEBULA_LEARNED_ROUTER_PATH",
+    )
     premium_base_url: str | None = Field(default=None, alias="NEBULA_PREMIUM_BASE_URL")
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")
     enable_metrics: bool = Field(default=True, alias="NEBULA_ENABLE_METRICS")

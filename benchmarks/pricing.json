@@ -12,6 +12,14 @@
     "openai/gpt-4o": {
       "input_cost_per_1m_tokens": 2.5,
       "output_cost_per_1m_tokens": 10.0
+    },
+    "anthropic/claude-haiku-4.5": {
+      "input_cost_per_1m_tokens": 1.0,
+      "output_cost_per_1m_tokens": 5.0
+    },
+    "openai/gpt-4.1": {
+      "input_cost_per_1m_tokens": 2.0,
+      "output_cost_per_1m_tokens": 8.0
     }
   }
 }

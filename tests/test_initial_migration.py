@@ -5,12 +5,12 @@ from pathlib import Path
 
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 from nebula.db.models import Base
 
 
-def _upgrade(database_url: str) -> None:
+def _upgrade(database_url: str, revision: str = "head") -> None:
     # Save original environment variables
     original_db_url = os.environ.get("NEBULA_DATABASE_URL")
     original_data_store_path = os.environ.get("NEBULA_DATA_STORE_PATH")
@@ -25,7 +25,7 @@ def _upgrade(database_url: str) -> None:
         root = Path(__file__).resolve().parents[1]
         config = Config(str(root / "alembic.ini"))
         config.set_main_option("script_location", str(root / "migrations"))
-        command.upgrade(config, "head")
+        command.upgrade(config, revision)
     finally:
         # Restore original environment variables
         if original_db_url is not None:
@@ -37,9 +37,12 @@ def _upgrade(database_url: str) -> None:
             os.environ["NEBULA_DATA_STORE_PATH"] = original_data_store_path
 
 
-def test_single_migration_creates_exactly_the_orm_schema(tmp_path: Path) -> None:
+def test_migrations_create_exactly_the_orm_schema(tmp_path: Path) -> None:
     versions = sorted(p.name for p in (Path(__file__).resolve().parents[1] / "migrations" / "versions").glob("*.py"))
-    assert versions == ["20260916_0001_initial_schema.py"]
+    assert versions == [
+        "20260916_0001_initial_schema.py",
+        "20260930_0002_routing_quality_target.py",
+    ]
 
     database_url = f"sqlite+pysqlite:///{tmp_path / 'fresh.db'}"
     _upgrade(database_url)
@@ -60,3 +63,50 @@ def test_single_migration_creates_exactly_the_orm_schema(tmp_path: Path) -> None
         assert "idx_usage_ledger_tenant_timestamp" in usage_ledger_indexes
     finally:
         engine.dispose()
+
+
+def test_quality_target_migration_adds_the_column_to_a_pre_phase3_database(tmp_path: Path) -> None:
+    # A database created before phase 3: tenant_policies without the column, stamped at 0001.
+    database_url = f"sqlite+pysqlite:///{tmp_path / 'old.db'}"
+    engine = create_engine(database_url)
+    try:
+        with engine.begin() as connection:
+            policies = Base.metadata.tables["tenant_policies"]
+            columns = [
+                column for column in policies.columns if column.name != "routing_quality_target"
+            ]
+            ddl = ", ".join(
+                f"{column.name} {column.type.compile(engine.dialect)}" for column in columns
+            )
+            connection.execute(text(f"CREATE TABLE tenant_policies ({ddl})"))
+            connection.execute(
+                text(
+                    "INSERT INTO tenant_policies (tenant_id, routing_mode_default, "
+                    "calibrated_routing_enabled, allowed_premium_models_json, "
+                    "semantic_cache_enabled, semantic_cache_similarity_threshold, "
+                    "semantic_cache_max_entry_age_hours, fallback_enabled, "
+                    "prompt_capture_enabled, response_capture_enabled, "
+                    "evidence_retention_window, metadata_minimization_level, updated_at) "
+                    "VALUES ('old', 'auto', 1, '[]', 1, 0.9, 168, 1, 0, 0, '30d', 'standard', "
+                    "'2026-09-01 00:00:00')"
+                )
+            )
+            connection.execute(text("CREATE TABLE alembic_version (version_num VARCHAR(32) PRIMARY KEY)"))
+            connection.execute(text("INSERT INTO alembic_version VALUES ('20260916_0001')"))
+    finally:
+        engine.dispose()
+
+    _upgrade(database_url)
+
+    engine = create_engine(database_url)
+    try:
+        columns = {column["name"] for column in inspect(engine).get_columns("tenant_policies")}
+        with engine.connect() as connection:
+            value = connection.execute(
+                text("SELECT routing_quality_target FROM tenant_policies WHERE tenant_id = 'old'")
+            ).scalar_one()
+    finally:
+        engine.dispose()
+
+    assert "routing_quality_target" in columns
+    assert value == 0.95
