@@ -21,6 +21,22 @@ Chosen prefix: `none` (needs > 0.02 mean AUC to switch).
 | kNN (k=20) | 0.641 | 1.055 | 1.757 |
 | random mixture | 0.962 | 1.466 | 1.969 |
 
+## Nested estimate (thresholds and weights chosen without the routed fold)
+
+| target | achieved quality | cost | vs all-frontier [95% CI] | vs random at same quality [95% CI] | es quality | en quality |
+|---|---|---|---|---|---|---|
+| 0.9 | 0.903 | 1.055 | 57% [54%, 61%] | 30% [23%, 36%] | 0.902 | 0.908 |
+| 0.95 | 0.957 | 1.701 | 31% [28%, 35%] | 17% [12%, 21%] | 0.961 | 0.940 |
+
+## Latency (30 Spanish prompts, sequential, this machine)
+
+| role | model | median s | p90 s |
+|---|---|---|---|
+| gpt41 | openai/gpt-4.1 | 2.5 | 5.2 |
+| haiku | anthropic/claude-haiku-4.5 | 3.9 | 6.4 |
+| llama3b | llama3.2:3b | 9.8 | 17.4 |
+| qwen7b | qwen2.5:7b | 21.3 | 36.2 |
+
 ## Fixed policies
 
 | policy | cost | quality | learned at same quality | random at same quality |

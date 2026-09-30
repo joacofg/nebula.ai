@@ -19,7 +19,7 @@ Reemplazar la heurística de dos reglas por un router aprendido que elige entre 
 | Costo | local USD 0; economy/frontier = costo real capturado en la fase 2 para ese prompt |
 | Calidad | fracción de prompts servidos por un nivel sustituible (frontier cuenta como sustituible por definición) |
 | Latencia | se reporta aparte: sonda de 30 prompts ES por modelo |
-| Frontera | barrido de (τ_l, τ_e) sobre probabilidades fuera de fold → puntos Pareto (costo por prompt, calidad) |
+| Frontera | barrido de (τ_l, τ_e) sobre probabilidades fuera de fold → puntos Pareto (costo por prompt, calidad); cifras principales por **estimación anidada** (umbrales y pesos elegidos sin el fold ruteado) con IC bootstrap agrupado por prompt |
 | Comparaciones | heurística actual (premium = frontier y premium = economy), todo-local, todo-economy, todo-frontier, aleatorio a igual costo, oráculo, kNN ponderado por similitud (ablación, k=20) |
 | Knob por tenant | `routing_quality_target` ∈ [0.5, 1.0], default 0.95: el router usa el punto de operación más barato cuya calidad fuera de fold ≥ objetivo; si ninguno, todo frontier |
 | Artefacto | `src/nebula/data/learned_router_v1.json`: pesos de los dos modelos (entrenados con todos los datos), λ, prefijo, modelo de embedding, puntos de operación (de las probabilidades fuera de fold), versión y hash de etiquetas |
@@ -38,7 +38,7 @@ Reemplazar la heurística de dos reglas por un router aprendido que elige entre 
 
 ## Salidas de evaluación
 
-`benchmarks/router/v1/`: `report.json`, `report.md` (tabla de frontera, costo a calidad 0.95/0.90, AUC por clasificador e idioma, comparación de prefijos, kNN, sensibilidad R1/R2, latencias), `latency.jsonl`. Bloque `<!-- GEN:router-fase3 -->` en §6.4 de la tesis.
+`benchmarks/router/v1/`: `report.json`, `report.md` (tabla de frontera, costo a calidad 0.95/0.90, AUC por clasificador e idioma, comparación de prefijos, kNN, sensibilidad R1/R2, latencias), `latency.json`. Bloque `<!-- GEN:router-fase3 -->` en §6.4 de la tesis.
 
 ## Fuera de alcance
 

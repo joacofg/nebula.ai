@@ -2,10 +2,11 @@
 
     python -m scripts.router.train
 
-Everything reported comes from out-of-fold predictions (5 folds grouped by
-prompt). The shipped weights are refit on all data; the operating points they
-carry are the out-of-fold ones, so a tenant's quality target is backed by
-held-out evidence rather than by the training fit.
+Scores are out of fold (5 folds grouped by prompt). The frontier traced on
+them picks its thresholds on those same scores, so it is an in-sample choice
+of two parameters; the headline numbers are the nested estimate, where each
+fold is routed with thresholds and weights chosen without it. The shipped
+weights are refit on all data and carry the out-of-fold operating points.
 """
 
 from __future__ import annotations
@@ -55,6 +56,68 @@ def artifact(*, weights: dict, lambdas: dict, prefix: str, points: list[dict], l
             name: {"weights": [float(v) for v in w], "bias": float(b)} for name, (w, b) in weights.items()
         },
         "operating_points": points,
+    }
+
+
+def _cheapest_meeting(front: list[dict], q: float) -> tuple[float, float]:
+    feasible = [p for p in front if p["quality"] >= q]
+    if not feasible:
+        return float("inf"), float("inf")
+    best = min(feasible, key=lambda p: p["cost"])
+    return best["tau_local"], best["tau_economy"]
+
+
+def nested_tiers(examples, X, fold_of, lambdas, *, quality_target: float) -> list[str]:
+    """Per outer fold: pick thresholds on the other folds' out-of-fold scores,
+    fit on those folds, route the held-out fold. No test prompt touches either
+    the weights or the thresholds that route it."""
+    fold_of = np.asarray(fold_of)
+    tiers: list[str] = [""] * len(examples)
+    for f in sorted(set(fold_of.tolist())):
+        train_idx = np.flatnonzero(fold_of != f)
+        test_idx = np.flatnonzero(fold_of == f)
+        train_ex = [examples[i] for i in train_idx]
+        inner, test_p = {}, {}
+        for target in TARGETS:
+            y = _labels(train_ex, target)
+            inner[target] = cv.out_of_fold(X[train_idx], y, fold_of[train_idx], lambdas[target])
+            w, b = logreg.fit(X[train_idx], y, lambdas[target])
+            test_p[target] = logreg.predict(w, b, X[test_idx])
+        front = frontier.pareto(frontier.sweep(inner["local"], inner["economy"], train_ex))
+        tau_l, tau_e = _cheapest_meeting(front, quality_target)
+        for i, tier in zip(test_idx, frontier.route(test_p["local"], test_p["economy"], tau_l, tau_e)):
+            tiers[i] = tier
+    return tiers
+
+
+def bootstrap_savings(examples, tiers, *, resamples: int = 1000, seed: int = 20260930) -> dict:
+    """Point estimate and a prompt-grouped percentile interval for the savings
+    of a routing against all-frontier and against the random mix at the same quality."""
+    cost, quality = frontier.evaluate(tiers, examples)
+    all_frontier = frontier.corner_points(examples)["all_frontier"][0]
+    random_cost = frontier.random_cost_at_quality(examples, quality)
+    groups: dict[str, list[int]] = {}
+    for i, e in enumerate(examples):
+        groups.setdefault(e.prompt_id, []).append(i)
+    ids = sorted(groups)
+    rng = np.random.default_rng(seed)
+    vs_frontier, vs_random = [], []
+    for _ in range(resamples):
+        idx = [i for g in rng.choice(len(ids), size=len(ids)) for i in groups[ids[g]]]
+        sub = [examples[i] for i in idx]
+        c, q = frontier.evaluate([tiers[i] for i in idx], sub)
+        af = frontier.corner_points(sub)["all_frontier"][0]
+        rc = frontier.random_cost_at_quality(sub, q)
+        vs_frontier.append(1 - c / af)
+        if rc:
+            vs_random.append(1 - c / rc)
+    pct = lambda xs: [float(np.percentile(xs, 2.5)), float(np.percentile(xs, 97.5))]  # noqa: E731
+    return {
+        "cost": cost, "quality": quality, "all_frontier_cost": all_frontier, "random_cost": random_cost,
+        "vs_all_frontier": 1 - cost / all_frontier, "vs_all_frontier_ci95": pct(vs_frontier),
+        "vs_random": (1 - cost / random_cost) if random_cost else None,
+        "vs_random_ci95": pct(vs_random) if vs_random else None,
+        "resamples": resamples,
     }
 
 
@@ -165,7 +228,20 @@ def run(root: Path = data.GROUND_TRUTH) -> dict:
         labels={"file": MAIN_LABELS, "sha256": hashlib.sha256(labels_path.read_bytes()).hexdigest()},
     )
 
+    nested = {}
+    for q in (0.90, 0.95):
+        tiers = nested_tiers(examples, X, fold_of, lambdas, quality_target=q)
+        block = bootstrap_savings(examples, tiers)
+        block["by_lang"] = {}
+        for lang in ("es", "en"):
+            idx = [i for i, e in enumerate(examples) if e.lang == lang]
+            c, qq = frontier.evaluate([tiers[i] for i in idx], [examples[i] for i in idx])
+            block["by_lang"][lang] = {"cost": c, "quality": qq}
+        block["share"] = {t: tiers.count(t) / len(tiers) for t in ("local", "economy", "frontier")}
+        nested[str(q)] = block
+
     return {
+        "nested": nested,
         "examples": len(examples),
         "folds": 5,
         "prefix": {"chosen": prefix, "margin": PREFIX_MARGIN, "results": prefix_results},
@@ -200,6 +276,22 @@ def render_markdown(r: dict) -> str:
     out.append("| learned (logistic) | " + " | ".join(_usd(learned["cost_at"][str(q)]) for q in QUALITY_LEVELS) + " |")
     out.append("| kNN (k=20) | " + " | ".join(_usd(r["knn"]["cost_at"][str(q)]) for q in QUALITY_LEVELS) + " |")
     out.append("| random mixture | " + " | ".join(_usd(r["random_cost_at"][str(q)]) for q in QUALITY_LEVELS) + " |")
+    out += ["", "## Nested estimate (thresholds and weights chosen without the routed fold)", "",
+            "| target | achieved quality | cost | vs all-frontier [95% CI] | vs random at same quality [95% CI] | es quality | en quality |",
+            "|---|---|---|---|---|---|---|"]
+    for q, n in r["nested"].items():
+        vr = "—" if n["vs_random"] is None else (f"{n['vs_random']:.0%} [{n['vs_random_ci95'][0]:.0%}, "
+                                                  f"{n['vs_random_ci95'][1]:.0%}]")
+        out.append(f"| {q} | {n['quality']:.3f} | {_usd(n['cost'])} | {n['vs_all_frontier']:.0%} "
+                   f"[{n['vs_all_frontier_ci95'][0]:.0%}, {n['vs_all_frontier_ci95'][1]:.0%}] | {vr} | "
+                   f"{n['by_lang']['es']['quality']:.3f} | {n['by_lang']['en']['quality']:.3f} |")
+    latency_path = OUT / "latency.json"
+    if latency_path.exists():
+        lat = json.loads(latency_path.read_text())
+        out += ["", "## Latency (30 Spanish prompts, sequential, this machine)", "",
+                "| role | model | median s | p90 s |", "|---|---|---|---|"]
+        for role, v in lat.items():
+            out.append(f"| {role} | {v['model']} | {v['median_s']:.1f} | {v['p90_s']:.1f} |")
     out += ["", "## Fixed policies", "", "| policy | cost | quality | learned at same quality | random at same quality |",
             "|---|---|---|---|---|"]
     for name, v in b.items():
@@ -229,25 +321,33 @@ def render_markdown(r: dict) -> str:
 def thesis_block(r: dict) -> str:
     b, learned = r["baselines"], r["learned"]
     af = b["all_frontier"]["cost"]
-    c95 = learned["cost_at"]["0.95"]
-    r95 = r["random_cost_at"]["0.95"]
-    h = b["heuristic_premium_frontier"]
+    n95, n90 = r["nested"]["0.95"], r["nested"]["0.9"]
+    h, al = b["heuristic_premium_frontier"], b["all_local"]
     text = (
         f"El router aprendido son dos regresiones logísticas sobre el embedding del prompt "
         f"(prefijo `{r['prefix']['chosen']}`), evaluadas con validación cruzada de 5 folds agrupada por prompt "
-        f"sobre {r['examples']} prompts. AUC fuera de fold: local {learned['auc']['local']['all']:.2f}, "
-        f"economy {learned['auc']['economy']['all']:.2f}. "
+        f"sobre {r['examples']} prompts; AUC fuera de fold: local {learned['auc']['local']['all']:.2f}, "
+        f"economy {learned['auc']['economy']['all']:.2f}, una señal modesta. En la estimación anidada —umbrales y "
+        f"pesos elegidos sin el fold que se rutea— con objetivo de calidad 0.95 el router logra calidad "
+        f"{n95['quality']:.3f} a USD {n95['cost'] * 1000:.2f} cada mil prompts, {n95['vs_all_frontier']:.0%} menos "
+        f"que enviar todo al modelo frontier (USD {af * 1000:.2f}; IC 95 % {n95['vs_all_frontier_ci95'][0]:.0%}–"
+        f"{n95['vs_all_frontier_ci95'][1]:.0%})"
     )
-    if c95 is not None:
-        text += (f"Con calidad ≥ 0.95, cuesta USD {c95 * 1000:.2f} cada mil prompts, contra USD {af * 1000:.2f} "
-                 f"de enviar todo al modelo frontier ({1 - c95 / af:.0%} menos) y USD {r95 * 1000:.2f} de la mejor "
-                 f"mezcla aleatoria de niveles a igual calidad. ")
-    lh = h.get("learned_cost_at_same_quality")
-    if lh is not None:
-        text += (f"La heurística de dos reglas logra calidad {h['quality']:.2f} a USD {h['cost'] * 1000:.2f}; el router "
-                 f"aprendido alcanza esa calidad a USD {lh * 1000:.2f}. ")
-    text += ("El costo local se cuenta en cero y la latencia se reporta aparte. Los resultados bajo las reglas "
-             "de etiquetado R1 y R2 se reportan como sensibilidad.")
+    if n95["vs_random"] is not None:
+        text += (f" y {n95['vs_random']:.0%} menos que la mejor mezcla aleatoria de niveles a igual calidad "
+                 f"(IC 95 % {n95['vs_random_ci95'][0]:.0%}–{n95['vs_random_ci95'][1]:.0%})")
+    text += (f". Con objetivo 0.90 logra {n90['quality']:.3f} a USD {n90['cost'] * 1000:.2f}. El objetivo se "
+             f"cumple sobre el conjunto; por idioma la calidad fue {n95['by_lang']['es']['quality']:.3f} en español "
+             f"y {n95['by_lang']['en']['quality']:.3f} en inglés. La heurística de dos reglas no mejora a enviar todo "
+             f"al modelo local: calidad {h['quality']:.3f} contra {al['quality']:.3f}, a USD {h['cost'] * 1000:.2f} "
+             f"cada mil prompts. El oráculo, que conoce la etiqueta, costaría USD {b['oracle']['cost'] * 1000:.2f}: "
+             f"queda margen. El costo local se cuenta en cero; su precio es el tiempo")
+    latency_path = OUT / "latency.json"
+    if latency_path.exists():
+        lat = json.loads(latency_path.read_text())
+        text += (": en esta máquina la mediana por respuesta fue " + ", ".join(
+            f"{v['model']} {v['median_s']:.1f} s" for v in lat.values()) + " (30 prompts, secuencial)")
+    text += ". Las reglas de etiquetado R1 y R2 se reportan como sensibilidad."
     return text
 
 

@@ -231,3 +231,33 @@ def test_latency_sample_is_balanced_and_summary_is_ordered():
                                           "factual_qa-0000", "factual_qa-0001", "factual_qa-0002"]
     s = latency.summarise([3.0, 1.0, 2.0])
     assert s["median_s"] == 2.0 and s["n"] == 3
+
+
+def _toy_set(n=60, seed=3):
+    rng = np.random.default_rng(seed)
+    ex, X = [], []
+    for i in range(n):
+        x = rng.normal(size=4)
+        ex.append(data.Example(f"es:t-{i:04d}", "es", f"t-{i:04d}", ("code", "factual_qa")[i % 2], "t",
+                               bool(x[0] > 0), bool(x[1] > -0.5), 0.1, 1.0))
+        X.append(x)
+    return ex, np.array(X)
+
+
+def test_nested_thresholds_are_chosen_without_the_test_fold():
+    ex, X = _toy_set()
+    fold_of = cv.folds(ex, k=3, seed=1)
+    lambdas = {"local": 0.1, "economy": 0.1}
+    everything = train.nested_tiers(ex, X, fold_of, lambdas, quality_target=1.01)
+    cheapest = train.nested_tiers(ex, X, fold_of, lambdas, quality_target=0.0)
+    assert everything == ["frontier"] * len(ex)
+    assert set(cheapest) == {"local"}
+
+
+def test_bootstrap_interval_brackets_the_point_estimate():
+    ex, _ = _toy_set()
+    tiers = ["local" if e.local_ok else "frontier" for e in ex]
+    got = train.bootstrap_savings(ex, tiers, resamples=200, seed=5)
+    low, high = got["vs_all_frontier_ci95"]
+    assert low <= got["vs_all_frontier"] <= high
+    assert got["quality"] == pytest.approx(1.0)
