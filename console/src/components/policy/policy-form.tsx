@@ -39,6 +39,7 @@ type PolicyFormState = {
   evidenceRetentionWindow: TenantPolicy["evidence_retention_window"];
   metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"];
   routingQualityTarget: string;
+  rateLimitRequestsPerMinute: string;
 };
 
 // Gateway default (TenantPolicy.routing_quality_target) for policies saved before the field existed.
@@ -60,6 +61,7 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     evidenceRetentionWindow: policy.evidence_retention_window,
     metadataMinimizationLevel: policy.metadata_minimization_level,
     routingQualityTarget: (policy.routing_quality_target ?? DEFAULT_ROUTING_QUALITY_TARGET).toString(),
+    rateLimitRequestsPerMinute: policy.rate_limit_requests_per_minute?.toString() ?? "",
   };
 }
 
@@ -84,6 +86,8 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
     evidence_retention_window: state.evidenceRetentionWindow,
     metadata_minimization_level: state.metadataMinimizationLevel,
     routing_quality_target: Number(state.routingQualityTarget),
+    rate_limit_requests_per_minute:
+      state.rateLimitRequestsPerMinute.trim() === "" ? null : Number(state.rateLimitRequestsPerMinute),
   };
 }
 
@@ -301,6 +305,10 @@ export function PolicyForm({
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
   const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
   const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
+  const rateLimitText = formState.rateLimitRequestsPerMinute.trim();
+  const rateLimitValid =
+    rateLimitText === "" ||
+    (/^\d+$/.test(rateLimitText) && Number(rateLimitText) >= 1 && Number(rateLimitText) <= 100000);
   const qualityTargetText = formState.routingQualityTarget.trim();
   const qualityTargetValue = qualityTargetText === "" ? Number.NaN : Number(qualityTargetText);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
@@ -324,6 +332,10 @@ export function PolicyForm({
     }
     if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
       setError("Semantic cache similarity threshold must be between 0 and 1.");
+      return;
+    }
+    if (!rateLimitValid) {
+      setError("Rate limit must be a whole number of requests per minute between 1 and 100000.");
       return;
     }
     if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
@@ -674,6 +686,28 @@ export function PolicyForm({
               <p className="mt-2 text-sm text-slate-500">
                 Quality the learned router must keep (0.5 to 1.0): it takes the cheapest operating point that meets
                 it, and 1.0 sends every request to the frontier model. Compare targets on the Evaluación page.
+              </p>
+            </div>
+          ) : null}
+
+          {runtimeEnforcedFields.has("rate_limit_requests_per_minute") ? (
+            <div>
+              <label className="field-label" htmlFor="rate-limit-rpm">
+                Rate limit (requests per minute)
+              </label>
+              <input
+                id="rate-limit-rpm"
+                className="field-input"
+                inputMode="numeric"
+                placeholder="Unlimited"
+                value={formState.rateLimitRequestsPerMinute}
+                onChange={(event) =>
+                  setFormState((current) => ({ ...current, rateLimitRequestsPerMinute: event.target.value }))
+                }
+              />
+              <p className="mt-2 text-sm text-slate-500">
+                Public chat and embeddings requests this tenant may send per minute; leave empty for no limit. Over
+                the limit the gateway answers 429 with Retry-After and records the rejection in the ledger.
               </p>
             </div>
           ) : null}

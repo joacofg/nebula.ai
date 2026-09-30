@@ -122,3 +122,8 @@ This topology is designed for product proof and pilot evaluation:
 - [Architecture](architecture.md)
 - [Evaluation](evaluation.md)
 - [Demo runbook](demo-runbook.md)
+
+
+## Rate limiting and process count
+
+Per-tenant rate limits are enforced in memory by the gateway process. Keep the gateway at one uvicorn process (the default in `docker-compose.selfhosted.yml`); with several processes each keeps its own counters and a tenant's effective limit multiplies.

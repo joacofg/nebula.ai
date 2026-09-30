@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import { PolicyForm } from "@/components/policy/policy-form";
-import type { PolicySimulationResponse } from "@/lib/admin-api";
+import type { PolicySimulationResponse, TenantPolicy } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
 
 const baseSimulationResult: PolicySimulationResponse = {
@@ -98,6 +98,7 @@ function renderPolicyForm({
   simulationError = null as string | null,
   isSimulating = false,
   runtimeEnforcedFields = null as string[] | null,
+  policyOverrides = {} as Partial<TenantPolicy>,
 } = {}) {
   return renderWithProviders(
     <PolicyForm
@@ -119,6 +120,7 @@ function renderPolicyForm({
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
         routing_quality_target: 0.95,
+        ...policyOverrides,
       }}
       options={{
         routing_modes: ["auto", "local_only", "premium_only"],
@@ -126,6 +128,7 @@ function renderPolicyForm({
         default_premium_model: "openai/gpt-4o-mini",
         runtime_enforced_fields: runtimeEnforcedFields ?? [
           "routing_quality_target",
+          "rate_limit_requests_per_minute",
           "routing_mode_default",
           "calibrated_routing_enabled",
           "allowed_premium_models",
@@ -630,6 +633,46 @@ describe("policy-form", () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.9 });
+  });
+
+  it("saves a rate limit", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    const field = screen.getByLabelText("Rate limit (requests per minute)");
+    expect(field).toHaveValue("");
+    await userEvent.type(field, "120");
+    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ rate_limit_requests_per_minute: 120 });
+
+  });
+
+  it("clears a rate limit back to unlimited", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave, policyOverrides: { rate_limit_requests_per_minute: 30 } });
+
+    const field = screen.getByLabelText("Rate limit (requests per minute)");
+    expect(field).toHaveValue("30");
+    await userEvent.clear(field);
+    await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ rate_limit_requests_per_minute: null });
+  });
+
+  it("blocks save when the rate limit is not a whole number between 1 and 100000", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    for (const value of ["0", "2.5", "100001", "abc"]) {
+      await userEvent.clear(screen.getByLabelText("Rate limit (requests per minute)"));
+      await userEvent.type(screen.getByLabelText("Rate limit (requests per minute)"), value);
+      await userEvent.click(screen.getByRole("button", { name: "Save policy" }));
+      expect(
+        await screen.findByText("Rate limit must be a whole number of requests per minute between 1 and 100000."),
+      ).toBeInTheDocument();
+    }
+    expect(onSave).not.toHaveBeenCalled();
   });
 
   it("blocks save when the routing quality target is outside 0.5-1.0", async () => {
