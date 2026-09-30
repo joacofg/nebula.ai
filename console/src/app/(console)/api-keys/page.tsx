@@ -3,10 +3,9 @@
 import { useMemo, useState } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { KeyRound, Plus } from "lucide-react";
+import { Plus } from "lucide-react";
 
 import {
-  ADMIN_API_KEYS_ENDPOINT,
   createApiKey,
   listApiKeys,
   listTenants,
@@ -28,7 +27,9 @@ import { ApiKeyTable } from "@/components/api-keys/api-key-table";
 import { RevealApiKeyDialog } from "@/components/api-keys/reveal-api-key-dialog";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
-import { ErrorAlert } from "@/components/system/state";
+import { PageHeader } from "@/components/system/page-header";
+import { EmptyState, ErrorAlert, LoadingRows } from "@/components/system/state";
+import { Button } from "@/components/ui/button";
 
 export default function ApiKeysPage() {
   const queryClient = useQueryClient();
@@ -54,7 +55,7 @@ export default function ApiKeysPage() {
   const createMutation = useMutation({
     mutationFn: async (payload: Parameters<typeof createApiKey>[1]) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       return createApiKey(adminKey, payload);
     },
@@ -68,7 +69,7 @@ export default function ApiKeysPage() {
   const revokeMutation = useMutation({
     mutationFn: async (apiKeyId: string) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       return revokeApiKey(adminKey, apiKeyId);
     },
@@ -98,60 +99,56 @@ export default function ApiKeysPage() {
     await revokeMutation.mutateAsync(apiKey.id);
   }
 
+  const tenantFilter = (
+    <select
+      aria-label="Tenant"
+      className="h-9 min-w-52 rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
+      value={selectedTenantId ?? ""}
+      onChange={(event) => setSelectedTenantId(event.target.value || null)}
+    >
+      <option value="">Todos los tenants</option>
+      {tenantOptions.map((tenant) => (
+        <option key={tenant.id} value={tenant.id}>
+          {tenant.name}
+        </option>
+      ))}
+    </select>
+  );
+
   return (
-    <section className="space-y-6">
-      <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">API Keys</div>
-          <h2 className="mt-2 text-2xl font-semibold text-ink">
-            Client credentials and tenant resolution
-          </h2>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            Operators issue client API keys backed by <span className="font-mono">{ADMIN_API_KEYS_ENDPOINT}</span>.
-            {" "}<span className="font-medium text-ink-2">allowed_tenant_ids</span> defines which tenants a key may use,
-            while <span className="font-medium text-ink-2">tenant_id</span> sets the default tenant when public callers omit
-            <span className="font-mono"> X-Nebula-Tenant-ID</span>.
-          </p>
-          <p className="mt-2 max-w-3xl text-sm text-ink-3">
-            If a key authorizes exactly one tenant, Nebula can infer it. If a key intentionally authorizes multiple
-            tenants without a default tenant, public callers must send <span className="font-mono">X-Nebula-Tenant-ID</span>{" "}
-            on each request.
-          </p>
-        </div>
+    <section>
+      <PageHeader
+        title="Claves de API"
+        cells={[
+          { label: "Tenant", value: tenantFilter },
+          { label: "Activas", value: apiKeysQuery.data ? String(apiKeys.filter((k) => !k.revoked_at).length) : "—" },
+        ]}
+        actions={
+          <Button type="button" onClick={() => setCreateOpen(true)}>
+            <Plus aria-hidden className="size-4" />
+            Crear clave
+          </Button>
+        }
+      />
 
-        <button type="button" className="action-button gap-2" onClick={() => setCreateOpen(true)}>
-          <Plus className="h-4 w-4" />
-          Create API key
-        </button>
-      </header>
-
-      <div className="panel flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center md:justify-between">
-        <div className="inline-flex items-center gap-2 text-sm text-ink-2">
-          <KeyRound className="h-4 w-4 text-ink-4" />
-          Keep revoked records visible so operators can audit historical scope and issuance decisions.
-        </div>
-
-        <select
-          className="field-input min-w-52"
-          value={selectedTenantId ?? ""}
-          onChange={(event) => setSelectedTenantId(event.target.value || null)}
-        >
-          <option value="">All tenants</option>
-          {tenantOptions.map((tenant) => (
-            <option key={tenant.id} value={tenant.id}>
-              {tenant.name}
-            </option>
-          ))}
-        </select>
+      <div className="px-6 py-5">
+        {apiKeysQuery.isLoading ? (
+          <LoadingRows rows={6} label="Cargando claves" />
+        ) : apiKeysQuery.isError ? (
+          <ErrorAlert error={apiKeysQuery.error} fallback="No se pudieron cargar las claves." />
+        ) : apiKeys.length === 0 ? (
+          <EmptyState
+            title="Todavía no hay claves."
+            action={
+              <Button type="button" variant="outline" onClick={() => setCreateOpen(true)}>
+                Crear clave
+              </Button>
+            }
+          />
+        ) : (
+          <ApiKeyTable apiKeys={apiKeys} onRevoke={handleRevoke} revokingId={revokingId} />
+        )}
       </div>
-
-      {apiKeysQuery.isLoading ? (
-        <div className="panel px-6 py-8 text-sm text-ink-4">Loading API key inventory...</div>
-      ) : apiKeysQuery.isError ? (
-        <ErrorAlert error={apiKeysQuery.error} fallback="Unable to load API keys." />
-      ) : (
-        <ApiKeyTable apiKeys={apiKeys} onRevoke={handleRevoke} revokingId={revokingId} />
-      )}
 
       <CreateApiKeyDialog
         open={createOpen}
@@ -167,15 +164,15 @@ export default function ApiKeysPage() {
       <AlertDialog open={pendingRevoke !== null} onOpenChange={(open) => (open ? null : setPendingRevoke(null))}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Revoke {pendingRevoke?.name}?</AlertDialogTitle>
+            <AlertDialogTitle>¿Revocar {pendingRevoke?.name}?</AlertDialogTitle>
             <AlertDialogDescription>
-              Callers using this key stop reaching Nebula. The record stays visible for audit.
+              Los clientes que la usan dejan de llegar a Nebula. El registro queda visible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction variant="destructive" onClick={() => void confirmRevoke()}>
-              Revoke key
+              Revocar clave
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

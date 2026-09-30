@@ -45,18 +45,32 @@ beforeEach(() => {
   vi.mocked(revokeApiKey).mockReset().mockResolvedValue(undefined as never);
 });
 
+describe("api keys page", () => {
+  it("titles the page and offers to create a key", async () => {
+    renderWithProviders(<ApiKeysPage />);
+    expect(await screen.findByRole("heading", { level: 1, name: "Claves de API" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear clave" })).toBeInTheDocument();
+  });
+
+  it("shows the error when the key list fails", async () => {
+    vi.mocked(listApiKeys).mockRejectedValue(new Error("Keys unavailable."));
+    renderWithProviders(<ApiKeysPage />);
+    expect(await screen.findByText("Keys unavailable.")).toBeInTheDocument();
+  });
+});
+
 describe("api keys page revoke flow", () => {
   it("asks for confirmation in an alert dialog and revokes on confirm", async () => {
     const confirmSpy = vi.spyOn(window, "confirm");
     const user = userEvent.setup();
     renderWithProviders(<ApiKeysPage />);
 
-    await user.click(await screen.findByRole("button", { name: /Revoke/ }));
+    await user.click(await screen.findByRole("button", { name: /Revocar/ }));
     const dialog = await screen.findByRole("alertdialog");
     expect(within(dialog).getByText(/Support bot/)).toBeInTheDocument();
     expect(confirmSpy).not.toHaveBeenCalled();
 
-    await user.click(within(dialog).getByRole("button", { name: "Revoke key" }));
+    await user.click(within(dialog).getByRole("button", { name: "Revocar clave" }));
     await waitFor(() => expect(revokeApiKey).toHaveBeenCalledWith("admin-key", "key-1"));
   });
 
@@ -64,9 +78,9 @@ describe("api keys page revoke flow", () => {
     const user = userEvent.setup();
     renderWithProviders(<ApiKeysPage />);
 
-    await user.click(await screen.findByRole("button", { name: /Revoke/ }));
+    await user.click(await screen.findByRole("button", { name: /Revocar/ }));
     const dialog = await screen.findByRole("alertdialog");
-    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await user.click(within(dialog).getByRole("button", { name: "Cancelar" }));
 
     await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
     expect(revokeApiKey).not.toHaveBeenCalled();

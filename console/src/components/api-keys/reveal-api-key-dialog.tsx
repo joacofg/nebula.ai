@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Copy, KeyRound } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 
+import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 
 type RevealApiKeyDialogProps = {
@@ -23,25 +24,20 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
 
   return (
     <Dialog open={open && apiKey !== null} onOpenChange={(next) => (next ? null : onClose())}>
-      <DialogContent aria-label="Raw API key" className="sm:max-w-xl">
-        <div className="inline-flex h-11 w-11 items-center justify-center bg-mark-soft text-mark">
-          <KeyRound className="h-5 w-5" />
-        </div>
-        <DialogTitle className="text-xl font-semibold text-ink">Raw API key</DialogTitle>
-        <DialogDescription className="text-sm text-ink-3">This key will not be shown again.</DialogDescription>
+      <DialogContent aria-label="Clave de API" className="sm:max-w-xl">
+        <DialogTitle className="text-lg font-semibold text-ink">Clave de API</DialogTitle>
+        <DialogDescription className="text-sm text-ink-3">No se vuelve a mostrar.</DialogDescription>
 
-        <div className="mt-5 rounded-2xl border border-line bg-ink px-4 py-4 font-mono text-sm text-mark-soft">
-          {revealedApiKey}
-        </div>
+        <div className="border border-line bg-canvas px-4 py-3 font-mono text-[14px] break-all text-ink">{revealedApiKey}</div>
 
-        <div className="mt-5 flex flex-wrap gap-3">
-          <button type="button" className="action-button gap-2" onClick={handleCopy}>
-            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {copied ? "Copied" : "Copy key"}
-          </button>
-          <button type="button" className="secondary-button" onClick={onClose}>
-            Close
-          </button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" onClick={handleCopy}>
+            {copied ? <Check aria-hidden className="size-4" /> : <Copy aria-hidden className="size-4" />}
+            {copied ? "Copiada" : "Copiar"}
+          </Button>
+          <Button type="button" variant="outline" onClick={onClose}>
+            Cerrar
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

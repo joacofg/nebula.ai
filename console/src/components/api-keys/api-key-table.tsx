@@ -1,105 +1,95 @@
 import type { ApiKeyRecord } from "@/lib/admin-api";
 
+import { Button } from "@/components/ui/button";
+
 type ApiKeyTableProps = {
   apiKeys: ApiKeyRecord[];
   onRevoke: (apiKey: ApiKeyRecord) => void;
   revokingId: string | null;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
-  month: "short",
-  day: "numeric",
-  hour: "2-digit",
-  minute: "2-digit",
-});
+const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short" });
+const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 function getScopeSummary(apiKey: ApiKeyRecord) {
   const allowedCount = apiKey.allowed_tenant_ids.length;
-
   if (apiKey.tenant_id) {
     return {
-      title: `Auto-resolves ${apiKey.tenant_id}`,
-      detail:
-        allowedCount > 1
-          ? `Authorized for ${allowedCount} tenants total. Public callers can omit X-Nebula-Tenant-ID only when using the default tenant.`
-          : "One tenant authorized. Public callers can omit X-Nebula-Tenant-ID.",
+      title: `Por defecto: ${apiKey.tenant_id}`,
+      detail: allowedCount > 1 ? `${allowedCount} tenants permitidos; sin header va al de defecto.` : "Un tenant; el header es opcional.",
     };
   }
-
   if (allowedCount === 1) {
-    return {
-      title: `Single allowed tenant: ${apiKey.allowed_tenant_ids[0]}`,
-      detail: "Public callers can omit X-Nebula-Tenant-ID because the only authorized tenant is inferred.",
-    };
+    return { title: `Único tenant: ${apiKey.allowed_tenant_ids[0]}`, detail: "El header X-Nebula-Tenant-ID es opcional." };
   }
-
-  return {
-    title: `${allowedCount} authorized tenants`,
-    detail: "Public callers must send X-Nebula-Tenant-ID so Nebula can resolve which authorized tenant to use.",
-  };
+  return { title: `${allowedCount} tenants permitidos`, detail: "Los pedidos tienen que enviar X-Nebula-Tenant-ID." };
 }
 
 export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps) {
   return (
-    <div className="panel overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-separate border-spacing-0 text-left text-sm">
-          <thead className="bg-canvas text-xs font-semibold uppercase tracking-[0.22em] text-ink-4">
-            <tr>
-              <th className="border-b border-line px-4 py-3">Name</th>
-              <th className="border-b border-line px-4 py-3">Key Prefix</th>
-              <th className="border-b border-line px-4 py-3">Tenant Scope</th>
-              <th className="border-b border-line px-4 py-3">Status</th>
-              <th className="border-b border-line px-4 py-3">Created</th>
-              <th className="border-b border-line px-4 py-3 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {apiKeys.map((apiKey) => {
-              const revoked = Boolean(apiKey.revoked_at);
-              const scope = getScopeSummary(apiKey);
-
-              return (
-                <tr key={apiKey.id} className={revoked ? "bg-canvas/70 text-ink-4" : "hover:bg-canvas"}>
-                  <td className="border-b border-line/70 px-4 py-4 font-semibold text-ink">{apiKey.name}</td>
-                  <td className="border-b border-line/70 px-4 py-4 font-mono text-xs text-ink-2">
-                    {apiKey.key_prefix}
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4 text-ink-3">
-                    <div className="space-y-1">
-                      <div className="font-medium text-ink">{scope.title}</div>
-                      <div className="max-w-md text-xs leading-5 text-ink-4">{scope.detail}</div>
-                    </div>
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4">
-                    <span
-                      className={[
-                        "inline-flex rounded-full px-3 py-1 text-xs font-semibold",
-                        revoked ? "bg-canvas text-ink-3" : "bg-ok-soft text-ok",
-                      ].join(" ")}
-                    >
-                      {revoked ? "Revoked" : "Active"}
-                    </span>
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4 text-ink-3">
-                    {dateFormatter.format(new Date(apiKey.created_at))}
-                  </td>
-                  <td className="border-b border-line/70 px-4 py-4 text-right">
-                    <button
-                      type="button"
-                      className="secondary-button px-3 py-2 text-xs"
-                      disabled={revoked || revokingId === apiKey.id}
-                      onClick={() => onRevoke(apiKey)}
-                    >
-                      {revokingId === apiKey.id ? "Revoking..." : "Revoke"}
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[760px] table-fixed border-collapse text-sm" aria-label="Claves de API">
+        <colgroup>
+          <col className="w-[22%]" />
+          <col className="w-[14%]" />
+          <col />
+          <col className="w-[11%]" />
+          <col className="w-[14%]" />
+          <col className="w-[110px]" />
+        </colgroup>
+        <thead>
+          <tr className="border-b border-line-strong">
+            <th scope="col" className={HEAD}>Nombre</th>
+            <th scope="col" className={HEAD}>Prefijo</th>
+            <th scope="col" className={HEAD}>Alcance</th>
+            <th scope="col" className={HEAD}>Estado</th>
+            <th scope="col" className={HEAD}>Creada</th>
+            <th scope="col" className={HEAD}>
+              <span className="sr-only">Acciones</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {apiKeys.map((apiKey) => {
+            const revoked = Boolean(apiKey.revoked_at);
+            const scope = getScopeSummary(apiKey);
+            return (
+              <tr key={apiKey.id} className={revoked ? "border-b border-line text-ink-3" : "border-b border-line hover:bg-canvas"}>
+                <td className="px-3 py-2.5">
+                  <span className={`block truncate font-semibold ${revoked ? "text-ink-3" : "text-ink"}`} title={apiKey.name}>
+                    {apiKey.name}
+                  </span>
+                </td>
+                <td className="truncate px-3 py-2.5 font-mono text-[12px] text-ink-2">{apiKey.key_prefix}</td>
+                <td className="px-3 py-2.5">
+                  <div className="truncate font-medium text-ink" title={scope.title}>
+                    {scope.title}
+                  </div>
+                  <div className="text-[13px] text-ink-3">{scope.detail}</div>
+                </td>
+                <td className="px-3 py-2.5">
+                  <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-medium text-ink">
+                    <span aria-hidden className={`size-2 rounded-full ${revoked ? "bg-line-strong/40" : "bg-ok"}`} />
+                    {revoked ? "revocada" : "activa"}
+                  </span>
+                </td>
+                <td className="px-3 py-2.5 text-ink-3">{dateFormatter.format(new Date(apiKey.created_at))}</td>
+                <td className="px-3 py-2.5 text-right">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={revoked || revokingId === apiKey.id}
+                    onClick={() => onRevoke(apiKey)}
+                  >
+                    {revokingId === apiKey.id ? "Revocando…" : "Revocar"}
+                  </Button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }
