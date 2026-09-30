@@ -1,5 +1,26 @@
 # Nebula Demo Runbook (professor demo)
 
+## One command (thesis defense)
+
+```bash
+make demo
+```
+
+It checks Ollama (`qwen2.5:7b`, `nomic-embed-text`), Docker and the OpenRouter balance,
+stops any earlier gateway or console on :8000/:3000, starts Qdrant, **empties the semantic
+cache**, starts the gateway with the learned router (env vars only; `.env` stays as the test
+suite expects), sets `acme-demo` to objective 0.90, warms the local model, starts the console
+and opens http://localhost:3000. It ends with a cheat sheet; Ctrl-C stops everything. Logs go
+to `.nebula/demo/`.
+
+In the Playground, the three **Ejemplos** buttons land on the three tiers at objective 0.90:
+Capital de Australia → local, Boletos de avión → economy, Criba de Eratóstenes → frontier.
+Sending one again answers from the cache. Rehearsing caches them, so run `make demo` again
+right before presenting. "Boletos" clears τ local by a small margin (0.753 < 0.76): show the
+three tiers before moving the objective in Evaluación.
+
+The manual checklist below is the fallback if the script stops on a check.
+
 ## Pre-demo checklist (15 min before)
 
 1. `ollama serve` running — `ollama list` shows `qwen2.5:7b`, `nomic-embed-text`.
