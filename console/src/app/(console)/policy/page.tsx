@@ -57,7 +57,7 @@ export default function PolicyPage() {
   const saveMutation = useMutation({
     mutationFn: async (payload: TenantPolicy) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       return updateTenantPolicy(adminKey, selectedTenantId, payload);
     },
@@ -70,7 +70,7 @@ export default function PolicyPage() {
   const simulationMutation = useMutation({
     mutationFn: async (payload: TenantPolicy) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       return simulateTenantPolicy(adminKey, selectedTenantId, {
         candidate_policy: payload,
