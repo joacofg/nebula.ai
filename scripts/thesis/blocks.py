@@ -1,6 +1,6 @@
 """Find and rewrite the generated blocks of the thesis source.
 
-A block is ``<!-- GEN:name -->`` + newline + content + newline + ``<!-- /GEN:name -->``.
+A block is a line ``<!-- GEN:name -->`` + newline + content + newline + ``<!-- /GEN:name -->``.
 Names are unique across every Markdown file of the thesis directory.
 """
 
@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-OPEN = re.compile(r"<!-- GEN:([a-z0-9-]+) -->")
+OPEN = re.compile(r"^<!-- GEN:([a-z0-9-]+) -->$", re.MULTILINE)
 
 
 class BlockError(ValueError):

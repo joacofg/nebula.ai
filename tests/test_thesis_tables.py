@@ -18,6 +18,11 @@ def test_find_blocks_across_files(tmp_path):
     assert blocks.find_blocks(tmp_path) == {"one": tmp_path / "a.md", "two": tmp_path / "b.md"}
 
 
+def test_marker_quoted_inline_is_not_a_block(tmp_path):
+    _write(tmp_path, "README.md", "Los bloques `<!-- GEN:nombre -->` no se editan a mano.\n")
+    assert blocks.find_blocks(tmp_path) == {}
+
+
 def test_duplicate_block_name_is_an_error(tmp_path):
     _write(tmp_path, "a.md", "<!-- GEN:one -->\nx\n<!-- /GEN:one -->\n")
     _write(tmp_path, "b.md", "<!-- GEN:one -->\ny\n<!-- /GEN:one -->\n")
