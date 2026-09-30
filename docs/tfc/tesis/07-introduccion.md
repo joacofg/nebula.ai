@@ -7,7 +7,7 @@ disyuntiva que se repite. Necesitan la capacidad de un modelo premium para las c
 pero la práctica más común es elegir un modelo y usarlo para todo, y entonces pagan ese mismo
 precio por la totalidad del tráfico, incluidas las consultas simples que un modelo más barato, o
 incluso uno local, podría haber resuelto igual de bien. Los precios por token cambian hasta en
-órdenes de magnitud de un modelo a otro [@frugalgpt], así que la diferencia no es menor.
+órdenes de magnitud de un modelo a otro [1], así que la diferencia no es menor.
 
 A eso se suma un problema de visibilidad. Si la aplicación habla directamente con el proveedor, no
 queda registro de qué modelo respondió cada consulta, cuánto costó ni por qué se eligió esa ruta, y
@@ -50,8 +50,8 @@ La **aceptabilidad** se juzga con una rúbrica de sustituibilidad (si la respues
 reemplazado a la del modelo de referencia sin que quien preguntó quedara peor), aplicada por jueces
 LLM cuyo acuerdo con un lector humano se valida antes de usarlos. Se encuadra en el modelo de
 calidad en uso de la ISO/IEC 25019:2023 y en su adaptación a sistemas de IA de la ISO/IEC
-25059:2023 [@iso25019], [@iso25059]. El gasto de inferencia se encuadra como utilización de
-recursos, dentro de la eficiencia de desempeño de la ISO/IEC 25010:2023 [@iso25010].
+25059:2023 [2], [3]. El gasto de inferencia se encuadra como utilización de
+recursos, dentro de la eficiencia de desempeño de la ISO/IEC 25010:2023 [4].
 
 ## 7.4 Objetivo general y objetivos específicos
 
@@ -97,7 +97,7 @@ estimación anidada, en la que ningún prompt evaluado influye en los umbrales n
 rutean.
 
 Los **datos** se generaron a partir de tres conjuntos públicos (Dolly, GSM8K y MBPP)
-[@dolly], [@gsm8k], [@mbpp], muestreados por tarea, traducidos al español y respondidos por cuatro
+[5], [6], [7], muestreados por tarea, traducidos al español y respondidos por cuatro
 modelos. El español es la carga principal y el inglés se usa como subconjunto pareado. El **análisis**
 compara, sobre ese corpus, el costo y la calidad de cada política de ruteo contra la línea base,
 con intervalos de confianza por bootstrap.
@@ -114,7 +114,7 @@ organizaciones con requisitos de privacidad.
 
 En lo metodológico, el relevamiento del capítulo 8 muestra que las cifras publicadas sobre ruteo no
 son comparables entre sí, que la calidad se mide casi siempre en inglés y sobre tareas cerradas, y
-que los instrumentos automáticos rara vez se validan contra personas [@moslem2026]. Del lado del
+que los instrumentos automáticos rara vez se validan contra personas [8]. Del lado del
 mercado, las herramientas existentes rutean y cachean, pero no miden la calidad de lo que sirven ni
 el ahorro contra una línea base. El trabajo aporta evidencia reproducible de cuánto se ahorra y a
 qué costo en calidad, medida en español y con un instrumento validado, y la integra en un componente
@@ -177,15 +177,15 @@ comparan con las de este trabajo.
 
 | Trabajo | Tipo | Qué hace | Cifra publicada | Qué no mide |
 |---|---|---|---|---|
-| FrugalGPT [@frugalgpt] | cascada de modelos | prueba modelos de menor a mayor costo y se detiene cuando un puntuador confía en la respuesta | iguala a GPT-4 con hasta un 98 % menos de costo, o mejora su exactitud un 4 % al mismo costo; el ahorro va del 59 % al 98 % según el conjunto de datos | tareas en inglés con respuesta verificable; no opera como servicio |
-| Hybrid LLM [@hybridllm] | router aprendido de dos niveles | predice la brecha de calidad entre un modelo chico y uno grande | hasta un 40 % menos de llamadas al modelo grande sin caída de calidad (entre dos modelos de calidad parecida) | un solo par de modelos por experimento; sin caché ni fallas |
-| RouteLLM [@routellm], [@routellmblog] | router aprendido de dos niveles | aprende la decisión con datos de preferencia humana | el artículo reporta una reducción de costo de más de 2 veces sin perder calidad (contra un router aleatorio); el blog de los autores, reducciones del 85 % en MT-Bench, 45 % en MMLU y 35 % en GSM8K contra usar solo GPT-4, con el 95 % de su desempeño | benchmarks en inglés; dos modelos |
-| AutoMix [@automix] | cascada con autoverificación | el modelo chico verifica su respuesta y un controlador decide si escalar | más de un 50 % menos de costo computacional a desempeño comparable | paga dos generaciones en las consultas que escalan |
-| GPTCache [@gptcache] | caché semántico | devuelve la respuesta de una consulta parecida ya respondida | respuestas de 2 a 10 veces más rápidas en los aciertos; tasa de aciertos de alrededor del 50 % en su prueba | no reporta ahorro en dinero ni calidad de lo servido |
-| MeanCache [@meancache] | caché semántico por usuario | caché local con aprendizaje federado | alrededor del 31 % de las consultas de 20 usuarios eran similares a otras anteriores; 17 % más de F-score en las decisiones de acierto | aislamiento por usuario, con menos reuso |
-| Portkey [@portkey], [@portkeyblog] | gateway comercial | ruteo condicional, reintentos, caché semántica | pruebas preliminares del proveedor: alrededor del 20 % de aciertos del caché con 99 % de precisión en casos de preguntas y respuestas | la calidad de las respuestas ruteadas; el ahorro contra una línea base |
-| LiteLLM [@litellm] | proxy open source | ruteo por reglas, fallback, presupuestos, caché | no publica cifras de ahorro | ídem |
-| Cloudflare AI Gateway [@cloudflare] | gateway administrado | registro, límites, caché exacta | no publica cifras de ahorro | ídem; no es self-hosted |
+| FrugalGPT [1] | cascada de modelos | prueba modelos de menor a mayor costo y se detiene cuando un puntuador confía en la respuesta | iguala a GPT-4 con hasta un 98 % menos de costo, o mejora su exactitud un 4 % al mismo costo; el ahorro va del 59 % al 98 % según el conjunto de datos | tareas en inglés con respuesta verificable; no opera como servicio |
+| Hybrid LLM [9] | router aprendido de dos niveles | predice la brecha de calidad entre un modelo chico y uno grande | hasta un 40 % menos de llamadas al modelo grande sin caída de calidad (entre dos modelos de calidad parecida) | un solo par de modelos por experimento; sin caché ni fallas |
+| RouteLLM [10], [11] | router aprendido de dos niveles | aprende la decisión con datos de preferencia humana | el artículo reporta una reducción de costo de más de 2 veces sin perder calidad (contra un router aleatorio); el blog de los autores, reducciones del 85 % en MT-Bench, 45 % en MMLU y 35 % en GSM8K contra usar solo GPT-4, con el 95 % de su desempeño | benchmarks en inglés; dos modelos |
+| AutoMix [12] | cascada con autoverificación | el modelo chico verifica su respuesta y un controlador decide si escalar | más de un 50 % menos de costo computacional a desempeño comparable | paga dos generaciones en las consultas que escalan |
+| GPTCache [13] | caché semántico | devuelve la respuesta de una consulta parecida ya respondida | respuestas de 2 a 10 veces más rápidas en los aciertos; tasa de aciertos de alrededor del 50 % en su prueba | no reporta ahorro en dinero ni calidad de lo servido |
+| MeanCache [14] | caché semántico por usuario | caché local con aprendizaje federado | alrededor del 31 % de las consultas de 20 usuarios eran similares a otras anteriores; 17 % más de F-score en las decisiones de acierto | aislamiento por usuario, con menos reuso |
+| Portkey [15], [16] | gateway comercial | ruteo condicional, reintentos, caché semántica | pruebas preliminares del proveedor: alrededor del 20 % de aciertos del caché con 99 % de precisión en casos de preguntas y respuestas | la calidad de las respuestas ruteadas; el ahorro contra una línea base |
+| LiteLLM [17] | proxy open source | ruteo por reglas, fallback, presupuestos, caché | no publica cifras de ahorro | ídem |
+| Cloudflare AI Gateway [18] | gateway administrado | registro, límites, caché exacta | no publica cifras de ahorro | ídem; no es self-hosted |
 
 Leídos en conjunto, estos trabajos confirman que la premisa del trabajo es sólida (se puede ahorrar
 mucho si no se trata a todas las consultas por igual) y dejan ver lo que falta. Los trabajos de

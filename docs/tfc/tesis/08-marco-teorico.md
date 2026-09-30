@@ -15,24 +15,24 @@ manera explícita en FrugalGPT: mostraron que el costo de consultar APIs popular
 diferir en dos órdenes de magnitud y propusieron tres estrategias para aprovecharlas: adaptar el prompt para que sea más corto,
 aproximar el modelo caro con uno barato o con una caché, y encadenar modelos en cascada, de modo
 que una consulta solo llegue al modelo caro si el barato no da una respuesta confiable
-[@frugalgpt]. Su resultado más citado es que una cascada bien calibrada puede igualar al mejor
+[1]. Su resultado más citado es que una cascada bien calibrada puede igualar al mejor
 modelo individual con una fracción muy pequeña de su costo, y su idea de fondo, que el costo se
 puede bajar mucho si no se trata a todas las consultas por igual, es la premisa de todo el campo.
 
 El trabajo siguiente se dividió en dos líneas. La primera mantuvo la cascada y trabajó sobre el
 control que decide si hace falta escalar. AutoMix, por ejemplo, hace que el modelo chico responda y
 después verifique su propia respuesta, y un controlador decide, con esa verificación como señal
-ruidosa, si conviene pasar al modelo grande [@automix]. La ventaja de la cascada es que juzga la
+ruidosa, si conviene pasar al modelo grande [12]. La ventaja de la cascada es que juzga la
 respuesta real y no una predicción; su costo es que cada consulta difícil paga dos generaciones y
 una verificación, y eso se nota en la latencia.
 
 La segunda línea decidió antes de generar. Hybrid LLM entrena un clasificador que, mirando solo la
 consulta, predice la brecha de calidad entre un modelo chico y uno grande, y manda la consulta al
 chico cuando la brecha esperada es pequeña; el umbral del clasificador se puede mover en tiempo de
-ejecución para cambiar el equilibrio entre costo y calidad [@hybridllm]. RouteLLM llevó esa idea a
+ejecución para cambiar el equilibrio entre costo y calidad [9]. RouteLLM llevó esa idea a
 datos de preferencia humana: entrena varios routers (factorización de matrices, un clasificador
 BERT, un LLM ajustado) con las comparaciones de Chatbot Arena, más datos aumentados, y muestra que
-los routers generalizan a pares de modelos distintos de los usados para entrenarlos [@routellm].
+los routers generalizan a pares de modelos distintos de los usados para entrenarlos [10].
 Estos dos trabajos son los antecedentes más directos del router de este trabajo, que también
 decide antes de generar y también expone un umbral operable.
 
@@ -40,32 +40,32 @@ En paralelo avanzó la reutilización de respuestas. Las cachés tradicionales d
 solo si la consulta es idéntica, y en lenguaje natural eso ocurre poco. GPTCache propuso una caché
 semántica genérica, que representa cada consulta como un embedding y devuelve la respuesta guardada
 de una consulta suficientemente parecida, y que se puede ubicar delante de cualquier proveedor
-[@gptcache]. SCALM analizó trazas reales de servicios de chat, encontró patrones de consultas
+[13]. SCALM analizó trazas reales de servicios de chat, encontró patrones de consultas
 semánticamente repetidas que una caché por coincidencia exacta no aprovecha y propuso mejores
-criterios para decidir qué entradas conservar [@scalm]. MeanCache llevó la caché al lado del
+criterios para decidir qué entradas conservar [19]. MeanCache llevó la caché al lado del
 usuario, con aprendizaje federado para no centralizar sus consultas y con manejo de las preguntas
-que dependen de la conversación previa [@meancache]. Liu et al. estudiaron la caché semántica como
+que dependen de la conversación previa [14]. Liu et al. estudiaron la caché semántica como
 un problema de decisión en línea, en el que conviene guardar y descartar entradas según el costo de
-cada respuesta y la distribución de consultas que se observa [@liu2025cache].
+cada respuesta y la distribución de consultas que se observa [20].
 
 El relevamiento reciente de Moslem y Kelleher ordena todo este campo según cómo se estima la
 dificultad de una consulta (clasificadores, aprendizaje de preferencias, cuantificación de
-incertidumbre) y según si se decide antes o después de generar [@moslem2026]. Su conclusión
+incertidumbre) y según si se decide antes o después de generar [8]. Su conclusión
 coincide con la de los trabajos anteriores: un sistema de ruteo bien diseñado puede acercarse, e
 incluso superar, al mejor modelo individual a un costo mucho menor. Pero el mismo relevamiento
 reconoce dos problemas abiertos que son centrales para este trabajo.
 
 El primero es la **evaluación**. No existe un marco estandarizado para comparar sistemas de ruteo:
 cada trabajo mide con sus propios modelos, benchmarks y criterios de calidad, y las cifras
-publicadas no son comparables entre sí [@moslem2026]. La mayoría de los benchmarks usados están en
+publicadas no son comparables entre sí [8]. La mayoría de los benchmarks usados están en
 inglés y tienen respuesta verificable (matemática, código, opción múltiple), donde la calidad se
 reduce a acertar o no. Las consultas abiertas, que son una parte importante del tráfico real, y las
 consultas en otros idiomas quedan subrepresentadas. Esto no es un detalle para este trabajo, cuya
 carga principal está en español: la literatura sobre sesgo cultural muestra que los modelos de uso
-masivo rinden mejor sobre contenidos de países angloparlantes [@tao2024], [@naous2024], que la
-brecha crece en idiomas con menos recursos [@blend], y que para el español hizo falta construir
+masivo rinden mejor sobre contenidos de países angloparlantes [21], [22], que la
+brecha crece en idiomas con menos recursos [23], y que para el español hizo falta construir
 conjuntos de evaluación propios porque los existentes no representaban sus variedades
-[@laleaderboard]. Es razonable esperar que un modelo local chico tenga esa brecha más marcada que
+[24]. Es razonable esperar que un modelo local chico tenga esa brecha más marcada que
 uno premium, y por eso la evaluación de este trabajo se hizo sobre un corpus mayoritariamente en
 español.
 
@@ -88,7 +88,7 @@ millón de salida, y claude-haiku-4.5 USD 1 y USD 5 (tabla de precios del reposi
 de 2026). Como las respuestas suelen ser más largas que las preguntas, el precio de salida domina.
 Esa dispersión de precios es la que vuelve relevante la pregunta de qué modelo usar: si todos
 costaran lo mismo, elegir siempre el más capaz sería razonable y no habría nada que optimizar
-[@frugalgpt].
+[1].
 
 Entre la aplicación y los proveedores aparece entonces una pieza de arquitectura que concentra esas
 decisiones: el **gateway de IA**. Es un proxy especializado que expone una API única, en general
@@ -109,7 +109,7 @@ usa caché y con qué criterio, qué nivel de calidad exige.
 La dependencia de un proveedor externo trae además un problema de disponibilidad. El patrón
 *circuit breaker*, que viene de la ingeniería de sistemas distribuidos, corta las llamadas a un
 servicio que viene fallando y deriva el tráfico hacia una alternativa hasta que se recupera
-[@nygard]. En un gateway esto se traduce en **fallback**: si el modelo elegido no responde, el pedido
+[25]. En un gateway esto se traduce en **fallback**: si el modelo elegido no responde, el pedido
 se reenvía a otro. La técnica es madura, pero interactúa con el ruteo por costo, porque el fallback
 puede terminar mandando al modelo caro tráfico que la política había decidido resolver de forma
 barata. Por eso el gateway tiene que registrar cuándo ocurrió.
@@ -119,14 +119,14 @@ barata. Por eso el gateway tiene que registrar cuándo ocurrió.
 Servir un LLM en infraestructura propia se volvió mucho más accesible en los últimos años. Del lado
 de los servidores, Kwon et al. mostraron que el principal cuello de botella está en la gestión de la
 memoria de la caché de atención, y que administrarla por páginas, como hace un sistema operativo con
-la memoria virtual, multiplica el throughput con el mismo hardware [@pagedattention]. Del lado de las
+la memoria virtual, multiplica el throughput con el mismo hardware [26]. Del lado de las
 computadoras personales, la **cuantización** de los pesos (representarlos con 4 u 8 bits en lugar
 de 16) reduce la memoria necesaria a una fracción, con una pérdida de calidad moderada, y permite
 correr modelos de 3 a 8 mil millones de parámetros en una notebook. Ollama empaqueta ese proceso:
-descarga modelos ya cuantizados y los sirve con una API HTTP simple [@ollama].
+descarga modelos ya cuantizados y los sirve con una API HTTP simple [27].
 
 Para este trabajo lo que importa es la consecuencia económica. Un modelo local como qwen2.5:7b
-[@qwen25] tiene un costo marginal por consulta prácticamente nulo, pero es menos capaz que un
+[28] tiene un costo marginal por consulta prácticamente nulo, pero es menos capaz que un
 modelo premium y, en una máquina sin GPU dedicada, bastante más lento. La pregunta no es si el
 modelo local es bueno en general, sino para qué consultas su respuesta alcanza. Esa es exactamente
 la pregunta que tiene que responder el router.
@@ -137,8 +137,8 @@ Un **embedding** es una representación de un texto como un vector denso de núm
 textos con significado parecido quedan cerca en el espacio. Los modelos de embeddings de oraciones
 se entrenan para que esa cercanía sea útil: Sentence-BERT mostró que ajustar una red tipo BERT con
 pares de oraciones permite comparar significados a gran escala con una simple operación vectorial
-[@sbert], y modelos posteriores como nomic-embed-text, que usa este trabajo, extendieron la idea a
-textos largos con pesos y datos de entrenamiento abiertos [@nomic].
+[29], y modelos posteriores como nomic-embed-text, que usa este trabajo, extendieron la idea a
+textos largos con pesos y datos de entrenamiento abiertos [30].
 
 La medida de cercanía más usada es la **similitud coseno**, el coseno del ángulo entre dos vectores:
 
@@ -152,7 +152,7 @@ ellos nomic-embed-text, esperan que el texto lleve un prefijo que indique la tar
 
 Las métricas basadas en embeddings también se usaron para evaluar texto generado. BERTScore, por
 ejemplo, compara los embeddings de los tokens de una respuesta con los de una referencia y captura
-el significado mejor que las métricas de solapamiento de palabras [@bertscore]. Pero siguen midiendo
+el significado mejor que las métricas de solapamiento de palabras [31]. Pero siguen midiendo
 distancia a una referencia, y dos respuestas pueden hablar de lo mismo, y por lo tanto estar muy
 cerca, aunque una sea correcta y la otra no. Esa limitación es la que el estudio de la sección 9.1
 encontró en la práctica.
@@ -161,7 +161,7 @@ encontró en la práctica.
 
 Un **caché semántico** guarda pares de consulta y respuesta junto con el embedding de la consulta.
 Ante una consulta nueva, busca la guardada más cercana y, si la similitud supera un **umbral de
-admisión**, devuelve la respuesta guardada sin llamar a ningún modelo [@gptcache]. Tres decisiones
+admisión**, devuelve la respuesta guardada sin llamar a ningún modelo [13]. Tres decisiones
 definen su comportamiento:
 
 - **El umbral.** Si es bajo, el caché devuelve respuestas a preguntas que solo se parecen en la
@@ -172,11 +172,11 @@ definen su comportamiento:
 - **El aislamiento.** Si el caché es compartido, una respuesta generada para un cliente puede
   servirse a otro. En un gateway con varios tenants eso es un problema de confidencialidad, además
   de calidad. Aislar por usuario, como MeanCache, lo resuelve pero reduce mucho los aciertos
-  [@meancache]; aislar por tenant mantiene el reuso dentro de cada organización.
+  [14]; aislar por tenant mantiene el reuso dentro de cada organización.
 
 Las bases de datos vectoriales como Qdrant resuelven la búsqueda del vecino más cercano de forma
 aproximada y permiten combinarla con filtros sobre metadatos (tenant, fecha) en la misma consulta
-[@qdrant], que es lo que necesita un caché aislado con TTL.
+[32], que es lo que necesita un caché aislado con TTL.
 
 El caché y el router no son independientes cuando conviven. Si el caché se consulta antes que el
 router, una respuesta guardada evita la decisión de ruteo, y con ella cualquier control sobre qué
@@ -188,16 +188,16 @@ diseña este trabajo (sección 10.3).
 ### 8.2.5 Ruteo de modelos
 
 Se llama **ruteo** a elegir, para cada consulta, qué modelo la atiende. La literatura distingue tres
-familias [@moslem2026]:
+familias [8]:
 
 - **Reglas fijas.** Deciden con señales observables, como la longitud del prompt o la presencia de
   palabras clave. Son fáciles de explicar, pero no están ligadas a la calidad de la respuesta. Es lo
   que hacía la primera versión de Nebula (sección 9.1).
 - **Cascadas.** Mandan la consulta al modelo más barato y escalan si la respuesta no supera un
-  control [@frugalgpt], [@automix]. Juzgan la respuesta real, pero pagan latencia y costo extra en
+  control [1], [12]. Juzgan la respuesta real, pero pagan latencia y costo extra en
   las consultas que escalan.
 - **Routers aprendidos.** Un clasificador estima, antes de generar, la probabilidad de que un modelo
-  barato alcance, y decide con un umbral [@hybridllm], [@routellm]. Cuestan una inferencia barata
+  barato alcance, y decide con un umbral [9], [10]. Cuestan una inferencia barata
   por consulta y necesitan datos etiquetados para entrenarse.
 
 En un router aprendido, el umbral es la perilla que conecta la técnica con la operación. Bajarlo
@@ -224,12 +224,12 @@ $$
 Los pesos se ajustan minimizando la pérdida logarítmica, y la **regularización L2** agrega a esa
 pérdida un término $\lambda \lVert\mathbf{w}\rVert^2$ que penaliza los pesos grandes y reduce el
 sobreajuste cuando hay muchas variables y pocos ejemplos, que es el caso de un embedding de 768
-dimensiones y un millar de prompts [@esl]. Tiene dos ventajas prácticas para un gateway: su salida
+dimensiones y un millar de prompts [33]. Tiene dos ventajas prácticas para un gateway: su salida
 es una probabilidad, que se puede comparar con un umbral, y servirla es un producto escalar.
 
 Para saber cuánto rinde un clasificador hay que medirlo sobre datos que no vio al entrenarse. La
 **validación cruzada** de $k$ folds parte los datos en $k$ grupos, entrena con $k - 1$ y evalúa en
-el restante, rotando [@esl]. Si los datos tienen unidades relacionadas, como un prompt y su
+el restante, rotando [33]. Si los datos tienen unidades relacionadas, como un prompt y su
 traducción, hay que mantenerlas en el mismo fold; si no, el modelo se evaluaría sobre una pregunta
 que ya vio en otro idioma. A esto se lo llama validación cruzada **agrupada**.
 
@@ -244,30 +244,30 @@ Para describir la capacidad de un clasificador de separar las clases, sin depend
 se usa el **área bajo la curva ROC** (AUC): la probabilidad de que un ejemplo positivo elegido al
 azar reciba una puntuación mayor que uno negativo elegido al azar. Vale 0.5 para un clasificador
 que no distingue nada y 1 para uno perfecto; un valor menor que 0.5 indica que la puntuación ordena
-al revés [@fawcett2006].
+al revés [34].
 
 Por último, las cifras que salen de una muestra finita tienen incertidumbre. El **bootstrap**
 estima esa incertidumbre remuestreando los datos con reposición muchas veces y mirando cómo varía la
 cifra; los percentiles 2.5 y 97.5 de esa distribución dan un intervalo de confianza del 95 %
-[@efron1993]. Para una proporción con pocos casos, el **intervalo de Wilson** se comporta mejor que
-la aproximación normal [@wilson1927].
+[35]. Para una proporción con pocos casos, el **intervalo de Wilson** se comporta mejor que
+la aproximación normal [36].
 
 ### 8.2.7 LLM como juez
 
 Evaluar respuestas abiertas es caro: no hay una respuesta correcta única y un humano tarda en leer
 cada una. La alternativa más difundida es usar otro LLM como juez. Zheng et al. mostraron que un
 modelo fuerte, con un prompt adecuado, puede alcanzar con evaluadores humanos un acuerdo comparable
-al que tienen los humanos entre sí [@zheng2023judge], y G-Eval propuso guiar al juez con criterios
-explícitos y razonamiento paso a paso para mejorar esa correlación [@geval].
+al que tienen los humanos entre sí [37], y G-Eval propuso guiar al juez con criterios
+explícitos y razonamiento paso a paso para mejorar esa correlación [38].
 
 La misma línea de trabajo documentó sesgos sistemáticos que hay que controlar:
 
 - **Posición.** Cuando se le muestran dos respuestas, el juez tiende a favorecer la que aparece
-  primero [@wang2024fair]. Se controla juzgando cada par en los dos órdenes.
+  primero [39]. Se controla juzgando cada par en los dos órdenes.
 - **Longitud.** Tiende a premiar las respuestas más largas, aunque no sean mejores
-  [@zheng2023judge].
+  [37].
 - **Autopreferencia.** Los jueces reconocen y prefieren las respuestas generadas por su propio
-  modelo o su familia [@panickssery]. Para un sistema que compara la salida de un modelo local con
+  modelo o su familia [40]. Para un sistema que compara la salida de un modelo local con
   la de un premium, esto no es un detalle: si el juez es de la misma familia que el premium, la
   comparación arranca inclinada. Se controla usando jueces de familias distintas a las de los
   modelos evaluados.
@@ -279,7 +279,7 @@ de decisión antes de mirar los datos, y dejarlo por escrito, se llama **pre-reg
 
 La evaluación holística de modelos de lenguaje ya había advertido que juzgar por una sola métrica de
 exactitud oculta dimensiones importantes y que conviene medir varias sobre los mismos escenarios
-[@helm]. En este trabajo, la dimensión que se mide es una sola, pero se define con cuidado: si la
+[41]. En este trabajo, la dimensión que se mide es una sola, pero se define con cuidado: si la
 respuesta barata podría haber reemplazado a la del modelo de referencia sin que quien preguntó
 quedara peor. A eso se lo llama **sustituibilidad**, y es la pregunta que responden tanto los jueces
 como el lector humano.
@@ -289,7 +289,7 @@ como el lector humano.
 Un juez automático solo sirve como instrumento de medición si coincide con lo que haría una persona.
 Ese acuerdo no se puede medir con el porcentaje de coincidencias, porque dos evaluadores que dicen
 "sí" casi siempre coinciden mucho aunque decidan al azar. El **κ de Cohen** corrige esa coincidencia
-esperable [@cohen1960]:
+esperable [42]:
 
 $$
 \kappa = \frac{p_o - p_e}{1 - p_e}
@@ -300,7 +300,7 @@ proporciones de cada evaluador. Vale 1 con acuerdo perfecto, 0 con el acuerdo de
 negativo. Tiene una propiedad que importa en este trabajo: cuando una clase es muy rara (pocos "no
 sustituible"), $p_e$ es alto y cada desacuerdo sobre la clase rara pesa mucho, así que el κ puede
 ser bajo aunque el acuerdo bruto sea alto. Para escalas ordinales existe una versión ponderada, y
-para más de dos evaluadores o datos faltantes se usa el **α de Krippendorff** [@krippendorff].
+para más de dos evaluadores o datos faltantes se usa el **α de Krippendorff** [43].
 
 En este trabajo el acuerdo no es un dato accesorio: es la condición para usar a los jueces como
 instrumento de la hipótesis. Por eso se validó antes de medir, y el umbral de acuerdo que se
@@ -311,10 +311,10 @@ consideraría suficiente se fijó en el pre-registro.
 La familia de normas ISO/IEC 25000 (SQuaRE) ofrece el vocabulario para decir qué se entiende por
 calidad. La ISO/IEC 25010:2023 define el modelo de calidad del producto, en el que el gasto de
 inferencia se encuadra como **utilización de recursos**, dentro de la eficiencia de desempeño
-[@iso25010]. La ISO/IEC 25019:2023 define la calidad en uso, es decir, cómo un producto influye en
-sus partes interesadas cuando se lo usa en un contexto especificado [@iso25019]; que una respuesta
+[4]. La ISO/IEC 25019:2023 define la calidad en uso, es decir, cómo un producto influye en
+sus partes interesadas cuando se lo usa en un contexto especificado [2]; que una respuesta
 le sirva a quien preguntó se encuadra ahí. La ISO/IEC 25059:2023 adapta ambos modelos a sistemas de
-inteligencia artificial [@iso25059]. Ninguna de estas normas define cómo balancear costo y calidad
+inteligencia artificial [3]. Ninguna de estas normas define cómo balancear costo y calidad
 en un sistema que reparte tráfico entre varios modelos; ese balance es, justamente, lo que la
 frontera de este trabajo hace visible y deja en manos del operador.
 
@@ -323,12 +323,12 @@ frontera de este trabajo hace visible y deja en manos del operador.
 El mercado de gateways de IA es bastante maduro. LiteLLM es un proxy open source que se puede alojar
 en forma propia y expone una API compatible con la de OpenAI hacia más de cien proveedores, con
 estrategias de ruteo y balanceo, fallback, presupuestos por clave y caché exacta y semántica
-[@litellm]. Portkey ofrece un gateway con versión open source y versión administrada, ruteo
-condicional, reintentos, observabilidad y caché semántica [@portkey]. Cloudflare AI Gateway es un
+[17]. Portkey ofrece un gateway con versión open source y versión administrada, ruteo
+condicional, reintentos, observabilidad y caché semántica [15]. Cloudflare AI Gateway es un
 servicio administrado que suma registro, analítica, límites de uso y caché, aunque esta funciona por
-coincidencia exacta de la solicitud [@cloudflare]. OpenRouter, que este trabajo usa como proveedor,
+coincidencia exacta de la solicitud [18]. OpenRouter, que este trabajo usa como proveedor,
 unifica el acceso a modelos de muchos laboratorios detrás de una sola API y ofrece también un modo
-de ruteo automático propietario [@openrouter].
+de ruteo automático propietario [44].
 
 Estas herramientas ya resuelven buena parte de la mecánica que el trabajo necesita: rutean, hacen
 fallback, cachean y registran costos. La diferencia está en otro lugar. Todas optimizan variables

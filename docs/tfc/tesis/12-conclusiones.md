@@ -4,14 +4,14 @@
 
 Los trabajos comparables con este son los routers y las cascadas de la Tabla 7.1, y la comparación
 exige cuidado, porque ninguna de sus cifras se obtuvo en las mismas condiciones. FrugalGPT reporta
-ahorros del 59 % al 98 % [@frugalgpt] y el blog de RouteLLM del 35 % al 85 % según el benchmark
-[@routellmblog], ambos contra usar siempre GPT-4. Las dos cifras son mayores que el 31 % de este
+ahorros del 59 % al 98 % [1] y el blog de RouteLLM del 35 % al 85 % según el benchmark
+[11], ambos contra usar siempre GPT-4. Las dos cifras son mayores que el 31 % de este
 trabajo, pero se midieron en inglés, sobre tareas con respuesta verificable (clasificación, opción
 múltiple, matemática) o con un juez que no se validó contra personas, y con dos modelos en lugar de
 tres. En el caso de RouteLLM, además, la reducción que reporta el artículo (más de 2 veces) se mide
-contra un router aleatorio y no contra el modelo grande [@routellm]. La comparación más cercana en
+contra un router aleatorio y no contra el modelo grande [10]. La comparación más cercana en
 condiciones es Hybrid LLM, que entre modelos de brecha media logra un 40 % de ventaja de costo con
-una caída de calidad de hasta 4 % [@hybridllm]; este trabajo ahorra un 31 % con una caída de 4.3
+una caída de calidad de hasta 4 % [9]; este trabajo ahorra un 31 % con una caída de 4.3
 puntos, en un orden de magnitud parecido.
 
 La conclusión de posicionamiento es entonces doble. En magnitud de ahorro, el resultado queda por
@@ -31,7 +31,7 @@ Para el campo, el resultado aporta una advertencia concreta: una regla de ruteo 
 y no servir. La heurística del gateway ahorraba un 40 % y tenía la calidad de mandar todo al modelo
 local, y la métrica de similitud que se proponía para detectarlo separaba peor que el azar. Mientras
 las evaluaciones de ruteo no midan la calidad con instrumentos validados, las cifras de ahorro no
-son comparables entre sí [@moslem2026], ni tampoco confiables.
+son comparables entre sí [8], ni tampoco confiables.
 
 ## 12.2 Sobre la investigación y sus aplicaciones
 
@@ -84,7 +84,7 @@ modelo económico más barato en relación con el frontier.
 La tercera tiene que ver con el idioma. En inglés, el modelo local atiende el 49 % de los pedidos;
 en español, el 21 %. El modelo local de 7B es claramente más débil en español, que es justamente la
 carga principal del trabajo. Esto va en la línea de lo que la literatura documenta sobre la brecha
-de los modelos fuera del inglés [@blend], [@laleaderboard], y muestra por qué evaluar solo en inglés,
+de los modelos fuera del inglés [23], [24], y muestra por qué evaluar solo en inglés,
 como hacen la mayoría de los trabajos de ruteo, sobreestimaría el ahorro para un equipo que atiende
 usuarios hispanohablantes.
 

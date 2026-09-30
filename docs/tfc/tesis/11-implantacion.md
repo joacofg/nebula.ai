@@ -16,12 +16,12 @@ contra qué alternativa se la eligió.
 
 | Tecnología | Función | Alternativa descartada | Justificación |
 |---|---|---|---|
-| Python 3.12 + FastAPI [@fastapi] | Gateway y API de administración | Go; Node.js | El trabajo combina servicio web y aprendizaje automático; Python tiene los dos ecosistemas y FastAPI es asíncrono, que es lo que pide un proxy que pasa la mayor parte del tiempo esperando a un proveedor. El rendimiento alcanza para el límite de escala declarado. |
+| Python 3.12 + FastAPI [45] | Gateway y API de administración | Go; Node.js | El trabajo combina servicio web y aprendizaje automático; Python tiene los dos ecosistemas y FastAPI es asíncrono, que es lo que pide un proxy que pasa la mayor parte del tiempo esperando a un proveedor. El rendimiento alcanza para el límite de escala declarado. |
 | PostgreSQL 16 | Tenants, políticas, claves y ledger | SQLite; MongoDB | Datos relacionales con claves foráneas y consultas agregadas sobre el ledger. SQLite queda solo para los tests. |
-| Qdrant [@qdrant] | Vectores del caché semántico | pgvector; FAISS en memoria | Filtros por payload (tenant, fecha) combinados con la búsqueda por similitud en una sola consulta, y persistencia propia. |
-| Ollama [@ollama] + qwen2.5:7b [@qwen25] | Modelo local | llama.cpp directo; vLLM | Sirve modelos cuantizados en Apple Silicon con una API simple. vLLM está pensado para GPU de servidor [@pagedattention], fuera del límite tecnológico. |
-| nomic-embed-text [@nomic] | Embedding del caché y del router | embeddings de un proveedor pago | Corre local en Ollama, sin costo por pedido y sin sacar los prompts de la máquina. |
-| OpenRouter [@openrouter] | Acceso a claude-haiku-4.5 y gpt-4.1 | API directa de cada proveedor | Una sola integración para los dos niveles premium, con el costo real de cada llamada en la respuesta. |
+| Qdrant [32] | Vectores del caché semántico | pgvector; FAISS en memoria | Filtros por payload (tenant, fecha) combinados con la búsqueda por similitud en una sola consulta, y persistencia propia. |
+| Ollama [27] + qwen2.5:7b [28] | Modelo local | llama.cpp directo; vLLM | Sirve modelos cuantizados en Apple Silicon con una API simple. vLLM está pensado para GPU de servidor [26], fuera del límite tecnológico. |
+| nomic-embed-text [30] | Embedding del caché y del router | embeddings de un proveedor pago | Corre local en Ollama, sin costo por pedido y sin sacar los prompts de la máquina. |
+| OpenRouter [44] | Acceso a claude-haiku-4.5 y gpt-4.1 | API directa de cada proveedor | Una sola integración para los dos niveles premium, con el costo real de cada llamada en la respuesta. |
 | Next.js 15 + React 19 | Consola de operación | panel server-side con plantillas | Interfaz interactiva para el simulador de la frontera, que corre en el navegador sin llamar a modelos. |
 | pytest, Vitest, Playwright | Pruebas unitarias, de integración y de extremo a extremo | pruebas manuales | Cada fase se integró solo con la suite en verde. |
 | NumPy + regresión logística propia | Entrenamiento del router | scikit-learn | Dos logísticas con L2 y validación cruzada agrupada se escriben en pocas líneas; el gateway las sirve sin NumPy, con un producto escalar. |
@@ -53,11 +53,11 @@ Las métricas con que se valida el trabajo son cuatro, y todas se calculan sobre
   informó OpenRouter al generar cada respuesta. El modelo local cuesta cero en el margen.
 - **Ahorro:** $1 - \text{costo}_\text{política} / \text{costo}_\text{todo frontier}$, con un
   intervalo de confianza del 95 % por bootstrap de percentiles sobre prompts (1000 remuestras,
-  agrupando cada prompt con su traducción) [@efron1993].
+  agrupando cada prompt con su traducción) [35].
 - **Acuerdo del instrumento:** κ de Cohen binario entre la regla de los jueces y el lector humano
-  [@cohen1960], con intervalo por bootstrap, y proporción de rechazos confirmados en el conjunto
-  dirigido con intervalo de Wilson [@wilson1927]. Para los clasificadores se reporta además el AUC
-  fuera de fold [@fawcett2006].
+  [42], con intervalo por bootstrap, y proporción de rechazos confirmados en el conjunto
+  dirigido con intervalo de Wilson [36]. Para los clasificadores se reporta además el AUC
+  fuera de fold [34].
 
 > CAPTURA (fase 7): vista de observabilidad con la ruta, el nivel y el costo de cada pedido.
 
@@ -287,7 +287,7 @@ vara: es un resultado conservador.
 Hay una segunda razón por la que la cifra es un piso. La hipótesis habla del gateway completo, que
 combina el router con el caché semántico, pero el corpus no tiene consultas repetidas: cada prompt
 aparece una vez por idioma, así que el 31 % sale solo del router. En tráfico real, donde una parte
-de las consultas se repite o se parece a una anterior [@scalm], [@meancache], cada acierto del caché
+de las consultas se repite o se parece a una anterior [19], [14], cada acierto del caché
 evita además la llamada al modelo. Las corridas de agosto, con la heurística, servían 3 de 14
 pedidos desde el caché. El ahorro del caché depende tanto del tráfico que no se puede estimar con
 este corpus, y por eso no se suma; lo que se puede afirmar es que se agrega al del router, no que lo

@@ -29,18 +29,18 @@ se guarda en el caché y en el ledger.
 ### Tipos de solución considerados
 
 Antes de elegir el diseño se consideraron tres familias de solución, que son las que ordena la
-literatura revisada en el capítulo 8 [@moslem2026]:
+literatura revisada en el capítulo 8 [8]:
 
 - **Reglas fijas.** Es lo que ya existía. No requiere datos, pero la sección 9.1 muestra que no
   tiene relación con la calidad.
 - **Cascada con verificación.** El pedido va primero al modelo barato y se escala si la respuesta
-  no pasa un control, como en FrugalGPT [@frugalgpt] o AutoMix [@automix]. Juzga la respuesta
+  no pasa un control, como en FrugalGPT [1] o AutoMix [12]. Juzga la respuesta
   real, pero cada escalamiento paga dos generaciones y un juicio. Con el modelo local tardando
   una mediana de 21.3 s por respuesta en esta máquina (Tabla 11.9), una cascada que empieza por el
   local sumaría esos segundos a todos los pedidos que terminan en el premium.
 - **Router aprendido que decide antes de generar.** Un clasificador estima la dificultad del
-  pedido y lo manda directamente al nivel elegido, como Hybrid LLM [@hybridllm] y RouteLLM
-  [@routellm]. Cuesta una inferencia barata por pedido y necesita datos etiquetados.
+  pedido y lo manda directamente al nivel elegido, como Hybrid LLM [9] y RouteLLM
+  [10]. Cuesta una inferencia barata por pedido y necesita datos etiquetados.
 
 Se eligió la tercera, porque es la única que respeta el presupuesto de latencia del límite
 tecnológico (una sola generación por pedido) y porque produce, como subproducto del entrenamiento,
@@ -56,10 +56,10 @@ al marco teórico, una alternativa descartada y su relación con los límites de
 
 | Decisión | Alternativas | Elegida | Justificación |
 |---|---|---|---|
-| D1. Cómo decidir la ruta | reglas fijas; cascada; router aprendido | router aprendido de tres niveles | Una sola generación por pedido, compatible con la latencia del modelo local; la frontera sale del entrenamiento [@hybridllm], [@routellm]. |
+| D1. Cómo decidir la ruta | reglas fijas; cascada; router aprendido | router aprendido de tres niveles | Una sola generación por pedido, compatible con la latencia del modelo local; la frontera sale del entrenamiento [9], [10]. |
 | D2. Qué clasificador usar | kNN sobre embeddings; red neuronal; regresión logística | dos regresiones logísticas L2 | Con el mismo corpus, la logística es más barata que kNN en todos los niveles de calidad (USD 1.70 contra 1.76 cada mil prompts a calidad 0.95; Tabla 11.6) y se sirve con un producto escalar, sin dependencias en el gateway. Con 1250 ejemplos una red no tiene datos para superarla. |
-| D3. Cómo medir la calidad | similitud coseno; un juez LLM; ensamble de jueces validado | dos jueces de otra familia, en las dos posiciones, con reglas pre-registradas y validación humana | El coseno no separa calidad (AUC 0.25, sección 9.1); un juez solo tiene sesgos de posición y de autopreferencia [@wang2024fair], [@panickssery]. |
-| D4. Cómo aislar el caché | caché global; caché por usuario; caché por tenant | por tenant, con umbral y antigüedad de la política | Un caché global puede servirle a un cliente la respuesta generada para otro. Aislar por usuario, como MeanCache [@meancache], reduce mucho los aciertos. El tenant es la unidad de política del gateway. |
+| D3. Cómo medir la calidad | similitud coseno; un juez LLM; ensamble de jueces validado | dos jueces de otra familia, en las dos posiciones, con reglas pre-registradas y validación humana | El coseno no separa calidad (AUC 0.25, sección 9.1); un juez solo tiene sesgos de posición y de autopreferencia [39], [40]. |
+| D4. Cómo aislar el caché | caché global; caché por usuario; caché por tenant | por tenant, con umbral y antigüedad de la política | Un caché global puede servirle a un cliente la respuesta generada para otro. Aislar por usuario, como MeanCache [14], reduce mucho los aciertos. El tenant es la unidad de política del gateway. |
 | D5. Cómo acceder a los modelos premium | API directa de cada proveedor; LiteLLM como dependencia; OpenRouter | OpenRouter, con fallback local→premium | Una sola integración para los dos niveles premium, que además informa el costo real de cada llamada, que es el que usa la evaluación. El gateway sigue siendo self-hosted: lo externo son los modelos, no el plano de control. |
 
 Dos decisiones menores se desprenden de estas. La primera es que el router usa **el mismo
