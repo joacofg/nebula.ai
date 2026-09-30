@@ -527,9 +527,9 @@ describe("policy-form", () => {
     await userEvent.type(screen.getByLabelText("Umbral de similitud"), "1.2");
     await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
-    expect(
-      await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1."),
-    ).toBeInTheDocument();
+    const message = await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.");
+    // Shown next to the sticky Guardar button, where the operator is looking.
+    expect(screen.getByRole("complementary", { name: "Vista previa" })).toContainElement(message);
     expect(onSave).not.toHaveBeenCalled();
   });
 
