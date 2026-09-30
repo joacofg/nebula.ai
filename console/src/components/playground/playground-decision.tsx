@@ -1,3 +1,5 @@
+import { DecisionPath, type DecisionStep } from "@/components/system/decision-path";
+import { TierBadge } from "@/components/system/tier-badge";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
 type PlaygroundDecisionProps = {
@@ -10,7 +12,17 @@ type Signals = Record<string, unknown>;
 
 type Explanation =
   | { kind: "cache"; score: number | null }
-  | { kind: "learned"; tier: string; version: string; steps: string[]; note: string | null; fallback: boolean }
+  | {
+      kind: "learned";
+      tier: string;
+      computed: "local" | "economy" | "frontier";
+      version: string;
+      steps: string[];
+      path: DecisionStep[];
+      context: string;
+      note: string | null;
+      fallback: boolean;
+    }
   | { kind: "embedding_unavailable"; status: string; detail: string; fallback: boolean }
   | { kind: "heuristic"; detail: string; fallback: boolean }
   | { kind: "none" };
@@ -106,77 +118,66 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
       ? "El router eligió economy, pero sin modelo economy configurado el gateway lo sirvió con frontier."
       : null;
 
-  return { kind: "learned", tier, version: learned ?? "desconocido", steps, note, fallback };
+  const path: DecisionStep[] = clearsLocal
+    ? [{ tier: "local", p: pLocal, tau: tauLocal }]
+    : [
+        { tier: "local", p: pLocal, tau: tauLocal },
+        { tier: "economy", p: pEconomy, tau: tauEconomy },
+      ];
+  const version = learned ?? "desconocido";
+  const context = [
+    target === null ? null : `Objetivo ${formatProb(target)}`,
+    target !== null && allFrontier ? "todo frontier" : null,
+    `router aprendido ${version}`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  return { kind: "learned", tier, computed, version, steps, path, context, note, fallback };
 }
 
 export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps) {
   const explanation = explainDecision(entry, routeTier);
 
   return (
-    <section className="panel space-y-4 px-6 py-5" aria-labelledby="playground-decision-heading">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Decisión</div>
-        <h3
-          id="playground-decision-heading"
-          className="mt-2 font-mono text-xl font-semibold text-ink"
-        >
+    <section className="flex flex-col gap-3" aria-labelledby="playground-decision-heading">
+      <div className="flex items-baseline justify-between gap-4">
+        <h2 id="playground-decision-heading" className="m-0 text-lg font-semibold text-ink">
           Por qué este nivel
-        </h3>
+        </h2>
+        {explanation.kind === "learned" ? <TierBadge tier={explanation.tier} /> : null}
       </div>
 
       {explanation.kind === "cache" ? (
-        <p className="text-sm text-ink-2">
+        <p className="m-0 text-sm text-ink-2">
           Respuesta servida desde el caché semántico
           {explanation.score !== null ? ` (similitud ${formatProb(explanation.score)})` : ""}: no se llamó a ningún
-          modelo, así que el nivel del router no se aplicó.
+          modelo.
         </p>
       ) : explanation.kind === "learned" ? (
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded-full bg-ink px-3 py-1 font-mono text-xs font-semibold text-surface">
-              Nivel: {explanation.tier}
-            </span>
-            <span className="text-ink-3">Router aprendido {explanation.version}</span>
-          </div>
-          <ol className="space-y-2">
-            {explanation.steps.map((step) => (
-              <li
-                key={step}
-                className="rounded-xl border border-line bg-canvas px-4 py-2.5 font-mono text-sm text-ink wrap-anywhere"
-              >
-                {step}
-              </li>
-            ))}
-          </ol>
-          {explanation.note ? <p className="text-sm text-warn">{explanation.note}</p> : null}
+        <>
+          <DecisionPath steps={explanation.path} chosen={explanation.computed} animate />
+          <p className="m-0 font-label text-[13px] font-medium text-ink-3">{explanation.context}</p>
+          {explanation.note ? <p className="m-0 text-sm text-warn">{explanation.note}</p> : null}
           {explanation.fallback ? (
-            <p className="text-sm text-warn">
-              Falló el modelo local y la request se sirvió con el proveedor premium (fallback).
-            </p>
+            <p className="m-0 text-sm text-warn">Falló el modelo local y se sirvió con el proveedor premium (fallback).</p>
           ) : null}
-          <p className="text-xs text-ink-4">
-            Regla del gateway: el punto de operación más barato con calidad ≥ objetivo; luego p_local ≥ τ_local → local,
-            si no p_economy ≥ τ_economy → economy, si no frontier.
-          </p>
-        </div>
+        </>
       ) : explanation.kind === "embedding_unavailable" ? (
-        <p className="text-sm text-ink-2">
+        <p className="m-0 text-sm text-ink-2">
           {explanation.status === "embedding_dimension_mismatch"
             ? "El embedding del prompt no tiene la dimensión que espera el router aprendido"
             : "El router aprendido no pudo calcular el embedding del prompt"}
-          , así que decidió la heurística token_complexity{explanation.detail}.
+          ; decidió la heurística token_complexity{explanation.detail}.
           {explanation.fallback ? " Después falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : explanation.kind === "heuristic" ? (
-        <p className="text-sm text-ink-2">
-          Ruteo heurístico (token_complexity){explanation.detail}: el router aprendido no estuvo activo para esta request.
+        <p className="m-0 text-sm text-ink-2">
+          Ruteo heurístico (token_complexity){explanation.detail}: el router aprendido no estuvo activo.
           {explanation.fallback ? " Falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : (
-        <p className="text-sm text-ink-2">
-          El ledger no registró señales de ruteo para esta request (por ejemplo, con minimización estricta de
-          metadatos).
-        </p>
+        <p className="m-0 text-sm text-ink-2">El ledger no registró señales de ruteo para este pedido.</p>
       )}
     </section>
   );

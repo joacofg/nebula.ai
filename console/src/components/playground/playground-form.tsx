@@ -4,6 +4,17 @@ import { LoaderCircle, SendHorizontal } from "lucide-react";
 
 import type { TenantRecord } from "@/lib/admin-api";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+
+/** The three runbook prompts: one per tier at the demo's quality target. */
+export const EXAMPLE_PROMPTS = [
+  { label: "Capital de Australia", prompt: "¿Cuál es la capital de Australia?" },
+  { label: "Boletos de avión", prompt: "¿Por qué los boletos de avión están tan caros ahora?" },
+  {
+    label: "Criba de Eratóstenes",
+    prompt: "Escribe una función en Python que devuelva los primos menores que n con la criba de Eratóstenes, con tests.",
+  },
+];
 
 type PlaygroundFormProps = {
   tenants: TenantRecord[];
@@ -36,7 +47,7 @@ export function PlaygroundForm({
 
   return (
     <form
-      className="panel space-y-5 px-6 py-5"
+      className="flex flex-col gap-4"
       onSubmit={async (event) => {
         event.preventDefault();
         if (submitDisabled) {
@@ -45,24 +56,13 @@ export function PlaygroundForm({
         await onSubmit();
       }}
     >
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Run prompt</div>
-        <h3 className="mt-2 text-xl font-semibold text-ink">
-          Operator playground request
-        </h3>
-        <p className="mt-2 text-sm text-ink-3">
-          Choose the tenant context on purpose, set the target model, and send one admin-session prompt through the
-          non-streaming playground path.
-        </p>
-      </div>
-
       {sessionMissing ? (
         <Alert variant="warning">
-          <AlertDescription>Operator session missing.</AlertDescription>
+          <AlertDescription>Falta la sesión de admin.</AlertDescription>
         </Alert>
       ) : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-2">
         <label>
           <span className="field-label">Tenant</span>
           <select
@@ -80,9 +80,9 @@ export function PlaygroundForm({
         </label>
 
         <label>
-          <span className="field-label">Model</span>
+          <span className="field-label">Modelo</span>
           <input
-            className="field-input"
+            className="field-input font-mono text-[14px]"
             value={model}
             onChange={(event) => onModelChange(event.target.value)}
             disabled={disabled}
@@ -93,23 +93,33 @@ export function PlaygroundForm({
       <label className="block">
         <span className="field-label">Prompt</span>
         <textarea
-          className="field-input min-h-40 resize-y"
+          className="field-input min-h-44 resize-y leading-relaxed"
           value={prompt}
           onChange={(event) => onPromptChange(event.target.value)}
-          placeholder="Ask Nebula to summarize the current routing decision..."
           disabled={disabled}
         />
       </label>
 
-      <div className="flex items-center justify-between gap-4">
-        <p className="max-w-xl text-sm text-ink-4">
-          The first response stays immediate and only shows completion content plus the request id; recorded ledger
-          evidence appears after Nebula persists the outcome for that same request.
-        </p>
-        <button type="submit" className="action-button gap-2" disabled={submitDisabled}>
-          {isSubmitting ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SendHorizontal className="h-4 w-4" />}
-          Run prompt
-        </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="font-label text-[13px] font-medium text-ink-3">Ejemplos</span>
+        {EXAMPLE_PROMPTS.map((example) => (
+          <button
+            key={example.label}
+            type="button"
+            disabled={disabled}
+            onClick={() => onPromptChange(example.prompt)}
+            className="h-8 border border-line bg-surface px-3 text-sm font-medium text-ink-2 transition-colors hover:border-ink hover:text-ink disabled:opacity-50"
+          >
+            {example.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex justify-end">
+        <Button type="submit" size="lg" disabled={submitDisabled}>
+          {isSubmitting ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : <SendHorizontal aria-hidden className="size-4" />}
+          {isSubmitting ? "Enviando…" : "Enviar"}
+        </Button>
       </div>
     </form>
   );

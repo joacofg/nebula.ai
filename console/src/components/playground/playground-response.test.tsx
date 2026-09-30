@@ -11,3 +11,11 @@ describe("playground-response", () => {
     expect(screen.getByText("Nebula routed this prompt.")).toBeInTheDocument();
   });
 });
+
+describe("PlaygroundResponse long content", () => {
+  it("wraps a 2000-character unbroken answer instead of overflowing", () => {
+    const long = "x".repeat(2000);
+    renderWithProviders(<PlaygroundResponse content={long} />);
+    expect(screen.getByText(long).className).toContain("[overflow-wrap:anywhere]");
+  });
+});

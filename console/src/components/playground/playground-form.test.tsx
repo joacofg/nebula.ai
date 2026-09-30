@@ -41,7 +41,7 @@ describe("playground-form", () => {
 
     expect(screen.getByRole("combobox", { name: /tenant/i })).toHaveValue("default");
 
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
     expect(onSubmit).toHaveBeenCalledTimes(1);
   });
@@ -66,38 +66,38 @@ describe("playground-form", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Run prompt" }));
+    await user.click(screen.getByRole("button", { name: "Enviar" }));
 
-    expect(screen.getByText("Operator session missing.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Run prompt" })).toBeDisabled();
+    expect(screen.getByText("Falta la sesión de admin.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Enviar" })).toBeDisabled();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("explains the operator-only tenant-selected non-streaming flow", () => {
+  it("loads an example prompt without sending it", async () => {
+    const user = userEvent.setup();
+    const onPromptChange = vi.fn();
+    const onSubmit = vi.fn();
+
     renderWithProviders(
       <PlaygroundForm
-        tenants={tenants}
+        tenants={[{ id: "default", name: "Default Workspace", description: null, metadata: {}, active: true, created_at: "", updated_at: "" }]}
         selectedTenantId="default"
         model="nebula-auto"
-        prompt="Corroborate the current route"
+        prompt=""
         disabled={false}
         isSubmitting={false}
         sessionMissing={false}
         onSelectedTenantIdChange={vi.fn()}
         onModelChange={vi.fn()}
-        onPromptChange={vi.fn()}
-        onSubmit={vi.fn().mockResolvedValue(undefined)}
+        onPromptChange={onPromptChange}
+        onSubmit={onSubmit}
       />,
-      { adminKey: "nebula-admin-key" },
     );
 
-    expect(screen.getByRole("heading", { name: "Operator playground request" })).toBeInTheDocument();
-    expect(
-      screen.getByText(/Choose the tenant context on purpose, set the target model, and send one admin-session prompt/i),
-    ).toBeInTheDocument();
-    expect(screen.getByText(/non-streaming playground path/i)).toBeInTheDocument();
-    expect(screen.getByText(/The first response stays immediate and only shows completion content plus the request id/i)).toBeInTheDocument();
-    expect(screen.getByText(/recorded ledger evidence appears after Nebula persists the outcome/i)).toBeInTheDocument();
-    expect(screen.queryByText(/public integration boundary/i)).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Criba de Eratóstenes" }));
+    expect(onPromptChange).toHaveBeenCalledWith(expect.stringContaining("criba de Eratóstenes"));
+    expect(onSubmit).not.toHaveBeenCalled();
+    expect(screen.getByRole("button", { name: "Capital de Australia" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Boletos de avión" })).toBeInTheDocument();
   });
 });

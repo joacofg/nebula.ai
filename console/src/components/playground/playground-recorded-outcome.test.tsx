@@ -37,33 +37,15 @@ describe("playground-recorded-outcome", () => {
       />,
     );
 
-    expect(screen.getByRole("heading", { name: "Recorded outcome" })).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "Persisted ledger evidence for the same request after Nebula records the final route, provider, fallback, and policy outcome.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Terminal status")).toBeInTheDocument();
-    expect(screen.getByText("Route target")).toBeInTheDocument();
-    expect(screen.getByText("Provider")).toBeInTheDocument();
-    expect(screen.getByText("Route reason")).toBeInTheDocument();
-    expect(screen.getByText("Policy outcome")).toBeInTheDocument();
-    expect(screen.getByText("Fallback used")).toBeInTheDocument();
-    expect(screen.getByText("Cache hit")).toBeInTheDocument();
-    expect(screen.getByText("Prompt tokens")).toBeInTheDocument();
-    expect(screen.getByText("Completion tokens")).toBeInTheDocument();
-    expect(screen.getByText("Total tokens")).toBeInTheDocument();
-    expect(screen.getByText("Estimated cost")).toBeInTheDocument();
-    expect(screen.getByText("fallback_completed")).toBeInTheDocument();
-    expect(screen.getByText("premium")).toBeInTheDocument();
-    expect(screen.getByText("openai-compatible")).toBeInTheDocument();
-    expect(screen.getByText("fallback")).toBeInTheDocument();
-    expect(screen.getByText("allowed")).toBeInTheDocument();
-    expect(screen.getByText("21")).toBeInTheDocument();
-    expect(screen.getByText("12")).toBeInTheDocument();
-    expect(screen.getByText("33")).toBeInTheDocument();
-    expect(screen.getByText("Yes")).toBeInTheDocument();
-    expect(screen.getByText("No")).toBeInTheDocument();
-    expect(screen.getByText("$0.0180")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Registro en el ledger" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Estado" })).toHaveTextContent("fallback_completed");
+    expect(screen.getByRole("group", { name: "Ruta" })).toHaveTextContent("premium");
+    expect(screen.getByRole("group", { name: "Proveedor" })).toHaveTextContent("openai-compatible");
+    expect(screen.getByRole("group", { name: "Motivo" })).toHaveTextContent("fallback");
+    expect(screen.getByRole("group", { name: "Política" })).toHaveTextContent("allowed");
+    expect(screen.getByRole("group", { name: "Tokens" })).toHaveTextContent("21 + 12 = 33");
+    expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("sí");
+    expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("no");
+    expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0180");
   });
 });

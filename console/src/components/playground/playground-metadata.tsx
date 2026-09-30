@@ -1,3 +1,6 @@
+import { Readout } from "@/components/system/readout";
+import { TierBadge } from "@/components/system/tier-badge";
+
 type PlaygroundMetadataProps = {
   requestId: string;
   tenantId: string;
@@ -13,76 +16,34 @@ type PlaygroundMetadataProps = {
 };
 
 function yesNo(value: boolean) {
-  return value ? "Yes" : "No";
+  return value ? "sí" : "no";
 }
 
-function displayValue(value: string) {
-  return value.trim().length > 0 ? value : "N/A";
+function orDash(value: string) {
+  return value.trim().length > 0 ? value : "—";
 }
 
-export function PlaygroundMetadata({
-  requestId,
-  tenantId,
-  routeTarget,
-  routeReason,
-  routeTier,
-  provider,
-  cacheHit,
-  fallbackUsed,
-  latencyMs,
-  policyMode,
-  policyOutcome,
-}: PlaygroundMetadataProps) {
+/** The live X-Nebula-* evidence, folded: the ledger block above carries the headline numbers. */
+export function PlaygroundMetadata(props: PlaygroundMetadataProps) {
   return (
-    <section className="panel space-y-4 px-6 py-5">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Metadata</div>
-        <h3 className="mt-2 text-xl font-semibold text-ink">
-          Immediate response evidence
-        </h3>
-        <p className="mt-2 text-sm text-ink-3">
-          These fields describe the live route, policy, and tenant evidence before the ledger finishes
-          recording the same request.
-        </p>
-      </div>
-
-      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <MetadataRow label="Request ID" value={displayValue(requestId)} mono />
-        <MetadataRow label="Tenant" value={displayValue(tenantId)} mono />
-        <MetadataRow label="Route target" value={displayValue(routeTarget)} />
-        <MetadataRow label="Route reason" value={displayValue(routeReason)} />
-        <MetadataRow label="Route tier" value={displayValue(routeTier)} />
-        <MetadataRow label="Provider" value={displayValue(provider)} />
-        <MetadataRow label="Policy mode" value={displayValue(policyMode)} />
-        <MetadataRow label="Policy outcome" value={displayValue(policyOutcome)} />
-        <MetadataRow label="Cache hit" value={yesNo(cacheHit)} />
-        <MetadataRow label="Fallback used" value={yesNo(fallbackUsed)} />
-        <MetadataRow label="Latency" value={`${latencyMs} ms`} />
-      </dl>
-    </section>
-  );
-}
-
-function MetadataRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
-      <dd
-        className={[
-          "mt-2 text-sm text-ink wrap-anywhere",
-          mono ? "font-mono" : "",
-        ].join(" ")}
-      >
-        {value}
-      </dd>
-    </div>
+    <details className="group border-t border-line pt-3">
+      <summary className="cursor-pointer text-sm font-semibold text-ink marker:text-ink-3">Detalle de la respuesta</summary>
+      <Readout
+        className="mt-3"
+        items={[
+          { label: "Request ID", value: <span className="font-mono text-[13px] [overflow-wrap:anywhere]">{orDash(props.requestId)}</span> },
+          { label: "Tenant", value: <span className="font-mono text-[13px]">{orDash(props.tenantId)}</span> },
+          { label: "Ruta", value: orDash(props.routeTarget) },
+          { label: "Motivo", value: orDash(props.routeReason) },
+          { label: "Nivel", value: props.routeTier ? <TierBadge tier={props.routeTier} /> : "—" },
+          { label: "Proveedor", value: orDash(props.provider) },
+          { label: "Modo de política", value: orDash(props.policyMode) },
+          { label: "Resultado de política", value: <span className="font-mono text-[12px] font-normal">{orDash(props.policyOutcome)}</span> },
+          { label: "Caché", value: yesNo(props.cacheHit) },
+          { label: "Fallback", value: yesNo(props.fallbackUsed) },
+          { label: "Latencia", value: `${props.latencyMs} ms` },
+        ]}
+      />
+    </details>
   );
 }

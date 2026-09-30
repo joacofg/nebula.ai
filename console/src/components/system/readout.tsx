@@ -11,10 +11,10 @@ export function Readout({ items, className }: { items: ReadoutItem[]; className?
       {items.map((item) => (
         <div key={item.label} role="group" aria-label={item.label} className="border-b border-line py-2">
           <div className="flex items-baseline justify-between gap-4">
-            <dt className="text-sm text-ink-2">{item.label}</dt>
+            <dt className="shrink-0 text-sm text-ink-2">{item.label}</dt>
             <dd
               className={cn(
-                "m-0 text-right font-semibold text-ink",
+                "m-0 min-w-0 text-right font-semibold text-ink [overflow-wrap:anywhere]",
                 item.emphasis ? "text-[22px] leading-tight" : "text-base",
               )}
             >

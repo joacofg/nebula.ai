@@ -1,62 +1,35 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
+import { Readout } from "@/components/system/readout";
+
 type PlaygroundRecordedOutcomeProps = {
   entry: UsageLedgerRecord;
 };
 
-function formatEstimatedCost(value: number | null) {
-  if (value === null) {
-    return "N/A";
-  }
-  return `$${value.toFixed(4)}`;
-}
-
-function yesNo(value: boolean) {
-  return value ? "Yes" : "No";
-}
-
-function displayValue(value: string | null) {
-  return value && value.trim().length > 0 ? value : "N/A";
+function orDash(value: string | null) {
+  return value && value.trim().length > 0 ? value : "—";
 }
 
 export function PlaygroundRecordedOutcome({ entry }: PlaygroundRecordedOutcomeProps) {
   return (
-    <section className="panel space-y-4 px-6 py-5">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
-          Recorded outcome
-        </div>
-        <h3 className="mt-2 text-xl font-semibold text-ink">
-          Recorded outcome
-        </h3>
-        <p className="mt-2 text-sm text-ink-3">
-          Persisted ledger evidence for the same request after Nebula records the final route, provider,
-          fallback, and policy outcome.
-        </p>
-      </div>
-
-      <dl className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        <OutcomeRow label="Terminal status" value={entry.terminal_status} />
-        <OutcomeRow label="Route target" value={entry.final_route_target} />
-        <OutcomeRow label="Provider" value={displayValue(entry.final_provider)} />
-        <OutcomeRow label="Route reason" value={displayValue(entry.route_reason)} />
-        <OutcomeRow label="Policy outcome" value={displayValue(entry.policy_outcome)} />
-        <OutcomeRow label="Fallback used" value={yesNo(entry.fallback_used)} />
-        <OutcomeRow label="Cache hit" value={yesNo(entry.cache_hit)} />
-        <OutcomeRow label="Prompt tokens" value={String(entry.prompt_tokens)} />
-        <OutcomeRow label="Completion tokens" value={String(entry.completion_tokens)} />
-        <OutcomeRow label="Total tokens" value={String(entry.total_tokens)} />
-        <OutcomeRow label="Estimated cost" value={formatEstimatedCost(entry.estimated_cost)} />
-      </dl>
+    <section aria-labelledby="playground-ledger-heading" className="flex flex-col gap-2">
+      <h2 id="playground-ledger-heading" className="m-0 text-lg font-semibold text-ink">
+        Registro en el ledger
+      </h2>
+      <Readout
+        items={[
+          { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : `USD ${entry.estimated_cost.toFixed(4)}`, emphasis: true },
+          { label: "Tokens", value: `${entry.prompt_tokens} + ${entry.completion_tokens} = ${entry.total_tokens}` },
+          { label: "Modelo", value: <span className="font-mono text-[13px] [overflow-wrap:anywhere]">{orDash(entry.response_model)}</span> },
+          { label: "Proveedor", value: orDash(entry.final_provider) },
+          { label: "Ruta", value: entry.final_route_target },
+          { label: "Motivo", value: orDash(entry.route_reason) },
+          { label: "Estado", value: entry.terminal_status },
+          { label: "Política", value: <span className="font-mono text-[12px] font-normal">{orDash(entry.policy_outcome)}</span> },
+          { label: "Caché", value: entry.cache_hit ? "sí" : "no" },
+          { label: "Fallback", value: entry.fallback_used ? "sí" : "no" },
+        ]}
+      />
     </section>
-  );
-}
-
-function OutcomeRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
-      <dd className="mt-2 text-sm text-ink wrap-anywhere">{value}</dd>
-    </div>
   );
 }

@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { FlaskConical, LoaderCircle } from "lucide-react";
 
+import { PageHeader } from "@/components/system/page-header";
+import { EmptyState, LoadingRows } from "@/components/system/state";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { PlaygroundForm } from "@/components/playground/playground-form";
 import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
@@ -43,7 +44,7 @@ export default function PlaygroundPage() {
   const mutation = useMutation({
     mutationFn: async (payload: PlaygroundInput) => {
       if (!adminKey) {
-        throw new Error("Operator session missing.");
+        throw new Error("Falta la sesión de admin.");
       }
       const startedAt = performance.now();
       const result = await createPlaygroundCompletion(adminKey, payload);
@@ -57,36 +58,21 @@ export default function PlaygroundPage() {
   const sessionMissing = !adminKey;
 
   return (
-    <section className="space-y-6">
-      <header className="panel px-6 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Playground</div>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">
-              Operator corroboration sandbox
-            </h2>
-            <p className="mt-2 max-w-2xl text-sm text-ink-3">
-              Use the active admin session to run a non-streaming corroboration request for the tenant you select here.
-              This checks the live Nebula routing path without acting as the public <code>POST /v1/chat/completions</code>{" "}
-              integration boundary.
-            </p>
-          </div>
-          <div className="inline-flex items-center gap-2 rounded-full bg-mark-soft px-3 py-1 text-xs font-semibold text-mark">
-            <FlaskConical className="h-3.5 w-3.5" />
-            Non-streaming
-          </div>
-        </div>
-      </header>
+    <section>
+      <PageHeader
+        title="Playground"
+        cells={[
+          { label: "Modo", value: "Sin streaming" },
+          { label: "Sesión", value: "admin" },
+        ]}
+      />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]">
-        <div className="space-y-4">
+      <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="border-line px-6 py-6 xl:border-r">
           {tenantsQuery.isLoading ? (
-            <div className="panel flex items-center gap-3 px-6 py-5 text-sm text-ink-4">
-              <LoaderCircle className="h-4 w-4 animate-spin" />
-              Loading tenant inventory...
-            </div>
+            <LoadingRows rows={4} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
-            <ErrorAlert error={tenantsQuery.error} fallback="Unable to load tenants." />
+            <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
           ) : (
             <PlaygroundForm
               tenants={tenantsQuery.data ?? []}
@@ -110,7 +96,9 @@ export default function PlaygroundPage() {
           )}
         </div>
 
-        <PlaygroundResponseCard result={mutation.data} error={mutation.error} adminKey={adminKey} />
+        <div className="min-w-0 border-t border-line px-6 py-6 xl:border-t-0">
+          <PlaygroundResponseCard result={mutation.data} error={mutation.error} adminKey={adminKey} />
+        </div>
       </div>
     </section>
   );
@@ -142,27 +130,37 @@ function PlaygroundResponseCard({
   });
 
   if (error) {
-    return (
-      <ErrorAlert error={error} fallback="Unable to complete the request." />
-    );
+    return <ErrorAlert error={error} fallback="No se pudo completar el pedido." />;
   }
 
   if (!result) {
-    return (
-      <div className="panel px-6 py-5 text-sm text-ink-4">
-        Submit a prompt to see the assistant response, routing evidence, and request correlation id.
-      </div>
-    );
+    return <EmptyState title="Enviar un prompt para ver la respuesta y la decisión." />;
   }
 
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-8">
       {result.errorDetail ? (
         <Alert variant="destructive">
           <AlertDescription>{result.errorDetail}</AlertDescription>
         </Alert>
       ) : null}
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
+      {recordedOutcomeQuery.isLoading ? (
+        <LoadingRows rows={3} label="Esperando el registro del ledger" />
+      ) : recordedOutcomeQuery.isError ? (
+        <Alert variant="warning">
+          <AlertDescription>
+            {recordedOutcomeQuery.error instanceof Error
+              ? recordedOutcomeQuery.error.message
+              : "No se pudo leer el registro del ledger."}
+          </AlertDescription>
+        </Alert>
+      ) : recordedOutcomeQuery.data ? (
+        <>
+          <PlaygroundDecision entry={recordedOutcomeQuery.data} routeTier={result.routeTier ?? ""} />
+          <PlaygroundRecordedOutcome entry={recordedOutcomeQuery.data} />
+        </>
+      ) : null}
       <PlaygroundMetadata
         requestId={result.requestId}
         tenantId={result.tenantId}
@@ -176,22 +174,6 @@ function PlaygroundResponseCard({
         policyMode={result.policyMode}
         policyOutcome={result.policyOutcome}
       />
-      {recordedOutcomeQuery.isLoading ? (
-        <div className="panel px-6 py-5 text-sm text-ink-4">Loading recorded outcome...</div>
-      ) : recordedOutcomeQuery.isError ? (
-        <Alert variant="warning">
-          <AlertDescription>
-            {recordedOutcomeQuery.error instanceof Error
-              ? recordedOutcomeQuery.error.message
-              : "Unable to load recorded outcome."}
-          </AlertDescription>
-        </Alert>
-      ) : recordedOutcomeQuery.data ? (
-        <>
-          <PlaygroundDecision entry={recordedOutcomeQuery.data} routeTier={result.routeTier ?? ""} />
-          <PlaygroundRecordedOutcome entry={recordedOutcomeQuery.data} />
-        </>
-      ) : null}
     </div>
   );
 }

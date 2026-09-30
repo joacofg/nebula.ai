@@ -52,9 +52,10 @@ describe("PlaygroundDecision", () => {
     const { container } = render(<PlaygroundDecision entry={entry()} routeTier="economy" />);
 
     expect(screen.getByRole("heading", { name: "Por qué este nivel" })).toBeInTheDocument();
-    expect(screen.getByText("p_local 0.69 < τ_local 0.76 → no alcanza el local")).toBeInTheDocument();
-    expect(screen.getByText("p_economy 0.91 ≥ τ_economy 0.90 → economy (objetivo 0.90)")).toBeInTheDocument();
-    expect(screen.getByText("Router aprendido v1")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", { name: "Decisión: local descartado (0.69 < 0.76), economy elegido (0.91 ≥ 0.90)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Objetivo 0.90 · router aprendido v1")).toBeInTheDocument();
     expect(panelText(container)).not.toMatch(/NaN|undefined/);
   });
 
@@ -76,9 +77,8 @@ describe("PlaygroundDecision", () => {
       />,
     );
 
-    expect(screen.getByText("p_local 0.8312 ≥ τ_local 0.82 → local (objetivo 0.95)")).toBeInTheDocument();
-    expect(screen.getAllByRole("listitem")).toHaveLength(1);
-    expect(screen.getByText("Nivel: local")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Decisión: local elegido (0.8312 ≥ 0.82)" })).toBeInTheDocument();
+    expect(screen.getByText("Objetivo 0.95 · router aprendido v1")).toBeInTheDocument();
   });
 
   it("renders an all-frontier operating point as infinite thresholds", () => {
@@ -98,8 +98,12 @@ describe("PlaygroundDecision", () => {
       />,
     );
 
-    expect(screen.getByText("p_local 0.99 < τ_local ∞ → no alcanza el local")).toBeInTheDocument();
-    expect(screen.getByText("p_economy 0.99 < τ_economy ∞ → frontier (objetivo 1.00, todo frontier)")).toBeInTheDocument();
+    expect(
+      screen.getByRole("img", {
+        name: "Decisión: local descartado (0.99 < ∞), economy descartado (0.99 < ∞), frontier elegido",
+      }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Objetivo 1.00 · todo frontier · router aprendido v1")).toBeInTheDocument();
     expect(panelText(container)).not.toMatch(/NaN|null|undefined/);
   });
 
@@ -180,7 +184,7 @@ describe("PlaygroundDecision", () => {
                           routeTier="economy" />,
     );
     expect(panelText(container)).toMatch(/falló el modelo local/i);
-    expect(screen.getByText("p_local 0.69 < τ_local 0.76 → no alcanza el local")).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /local descartado \(0\.69 < 0\.76\)/ })).toBeInTheDocument();
   });
 
   it("tells a dimension mismatch apart from an unavailable embedding", () => {
@@ -198,7 +202,7 @@ describe("PlaygroundDecision", () => {
     const signals = { ...entry().route_signals } as Record<string, unknown>;
     delete signals.p_local;
     const { container } = render(<PlaygroundDecision entry={entry({ route_signals: signals })} routeTier="economy" />);
-    expect(panelText(container)).not.toMatch(/p_local 0\.00/);
-    expect(panelText(container)).toMatch(/p_local —/);
+    expect(screen.getByRole("img", { name: /local sin dato/ })).toBeInTheDocument();
+    expect(panelText(container)).not.toMatch(/p local 0\.00/);
   });
 });
