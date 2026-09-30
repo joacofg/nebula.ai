@@ -9,6 +9,7 @@
 @theme {
   --font-sans: var(--font-fira-sans), sans-serif;
   --font-mono: var(--font-fira-code), ui-monospace, monospace;
+  --font-label: var(--font-fira-sans), sans-serif;
 
   /* Design roles (DESIGN.md). Values still match the pre-fase-7 palette. */
   --color-surface: #ffffff;
