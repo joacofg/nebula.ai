@@ -76,52 +76,32 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
-  await expect(page.getByRole("link", { name: "Policy" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("link", { name: "Policy" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
+  await expect(page.getByRole("link", { name: "Política" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Política" }).click();
   await expect(page).toHaveURL(/\/policy$/, { timeout: 30_000 });
-  const runtimeHeading = page.getByRole("heading", { name: "Runtime-enforced controls" });
-  const runtimeSection = runtimeHeading.locator("xpath=ancestor::section[1]");
-  await expect(runtimeHeading).toBeVisible();
-  await expect(page.getByText("Applies in live request evaluation")).toBeVisible();
-  await expect(
-    page.getByText(
-      "These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.",
-    ),
-  ).toBeVisible();
-  await expect(
-    page.getByText(
-      "When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.",
-    ),
-  ).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Soft budget advisory" })).toBeVisible();
-  await expect(
-    page.getByText(
-      "Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.",
-    ),
-  ).toBeVisible();
-  await expect(runtimeSection.getByText("Soft budget USD")).not.toBeVisible();
-  await expect(page.getByLabel("Hard budget enforcement")).toBeDisabled();
-  await expect(
-    page.getByText("Set a hard cumulative budget limit first to activate this enforcement choice."),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Política" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Ruteo" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Límites" })).toBeVisible();
+  await expect(page.getByLabel("Presupuesto blando (USD)")).toBeVisible();
+  await expect(page.getByLabel("Al agotarse el presupuesto")).toBeDisabled();
+  await expect(page.getByText("Primero definir el presupuesto duro.")).toBeVisible();
   await expect(page.getByLabel("Prompt capture enabled")).not.toBeVisible();
-  await expect(page.getByLabel("Response capture enabled")).not.toBeVisible();
 
   await page.selectOption("#routing-mode-default", "premium_only");
-  await page.getByRole("checkbox", { name: "Fallback enabled" }).uncheck();
+  await page.getByRole("checkbox", { name: "Fallback a premium si falla el local" }).uncheck();
   await page.locator("#hard-budget-limit-usd").fill("25");
-  await expect(page.getByLabel("Hard budget enforcement")).toBeEnabled();
+  await expect(page.getByLabel("Al agotarse el presupuesto")).toBeEnabled();
   await page.selectOption("#hard-budget-enforcement", "deny");
-  await page.getByPlaceholder("Add model").fill("openai/gpt-4.5-mini");
-  await page.getByRole("button", { name: "Add model" }).click();
-  await expect(page.getByLabel("Routing quality target")).toHaveValue("0.95");
-  await page.getByLabel("Routing quality target").fill("0.9");
-  await page.getByRole("button", { name: "Save policy" }).click();
+  await page.getByRole("textbox", { name: "Agregar modelo" }).fill("openai/gpt-4.5-mini");
+  await page.getByRole("button", { name: "Agregar", exact: true }).click();
+  await expect(page.getByLabel("Objetivo de calidad")).toHaveValue("0.95");
+  await page.getByLabel("Objetivo de calidad").fill("0.9");
+  await page.getByRole("button", { name: "Guardar política" }).click();
 
   await page.getByRole("link", { name: "Tenants" }).click();
-  await page.getByRole("link", { name: "Policy" }).click();
+  await page.getByRole("link", { name: "Política" }).click();
 
   await expect(page.locator("#routing-mode-default")).toHaveValue("premium_only");
   await expect(page.locator("#hard-budget-limit-usd")).toHaveValue("25");

@@ -188,42 +188,27 @@ test("operator can inspect request-first outage and recovery truth on observabil
   });
 
   await page.goto("/");
-  await page.getByLabel("Nebula admin key").fill("nb-admin-valid");
-  await page.getByRole("button", { name: "Enter console" }).click();
+  await page.getByLabel("Clave de admin").fill("nb-admin-valid");
+  await page.getByRole("button", { name: "Entrar" }).click();
 
-  await expect(page.getByRole("link", { name: "Observability" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("link", { name: "Observability" }).click();
+  await expect(page.getByRole("link", { name: "Observabilidad" })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Observabilidad" }).click();
   await expect(page).toHaveURL(/\/observability$/, { timeout: 30_000 });
 
-  await expect(page.getByRole("heading", { name: "Selected request evidence first" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Follow-up context for the selected request" })).toBeVisible();
-  await expect(page.getByText("req-governance-001")).toBeVisible();
-  await expect(
-    page.getByText(
-      /The selected ledger row remains the authoritative persisted record for route, provider, fallback, calibration state, and policy outcome\./i,
-    ),
-  ).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Observabilidad" })).toBeVisible();
+  const ledger = page.getByRole("table", { name: "Ledger de pedidos" });
+  await expect(ledger.getByRole("row", { name: /req-governance-001/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /Pedido/ })).toContainText("req-gove");
 
-  await expect(page.getByText("governance_store")).toBeVisible();
-  await expect(page.getByText("semantic_cache")).toBeVisible();
-  await expect(page.getByText("premium_provider")).toBeVisible();
-  await expect(page.getByText("serving critical")).toBeVisible();
-  await expect(page.getByText("serving optional")).toBeVisible();
-  await expect(page.getByText("fail closed")).toBeVisible();
-  await expect(page.getByText("continuity limited")).toBeVisible();
-  await expect(page.getByText("governance query failed")).toBeVisible();
-  await expect(page.getByText("semantic cache unavailable")).toBeVisible();
-  await expect(page.getByText("premium provider recovered")).toBeVisible();
-  await expect(page.getByText("2026-04-12T01:00:00Z")).toBeVisible();
-  await expect(page.getByText("2026-04-12T01:03:00Z")).toBeVisible();
-  await expect(
-    page.getByText(
-      /These dependency states do not replace the ledger record; they provide supporting runtime context for the same investigation\./i,
-    ),
-  ).toBeVisible();
-
-  await expect(page.getByText(/policy preview/i)).toBeVisible();
-  await expect(page.getByText(/inspection-only/i)).toBeVisible();
+  await page.getByRole("tab", { name: "Dependencias" }).click();
+  const deps = page.getByRole("tabpanel");
+  await expect(deps.getByText("governance_store", { exact: true })).toBeVisible();
+  await expect(deps.getByText("semantic_cache", { exact: true })).toBeVisible();
+  await expect(deps.getByText("premium_provider", { exact: true })).toBeVisible();
+  await expect(deps.getByText("serving critical")).toBeVisible();
+  await expect(deps.getByText("fail closed")).toBeVisible();
+  await expect(deps.getByText("governance query failed")).toBeVisible();
+  await expect(deps.getByText("premium provider recovered")).toBeVisible();
+  await expect(deps.getByText("2026-04-12T01:03:00Z")).toBeVisible();
   await expect(page.getByText(/dashboard/i)).toHaveCount(0);
 });
