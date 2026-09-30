@@ -97,6 +97,11 @@ def metric_validation(root: Path) -> str:
         who = "el lector humano" if info["kind"] == "human" else info["note"].split(",")[0]
         subs = sum(rubric.is_substitutable(labels[rater][p]) for p in shared)
         rates.append(f"{who} {_pct(subs / len(shared), 0)}")
+    kappas = []
+    for a in r["agreements"]:
+        if a["left_rater"] == r["reference_rater"]:
+            who = raters[a["right_rater"]]["note"].split(",")[0]
+            kappas.append(f"{a['cohens_kappa_binary']:.2f} para {who}")
     return (f"Sobre {natural['pairs']} pares en inglés con nota humana, la similitud coseno del "
             f"embedding (prefijo `{chosen}`) separó las respuestas sustituibles de las que no lo eran "
             f"con AUC {natural['auc']:.2f} (IC 95 % {ci['low']:.2f}–{ci['high']:.2f}), por debajo "
@@ -104,7 +109,8 @@ def metric_validation(root: Path) -> str:
             f"{scale['local_vs_premium']['median']:.3f}, prácticamente la misma que entre dos modelos "
             f"premium ({scale['premium_vs_premium']['median']:.3f}): en ese rango la métrica está "
             f"saturada y no distingue calidad. En esos mismos pares, la proporción juzgada sustituible "
-            f"fue {', '.join(rates)}.")
+            f"fue {', '.join(rates)}. El acuerdo de esos dos jueces con el lector, medido con el κ "
+            f"binario de Cohen, fue {' y '.join(kappas)}.")
 
 
 def router_fixed_policies(report: dict) -> str:
@@ -177,26 +183,40 @@ def tier_distribution(gt_report: dict) -> str:
     return "\n".join(rows)
 
 
+class GeneratorError(ValueError):
+    pass
+
+
+def _render(name: str, source: Path, build) -> str:
+    try:
+        return build()
+    except FileNotFoundError:
+        raise
+    except (KeyError, ValueError, StopIteration, TypeError, IndexError) as exc:
+        raise GeneratorError(f"{name}: {source}: {exc!r}") from exc
+
+
 def render_all() -> dict[str, str]:
     from scripts.ground_truth import report as gt_report
     from scripts.router import train
 
-    summary = gt_report.summarise(GT_ROOT)
-    router = _json(ROUTER / "report.json")
-    latency = _json(ROUTER / "latency.json")
-    return {
-        "corpus-fase2": gt_report.thesis_corpus(summary),
-        "judges-fase2": gt_report.thesis_judges(summary),
-        "router-fase3": train.thesis_block(router),
-        "tier-distribution": tier_distribution(_json(GT_ROOT / "report.json")),
-        "baseline-savings": baseline_savings(RESULTS),
-        "metric-validation": metric_validation(METRIC),
-        "router-fixed-policies": router_fixed_policies(router),
-        "router-sensitivity": router_sensitivity(router),
-        "router-cost-at-quality": router_cost_at_quality(router),
-        "router-latency": router_latency(latency),
-        "router-frontier-points": router_frontier_points(router),
-    }
+    summary = _render("corpus-fase2", GT_ROOT, lambda: gt_report.summarise(GT_ROOT))
+    router_path, latency_path, gt_path = ROUTER / "report.json", ROUTER / "latency.json", GT_ROOT / "report.json"
+    router, latency = _json(router_path), _json(latency_path)
+    blocks_spec = (
+        ("corpus-fase2", GT_ROOT, lambda: gt_report.thesis_corpus(summary)),
+        ("judges-fase2", GT_ROOT, lambda: gt_report.thesis_judges(summary)),
+        ("router-fase3", router_path, lambda: train.thesis_block(router)),
+        ("tier-distribution", gt_path, lambda: tier_distribution(_json(gt_path))),
+        ("baseline-savings", RESULTS, lambda: baseline_savings(RESULTS)),
+        ("metric-validation", METRIC, lambda: metric_validation(METRIC)),
+        ("router-fixed-policies", router_path, lambda: router_fixed_policies(router)),
+        ("router-sensitivity", router_path, lambda: router_sensitivity(router)),
+        ("router-cost-at-quality", router_path, lambda: router_cost_at_quality(router)),
+        ("router-latency", latency_path, lambda: router_latency(latency)),
+        ("router-frontier-points", router_path, lambda: router_frontier_points(router)),
+    )
+    return {name: _render(name, source, build) for name, source, build in blocks_spec}
 
 
 def main(argv: list[str] | None = None) -> int:

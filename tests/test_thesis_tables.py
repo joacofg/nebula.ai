@@ -136,3 +136,18 @@ def test_cost_at_quality_compares_the_classifiers():
     assert "| regresión logística (elegida) | 0.56 | 1.01 | 1.70 |" in text
     assert "| kNN (k = 20) | 0.64 | 1.06 | 1.76 |" in text
     assert "| mezcla aleatoria de niveles | 0.96 | 1.47 | 1.97 |" in text
+
+
+def test_a_report_missing_a_key_names_the_block_and_the_file(monkeypatch, capsys):
+    report = json.loads(Path("benchmarks/router/v1/report.json").read_text())
+    del report["knn"]
+    real = tables._json
+    monkeypatch.setattr(tables, "_json", lambda p: report if p == tables.ROUTER / "report.json" else real(p))
+    assert tables.main(["--check"]) == 2
+    err = capsys.readouterr().err
+    assert "router-cost-at-quality" in err and "benchmarks/router/v1/report.json" in err
+
+
+def test_metric_validation_block_reports_the_pilot_judges_kappa():
+    text = tables.metric_validation(Path("benchmarks/metric-validation"))
+    assert "κ binario" in text and "0.09" in text and "-0.05" in text

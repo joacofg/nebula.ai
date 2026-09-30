@@ -38,7 +38,7 @@ métrica se la validó contra un lector humano, con un estudio piloto que forma 
 repositorio (`benchmarks/metric-validation/`). El resultado fue negativo:
 
 <!-- GEN:metric-validation -->
-Sobre 22 pares en inglés con nota humana, la similitud coseno del embedding (prefijo `search_document`) separó las respuestas sustituibles de las que no lo eran con AUC 0.25 (IC 95 % 0.00–0.56), por debajo del azar. La mediana del coseno entre una respuesta local y una premium fue 0.944, prácticamente la misma que entre dos modelos premium (0.939): en ese rango la métrica está saturada y no distingue calidad. En esos mismos pares, la proporción juzgada sustituible fue el lector humano 91 %, google/gemini-2.5-flash 68 %, openai/gpt-4o-mini 32 %.
+Sobre 22 pares en inglés con nota humana, la similitud coseno del embedding (prefijo `search_document`) separó las respuestas sustituibles de las que no lo eran con AUC 0.25 (IC 95 % 0.00–0.56), por debajo del azar. La mediana del coseno entre una respuesta local y una premium fue 0.944, prácticamente la misma que entre dos modelos premium (0.939): en ese rango la métrica está saturada y no distingue calidad. En esos mismos pares, la proporción juzgada sustituible fue el lector humano 91 %, google/gemini-2.5-flash 68 %, openai/gpt-4o-mini 32 %. El acuerdo de esos dos jueces con el lector, medido con el κ binario de Cohen, fue 0.09 para google/gemini-2.5-flash y -0.05 para openai/gpt-4o-mini.
 <!-- /GEN:metric-validation -->
 
 Dos conclusiones salieron de ese estudio y condicionaron todo lo que vino después. La primera es
