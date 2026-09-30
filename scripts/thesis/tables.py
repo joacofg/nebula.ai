@@ -32,6 +32,15 @@ POLICY_NAMES = {
 }
 LABEL_RULES = {"tiers.R1_unanimous.jsonl": "R1 unanimidad", "tiers.R2_majority.jsonl": "R2 mayoría"}
 FRONTIER_LEVELS = (0.80, 0.85, 0.90, 0.95, 0.98)
+TIER_FILES = {
+    "tiers.R1_unanimous.jsonl": "R1 unanimidad",
+    "tiers.R2_majority.jsonl": "R2 mayoría",
+    "tiers.R3_ordinal_mean.jsonl": "R3 media ordinal (elegida)",
+    "tiers.llama3b.jsonl": "R3 con llama3.2:3b como local",
+}
+LANGS = {"es": "español", "en": "inglés"}
+TASKS = {"code": "código", "factual_qa": "preguntas factuales", "multistep_reasoning": "razonamiento",
+         "open_writing": "escritura abierta", "summarisation": "resumen"}
 
 
 def _json(path: Path) -> dict:
@@ -123,6 +132,17 @@ def router_sensitivity(report: dict) -> str:
     return "\n".join(rows)
 
 
+def router_cost_at_quality(report: dict) -> str:
+    levels = sorted(report["learned"]["cost_at"], key=float)
+    rows = ["| Política | " + " | ".join(f"calidad ≥ {float(q):.2f}" for q in levels) + " |",
+            "|---|" + "---|" * len(levels)]
+    for label, costs in (("regresión logística (elegida)", report["learned"]["cost_at"]),
+                         ("kNN (k = 20)", report["knn"]["cost_at"]),
+                         ("mezcla aleatoria de niveles", report["random_cost_at"])):
+        rows.append(f"| {label} | " + " | ".join(_usd(costs[q]) for q in levels) + " |")
+    return "\n".join(rows)
+
+
 def router_latency(latency: dict) -> str:
     rows = ["| Modelo | Mediana (s) | p90 (s) | Respuestas |", "|---|---|---|---|"]
     for v in sorted(latency.values(), key=lambda v: v["median_s"]):
@@ -142,6 +162,21 @@ def router_frontier_points(report: dict) -> str:
     return "\n".join(rows)
 
 
+def tier_distribution(gt_report: dict) -> str:
+    tiers = ("local", "economy", "frontier")
+    rows = ["| Regla | Idioma | Local | Económico | Frontier |", "|---|---|---|---|---|"]
+    for name, label in TIER_FILES.items():
+        for lang, by_task in gt_report["tiers"][name]["distribution"].items():
+            totals = [sum(c[t] for c in by_task.values()) for t in tiers]
+            rows.append(f"| {label} | {LANGS[lang]} | " + " | ".join(map(str, totals)) + " |")
+    chosen = gt_report["tiers"]["tiers.R3_ordinal_mean.jsonl"]["distribution"]["es"]
+    rows += ["", "| Tarea (español, R3) | Local | Económico | Frontier |", "|---|---|---|---|"]
+    for task, label in TASKS.items():
+        c = chosen[task]
+        rows.append(f"| {label} | " + " | ".join(str(c[t]) for t in tiers) + " |")
+    return "\n".join(rows)
+
+
 def render_all() -> dict[str, str]:
     from scripts.ground_truth import report as gt_report
     from scripts.router import train
@@ -153,10 +188,12 @@ def render_all() -> dict[str, str]:
         "corpus-fase2": gt_report.thesis_corpus(summary),
         "judges-fase2": gt_report.thesis_judges(summary),
         "router-fase3": train.thesis_block(router),
+        "tier-distribution": tier_distribution(_json(GT_ROOT / "report.json")),
         "baseline-savings": baseline_savings(RESULTS),
         "metric-validation": metric_validation(METRIC),
         "router-fixed-policies": router_fixed_policies(router),
         "router-sensitivity": router_sensitivity(router),
+        "router-cost-at-quality": router_cost_at_quality(router),
         "router-latency": router_latency(latency),
         "router-frontier-points": router_frontier_points(router),
     }

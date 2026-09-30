@@ -120,3 +120,19 @@ def test_frontier_figure_plots_the_curve_and_the_baselines(tmp_path):
     written = figures.write_frontier(report, tmp_path / "frontera")
     assert [p.suffix for p in written] == [".png", ".svg"]
     assert all(p.stat().st_size > 0 for p in written)
+
+
+def test_tier_distribution_table_totals_each_rule_and_language():
+    report = json.loads(Path("benchmarks/ground-truth/v1/report.json").read_text())
+    text = tables.tier_distribution(report)
+    assert "| R3 media ordinal (elegida) | español | 742 | 174 | 84 |" in text
+    assert "| R3 con llama3.2:3b como local | español | 615 | 281 | 104 |" in text
+    assert "| código |" in text
+
+
+def test_cost_at_quality_compares_the_classifiers():
+    report = json.loads(Path("benchmarks/router/v1/report.json").read_text())
+    text = tables.router_cost_at_quality(report)
+    assert "| regresión logística (elegida) | 0.56 | 1.01 | 1.70 |" in text
+    assert "| kNN (k = 20) | 0.64 | 1.06 | 1.76 |" in text
+    assert "| mezcla aleatoria de niveles | 0.96 | 1.47 | 1.97 |" in text
