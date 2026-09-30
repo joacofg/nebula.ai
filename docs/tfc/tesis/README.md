@@ -23,7 +23,7 @@ está en `00-indice.md`, y las secciones 1, 2, 4 y 5 están juntas en `01-prelim
   el texto.
 - `> COMPLETAR (Joaquín): …` marca lo que tiene que escribir el autor (agradecimientos, datos del
   tutor, reflexión personal).
-- `> CAPTURA (fase 7): …` marca capturas de la consola que se sacan después del refactor de la UI.
+- Las capturas de la consola están en `figuras/consola-*.png`; cómo se sacan, en `figuras/README.md`.
 
 ## Qué secciones alimentan cada práctica pendiente
 
