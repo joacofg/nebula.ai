@@ -68,10 +68,10 @@ export function costScale(maxPer1000: number) {
 /** y in quality; 0.05 grid, at least one step tall, capped to [0, 1]. */
 export function qualityScale(minQuality: number) {
   const low = Number.isFinite(minQuality) ? Math.max(0, Math.min(minQuality, 1)) : 0;
-  let min = Math.floor(low * 20 + 1e-9) / 20;
-  min = Math.max(0, Math.min(min, 0.95));
+  // A 0.01 margin under the lowest point keeps its label inside the plot; ticks stay on the 0.05 grid.
+  const min = Math.max(0, Math.min(Math.floor((low - 0.01) * 100) / 100, 0.95));
   const ticks: number[] = [];
-  for (let t = min; t <= 1 + 1e-9; t += 0.05) {
+  for (let t = Math.ceil(min * 20 - 1e-9) / 20; t <= 1 + 1e-9; t += 0.05) {
     ticks.push(Number(t.toFixed(2)));
   }
   return { min, max: 1, ticks };
@@ -102,7 +102,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
 
   const markers: Marker[] = useMemo(
     () => [
-      { id: "all_local", label: "todo local", ...baselines.all_local, color: TIER_COLORS.local, shape: "circle", labelDx: 10, labelDy: -8, anchor: "start" },
+      { id: "all_local", label: "todo local", ...baselines.all_local, color: TIER_COLORS.local, shape: "circle", labelDx: 8, labelDy: 15, anchor: "start" },
       { id: "all_economy", label: "todo economy", ...baselines.all_economy, color: TIER_COLORS.economy, shape: "circle", labelDx: 10, labelDy: 16, anchor: "start" },
       { id: "all_frontier", label: "todo frontier", ...baselines.all_frontier, color: TIER_COLORS.frontier, shape: "circle", labelDx: -8, labelDy: -9, anchor: "end" },
       { id: "heuristic", label: "heurística v0 (base)", ...baselines.heuristic_premium_frontier, color: REFERENCE_COLOR, shape: "diamond", labelDx: 10, labelDy: -8, anchor: "start" },
