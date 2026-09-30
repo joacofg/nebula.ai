@@ -33,69 +33,70 @@ const baseRow: UsageLedgerRecord = {
   governance_source: "tenant_policy",
 };
 
+const rows: UsageLedgerRecord[] = [
+  baseRow,
+  {
+    ...baseRow,
+    request_id: "req-002",
+    final_route_target: "premium",
+    response_model: "anthropic/claude-haiku-4.5-with-a-very-long-model-identifier",
+    route_reason: "learned_router",
+    route_signals: { tier: "economy", learned_router: "v1" },
+    estimated_cost: 0.0018,
+  },
+  { ...baseRow, request_id: "req-003", final_route_target: "cache", cache_hit: true, estimated_cost: 0 },
+];
+
 describe("ledger-table", () => {
-  it("renders the usage-ledger columns and selects a row", async () => {
+  it("renders the ledger columns and selects a row on click", async () => {
+    const onSelectRow = vi.fn();
+    renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-001" onSelectRow={onSelectRow} isLoading={false} />);
+
+    for (const name of ["Hora", "Pedido", "Nivel", "Modelo", "Tokens", "USD", "Latencia", "Estado"]) {
+      expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
+    }
+    await userEvent.click(screen.getByRole("row", { name: /req-002/ }));
+    expect(onSelectRow).toHaveBeenCalledWith("req-002");
+  });
+
+  it("marks the selected row and derives the tier from the route signals", () => {
+    renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-002" onSelectRow={vi.fn()} isLoading={false} />);
+
+    const selected = screen.getByRole("row", { selected: true });
+    expect(selected).toHaveTextContent("req-002");
+    expect(selected).toHaveTextContent("economy");
+    expect(screen.getByRole("row", { name: /req-003/ })).toHaveTextContent("caché");
+    expect(screen.getByRole("row", { name: /req-002/ })).toHaveTextContent("0.0018");
+  });
+
+  it("moves the selection with the arrow keys and selects with Enter", async () => {
     const user = userEvent.setup();
     const onSelectRow = vi.fn();
+    renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-001" onSelectRow={onSelectRow} isLoading={false} />);
 
-    renderWithProviders(
-      <LedgerTable
-        rows={[baseRow]}
-        selectedRequestId={null}
-        onSelectRow={onSelectRow}
-        isLoading={false}
-      />,
-    );
-
-    expect(screen.getByText("Route target")).toBeInTheDocument();
-    expect(screen.getByText("Status")).toBeInTheDocument();
-    expect(screen.getByText("Latency")).toBeInTheDocument();
-    expect(screen.getByText("Estimated cost")).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /inspect request req-001/i }));
-    expect(onSelectRow).toHaveBeenCalledWith("req-001");
+    screen.getByRole("row", { name: /req-001/ }).focus();
+    await user.keyboard("{ArrowDown}");
+    expect(onSelectRow).toHaveBeenLastCalledWith("req-002");
+    expect(screen.getByRole("row", { name: /req-002/ })).toHaveFocus();
+    await user.keyboard("{ArrowDown}{Enter}");
+    expect(onSelectRow).toHaveBeenLastCalledWith("req-003");
   });
 
-  it("marks the selected request as the current investigation without widening the table surface", () => {
-    renderWithProviders(
-      <LedgerTable
-        rows={[baseRow]}
-        selectedRequestId={"req-001"}
-        onSelectRow={() => {}}
-        isLoading={false}
-      />,
-    );
-
-    expect(screen.getByText("Request ID")).toBeInTheDocument();
-    expect(screen.getByRole("row", { selected: true })).toHaveClass("bg-mark-soft/70");
-    expect(screen.getByRole("button", { name: /current investigation: req-001/i })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByText("Current investigation")).toBeInTheDocument();
-    expect(screen.getByText("Primary request for the detail view below.")).toBeInTheDocument();
-    expect(screen.getByText("embeddings")).toBeInTheDocument();
-    expect(screen.queryByText(/text to embed/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
+  it("keeps long values on one line with the full text in the title", () => {
+    renderWithProviders(<LedgerTable rows={rows} selectedRequestId={null} onSelectRow={vi.fn()} isLoading={false} />);
+    const cell = screen.getByText("anthropic/claude-haiku-4.5-with-a-very-long-model-identifier");
+    expect(cell).toHaveAttribute("title", "anthropic/claude-haiku-4.5-with-a-very-long-model-identifier");
+    expect(cell.className).toContain("truncate");
   });
 
-  it("keeps unselected rows discoverable as bounded request selectors", () => {
-    renderWithProviders(
-      <LedgerTable
-        rows={[
-          baseRow,
-          {
-            ...baseRow,
-            request_id: "req-002",
-            final_route_target: "premium",
-          },
-        ]}
-        selectedRequestId={"req-001"}
-        onSelectRow={() => {}}
-        isLoading={false}
-      />,
-    );
+  it("offers the playground when the range has no requests", () => {
+    renderWithProviders(<LedgerTable rows={[]} selectedRequestId={null} onSelectRow={vi.fn()} isLoading={false} />);
+    expect(screen.getByText("No hay pedidos en este rango.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Abrir Playground" })).toHaveAttribute("href", "/playground");
+  });
 
-    expect(screen.getByRole("button", { name: /current investigation: req-001/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /inspect request req-002/i })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("Select request")).toBeInTheDocument();
-    expect(screen.getByText("Promote this request into the primary detail view.")).toBeInTheDocument();
+  it("announces loading", () => {
+    renderWithProviders(<LedgerTable rows={[]} selectedRequestId={null} onSelectRow={vi.fn()} isLoading />);
+    expect(screen.getByRole("status", { name: "Cargando pedidos" })).toBeInTheDocument();
   });
 });

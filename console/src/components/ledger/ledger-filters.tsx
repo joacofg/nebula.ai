@@ -1,3 +1,6 @@
+import { RefreshCw } from "lucide-react";
+
+import { Button } from "@/components/ui/button";
 import type { TenantRecord } from "@/lib/admin-api";
 
 type LedgerFiltersProps = {
@@ -39,79 +42,63 @@ export function LedgerFilters({
   onToTimestampChange,
   onRefresh,
 }: LedgerFiltersProps) {
+  const cell = "flex min-w-[150px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5 first:border-l-0";
+  const control =
+    "h-9 w-full rounded-[2px] border border-line bg-surface px-2 text-[15px] text-ink transition-colors focus:border-ink";
   return (
-    <section className="panel px-6 py-5">
-      <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
-        <label>
-          <span className="field-label">Tenant</span>
-          <select className="field-input" value={tenantId} onChange={(event) => onTenantIdChange(event.target.value)}>
-            <option value="">All tenants</option>
-            {tenants.map((tenant) => (
-              <option key={tenant.id} value={tenant.id}>
-                {tenant.name}
-              </option>
-            ))}
-          </select>
-        </label>
+    <div className="flex flex-wrap items-stretch border-b border-line bg-surface" role="group" aria-label="Filtros del ledger">
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Tenant</span>
+        <select className={control} value={tenantId} onChange={(event) => onTenantIdChange(event.target.value)}>
+          <option value="">Todos los tenants</option>
+          {tenants.map((tenant) => (
+            <option key={tenant.id} value={tenant.id}>
+              {tenant.name}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        <label>
-          <span className="field-label">Route target</span>
-          <select
-            className="field-input"
-            value={routeTarget}
-            onChange={(event) => onRouteTargetChange(event.target.value)}
-          >
-            <option value="">All routes</option>
-            {ROUTE_TARGET_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Ruta</span>
+        <select className={control} value={routeTarget} onChange={(event) => onRouteTargetChange(event.target.value)}>
+          <option value="">Todas</option>
+          {ROUTE_TARGET_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        <label>
-          <span className="field-label">Terminal status</span>
-          <select
-            className="field-input"
-            value={terminalStatus}
-            onChange={(event) => onTerminalStatusChange(event.target.value)}
-          >
-            <option value="">All statuses</option>
-            {TERMINAL_STATUS_OPTIONS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Estado</span>
+        <select className={control} value={terminalStatus} onChange={(event) => onTerminalStatusChange(event.target.value)}>
+          <option value="">Todos</option>
+          {TERMINAL_STATUS_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      </label>
 
-        <label>
-          <span className="field-label">From</span>
-          <input
-            className="field-input"
-            type="datetime-local"
-            value={fromTimestamp}
-            onChange={(event) => onFromTimestampChange(event.target.value)}
-          />
-        </label>
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Desde</span>
+        <input className={control} type="datetime-local" value={fromTimestamp} onChange={(event) => onFromTimestampChange(event.target.value)} />
+      </label>
 
-        <label>
-          <span className="field-label">To</span>
-          <input
-            className="field-input"
-            type="datetime-local"
-            value={toTimestamp}
-            onChange={(event) => onToTimestampChange(event.target.value)}
-          />
-        </label>
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Hasta</span>
+        <input className={control} type="datetime-local" value={toTimestamp} onChange={(event) => onToTimestampChange(event.target.value)} />
+      </label>
 
-        <div className="flex items-end">
-          <button type="button" className="secondary-button w-full" onClick={onRefresh}>
-            Refresh
-          </button>
-        </div>
+      <div className="flex items-end border-l border-line px-4 py-2.5">
+        <Button type="button" variant="outline" onClick={onRefresh} className="h-9">
+          <RefreshCw aria-hidden className="size-4" />
+          Actualizar
+        </Button>
       </div>
-    </section>
+    </div>
   );
 }

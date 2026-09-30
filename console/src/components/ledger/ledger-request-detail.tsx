@@ -1,65 +1,29 @@
-import type { CalibrationEvidenceSummary, UsageLedgerRecord } from "@/lib/admin-api";
+import type { UsageLedgerRecord } from "@/lib/admin-api";
+
+import { formatLatency } from "@/components/ledger/ledger-table";
+import { formatTimestamp, titleCaseToken } from "@/components/observability/format";
+import { PlaygroundDecision } from "@/components/playground/playground-decision";
+import { Readout, type ReadoutItem } from "@/components/system/readout";
+import { EmptyState } from "@/components/system/state";
 
 type RouteSignals = Record<string, unknown>;
 
 type LedgerRequestDetailProps = {
   entry: UsageLedgerRecord | null;
-  calibrationSummary?: CalibrationEvidenceSummary | null;
 };
 
-type BudgetPolicyExplanation = {
-  summary: string;
-  detail: string | null;
-  fields: Array<{ label: string; value: string }>;
-};
+type Section = { title: string; summary: string | null; items: ReadoutItem[] };
 
-type CalibrationExplanation = {
-  badge: string;
-  summary: string;
-  detail: string;
-  fields: Array<{ label: string; value: string }>;
-};
-
-type RoutingInspection = {
-  summary: string;
-  detail: string;
-  fields: Array<{ label: string; value: string }>;
-};
-
-function boolLabel(value: boolean) {
-  return value ? "Yes" : "No";
+function orDash(value: string | null | undefined) {
+  return value && value.length > 0 ? value : "—";
 }
 
-function valueOrFallback(value: string | null | undefined) {
-  return value && value.length > 0 ? value : "N/A";
-}
-
-function formatTimestamp(value: string) {
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
-    return value;
-  }
-  return timestamp.toLocaleString();
+function yesNo(value: boolean) {
+  return value ? "sí" : "no";
 }
 
 function asRouteSignals(value: UsageLedgerRecord["route_signals"]): RouteSignals | null {
   return value && typeof value === "object" ? value : null;
-}
-
-function signalValue(signals: RouteSignals | null, key: string) {
-  return signals?.[key];
-}
-
-function formatBooleanSignal(value: unknown) {
-  return value ? "yes" : "no";
-}
-
-function formatBudgetProximity(value: unknown) {
-  const numericValue = typeof value === "number" ? value : Number(value);
-  if (Number.isNaN(numericValue)) {
-    return null;
-  }
-  return `${Math.round(numericValue * 100)}%`;
 }
 
 function formatScore(value: unknown) {
@@ -70,472 +34,196 @@ function formatScore(value: unknown) {
   return numericValue.toFixed(2);
 }
 
-function titleCaseToken(value: string) {
-  return value
-    .split(/[_-]/g)
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function formatBudgetProximity(value: unknown) {
+  const numericValue = typeof value === "number" ? value : Number(value);
+  return Number.isNaN(numericValue) ? null : `${Math.round(numericValue * 100)} %`;
 }
 
-function formatReasonCounts(items: CalibrationEvidenceSummary["excluded_reasons"] | null | undefined) {
-  if (!items || items.length === 0) {
-    return "None";
-  }
-  return items.map((item) => `${titleCaseToken(item.reason)} (${item.count})`).join(", ");
-}
-
-function buildCalibrationExplanation(summary: CalibrationEvidenceSummary): CalibrationExplanation {
-  const latestEligible =
-    summary.latest_eligible_request_at !== null
-      ? formatTimestamp(summary.latest_eligible_request_at)
-      : "No eligible grounded rows yet";
-
-  const eligibleRequestCount = summary.eligible_request_count ?? 0;
-  const thinRequestThreshold = summary.thin_request_threshold ?? 0;
-  const gatedRequestCount = summary.gated_request_count ?? 0;
-  const degradedRequestCount = summary.degraded_request_count ?? 0;
-  const excludedRequestCount = summary.excluded_request_count ?? 0;
-
-  const fields: Array<{ label: string; value: string }> = [
-    {
-      label: "Eligible grounded rows",
-      value: `${eligibleRequestCount} of ${thinRequestThreshold} needed`,
-    },
-    {
-      label: "Latest eligible grounded row",
-      value: latestEligible,
-    },
-  ];
-
-  if (gatedRequestCount > 0) {
-    fields.push({
-      label: "Rollout-disabled rows",
-      value: `${gatedRequestCount} (${formatReasonCounts(summary.gated_reasons)})`,
-    });
-  }
-
-  if (degradedRequestCount > 0) {
-    fields.push({
-      label: "Degraded rows",
-      value: `${degradedRequestCount} (${formatReasonCounts(summary.degraded_reasons)})`,
-    });
-  }
-
-  if (excludedRequestCount > 0) {
-    fields.push({
-      label: "Excluded rows",
-      value: `${excludedRequestCount} (${formatReasonCounts(summary.excluded_reasons)})`,
-    });
-  }
-
-  if (summary.state === "sufficient") {
-    return {
-      badge: "Grounded",
-      summary: "Tenant evidence is grounded enough to support calibrated routing and replay checks.",
-      detail:
-        "Recent ledger-backed rows meet the grounded evidence threshold. Use that tenant summary only as supporting context for this selected request, whose persisted row remains the authoritative proof surface.",
-      fields,
-    };
-  }
-
-  if (summary.state === "stale") {
-    fields.push({
-      label: "Staleness threshold",
-      value: `${summary.staleness_threshold_hours} hours`,
-    });
-    return {
-      badge: "Stale",
-      summary: "Tenant evidence was grounded, but the eligible evidence window is now stale.",
-      detail:
-        "The ledger has enough historical grounded rows, but the newest eligible evidence is older than the allowed freshness window. Treat this as supporting context only and anchor investigation to the persisted request row.",
-      fields,
-    };
-  }
-
-  if (summary.state === "degraded") {
-    return {
-      badge: "Degraded",
-      summary: "Tenant evidence is degraded, so supporting context stays partial for calibrated routing review.",
-      detail:
-        "Recent traffic produced degraded evidence instead of a fully grounded window. Keep the selected request row authoritative and treat this tenant summary as a partial explanation of why broader calibrated evidence is limited.",
-      fields,
-    };
-  }
-
-  if (gatedRequestCount > 0 && eligibleRequestCount === 0) {
-    return {
-      badge: "Rollout disabled",
-      summary: "Tenant traffic is visible, but calibrated routing rollout is still operator-gated.",
-      detail:
-        "Recent rows show traffic while calibrated routing remained disabled. Operators can inspect this request and its persisted routing outcome, but the tenant summary has not accumulated grounded evidence for live calibration decisions yet.",
-      fields,
-    };
-  }
-
-  return {
-    badge: "Thin",
-    summary: "Tenant evidence is still thin for calibrated routing and replay checks.",
-    detail:
-      "The ledger does not yet have enough eligible grounded rows to treat tenant-level evidence as sufficient. Keep using the persisted request record as the primary proof surface while the supporting evidence window fills in.",
-    fields,
-  };
-}
-
-function extractBudgetExplanation(policyOutcome: string | null | undefined): BudgetPolicyExplanation | null {
+function budgetSection(policyOutcome: string | null | undefined): Section | null {
   if (!policyOutcome) {
     return null;
   }
-
-  const fields: Array<{ label: string; value: string }> = [];
+  const items: ReadoutItem[] = [];
   let summary: string | null = null;
-  let detail: string | null = null;
 
-  const hardBudgetMatch = policyOutcome.match(
-    /hard_budget=exceeded\(limit_usd=([^,]+),spent_usd=([^,]+),enforcement=([^\)]+)\)/,
-  );
-  if (hardBudgetMatch) {
-    const [, limitUsd, spentUsd, enforcement] = hardBudgetMatch;
-    summary = "Hard budget reached";
-    fields.push({ label: "Spent at decision", value: `$${spentUsd}` });
-    fields.push({ label: "Hard budget limit", value: `$${limitUsd}` });
-    fields.push({ label: "Hard budget enforcement", value: titleCaseToken(enforcement) });
+  const hard = policyOutcome.match(/hard_budget=exceeded\(limit_usd=([^,]+),spent_usd=([^,]+),enforcement=([^)]+)\)/);
+  if (hard) {
+    const [, limitUsd, spentUsd, enforcement] = hard;
+    summary = "Presupuesto duro alcanzado";
+    items.push({ label: "Gastado al decidir", value: `USD ${spentUsd}` });
+    items.push({ label: "Límite duro", value: `USD ${limitUsd}` });
+    items.push({ label: "Aplicación", value: titleCaseToken(enforcement) });
   }
-
   if (policyOutcome.includes("budget_action=downgraded_to_local")) {
-    summary = "Premium traffic downgraded to local";
-    detail = "Cumulative premium spend hit the tenant hard budget, so this request stayed allowed by routing to a local model instead of premium.";
-    fields.push({ label: "Budget action", value: "Downgraded to local" });
+    summary = "Premium degradado a local";
+    items.push({ label: "Acción", value: "Degradado a local" });
   }
-
-  const deniedMatch = policyOutcome.match(/(?:^|;)denied=([^;]+)/);
-  if (deniedMatch) {
-    summary = "Premium request denied by budget guardrail";
-    detail = deniedMatch[1];
-    fields.push({ label: "Denial reason", value: deniedMatch[1] });
+  const denied = policyOutcome.match(/(?:^|;)denied=([^;]+)/);
+  if (denied) {
+    summary = "Pedido premium denegado por presupuesto";
+    items.push({ label: "Motivo de la denegación", value: denied[1] });
   } else if (policyOutcome.startsWith("Tenant hard budget limit reached; premium routing is blocked")) {
-    summary = "Premium request denied by budget guardrail";
-    detail = policyOutcome;
-    fields.push({ label: "Denial reason", value: policyOutcome });
-
-    const spentMatch = policyOutcome.match(/spent_usd=([^,\)]+)/);
-    const limitMatch = policyOutcome.match(/limit_usd=([^\)]+)/);
-    if (spentMatch) {
-      fields.push({ label: "Spent at decision", value: `$${spentMatch[1]}` });
+    summary = "Pedido premium denegado por presupuesto";
+    items.push({ label: "Motivo de la denegación", value: policyOutcome });
+    const spent = policyOutcome.match(/spent_usd=([^,)]+)/);
+    const limit = policyOutcome.match(/limit_usd=([^)]+)/);
+    if (spent) {
+      items.push({ label: "Gastado al decidir", value: `USD ${spent[1]}` });
     }
-    if (limitMatch) {
-      fields.push({ label: "Hard budget limit", value: `$${limitMatch[1]}` });
+    if (limit) {
+      items.push({ label: "Límite duro", value: `USD ${limit[1]}` });
     }
   }
-
   if (policyOutcome.includes("soft_budget=exceeded")) {
-    if (!summary) {
-      summary = "Soft budget advisory triggered";
-    }
-    if (!detail) {
-      detail = "Cumulative spend exceeded the advisory soft budget. Routing continued, but the request was tagged for operator visibility.";
-    }
-    fields.push({ label: "Soft budget status", value: "Exceeded (advisory only)" });
+    summary = summary ?? "Aviso de presupuesto blando";
+    items.push({ label: "Presupuesto blando", value: "Superado (solo aviso)" });
   }
-
-  if (!summary && fields.length === 0) {
-    return null;
-  }
-
-  return {
-    summary: summary ?? "Budget policy evidence",
-    detail,
-    fields,
-  };
+  return summary || items.length ? { title: "Presupuesto", summary, items } : null;
 }
 
-function formatRoutingState(
-  routeMode: string | null,
-  calibratedRouting: boolean | null,
-  degradedRouting: boolean | null,
-  routeScore: number | null,
-  routeReason: string | null,
-) {
-  if (routeMode === null && routeReason === "calibrated_routing_disabled") {
-    return "rollout disabled";
+function routingState(signals: RouteSignals, routeReason: string | null, score: string | null) {
+  const mode = typeof signals.route_mode === "string" ? signals.route_mode : null;
+  if (mode === null && routeReason === "calibrated_routing_disabled") {
+    return "rollout desactivado";
   }
-
-  const routeScoreLabel = routeScore === null ? null : routeScore.toFixed(2);
-
-  if (degradedRouting === true || routeMode === "degraded") {
-    return routeScoreLabel === null ? "degraded" : `degraded (score ${routeScoreLabel})`;
+  const withScore = (label: string) => (score === null ? label : `${label} (score ${score})`);
+  if (signals.degraded_routing === true || mode === "degraded") {
+    return withScore("degradado");
   }
-
-  if (calibratedRouting === true || routeMode === "calibrated") {
-    return routeScoreLabel === null ? "grounded" : `grounded (score ${routeScoreLabel})`;
+  if (signals.calibrated_routing === true || mode === "calibrated") {
+    return withScore("calibrado");
   }
-
-  if (routeMode !== null) {
-    return routeScoreLabel === null ? routeMode : `${routeMode} (score ${routeScoreLabel})`;
-  }
-
-  return routeScoreLabel === null ? "unscored" : `unscored (score ${routeScoreLabel})`;
+  return mode !== null ? withScore(mode) : withScore("sin score");
 }
 
-function buildRoutingInspection(
-  routeSignals: RouteSignals | null,
-  routeReason: string | null,
-): RoutingInspection | null {
-  if (!routeSignals) {
+/** The v0 heuristic's score breakdown; absent for the learned router, which the decision path explains. */
+function heuristicSection(signals: RouteSignals | null, routeReason: string | null): Section | null {
+  if (!signals || (typeof signals.learned_router === "string" && routeReason === "learned_router")) {
     return null;
   }
-
-  const routeModeRaw = signalValue(routeSignals, "route_mode");
-  const routeMode = typeof routeModeRaw === "string" ? routeModeRaw : null;
-
-  const calibratedRoutingRaw = signalValue(routeSignals, "calibrated_routing");
-  const calibratedRouting = typeof calibratedRoutingRaw === "boolean" ? calibratedRoutingRaw : null;
-
-  const degradedRoutingRaw = signalValue(routeSignals, "degraded_routing");
-  const degradedRouting = typeof degradedRoutingRaw === "boolean" ? degradedRoutingRaw : null;
-
-  const scoreComponentsValue = signalValue(routeSignals, "score_components");
-  const scoreComponents =
-    scoreComponentsValue && typeof scoreComponentsValue === "object"
-      ? (scoreComponentsValue as Record<string, unknown>)
+  const components =
+    signals.score_components && typeof signals.score_components === "object"
+      ? (signals.score_components as Record<string, unknown>)
       : null;
-
-  const componentTotal = scoreComponents ? formatScore(scoreComponents.total_score) : null;
-  const directRouteScore = formatScore(signalValue(routeSignals, "route_score"));
-  const routeScore = componentTotal ?? directRouteScore;
-
-  const summary = formatRoutingState(
-    routeMode,
-    calibratedRouting,
-    degradedRouting,
-    routeScore === null ? null : Number(routeScore),
-    routeReason,
-  );
-
-  let detail =
-    "This selected request row is the authoritative routing evidence for this request ID. Supporting tenant summaries can clarify broader posture, but they do not override the persisted route_signals recorded on this row.";
-  if (summary === "rollout disabled") {
-    detail =
-      "This selected request shows rollout disabled at the row level, so operators can distinguish intentional gating from missing routing data without relying on tenant-level summaries.";
-  } else if (summary.startsWith("degraded")) {
-    detail =
-      "This selected request used degraded routing because replay-critical calibrated inputs were incomplete on the persisted row. Treat any tenant summary as supporting context only.";
-  } else if (summary.startsWith("grounded")) {
-    detail =
-      "This selected request used grounded routing from the full calibrated signal set recorded on the persisted row, including the additive score breakdown when present.";
-  } else if (summary.startsWith("unscored")) {
-    detail =
-      "This selected request did not carry a grounded or degraded score path. That is explicit row-level evidence, not a generic analytics gap or missing tenant summary.";
+  const score = (components ? formatScore(components.total_score) : null) ?? formatScore(signals.route_score);
+  const items: ReadoutItem[] = [{ label: "Estado del ruteo", value: routingState(signals, routeReason, score) }];
+  if (typeof signals.route_mode === "string") {
+    items.push({ label: "Modo", value: signals.route_mode });
   }
-
-  const fields: Array<{ label: string; value: string }> = [
-    { label: "Routing state", value: summary },
-  ];
-
-  if (routeMode !== null) {
-    fields.push({ label: "Route mode", value: routeMode });
+  if (score !== null) {
+    items.push({ label: "Score", value: score });
   }
-
-  if (routeScore !== null) {
-    fields.push({ label: "Route score", value: routeScore });
+  if (components) {
+    const parts: Array<[string, unknown]> = [
+      ["Score por tokens", components.token_score],
+      ["Bono por palabra clave", components.keyword_bonus],
+      ["Bono de política", components.policy_bonus],
+      ["Penalidad de presupuesto", components.budget_penalty],
+    ];
+    for (const [label, raw] of parts) {
+      const value = formatScore(raw);
+      if (value !== null) {
+        items.push({ label, value });
+      }
+    }
   }
-
-  if (scoreComponents) {
-    const componentEntries: Array<[string, string]> = [
-      ["Token score", formatScore(scoreComponents.token_score)],
-      ["Keyword bonus", formatScore(scoreComponents.keyword_bonus)],
-      ["Policy bonus", formatScore(scoreComponents.policy_bonus)],
-      ["Budget penalty", formatScore(scoreComponents.budget_penalty)],
-    ].filter((entry): entry is [string, string] => entry[1] !== null);
-
-    componentEntries.forEach(([label, value]) => {
-      fields.push({ label, value });
-    });
-  }
-
-  return { summary, detail, fields };
+  return { title: "Ruteo heurístico", summary: null, items };
 }
 
-function formatSuppressedFields(fields: string[]) {
-  if (fields.length === 0) {
-    return "None";
+function signalsSection(signals: RouteSignals | null): Section | null {
+  if (!signals) {
+    return null;
   }
-  return fields.map((field) => titleCaseToken(field)).join(", ");
+  const items: ReadoutItem[] = [];
+  if (signals.token_count !== undefined) {
+    items.push({ label: "Tokens contados", value: String(signals.token_count) });
+  }
+  if (signals.complexity_tier !== undefined) {
+    items.push({ label: "Complejidad", value: String(signals.complexity_tier) });
+  }
+  if (signals.keyword_match !== undefined) {
+    items.push({ label: "Palabra clave", value: yesNo(Boolean(signals.keyword_match)) });
+  }
+  if (signals.model_constraint !== undefined) {
+    items.push({ label: "Restricción de modelo", value: yesNo(Boolean(signals.model_constraint)) });
+  }
+  const proximity = signals.budget_proximity == null ? null : formatBudgetProximity(signals.budget_proximity);
+  if (proximity) {
+    items.push({ label: "Cercanía al presupuesto", value: proximity });
+  }
+  return items.length ? { title: "Señales", summary: null, items } : null;
 }
 
-export function LedgerRequestDetail({ entry, calibrationSummary = null }: LedgerRequestDetailProps) {
-  if (!entry) {
-    return <div className="panel px-6 py-5 text-sm text-ink-4">Select a ledger row to inspect request detail.</div>;
-  }
-
-  const routeSignals = asRouteSignals(entry.route_signals);
-  const tokenCount = signalValue(routeSignals, "token_count");
-  const complexityTier = signalValue(routeSignals, "complexity_tier");
-  const keywordMatch = signalValue(routeSignals, "keyword_match");
-  const modelConstraint = signalValue(routeSignals, "model_constraint");
-  const budgetProximity = signalValue(routeSignals, "budget_proximity");
-  const budgetProximityLabel =
-    budgetProximity === null || budgetProximity === undefined ? null : formatBudgetProximity(budgetProximity);
-  const budgetExplanation = extractBudgetExplanation(entry.policy_outcome);
-  const calibrationExplanation = calibrationSummary ? buildCalibrationExplanation(calibrationSummary) : null;
-  const routingInspection = buildRoutingInspection(routeSignals, entry.route_reason);
-
+function EvidenceSection({ section }: { section: Section }) {
   return (
-    <section className="panel space-y-4 px-6 py-5">
-      <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Request detail</div>
-        <h3 className="mt-2 text-xl font-semibold text-ink">{entry.request_id}</h3>
-        <p className="mt-2 text-sm text-ink-3">
-          This persisted ledger record is the authoritative evidence row for this request ID while the row still
-          exists. It explains the retained route, provider, fallback, cache, and policy outcome that operators first
-          corroborate through the public response headers before reading broader tenant guidance
-          elsewhere on this page. If governed retention cleanup later deletes the row at its persisted expiration time,
-          this request detail should disappear with it rather than imply recovery or a soft-deleted archive.
-        </p>
-      </div>
-      <dl className="grid gap-4 sm:grid-cols-2">
-        <DetailRow label="Request ID" value={entry.request_id} mono />
-        <DetailRow label="Timestamp" value={formatTimestamp(entry.timestamp)} />
-        <DetailRow label="Tenant" value={entry.tenant_id} mono />
-        <DetailRow label="Message type" value={entry.message_type} />
-        <DetailRow label="Route target" value={entry.final_route_target} />
-        <DetailRow label="Requested model" value={entry.requested_model} />
-        <DetailRow label="Response model" value={valueOrFallback(entry.response_model)} />
-        <DetailRow label="Provider" value={valueOrFallback(entry.final_provider)} />
-        <DetailRow label="Route reason" value={valueOrFallback(entry.route_reason)} />
-        <DetailRow label="Policy outcome" value={valueOrFallback(entry.policy_outcome)} />
-        <DetailRow label="Evidence retention" value={entry.evidence_retention_window} />
-        <DetailRow label="Evidence expires at" value={valueOrFallback(entry.evidence_expires_at)} />
-        <DetailRow label="Metadata minimization" value={entry.metadata_minimization_level} />
-        <DetailRow
-          label="Suppressed metadata fields"
-          value={formatSuppressedFields(entry.metadata_fields_suppressed ?? [])}
-        />
-        <DetailRow label="Governance source" value={entry.governance_source} />
-        <DetailRow label="Fallback used" value={boolLabel(entry.fallback_used)} />
-        <DetailRow label="Cache hit" value={boolLabel(entry.cache_hit)} />
-        <DetailRow label="Terminal status" value={entry.terminal_status} />
-        <DetailRow label="Prompt tokens" value={String(entry.prompt_tokens)} />
-        <DetailRow label="Completion tokens" value={String(entry.completion_tokens)} />
-        <DetailRow label="Total tokens" value={String(entry.total_tokens)} />
-      </dl>
-      <section className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h4 className="text-sm font-semibold text-ink">Effective evidence boundary</h4>
-          <span className="rounded-full border border-mark-line bg-mark-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-mark">
-            Row-level governance truth
-          </span>
-        </div>
-        <div className="rounded-2xl border border-line bg-canvas px-4 py-4 text-sm text-ink-2">
-          <p>
-            Retained means the row is still inside its evidence retention window and is the authoritative record
-            for this request.
-          </p>
-          <p className="mt-3">
-            Suppressed means a metadata field was minimised at capture time under the tenant policy; it was never
-            persisted and cannot be recovered.
-          </p>
-          <p className="mt-3">
-            Deleted means governed retention cleanup removed the row at its expiration time; there is no soft-deleted
-            archive.
-          </p>
-        </div>
-      </section>
-      {calibrationExplanation ? (
-        <section className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h4 className="text-sm font-semibold text-ink">Calibration evidence</h4>
-            <span className="rounded-full border border-mark-line bg-mark-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-mark">
-              {calibrationExplanation.badge}
-            </span>
-          </div>
-          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
-            <p className="mt-2 text-sm font-medium text-ink">{calibrationExplanation.summary}</p>
-            <p className="mt-2 text-sm text-ink-3">{calibrationExplanation.detail}</p>
-            <p className="mt-3 text-xs text-ink-4">{calibrationSummary?.state_reason}</p>
-          </div>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {calibrationExplanation.fields.map((field) => (
-              <DetailRow key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
-            ))}
-          </dl>
-        </section>
-      ) : null}
-      {budgetExplanation ? (
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-ink">Budget policy evidence</h4>
-          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
-            <p className="mt-2 text-sm font-medium text-ink">{budgetExplanation.summary}</p>
-            {budgetExplanation.detail ? <p className="mt-2 text-sm text-ink-3">{budgetExplanation.detail}</p> : null}
-          </div>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {budgetExplanation.fields.map((field) => (
-              <DetailRow key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
-            ))}
-          </dl>
-        </section>
-      ) : null}
-      {routingInspection ? (
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-ink">Routing inspection</h4>
-          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
-            <p className="mt-2 text-sm font-medium text-ink">{routingInspection.summary}</p>
-            <p className="mt-2 text-sm text-ink-3">{routingInspection.detail}</p>
-          </div>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {routingInspection.fields.map((field) => (
-              <DetailRow key={`${field.label}-${field.value}`} label={field.label} value={field.value} />
-            ))}
-          </dl>
-        </section>
-      ) : null}
-      {routeSignals ? (
-        <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-ink">Route signals</h4>
-          <dl className="grid gap-4 sm:grid-cols-2">
-            {tokenCount !== undefined ? <DetailRow label="Token count" value={String(tokenCount)} /> : null}
-            {complexityTier !== undefined ? (
-              <DetailRow label="Complexity tier" value={String(complexityTier)} />
-            ) : null}
-            {keywordMatch !== undefined ? (
-              <DetailRow label="Keyword match" value={formatBooleanSignal(keywordMatch)} />
-            ) : null}
-            {modelConstraint !== undefined ? (
-              <DetailRow label="Model constraint" value={formatBooleanSignal(modelConstraint)} />
-            ) : null}
-            {budgetProximityLabel ? (
-              <DetailRow label="Budget proximity" value={budgetProximityLabel} />
-            ) : null}
-          </dl>
-        </section>
-      ) : null}
+    <section className="flex flex-col gap-1.5">
+      <h3 className="m-0 font-label text-[13px] font-semibold text-ink-2">{section.title}</h3>
+      {section.summary ? <p className="m-0 text-sm font-medium text-ink">{section.summary}</p> : null}
+      <Readout items={section.items} />
     </section>
   );
 }
 
-function DetailRow({
-  label,
-  value,
-  mono = false,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
+export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
+  if (!entry) {
+    return <EmptyState title="Elegir un pedido del ledger." />;
+  }
+
+  const signals = asRouteSignals(entry.route_signals);
+  const suppressed = entry.metadata_fields_suppressed ?? [];
+  const sections = [budgetSection(entry.policy_outcome), heuristicSection(signals, entry.route_reason), signalsSection(signals)].filter(
+    (s): s is Section => s !== null,
+  );
+
   return (
-    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
-      <dd
-        className={[
-          "mt-2 text-sm text-ink wrap-anywhere",
-          mono ? "font-mono" : "",
-        ].join(" ")}
-      >
-        {value}
-      </dd>
-    </div>
+    <section aria-labelledby="ledger-detail-heading" className="flex flex-col gap-6">
+      <div>
+        <h2 id="ledger-detail-heading" className="m-0 text-lg font-semibold text-ink">
+          Pedido <span className="font-mono text-[15px] font-medium">{entry.request_id}</span>
+        </h2>
+        <div className="font-label text-[13px] text-ink-3">{formatTimestamp(entry.timestamp)}</div>
+      </div>
+
+      {signals || entry.route_reason === "cache_hit" ? (
+        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} />
+      ) : null}
+
+      <Readout
+        items={[
+          { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : `USD ${entry.estimated_cost.toFixed(4)}`, emphasis: true },
+          { label: "Tokens", value: `${entry.prompt_tokens} + ${entry.completion_tokens} = ${entry.total_tokens}` },
+          { label: "Modelo", value: <span className="font-mono text-[13px]">{orDash(entry.response_model)}</span> },
+          { label: "Proveedor", value: orDash(entry.final_provider) },
+          { label: "Ruta", value: entry.final_route_target },
+          { label: "Motivo", value: orDash(entry.route_reason) },
+          { label: "Estado", value: entry.terminal_status },
+          { label: "Latencia", value: formatLatency(entry.latency_ms) },
+        ]}
+      />
+
+      <details className="border-t border-line pt-3">
+        <summary className="cursor-pointer text-sm font-semibold text-ink marker:text-ink-3">Evidencia completa</summary>
+        <div className="mt-3 flex flex-col gap-5">
+          <Readout
+            items={[
+              { label: "Tenant", value: <span className="font-mono text-[13px]">{entry.tenant_id}</span> },
+              { label: "Tipo de mensaje", value: entry.message_type },
+              { label: "Modelo pedido", value: <span className="font-mono text-[13px]">{entry.requested_model}</span> },
+              { label: "Política", value: <span className="font-mono text-[12px] font-normal">{orDash(entry.policy_outcome)}</span> },
+              { label: "Retención", value: entry.evidence_retention_window },
+              { label: "Vence", value: entry.evidence_expires_at ? formatTimestamp(entry.evidence_expires_at) : "—" },
+              { label: "Minimización", value: entry.metadata_minimization_level },
+              { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(titleCaseToken).join(", ") : "ninguno" },
+              { label: "Fuente de gobierno", value: entry.governance_source },
+              { label: "Caché", value: yesNo(entry.cache_hit) },
+              { label: "Fallback", value: yesNo(entry.fallback_used) },
+            ]}
+          />
+          {sections.map((section) => (
+            <EvidenceSection key={section.title} section={section} />
+          ))}
+        </div>
+      </details>
+    </section>
   );
 }

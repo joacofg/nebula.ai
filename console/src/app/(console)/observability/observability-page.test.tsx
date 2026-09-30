@@ -1,5 +1,6 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import ObservabilityPage from "./page";
@@ -32,16 +33,6 @@ function renderPage() {
       <ObservabilityPage />
     </QueryClientProvider>,
   );
-}
-
-function getTopLevelSectionHeadings(container: HTMLElement) {
-  return Array.from(container.querySelectorAll(":scope > section > header h2")).map((heading) =>
-    heading.textContent?.trim() ?? "",
-  );
-}
-
-function expectHeadingOrder(container: HTMLElement, expectedOrder: string[]) {
-  expect(getTopLevelSectionHeadings(container)).toEqual(expectedOrder);
 }
 
 function expectTextToAppearBefore(container: HTMLElement, first: string, second: string) {
@@ -173,256 +164,72 @@ describe("ObservabilityPage", () => {
     );
   });
 
-  it("renders request-first observability framing with bounded supporting context", async () => {
+  it("leads with the filters, the ledger and the selected request", async () => {
     const { container } = renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Selected request evidence first" })).toBeInTheDocument();
-    expect(screen.getByText(/Start with one persisted ledger row for the selected request ID/i)).toBeInTheDocument();
-    expect(screen.getByText(/Calibration readiness, grounded recommendations, cache posture, and dependency health stay on this page as supporting runtime context/i)).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: "Observabilidad" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Filtros del ledger" })).toBeInTheDocument();
+    const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
+    expect(within(table).getByRole("row", { selected: true })).toHaveTextContent("req-inte");
+    expect(await screen.findByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-integrated-001");
+    expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0042");
+    expectTextToAppearBefore(container, "req-inte", "Recomendaciones");
+  });
 
-    expectHeadingOrder(container.firstElementChild as HTMLElement, [
-      "Inspect one persisted ledger row before reading tenant context",
-      "Follow-up context for the selected request",
+  it("keeps tenant context in tabs: recommendations, cache, calibration and dependencies", async () => {
+    const user = userEvent.setup();
+    renderPage();
+
+    const tabs = await screen.findByRole("tablist", { name: "Contexto del tenant" });
+    expect(within(tabs).getAllByRole("tab").map((t) => t.textContent)).toEqual([
+      "Recomendaciones",
+      "Caché",
+      "Calibración",
+      "Dependencias",
     ]);
-    expectTextToAppearBefore(
-      container.firstElementChild as HTMLElement,
-      "Inspect one persisted ledger row before reading tenant context",
-      "Follow-up context for the selected request",
-    );
-    expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
-    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
+    expect(await screen.findByText("Review cache aging window")).toBeInTheDocument();
+    expect(screen.getByText("Preview a lower max entry age in policy before saving any runtime change.")).toBeInTheDocument();
 
-    const selectedRequestSection = screen
-      .getByRole("heading", { name: "Inspect one persisted ledger row before reading tenant context" })
-      .closest("section");
-    expect(selectedRequestSection).not.toBeNull();
-    const selectedRequest = within(selectedRequestSection!);
-    expect(selectedRequest.getByText(/Pick the request first\./i)).toBeInTheDocument();
-    expect(selectedRequest.getByText(/The selected ledger row remains the authoritative persisted record/i)).toBeInTheDocument();
-    expect(selectedRequest.getByText(/they do not overrule the selected request evidence/i)).toBeInTheDocument();
+    await user.click(screen.getByRole("tab", { name: "Caché" }));
+    expect(await screen.findByRole("group", { name: "Tasa de aciertos estimada" })).toHaveTextContent("38 %");
+    expect(screen.getByRole("group", { name: "Premium evitado" })).toHaveTextContent("USD 0.84");
+    expect(screen.getByText("Degraded cache runtime remains visible")).toBeInTheDocument();
 
-    const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
-    expect(followUpSection).not.toBeNull();
-    expect(selectedRequestSection!.compareDocumentPosition(followUpSection!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+    await user.click(screen.getByRole("tab", { name: "Calibración" }));
+    expect(await screen.findByText("suficiente")).toBeInTheDocument();
 
-    await screen.findByText("Request detail");
-    const requestDetailSection = within(selectedRequestSection!);
-    expect((await requestDetailSection.findAllByText("req-integrated-001")).length).toBeGreaterThanOrEqual(2);
-    expect(requestDetailSection.getByText("Request detail")).toBeInTheDocument();
-    expect(requestDetailSection.getAllByText("req-integrated-001").length).toBeGreaterThanOrEqual(2);
-    expect(requestDetailSection.getByText("Calibration evidence")).toBeInTheDocument();
-    expect(
-      requestDetailSection.getByText("Tenant evidence is grounded enough to support calibrated routing and replay checks."),
-    ).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Grounded")).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Routing inspection")).toBeInTheDocument();
-    expect(requestDetailSection.getAllByText("grounded (score 0.91)")).toHaveLength(2);
-    expect(requestDetailSection.getByText("Suppressed metadata fields")).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Request Body, Response Body")).toBeInTheDocument();
-    expect(requestDetailSection.getByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toBeInTheDocument();
-
-    const selectedRequestText = selectedRequestSection!.textContent ?? "";
-    const followUpText = followUpSection!.textContent ?? "";
-    expect(selectedRequestText.indexOf("req-integrated-001")).toBeGreaterThanOrEqual(0);
-    expect(selectedRequestText.indexOf("Routing inspection")).toBeGreaterThanOrEqual(0);
-    expect(followUpText.indexOf("Review cache aging window")).toBeGreaterThanOrEqual(0);
-    expect((container.firstElementChild?.textContent ?? "").indexOf("Dependency health context")).toBeGreaterThanOrEqual(0);
-    expect(selectedRequestText.indexOf("req-integrated-001")).toBeLessThan(
-      (container.firstElementChild?.textContent ?? "").indexOf("Dependency health context"),
-    );
-
-    const followUp = within(followUpSection!);
-    expect(followUp.getByText(/use these supporting cards to decide the next operator action/i)).toBeInTheDocument();
-    expect(followUp.getByText(/point toward policy preview as the comparison surface before any save elsewhere in the console/i)).toBeInTheDocument();
-
-    const guidanceCard = followUp
-      .getByRole("heading", { name: "Grounded follow-up guidance for the selected request" })
-      .closest("article");
-    expect(guidanceCard).not.toBeNull();
-    const guidance = within(guidanceCard!);
-    expect(guidance.getByText(/bounded operator guidance for the selected-request investigation/i)).toBeInTheDocument();
-    expect(guidance.getByText(/Compare options in policy preview before saving any change elsewhere in the console/i)).toBeInTheDocument();
-
-    const policyPreviewCard = followUp.getByRole("heading", { name: "Policy preview follow-up for the same request" }).closest("article");
-    expect(policyPreviewCard).not.toBeNull();
-    const policyPreview = within(policyPreviewCard!);
-    expect(policyPreview.getByText(/Use calibration, cache, and dependency context to judge whether a policy preview comparison is grounded enough/i)).toBeInTheDocument();
-    expect(policyPreview.getByText(/This page stays inspection-only: preview before saving in the policy editor/i)).toBeInTheDocument();
-    expect(policyPreview.getByText(/keep the persisted request row as the authoritative evidence seam/i)).toBeInTheDocument();
-
-    const replayReadinessHeading = await screen.findByRole("heading", { name: "Tenant-scoped replay readiness context" });
-    const replayReadinessCard = replayReadinessHeading.closest("article");
-    expect(replayReadinessCard).not.toBeNull();
-    const replayReadiness = within(replayReadinessCard!);
-    expect(replayReadiness.getByText(/derived from existing ledger metadata for the selected tenant/i)).toBeInTheDocument();
-    expect(replayReadiness.getByText(/without turning Observability into a replacement for the persisted request record/i)).toBeInTheDocument();
-    expect(replayReadiness.getByText(/before deciding whether a replay or policy preview comparison is grounded enough/i)).toBeInTheDocument();
-    expect(replayReadiness.getByText("Eligible calibrated rows")).toBeInTheDocument();
-    expect(replayReadiness.getByText("12")).toBeInTheDocument();
-    expect(replayReadiness.getByText("Sufficiency threshold")).toBeInTheDocument();
-    expect(replayReadiness.getByText("5")).toBeInTheDocument();
-    expect(replayReadiness.getByText(/Keep using the ledger row and request ID correlation as the primary proof\./i)).toBeInTheDocument();
-
-    expect(screen.getAllByText("Recent eligible calibrated rows meet the tenant sufficiency threshold.")).toHaveLength(2);
-    expect(await followUp.findByText("Review cache aging window")).toBeInTheDocument();
-    expect(followUp.getByText(/Preview a lower max entry age in policy before saving any runtime change/i)).toBeInTheDocument();
-
-    const cacheCard = followUp.getByRole("heading", { name: "Cache effectiveness and runtime controls" }).closest("section");
-    expect(cacheCard).not.toBeNull();
-    const cache = within(cacheCard!);
-    expect(cache.getByText(/Use it to decide whether the next step is a policy preview comparison/i)).toBeInTheDocument();
-    expect(cache.getByText("Runtime detail:")).toBeInTheDocument();
-    expect(cache.getByText(/Qdrant is warming and may reduce cache consistency/i)).toBeInTheDocument();
-    expect(cache.getByText("Similarity threshold")).toBeInTheDocument();
-    expect(cache.getByText("0.90")).toBeInTheDocument();
-    expect(cache.getByText("Max entry age")).toBeInTheDocument();
-    expect(cache.getByText("168 hours")).toBeInTheDocument();
-
-    const dependencySection = followUp.getByRole("heading", { name: "Dependency health context" }).closest("section");
-    expect(dependencySection).not.toBeNull();
-    const dependency = within(dependencySection!);
-    expect(dependency.getByText(/Required dependency failures block confidence immediately/i)).toBeInTheDocument();
-    expect(await screen.findAllByText("tenant-alpha")).toHaveLength(2);
-    expect(await screen.findAllByText("Route target")).toHaveLength(3);
+    await user.click(screen.getByRole("tab", { name: "Dependencias" }));
+    expect(await screen.findByText("postgres")).toBeInTheDocument();
   });
 
-  it("renders thin calibration evidence without inventing a separate analytics flow", async () => {
-    getTenantRecommendations.mockResolvedValueOnce({
-      tenant_id: "tenant-alpha",
-      generated_at: "2026-03-27T18:00:00Z",
-      window_requests_evaluated: 3,
-      calibration_summary: {
-        tenant_id: "tenant-alpha",
-        scope: "tenant",
-        state: "thin",
-        state_reason: "Eligible calibrated routing evidence is still below the tenant sufficiency threshold.",
-        generated_at: "2026-03-27T18:00:00Z",
-        latest_eligible_request_at: "2026-03-27T16:00:00Z",
-        latest_any_request_at: "2026-03-27T16:30:00Z",
-        eligible_request_count: 3,
-        sufficient_request_count: 3,
-        thin_request_threshold: 5,
-        staleness_threshold_hours: 24,
-        excluded_request_count: 0,
-        gated_request_count: 0,
-        degraded_request_count: 0,
-        excluded_reasons: [],
-        gated_reasons: [],
-        degraded_reasons: [],
-      },
-      recommendations: [],
-      cache_summary: {
-        enabled: true,
-        similarity_threshold: 0.9,
-        max_entry_age_hours: 168,
-        runtime_status: "ready",
-        runtime_detail: "Ready",
-        estimated_hit_rate: 0.1,
-        avoided_premium_cost_usd: 0.02,
-        insights: [],
-      },
+  it("names stale tenant calibration in its tab", async () => {
+    const user = userEvent.setup();
+    const base = await getTenantRecommendations();
+    getTenantRecommendations.mockResolvedValue({
+      ...(base as object),
+      calibration_summary: { ...(base as { calibration_summary: object }).calibration_summary, state: "stale" },
     });
-
     renderPage();
-
-    expect(await screen.findByText("thin")).toBeInTheDocument();
-    expect(screen.getAllByText("Eligible calibrated routing evidence is still below the tenant sufficiency threshold.")).toHaveLength(2);
-    expect(screen.getByText(/Keep using the ledger row and request ID correlation as the primary proof/i)).toBeInTheDocument();
-    expect(screen.queryByText(/analytics/i)).not.toBeInTheDocument();
+    await user.click(await screen.findByRole("tab", { name: "Calibración" }));
+    expect(await screen.findByText("vencida")).toBeInTheDocument();
   });
 
-  it("renders stale calibration evidence when the tenant window is no longer fresh", async () => {
-    getTenantRecommendations.mockResolvedValueOnce({
-      tenant_id: "tenant-alpha",
-      generated_at: "2026-03-27T18:00:00Z",
-      window_requests_evaluated: 11,
-      calibration_summary: {
-        tenant_id: "tenant-alpha",
-        scope: "tenant",
-        state: "stale",
-        state_reason: "Eligible calibrated evidence exists but the newest row is outside the freshness window.",
-        generated_at: "2026-03-27T18:00:00Z",
-        latest_eligible_request_at: "2026-03-24T12:00:00Z",
-        latest_any_request_at: "2026-03-27T17:00:00Z",
-        eligible_request_count: 11,
-        sufficient_request_count: 11,
-        thin_request_threshold: 5,
-        staleness_threshold_hours: 24,
-        excluded_request_count: 0,
-        gated_request_count: 0,
-        degraded_request_count: 1,
-        excluded_reasons: [],
-        gated_reasons: [],
-        degraded_reasons: [{ reason: "missing_route_signals", count: 1 }],
-      },
-      recommendations: [],
-      cache_summary: {
-        enabled: false,
-        similarity_threshold: 0.9,
-        max_entry_age_hours: 168,
-        runtime_status: "unknown",
-        runtime_detail: "Unavailable",
-        estimated_hit_rate: 0,
-        avoided_premium_cost_usd: 0,
-        insights: [],
-      },
-    });
-
+  it("shows the ledger error instead of an empty table", async () => {
+    listUsageLedger.mockRejectedValue(new Error("Ledger unavailable."));
     renderPage();
-
-    expect(await screen.findByText("stale")).toBeInTheDocument();
-    expect(screen.getAllByText("Eligible calibrated evidence exists but the newest row is outside the freshness window.")).toHaveLength(2);
+    await waitFor(() => expect(screen.getByText("Ledger unavailable.")).toBeInTheDocument());
   });
 
-  it("renders rollout-disabled calibration evidence when recent traffic is gated", async () => {
-    getTenantRecommendations.mockResolvedValueOnce({
-      tenant_id: "tenant-alpha",
-      generated_at: "2026-03-27T18:00:00Z",
-      window_requests_evaluated: 4,
-      calibration_summary: {
-        tenant_id: "tenant-alpha",
-        scope: "tenant",
-        state: "thin",
-        state_reason: "Calibrated routing remained disabled for recent tenant traffic.",
-        generated_at: "2026-03-27T18:00:00Z",
-        latest_eligible_request_at: null,
-        latest_any_request_at: "2026-03-27T17:00:00Z",
-        eligible_request_count: 0,
-        sufficient_request_count: 0,
-        thin_request_threshold: 5,
-        staleness_threshold_hours: 24,
-        excluded_request_count: 0,
-        gated_request_count: 4,
-        degraded_request_count: 0,
-        excluded_reasons: [],
-        gated_reasons: [{ reason: "calibrated_routing_disabled", count: 4 }],
-        degraded_reasons: [],
-      },
-      recommendations: [],
-      cache_summary: {
-        enabled: true,
-        similarity_threshold: 0.9,
-        max_entry_age_hours: 168,
-        runtime_status: "ready",
-        runtime_detail: "Ready",
-        estimated_hit_rate: 0.25,
-        avoided_premium_cost_usd: 0.12,
-        insights: [],
-      },
-    });
-
+  it("offers the playground when the ledger is empty", async () => {
+    listUsageLedger.mockResolvedValue([]);
     renderPage();
+    await waitFor(() => expect(screen.getByText("No hay pedidos en este rango.")).toBeInTheDocument());
+    expect(screen.getByText("Elegir un pedido del ledger.")).toBeInTheDocument();
+  });
 
-    expect(await screen.findAllByText("Calibrated routing remained disabled for recent tenant traffic.")).toHaveLength(2);
-    const followUpSection = screen.getByRole("heading", { name: "Follow-up context for the selected request" }).closest("section");
-    expect(followUpSection).not.toBeNull();
-    const followUp = within(followUpSection!);
-    const replayReadinessHeading = followUp.getByRole("heading", { name: "Tenant-scoped replay readiness context" });
-    const replayReadinessCard = replayReadinessHeading.closest("article");
-    expect(replayReadinessCard).not.toBeNull();
-    const replayReadiness = within(replayReadinessCard!);
-    expect(replayReadiness.getByText("Rollout-disabled rows")).toBeInTheDocument();
-    expect(replayReadiness.getByText("4")).toBeInTheDocument();
+  it("says why the tenant filter is empty when the tenant list fails", async () => {
+    listTenants.mockRejectedValue(new Error("Tenants unavailable."));
+    renderPage();
+    expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
   });
 });
