@@ -6,7 +6,9 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
+import { ErrorAlert } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 type ApplyTargetProps = {
   adminKey: string;
@@ -43,9 +45,12 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
   const tenantName = (id: string) => tenantsQuery.data?.find((t) => t.id === id)?.name ?? id;
 
   return (
-    <div className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-        <div>
+    <div className="flex flex-col gap-3">
+      {tenantsQuery.isError ? (
+        <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
+      ) : null}
+      <div className="flex items-end gap-2">
+        <div className="min-w-0 flex-1">
           <label htmlFor="evaluation-tenant" className="field-label">
             Tenant
           </label>
@@ -67,24 +72,20 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
             ))}
           </select>
         </div>
-        <button
+        <Button
           type="button"
-          className="action-button"
           disabled={!tenantId || mutation.isPending}
           onClick={() => mutation.mutate({ id: tenantId, value: target })}
         >
-          {mutation.isPending ? "Guardando…" : "Aplicar a este tenant"}
-        </button>
+          {mutation.isPending ? "Guardando…" : "Aplicar al tenant"}
+        </Button>
       </div>
-      <p className="text-sm text-ink-3">
-        Guarda <code className="font-mono text-xs">routing_quality_target = {target.toFixed(3)}</code> en la política del
-        tenant; el resto de la política no cambia.
-      </p>
       {mutation.isSuccess ? (
-        <div role="status" className="rounded-xl border border-ok-line bg-ok-soft px-4 py-3 text-sm text-ok">
-          Guardado: routing_quality_target = {mutation.data.routing_quality_target.toFixed(3)} en{" "}
-          {tenantName(mutation.variables.id)}
-        </div>
+        <Alert variant="success" role="status">
+          <AlertDescription>
+            {`Objetivo ${mutation.data.routing_quality_target.toFixed(3)} guardado en ${tenantName(mutation.variables.id)}.`}
+          </AlertDescription>
+        </Alert>
       ) : null}
       {mutation.isError ? (
         <Alert variant="destructive">

@@ -22,10 +22,10 @@ describe("ReplayFeed", () => {
   it("routes one prompt per step and keeps running totals", () => {
     render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying={false} />);
 
-    expect(screen.getByText("0 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("0 / 4 pedidos")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Paso" }));
 
-    expect(screen.getByText("1 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("1 / 4 pedidos")).toBeInTheDocument();
     const [first] = feedItems();
     expect(within(first).getByText("local")).toBeInTheDocument();
     expect(within(first).getByLabelText("suficiente")).toBeInTheDocument();
@@ -43,7 +43,7 @@ describe("ReplayFeed", () => {
     // Newest first: the second prompt went to frontier, the first stays local.
     expect(within(items[0]).getByText("frontier")).toBeInTheDocument();
     expect(within(items[1]).getByText("local")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Costo acumulado" })).toHaveTextContent("$2.000");
+    expect(screen.getByRole("group", { name: "Costo acumulado" })).toHaveTextContent("USD 2.00");
   });
 
   it("plays at the chosen speed, stops at the end and cleans up on unmount", () => {
@@ -54,12 +54,12 @@ describe("ReplayFeed", () => {
     act(() => {
       vi.advanceTimersByTime(250);
     });
-    expect(screen.getByText("2 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("2 / 4 pedidos")).toBeInTheDocument();
 
     act(() => {
       vi.advanceTimersByTime(2000);
     });
-    expect(screen.getByText("4 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("4 / 4 pedidos")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reiniciar" })).toBeInTheDocument();
 
     unmount();
@@ -74,12 +74,12 @@ describe("ReplayFeed", () => {
     act(() => {
       vi.advanceTimersByTime(5000);
     });
-    expect(screen.getByText("0 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("0 / 4 pedidos")).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole("button", { name: "Reanudar" }));
     act(() => {
       vi.advanceTimersByTime(1000);
     });
-    expect(screen.getByText("1 / 4 prompts")).toBeInTheDocument();
+    expect(screen.getByText("1 / 4 pedidos")).toBeInTheDocument();
   });
 });
