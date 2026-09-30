@@ -30,6 +30,7 @@ from nebula.observability.metrics import (
 )
 from nebula.providers.base import CompletionProvider, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
+from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.provider_registry import ProviderRegistry
@@ -51,6 +52,8 @@ class CompletionMetadata:
     policy_outcome: str
     route_signals: dict[str, Any] | None = None
     route_score: float = 0.0
+    # local / economy / frontier / cache / denied: which tier actually served the request.
+    route_tier: str = "frontier"
 
 
 @dataclass(slots=True)
@@ -74,6 +77,7 @@ class ChatService:
         provider_registry: ProviderRegistry,
         governance_store: GovernanceStore,
         policy_service: PolicyService,
+        embeddings_service: OllamaEmbeddingsService | None = None,
     ) -> None:
         self.settings = settings
         self.cache_service = cache_service
@@ -81,6 +85,7 @@ class ChatService:
         self.provider_registry = provider_registry
         self.governance_store = governance_store
         self.policy_service = policy_service
+        self.embeddings_service = embeddings_service
 
     async def create_completion(
         self,
@@ -103,11 +108,14 @@ class ChatService:
     ) -> CompletionResponseEnvelope:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
+        routing_embedding = await self._embed_for_routing(latest_user_prompt)
+        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
             tenant_context=tenant_context,
             request_id=request_id,
+            prompt_embedding=routing_embedding,
         )
 
         cache_hit = await self._lookup_cache(
@@ -116,6 +124,7 @@ class ChatService:
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=False,
+            vector=cache_vector,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
@@ -155,7 +164,12 @@ class ChatService:
         )
         provider = self.provider_registry.get(route_decision.target)
         try:
-            result = await self._complete_with_provider(provider, request, request_id, tenant_context.tenant.id)
+            result = await self._complete_with_provider(
+                provider,
+                self._provider_request(request, route_decision.model),
+                request_id,
+                tenant_context.tenant.id,
+            )
             COMPLETION_COUNT.labels(provider.name, "ok", "false").inc()
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
@@ -226,7 +240,7 @@ class ChatService:
             try:
                 result = await self._complete_with_provider(
                     fallback_provider,
-                    request,
+                    self._fallback_request(request, policy_resolution),
                     request_id,
                     tenant_context.tenant.id,
                 )
@@ -269,7 +283,11 @@ class ChatService:
         usage = self._resolved_usage(request, result.content, result.usage)
         if policy_resolution.cache_enabled:
             await self.cache_service.store(
-                latest_user_prompt, result.content, result.model, tenant_id=tenant_context.tenant.id
+                latest_user_prompt,
+                result.content,
+                result.model,
+                tenant_id=tenant_context.tenant.id,
+                vector=cache_vector,
             )
         response = self._build_response(content=result.content, model=result.model, usage=usage)
         await self._record_usage(
@@ -306,11 +324,14 @@ class ChatService:
     ) -> StreamingCompletionEnvelope:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
+        routing_embedding = await self._embed_for_routing(latest_user_prompt)
+        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
             tenant_context=tenant_context,
             request_id=request_id,
+            prompt_embedding=routing_embedding,
         )
         response_id = f"chatcmpl-{uuid4().hex}"
         created = int(time())
@@ -321,6 +342,7 @@ class ChatService:
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=True,
+            vector=cache_vector,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
@@ -365,6 +387,7 @@ class ChatService:
                 tenant_id=tenant_context.tenant.id,
                 policy_resolution=policy_resolution,
                 cache_enabled=policy_resolution.cache_enabled,
+                cache_vector=cache_vector,
             )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_502_BAD_GATEWAY:
@@ -439,6 +462,7 @@ class ChatService:
         policy_resolution: PolicyResolution,
         request_id: str | None,
         stream: bool,
+        vector: list[float] | None = None,
     ) -> CacheHit | None:
         if not policy_resolution.cache_enabled:
             logger.info("cache_bypassed request_id=%s stream=%s reason=policy_disabled", request_id, stream)
@@ -448,6 +472,7 @@ class ChatService:
             tenant_id=tenant_id,
             similarity_threshold=policy_resolution.cache_similarity_threshold,
             max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
+            vector=vector,
         )
         if hit is not None:
             logger.info(
@@ -477,6 +502,7 @@ class ChatService:
         request_id: str | None,
         tenant_id: str,
         cache_enabled: bool,
+        cache_vector: list[float] | None = None,
     ):
         content_parts: list[str] = []
         started_at = perf_counter()
@@ -502,7 +528,11 @@ class ChatService:
                 if chunk.finish_reason:
                     if cache_enabled:
                         await self.cache_service.store(
-                            prompt, "".join(content_parts), chunk.model, tenant_id=tenant_id
+                            prompt,
+                            "".join(content_parts),
+                            chunk.model,
+                            tenant_id=tenant_id,
+                            vector=cache_vector,
                         )
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
@@ -585,18 +615,20 @@ class ChatService:
         tenant_id: str,
         policy_resolution: PolicyResolution,
         cache_enabled: bool,
+        cache_vector: list[float] | None = None,
     ) -> tuple[AsyncIterator[bytes], CompletionMetadata]:
         route_decision = policy_resolution.route_decision
         try:
             stream = await self._prefetched_stream(
                 provider=provider,
-                request=request,
+                request=self._provider_request(request, route_decision.model),
                 prompt=prompt,
                 response_id=response_id,
                 created=created,
                 request_id=request_id,
                 tenant_id=tenant_id,
                 cache_enabled=cache_enabled,
+                cache_vector=cache_vector,
             )
             return (
                 stream,
@@ -642,13 +674,14 @@ class ChatService:
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,
-                    request=request,
+                    request=self._fallback_request(request, policy_resolution),
                     prompt=prompt,
                     response_id=response_id,
                     created=created,
                     request_id=request_id,
                     tenant_id=tenant_id,
                     cache_enabled=cache_enabled,
+                    cache_vector=cache_vector,
                 )
             except ProviderError as fallback_exc:
                 raise HTTPException(
@@ -679,6 +712,7 @@ class ChatService:
         request_id: str | None,
         tenant_id: str,
         cache_enabled: bool,
+        cache_vector: list[float] | None = None,
     ) -> AsyncIterator[bytes]:
         provider_stream = self._stream_provider(
             provider=provider,
@@ -689,6 +723,7 @@ class ChatService:
             request_id=request_id,
             tenant_id=tenant_id,
             cache_enabled=cache_enabled,
+            cache_vector=cache_vector,
         )
 
         try:
@@ -808,6 +843,7 @@ class ChatService:
         prompt: str,
         tenant_context: AuthenticatedTenantContext,
         request_id: str | None,
+        prompt_embedding: list[float] | None = None,
     ) -> PolicyResolution:
         try:
             return await self.policy_service.resolve(
@@ -815,6 +851,7 @@ class ChatService:
                 request=request,
                 tenant_context=tenant_context,
                 router_service=self.router_service,
+                prompt_embedding=prompt_embedding,
             )
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
@@ -839,6 +876,64 @@ class ChatService:
                     )
                 )
             raise
+
+    async def _embed_for_routing(self, prompt: str) -> list[float] | None:
+        """Embed the prompt once for the learned router; None when it is off or embedding fails."""
+        learned = self.router_service.learned
+        if learned is None or self.embeddings_service is None:
+            return None
+        text = prompt if learned.prefix == "none" else f"{learned.prefix}: {prompt}"
+        try:
+            return await self.embeddings_service.embed(text)
+        except Exception as exc:  # noqa: BLE001 - routing degrades to the heuristic
+            logger.warning("routing_embedding_failed error=%s", exc)
+            return None
+
+    def _cache_vector(self, routing_embedding: list[float] | None) -> list[float] | None:
+        # The cache indexes the bare prompt; a prefixed routing embedding is a different vector.
+        learned = self.router_service.learned
+        if routing_embedding is None or learned is None or learned.prefix != "none":
+            return None
+        return routing_embedding
+
+    def _provider_request(
+        self, request: ChatCompletionRequest, decision_model: str | None
+    ) -> ChatCompletionRequest:
+        # Providers serve request.model unless it is the auto alias; the tier model rides there.
+        if decision_model is None:
+            return request
+        return request.model_copy(update={"model": decision_model})
+
+    def _fallback_model(self, policy_resolution: PolicyResolution) -> str | None:
+        """Economy when configured and the tenant allows it; otherwise the provider default."""
+        economy = self.settings.economy_model
+        allowed = policy_resolution.allowed_premium_models
+        if economy and (not allowed or economy in allowed):
+            return economy
+        return None
+
+    def _fallback_request(
+        self, request: ChatCompletionRequest, policy_resolution: PolicyResolution
+    ) -> ChatCompletionRequest:
+        return self._provider_request(request, self._fallback_model(policy_resolution))
+
+    def _route_tier(
+        self,
+        *,
+        route_target: str,
+        fallback_used: bool,
+        signals: dict[str, Any],
+        policy_resolution: PolicyResolution,
+    ) -> str:
+        if route_target in {"local", "cache", "denied"}:
+            return route_target
+        if fallback_used:
+            return "economy" if self._fallback_model(policy_resolution) else "frontier"
+        tier = signals.get("tier")
+        if tier in {"economy", "frontier"}:
+            return tier
+        model = policy_resolution.route_decision.model
+        return "economy" if model and model == self.settings.economy_model else "frontier"
 
     def _resolved_usage(
         self,
@@ -920,6 +1015,12 @@ class ChatService:
             policy_outcome=policy_resolution.policy_outcome,
             route_signals=signals or None,
             route_score=policy_resolution.route_decision.score,
+            route_tier=self._route_tier(
+                route_target=route_target,
+                fallback_used=fallback_used,
+                signals=signals,
+                policy_resolution=policy_resolution,
+            ),
         )
 
     def _error_headers(
@@ -942,6 +1043,12 @@ class ChatService:
             "X-Nebula-Fallback-Used": str(fallback_used).lower(),
             "X-Nebula-Policy-Mode": policy_resolution.policy_mode,
             "X-Nebula-Policy-Outcome": policy_resolution.policy_outcome,
+            "X-Nebula-Route-Tier": self._route_tier(
+                route_target=route_target,
+                fallback_used=fallback_used,
+                signals=policy_resolution.route_decision.signals,
+                policy_resolution=policy_resolution,
+            ),
         }
         route_mode = policy_resolution.route_decision.signals.get("route_mode")
         if route_mode is not None:

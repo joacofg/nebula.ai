@@ -136,7 +136,9 @@ class FakePolicyService:
         self.fallback_enabled = fallback_enabled
         self.policy_outcome = policy_outcome
 
-    async def resolve(self, *, prompt, request, tenant_context, router_service) -> PolicyResolution:
+    async def resolve(
+        self, *, prompt, request, tenant_context, router_service, prompt_embedding=None
+    ) -> PolicyResolution:
         decision = self.route_decision or await router_service.choose_target_with_reason(
             prompt,
             request,

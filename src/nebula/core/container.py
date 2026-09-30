@@ -10,6 +10,7 @@ from nebula.services.auth_service import AuthService
 from nebula.services.chat_service import ChatService
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
+from nebula.services.learned_router import LearnedRouterModel
 from nebula.services.policy_service import PolicyService
 from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
@@ -36,7 +37,7 @@ class ServiceContainer:
             store=self.governance_store,
             pricing=self.pricing_catalog,
         )
-        self.router_service = RouterService(settings)
+        self.router_service = RouterService(settings, learned=self._load_learned_router())
         self.policy_simulation_service = PolicySimulationService(
             governance_store=self.governance_store,
             router_service=self.router_service,
@@ -79,6 +80,7 @@ class ServiceContainer:
             provider_registry=self.provider_registry,
             governance_store=self.governance_store,
             policy_service=self.policy_service,
+            embeddings_service=self.embeddings_service,
         )
 
     async def initialize(self) -> None:
@@ -92,6 +94,12 @@ class ServiceContainer:
         await self.embeddings_service.close()
         await self.cache_service.close()
         self.governance_store.close()
+
+    def _load_learned_router(self) -> LearnedRouterModel | None:
+        if not self.settings.learned_router_enabled:
+            return None
+        # Enabled but missing or invalid is a deployment error: fail at startup, not per request.
+        return LearnedRouterModel.from_file(self.settings.learned_router_path)
 
     def _build_premium_provider(self):
         if self.settings.premium_provider == "openai_compatible":

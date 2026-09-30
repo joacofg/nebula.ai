@@ -107,7 +107,10 @@ class GovernanceStore:
         )
 
     def default_policy(self) -> TenantPolicy:
-        return TenantPolicy(allowed_premium_models=[self.settings.premium_model])
+        allowed = [self.settings.premium_model]
+        if self.settings.economy_model and self.settings.economy_model not in allowed:
+            allowed.append(self.settings.economy_model)
+        return TenantPolicy(allowed_premium_models=allowed)
 
     def list_tenants(self) -> list[TenantRecord]:
         with self._session() as session:
@@ -198,6 +201,7 @@ class GovernanceStore:
                 session.add(current)
             current.routing_mode_default = policy.routing_mode_default
             current.calibrated_routing_enabled = policy.calibrated_routing_enabled
+            current.routing_quality_target = policy.routing_quality_target
             current.allowed_premium_models_json = policy.allowed_premium_models
             current.semantic_cache_enabled = policy.semantic_cache_enabled
             current.semantic_cache_similarity_threshold = policy.semantic_cache_similarity_threshold
@@ -570,6 +574,7 @@ class GovernanceStore:
         return TenantPolicy(
             routing_mode_default=row.routing_mode_default,
             calibrated_routing_enabled=row.calibrated_routing_enabled,
+            routing_quality_target=row.routing_quality_target,
             allowed_premium_models=row.allowed_premium_models_json,
             semantic_cache_enabled=row.semantic_cache_enabled,
             semantic_cache_similarity_threshold=row.semantic_cache_similarity_threshold,

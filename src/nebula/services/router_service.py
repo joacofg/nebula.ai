@@ -1,3 +1,5 @@
+import logging
+import math
 from dataclasses import dataclass, field
 from math import ceil
 from typing import Any, Literal
@@ -7,6 +9,9 @@ from pydantic import BaseModel
 from nebula.core.config import Settings
 from nebula.models.governance import CalibrationEvidenceSummary, RoutingMode, TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
+from nebula.services.learned_router import LearnedRouterModel, OperatingPoint
+
+logger = logging.getLogger(__name__)
 
 RouteTarget = Literal["local", "premium"]
 ComplexityTier = Literal["low", "medium", "high"]
@@ -20,6 +25,9 @@ class RouteDecision:
     reason: str
     signals: dict[str, Any] = field(default_factory=dict)
     score: float = 0.0
+    # The model the premium provider should serve (economy or frontier tier); None keeps
+    # the provider's configured model.
+    model: str | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +60,20 @@ def _estimate_token_count(text: str) -> int:
     return max(1, ceil(len(text) / 4))
 
 
+def _finite_or_none(value: float) -> float | None:
+    return value if math.isfinite(value) else None
+
+
+def _operating_point_signal(point: OperatingPoint) -> dict[str, float | None]:
+    # ALL_FRONTIER carries inf thresholds and a nan cost; route signals are persisted as JSON.
+    return {
+        "tau_local": _finite_or_none(point.tau_local),
+        "tau_economy": _finite_or_none(point.tau_economy),
+        "quality": _finite_or_none(point.quality),
+        "cost_per_prompt": _finite_or_none(point.cost_per_prompt),
+    }
+
+
 class ReplayRouteContext(BaseModel):
     token_count: int | None = None
     keyword_match: bool | None = None
@@ -61,8 +83,14 @@ class ReplayRouteContext(BaseModel):
 class RouterService:
     COMPLEXITY_HINTS = ("analyze", "reason", "contract", "debug", "architecture", "design")
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: Settings, learned: LearnedRouterModel | None = None) -> None:
         self.settings = settings
+        self.learned = learned
+
+    @property
+    def uses_embeddings(self) -> bool:
+        """Whether live routing wants the prompt's embedding (the learned router is loaded)."""
+        return self.learned is not None
 
     async def choose_target(self, prompt: str, request: ChatCompletionRequest) -> RouteTarget:
         return (await self.choose_target_with_reason(prompt, request)).target
@@ -94,13 +122,25 @@ class RouterService:
         routing_mode: RoutingMode = "auto",
         policy: TenantPolicy | None = None,
         evidence_summary: CalibrationEvidenceSummary | None = None,
+        prompt_embedding: list[float] | None = None,
     ) -> RouteDecision:
         explicit_override = self._explicit_override_decision(request=request, routing_mode=routing_mode)
         if explicit_override is not None:
             return explicit_override
 
         breakdown = self._build_live_breakdown(prompt=prompt, policy=policy, evidence_summary=evidence_summary)
-        return self._decision_from_breakdown(breakdown)
+        if self.learned is None or policy is None:
+            return self._decision_from_breakdown(breakdown)
+        if prompt_embedding is None:
+            return self._heuristic_with_learned_signal(breakdown, "embedding_unavailable")
+        if len(prompt_embedding) != self.learned.dimension:
+            logger.warning(
+                "learned_router_dimension_mismatch embedding=%s router=%s",
+                len(prompt_embedding),
+                self.learned.dimension,
+            )
+            return self._heuristic_with_learned_signal(breakdown, "embedding_dimension_mismatch")
+        return self._learned_decision(breakdown, prompt_embedding, policy)
 
     def resolve_model(self, target: RouteTarget) -> str:
         if target == "local":
@@ -117,7 +157,7 @@ class RouterService:
         if requested_model and request.model == self.settings.local_model:
             return RouteDecision(target="local", reason="explicit_local_model")
         if requested_model:
-            return RouteDecision(target="premium", reason="explicit_premium_model")
+            return RouteDecision(target="premium", reason="explicit_premium_model", model=request.model)
         if routing_mode == "local_only":
             return RouteDecision(target="local", reason="policy_local_only")
         if routing_mode == "premium_only":
@@ -262,6 +302,55 @@ class RouterService:
             reason="token_complexity",
             signals=signals,
             score=breakdown.total_score,
+        )
+
+    def _heuristic_with_learned_signal(
+        self, breakdown: CalibratedScoreBreakdown, status: str
+    ) -> RouteDecision:
+        decision = self._decision_from_breakdown(breakdown)
+        return RouteDecision(
+            target=decision.target,
+            reason=decision.reason,
+            signals={**decision.signals, "learned_router": status},
+            score=decision.score,
+        )
+
+    def _learned_decision(
+        self,
+        breakdown: CalibratedScoreBreakdown,
+        vector: list[float],
+        policy: TenantPolicy,
+    ) -> RouteDecision:
+        assert self.learned is not None
+        choice = self.learned.choose(vector, policy.routing_quality_target)
+        tier = choice.tier
+        if tier == "economy" and not self.settings.economy_model:
+            # No economy model configured: the premium provider serves the frontier model.
+            tier = "frontier"
+
+        model: str | None = None
+        if tier == "economy":
+            model = self.settings.economy_model
+        elif tier == "frontier":
+            model = self.settings.premium_model
+
+        signals = self._signals_from_breakdown(breakdown)
+        signals.update(
+            {
+                "tier": tier,
+                "p_local": round(choice.p_local, 4),
+                "p_economy": round(choice.p_economy, 4),
+                "quality_target": policy.routing_quality_target,
+                "operating_point": _operating_point_signal(choice.point),
+                "learned_router": self.learned.version,
+            }
+        )
+        return RouteDecision(
+            target="local" if tier == "local" else "premium",
+            reason="learned_router",
+            signals=signals,
+            score=round(1.0 - choice.p_local, 4),
+            model=model,
         )
 
     def _signals_from_breakdown(self, breakdown: CalibratedScoreBreakdown) -> dict[str, Any]:

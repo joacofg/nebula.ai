@@ -172,6 +172,7 @@ From the `curl -i` output, confirm headers such as:
 
 - `X-Nebula-Tenant-ID`
 - `X-Nebula-Route-Target`
+- `X-Nebula-Route-Tier` (`local`, `economy`, `frontier`, `cache` or `denied`)
 - `X-Nebula-Route-Reason`
 - `X-Nebula-Provider`
 - `X-Nebula-Cache-Hit`

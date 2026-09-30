@@ -115,3 +115,48 @@ async def test_store_writes_tenant_id_into_payload() -> None:
     assert payload["prompt"] == "hello"
     assert payload["response"] == "world"
     assert isinstance(payload["created_at"], int)
+
+
+class CountingEmbeddings(FakeEmbeddings):
+    def __init__(self) -> None:
+        self.calls: list[str] = []
+
+    async def embed(self, text: str) -> list[float] | None:
+        self.calls.append(text)
+        return await super().embed(text)
+
+
+@pytest.mark.asyncio
+async def test_lookup_and_store_reuse_a_precomputed_vector() -> None:
+    client = RecordingQdrant()
+    embeddings = CountingEmbeddings()
+    service = SemanticCacheService(settings=Settings(), embeddings_service=embeddings)
+    service.client = client
+    service.enabled = True
+
+    await service.lookup(
+        "hello",
+        tenant_id="acme",
+        similarity_threshold=0.9,
+        max_entry_age_hours=24,
+        vector=[0.7, 0.8, 0.9],
+    )
+    await service.store("hello", "world", "llama3.2:3b", tenant_id="acme", vector=[0.7, 0.8, 0.9])
+
+    assert embeddings.calls == []
+    assert client.query_kwargs[0]["query"] == [0.7, 0.8, 0.9]
+    assert client.upserts[0]["points"][0].vector == [0.7, 0.8, 0.9]
+
+
+@pytest.mark.asyncio
+async def test_lookup_without_a_vector_still_embeds() -> None:
+    client = RecordingQdrant()
+    embeddings = CountingEmbeddings()
+    service = SemanticCacheService(settings=Settings(), embeddings_service=embeddings)
+    service.client = client
+    service.enabled = True
+
+    await service.lookup("hello", tenant_id="acme", similarity_threshold=0.9, max_entry_age_hours=24)
+
+    assert embeddings.calls == ["hello"]
+    assert client.query_kwargs[0]["query"] == [0.1, 0.2, 0.3]

@@ -127,6 +127,7 @@ class FakeCacheService:
         tenant_id: str,
         similarity_threshold: float,
         max_entry_age_hours: int,
+        vector: list[float] | None = None,
     ) -> CacheHit | None:
         self.lookup_calls.append((tenant_id, prompt, similarity_threshold, max_entry_age_hours))
         if self.lookup_error is not None:
@@ -135,7 +136,15 @@ class FakeCacheService:
             return None
         return CacheHit(response=self.cached_response, model="nebula-cache", score=1.0, age_seconds=0)
 
-    async def store(self, prompt: str, response: str, model: str, *, tenant_id: str) -> None:
+    async def store(
+        self,
+        prompt: str,
+        response: str,
+        model: str,
+        *,
+        tenant_id: str,
+        vector: list[float] | None = None,
+    ) -> None:
         if self.store_error is not None:
             raise self.store_error
         self.stored_entries.append((tenant_id, prompt, response, model))

@@ -2,7 +2,11 @@
 
 ## Pre-demo checklist (15 min before)
 
-1. `ollama serve` running — `ollama list` shows `llama3.2:3b`, `nomic-embed-text`.
+1. `ollama serve` running — `ollama list` shows `qwen2.5:7b`, `nomic-embed-text`.
+   `.env` has the three-tier block from `.env.example` uncommented (qwen2.5:7b /
+   claude-haiku-4.5 / gpt-4.1, `NEBULA_LEARNED_ROUTER_ENABLED=true`) and a real
+   `NEBULA_PREMIUM_API_KEY`. If the tenant policy has `allowed_premium_models`,
+   it must list both premium models.
 2. `docker compose up -d qdrant`
 3. **Reset the semantic cache** (gateway must NOT be running yet):
    `curl -s -X DELETE http://localhost:6333/collections/nebula-semantic-cache`
@@ -51,6 +55,22 @@ read **cache**, not local — that's expected and fine. The point of this beat
 isn't which tier it hits; it's the `X-Nebula-*` header block itself: "It's
 OpenAI-compatible — any existing client works unchanged; the routing story
 rides in the response headers."
+
+## Three-tier beat (learned router)
+
+Set the tenant's `routing_quality_target` (policy API or console JSON) and send
+`nebula-auto` requests; watch `X-Nebula-Route-Tier`:
+
+| target | "¿Cuál es la capital de Australia?" | "¿Por qué los boletos de avión están tan caros ahora?" | "Escribe una función en Python … criba de Eratóstenes, con tests." |
+|---|---|---|---|
+| 0.80 | local | local | local |
+| 0.90 | local | economy | frontier |
+| 1.00 | frontier | frontier | frontier |
+
+Checked live on 2026-09-30. The line for the jury: raising the quality target
+moves traffic up the tiers; the ledger prices each answer by the model that gave it.
+The second prompt comes from the training corpus: it shows the mechanism, not
+held-out accuracy (that is the nested estimate in `benchmarks/router/v1/report.md`).
 
 ## Recovery moves
 
