@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle, RotateCcw, Save, Telescope } from "lucide-react";
 
 import type {
@@ -10,8 +10,10 @@ import type {
   TenantPolicy,
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
-import { PolicyAdvancedSection } from "@/components/policy/policy-advanced-section";
+import { Readout } from "@/components/system/readout";
+import { LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -93,12 +95,7 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
 }
 
 function formatUsd(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    minimumFractionDigits: 4,
-    maximumFractionDigits: 4,
-  }).format(value);
+  return `${value < 0 ? "−" : ""}USD ${Math.abs(value).toFixed(4)}`;
 }
 
 function formatRouteScore(score: number | null | undefined) {
@@ -106,42 +103,6 @@ function formatRouteScore(score: number | null | undefined) {
     return null;
   }
   return score.toFixed(2);
-}
-
-function formatEvidenceRetentionWindow(window: TenantPolicy["evidence_retention_window"]) {
-  switch (window) {
-    case "24h":
-      return "24 hours";
-    case "7d":
-      return "7 days";
-    case "30d":
-      return "30 days";
-    case "90d":
-      return "90 days";
-    default:
-      return window;
-  }
-}
-
-function getEvidenceBoundarySummary(
-  evidenceRetentionWindow: TenantPolicy["evidence_retention_window"],
-  metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"],
-) {
-  const retentionLabel = formatEvidenceRetentionWindow(evidenceRetentionWindow);
-  const inspectableWhileRetained =
-    metadataMinimizationLevel === "strict"
-      ? "While a retained row exists, operators can still inspect bounded ledger metadata such as tenant, model, status, and governance markers."
-      : "While a retained row exists, operators can inspect bounded ledger metadata such as tenant, model, route, status, and governance markers.";
-  const minimizationEffect =
-    metadataMinimizationLevel === "strict"
-      ? "Strict minimization suppresses route signals and other minimizable metadata at write time, so that detail is no longer available later from the ledger."
-      : "Standard minimization preserves route signals and other governed metadata when Nebula can safely retain them for later inspection.";
-
-  return {
-    retention: `Nebula keeps governed request metadata historically inspectable for up to ${retentionLabel} before expiration markers say it should age out.`,
-    inspectableWhileRetained,
-    minimizationEffect,
-  };
 }
 
 function formatRoutingState(
@@ -184,25 +145,25 @@ function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
 
   const highlights: string[] = [];
   if (routeChanged) {
-    highlights.push(`route ${change.baseline_route_target} → ${change.simulated_route_target}`);
+    highlights.push(`ruta ${change.baseline_route_target} → ${change.simulated_route_target}`);
   }
   if (statusChanged) {
-    highlights.push(`status ${change.baseline_terminal_status} → ${change.simulated_terminal_status}`);
+    highlights.push(`estado ${change.baseline_terminal_status} → ${change.simulated_terminal_status}`);
   }
   if (outcomeChanged) {
     highlights.push(
-      `policy ${(change.baseline_policy_outcome ?? "none")} → ${(change.simulated_policy_outcome ?? "none")}`,
+      `política ${(change.baseline_policy_outcome ?? "ninguna")} → ${(change.simulated_policy_outcome ?? "ninguna")}`,
     );
   }
   if (costChanged) {
-    highlights.push(`cost ${formatUsd(change.baseline_estimated_cost)} → ${formatUsd(change.simulated_estimated_cost)}`);
+    highlights.push(`costo ${formatUsd(change.baseline_estimated_cost)} → ${formatUsd(change.simulated_estimated_cost)}`);
   }
 
-  return highlights.join(" • ");
+  return highlights.join(" · ");
 }
 
 function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
-  return `routing parity: ${formatRoutingState(
+  return `paridad de ruteo: ${formatRoutingState(
     change.baseline_route_mode,
     change.baseline_calibrated_routing,
     change.baseline_degraded_routing,
@@ -224,56 +185,48 @@ function getDecisionSummary(simulationResult: PolicySimulationResponse) {
   if (window.returned_rows === 0 || summary.evaluated_rows === 0) {
     return {
       tone: "amber" as const,
-      badge: "No comparison window",
-      title: "No recent baseline matched this preview window.",
-      body:
-        "Keep iterating in the editor if the draft still needs work, or save only when you intend to publish without replay evidence.",
-      nextStep: "Next step: preview again after recent persisted traffic is available.",
+      badge: "Sin ventana",
+      title: "No hay tráfico reciente para comparar.",
+      body: null,
     };
   }
 
   if (changedCount === 0) {
     return {
       tone: "emerald" as const,
-      badge: "No decision pressure",
-      title: "This draft leaves the sampled baseline unchanged.",
-      body:
-        "Keep iterating if you expected a different outcome, or save when you want these settings persisted without changing recent request outcomes.",
-      nextStep: "Next step: save only if the unchanged replay matches your intent.",
+      badge: "Sin cambios",
+      title: "El borrador no cambia los pedidos de la muestra.",
+      body: null,
     };
   }
 
   const consequenceParts: string[] = [];
   if (summary.changed_routes > 0) {
     consequenceParts.push(
-      `${summary.changed_routes} sampled request${summary.changed_routes === 1 ? "" : "s"} would route differently`,
+      `${summary.changed_routes} ${summary.changed_routes === 1 ? "pedido rutearía" : "pedidos rutearían"} distinto`,
     );
   }
   if (summary.newly_denied > 0) {
     consequenceParts.push(
-      `${summary.newly_denied} request${summary.newly_denied === 1 ? "" : "s"} would become denied`,
+      `${summary.newly_denied} ${summary.newly_denied === 1 ? "pedido quedaría denegado" : "pedidos quedarían denegados"}`,
     );
   }
   if (summary.premium_cost_delta > 0) {
-    consequenceParts.push(`premium spend would increase by ${formatUsd(summary.premium_cost_delta)}`);
+    consequenceParts.push(`el gasto premium subiría ${formatUsd(summary.premium_cost_delta)}`);
   } else if (summary.premium_cost_delta < 0) {
-    consequenceParts.push(`premium spend would drop by ${formatUsd(Math.abs(summary.premium_cost_delta))}`);
+    consequenceParts.push(`el gasto premium bajaría ${formatUsd(Math.abs(summary.premium_cost_delta))}`);
   }
 
   const consequenceLabel =
     consequenceParts.length > 0
       ? consequenceParts.join("; ")
-      : `${changedCount} sampled request${changedCount === 1 ? "" : "s"} would change`;
+      : `${changedCount} ${changedCount === 1 ? "pedido cambiaría" : "pedidos cambiarían"}`;
 
   return {
     tone: summary.newly_denied > 0 ? ("rose" as const) : ("sky" as const),
-    badge: summary.newly_denied > 0 ? "Review before save" : "Draft changes outcomes",
-    title: `Compared with the current baseline, this draft would change ${changedCount} sampled request${changedCount === 1 ? "" : "s"}.`,
-    body: `Operator consequence: ${consequenceLabel}.`,
-    nextStep:
-      summary.newly_denied > 0
-        ? "Next step: keep iterating if those denials are not intentional, or save only when you want that draft enforced live."
-        : "Next step: keep iterating if these changes are not the intended tradeoff, or save when you want this draft enforced live.",
+    badge: summary.newly_denied > 0 ? "Revisar antes de guardar" : "Cambia resultados",
+    title: `Este borrador cambiaría ${changedCount} ${changedCount === 1 ? "pedido" : "pedidos"} de la muestra.`,
+    body: `${consequenceLabel.charAt(0).toUpperCase()}${consequenceLabel.slice(1)}.`,
   };
 }
 
@@ -313,43 +266,34 @@ export function PolicyForm({
   const qualityTargetText = formState.routingQualityTarget.trim();
   const qualityTargetValue = qualityTargetText === "" ? Number.NaN : Number(qualityTargetText);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
-  const evidenceBoundarySummary = useMemo(
-    () =>
-      getEvidenceBoundarySummary(
-        formState.evidenceRetentionWindow,
-        formState.metadataMinimizationLevel,
-      ),
-    [formState.evidenceRetentionWindow, formState.metadataMinimizationLevel],
-  );
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
 
     const nextPolicy = toPolicyPayload(formState, initialPolicy);
     if (nextPolicy.allowed_premium_models.length === 0) {
-      setError("Select at least one premium model.");
+      setError("Elegir al menos un modelo premium.");
       return;
     }
     if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
-      setError("Semantic cache similarity threshold must be between 0 and 1.");
+      setError("El umbral de similitud tiene que estar entre 0 y 1.");
       return;
     }
     if (!rateLimitValid) {
-      setError("Rate limit must be a whole number of requests per minute between 1 and 100000.");
+      setError("El límite tiene que ser un entero entre 1 y 100000 pedidos por minuto.");
       return;
     }
     if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
-      setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
+      setError("La antigüedad máxima tiene que ser un entero entre 1 y 720 horas.");
       return;
     }
     if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
-      setError("Routing quality target must be between 0.5 and 1.");
+      setError("El objetivo de calidad tiene que estar entre 0.5 y 1.");
       return;
     }
 
     await onSave(nextPolicy).catch((nextError) => {
-      setError(nextError instanceof Error ? nextError.message : "Unable to update policy.");
+      setError(nextError instanceof Error ? nextError.message : "No se pudo guardar la política.");
     });
   }
 
@@ -358,19 +302,19 @@ export function PolicyForm({
 
     const nextPolicy = toPolicyPayload(formState, initialPolicy);
     if (nextPolicy.allowed_premium_models.length === 0) {
-      setError("Select at least one premium model.");
+      setError("Elegir al menos un modelo premium.");
       return;
     }
     if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
-      setError("Semantic cache similarity threshold must be between 0 and 1.");
+      setError("El umbral de similitud tiene que estar entre 0 y 1.");
       return;
     }
     if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
-      setError("Semantic cache max entry age must be a whole number of hours between 1 and 720.");
+      setError("La antigüedad máxima tiene que ser un entero entre 1 y 720 horas.");
       return;
     }
     if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
-      setError("Routing quality target must be between 0.5 and 1.");
+      setError("El objetivo de calidad tiene que estar entre 0.5 y 1.");
       return;
     }
 
@@ -379,581 +323,369 @@ export function PolicyForm({
     });
   }
 
+
+  const set = <K extends keyof PolicyFormState>(key: K, value: PolicyFormState[K]) =>
+    setFormState((current) => ({ ...current, [key]: value }));
+  const has = (field: string) => runtimeEnforcedFields.has(field);
+
   return (
-    <form className="space-y-6" onSubmit={handleSubmit}>
-      <header className="panel px-6 py-5">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Policy</div>
-            <h2 className="mt-2 text-2xl font-semibold text-ink">
-              Policy for {tenantName}
-            </h2>
-            <p className="mt-2 text-sm text-ink-3">
-              Structured governance controls with explicit preview and save semantics.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {dirty ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-warn-soft px-3 py-1 text-xs font-semibold text-warn">
-                <AlertCircle className="h-3.5 w-3.5" />
-                Unsaved changes
-              </span>
-            ) : null}
-            <button
-              type="button"
-              className="secondary-button gap-2"
-              disabled={!dirty || isSaving || isSimulating}
-              onClick={() => setFormState(toFormState(initialPolicy))}
-            >
-              <RotateCcw className="h-4 w-4" />
-              Reset changes
-            </button>
-            <button
-              type="button"
-              className="secondary-button gap-2"
-              disabled={isSaving || isSimulating}
-              onClick={() => void handleSimulate()}
-            >
-              {isSimulating ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Telescope className="h-4 w-4" />}
-              Preview impact
-            </button>
-            <button className="action-button gap-2" disabled={!dirty || isSaving || isSimulating} type="submit">
-              {isSaving ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save policy
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {error ? (
-        <Alert variant="destructive">
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      <section className="panel px-6 py-5" aria-live="polite">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-ink">Preview before save</h3>
-            <p className="mt-2 text-sm text-ink-4">
-              Compare the current draft against the tenant&apos;s recent persisted baseline before deciding whether to save.
-            </p>
-          </div>
-          <span className="rounded-full bg-canvas px-3 py-1 text-xs font-medium text-ink-2">
-            Save remains explicit
-          </span>
-        </div>
-
-        {isSimulating ? (
-          <div className="mt-4 rounded-xl border border-mark-line bg-mark-soft px-4 py-3 text-sm text-mark">
-            Simulating draft policy against recent tenant traffic...
-          </div>
-        ) : null}
-
-        {simulationError ? (
-          <Alert variant="destructive" className="mt-4">
-            <AlertDescription>Preview failed: {simulationError}</AlertDescription>
-          </Alert>
-        ) : null}
-
-        {!isSimulating && !simulationError && !simulationResult ? (
-          <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-4">
-            Run a preview to compare this draft against recent ledger-backed requests before saving.
-          </div>
-        ) : null}
-
-        {simulationResult ? (
-          <div className="mt-4 space-y-4">
-            <div
-              className={[
-                "rounded-2xl border px-4 py-4",
-                previewDecision?.tone === "rose"
-                  ? "border-danger-line bg-danger-soft"
-                  : previewDecision?.tone === "emerald"
-                    ? "border-ok-line bg-ok-soft"
-                    : previewDecision?.tone === "amber"
-                      ? "border-warn-line bg-warn-soft"
-                      : "border-mark-line bg-mark-soft",
-              ].join(" ")}
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-surface/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">
-                  {previewDecision?.badge}
-                </span>
-                <span className="text-xs font-medium text-ink-3">Preview only — save stays separate.</span>
-              </div>
-              <h4 className="mt-3 text-base font-semibold text-ink">
-                {previewDecision?.title}
-              </h4>
-              <p className="mt-2 text-sm text-ink-2">{previewDecision?.body}</p>
-              <p className="mt-2 text-sm font-medium text-ink">{previewDecision?.nextStep}</p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Evaluated requests</div>
-                <div className="mt-2 text-2xl font-semibold text-ink">
-                  {simulationResult.summary.evaluated_rows}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Changed routes</div>
-                <div className="mt-2 text-2xl font-semibold text-ink">
-                  {simulationResult.summary.changed_routes}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Newly denied</div>
-                <div className="mt-2 text-2xl font-semibold text-ink">
-                  {simulationResult.summary.newly_denied}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Premium cost delta</div>
-                <div className="mt-2 text-2xl font-semibold text-ink">
-                  {formatUsd(simulationResult.summary.premium_cost_delta)}
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink-2">
-              Compared {simulationResult.window.returned_rows} recent persisted request(s) against this draft baseline. This preview did not save the policy.
-            </div>
-
-            {simulationResult.window.returned_rows === 0 ? (
-              <Alert variant="warning">
-                <AlertDescription>No recent traffic matched the replay window, so there was nothing to preview.</AlertDescription>
-              </Alert>
-            ) : simulationResult.changed_requests.length === 0 ? (
-              <Alert variant="success">
-                <AlertDescription>No request outcomes changed in this replay window.</AlertDescription>
-              </Alert>
-            ) : (
-              <div className="space-y-3">
-                <div>
-                  <h4 className="text-base font-semibold text-ink">
-                    Changed request sample
-                  </h4>
-                  <p className="mt-1 text-sm text-ink-4">
-                    Supporting evidence only: bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft.
-                  </p>
-                </div>
-                <ul className="space-y-3">
-                  {simulationResult.changed_requests.map((change) => (
-                    <li key={change.request_id} className="rounded-xl border border-line bg-surface px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
-                        <span>{change.request_id}</span>
-                        <span className="text-ink-4">•</span>
-                        <span>{change.requested_model}</span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-ink-3">
-                        <span>{change.baseline_route_target}</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
-                        <span>{change.simulated_route_target}</span>
-                      </div>
-                      <p className="mt-2 text-sm text-ink-3">{renderChangedRequestSummary(change)}</p>
-                      <p className="mt-1 text-xs text-ink-4">{renderChangedRequestParity(change)}</p>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {simulationResult.approximation_notes.length > 0 ? (
-              <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink-3">
-                <div className="font-medium text-ink">Replay notes</div>
-                <ul className="mt-2 list-disc space-y-1 pl-5">
-                  {simulationResult.approximation_notes.map((note) => (
-                    <li key={note}>{note}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-      </section>
-
-      <section className="panel px-6 py-5">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h3 className="text-lg font-semibold text-ink">
-              Runtime-enforced controls
-            </h3>
-            <p className="mt-2 text-sm text-ink-4">
-              These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.
-            </p>
-          </div>
-          <span className="rounded-full bg-mark-soft px-3 py-1 text-xs font-semibold text-mark">
-            Applies in live request evaluation
-          </span>
-        </div>
-        <div className="mt-4 rounded-xl border border-mark-soft bg-mark-soft px-4 py-3 text-sm text-mark">
-          When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.
-        </div>
-        <div className="mt-4 rounded-2xl border border-line bg-canvas px-4 py-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h4 className="text-base font-semibold text-ink">
-                Effective evidence boundary
-              </h4>
-              <p className="mt-2 text-sm text-ink-3">
-                Runtime-enforced guidance derived from the retention and minimization controls below.
-              </p>
-            </div>
-            <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-ink-2">
-              Local runtime evidence
-            </span>
-          </div>
-          <div className="mt-4 space-y-3 text-sm text-ink-2">
-            <p>{evidenceBoundarySummary.retention}</p>
-            <p>{evidenceBoundarySummary.inspectableWhileRetained}</p>
-            <p>{evidenceBoundarySummary.minimizationEffect}</p>
-          </div>
-        </div>
-        <div className="mt-4 space-y-5">
-          {runtimeEnforcedFields.has("routing_mode_default") ? (
-            <div>
-              <label className="field-label" htmlFor="routing-mode-default">
-                Routing mode
-              </label>
-              <select
-                id="routing-mode-default"
-                className="field-input"
-                value={formState.routingModeDefault}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    routingModeDefault: event.target.value as TenantPolicy["routing_mode_default"],
-                  }))
-                }
-              >
-                {options.routing_modes.map((routingMode) => (
-                  <option key={routingMode} value={routingMode}>
-                    {routingMode}
-                  </option>
-                ))}
-              </select>
-            </div>
+    <form onSubmit={handleSubmit} aria-label={`Política de ${tenantName}`}>
+      <div className="grid xl:grid-cols-[minmax(0,1fr)_420px]">
+        <div className="flex min-w-0 flex-col gap-8 px-6 py-6">
+          {error ? (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : null}
 
-          {runtimeEnforcedFields.has("calibrated_routing_enabled") ? (
-            <div className="space-y-2 rounded-2xl border border-line bg-canvas px-4 py-4">
-              <label className="flex items-center gap-3 text-sm font-medium text-ink-2">
+          <FormSection title="Ruteo">
+            {has("routing_quality_target") ? (
+              <Field id="routing-quality-target" label="Objetivo de calidad" hint="0.5 a 1.0: el router elige el punto más barato que lo cumple; 1.0 manda todo a frontier.">
                 <input
-                  type="checkbox"
-                  checked={formState.calibratedRoutingEnabled}
-                  onChange={(event) =>
-                    setFormState((current) => ({
-                      ...current,
-                      calibratedRoutingEnabled: event.target.checked,
-                    }))
-                  }
+                  id="routing-quality-target"
+                  className="field-input max-w-40"
+                  inputMode="decimal"
+                  value={formState.routingQualityTarget}
+                  onChange={(event) => set("routingQualityTarget", event.target.value)}
                 />
-                Calibrated routing enabled
-              </label>
-              <p className="text-sm text-ink-4">
-                Tenant-scoped rollout valve for token-complexity auto routing. Turning this off keeps explicit model overrides and policy-forced routing intact while forcing auto-routed requests onto the local path.
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("fallback_enabled") ? (
-            <label className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-3 text-sm font-medium text-ink-2">
-              <input
-                type="checkbox"
+              </Field>
+            ) : null}
+            {has("routing_mode_default") ? (
+              <Field id="routing-mode-default" label="Modo de ruteo">
+                <select
+                  id="routing-mode-default"
+                  className="field-input max-w-60"
+                  value={formState.routingModeDefault}
+                  onChange={(event) => set("routingModeDefault", event.target.value as TenantPolicy["routing_mode_default"])}
+                >
+                  {options.routing_modes.map((routingMode) => (
+                    <option key={routingMode} value={routingMode}>
+                      {routingMode}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            ) : null}
+            {has("calibrated_routing_enabled") ? (
+              <Check
+                label="Ruteo calibrado (heurística v0)"
+                hint="Apagado, el tráfico automático va a local."
+                checked={formState.calibratedRoutingEnabled}
+                onChange={(checked) => set("calibratedRoutingEnabled", checked)}
+              />
+            ) : null}
+            {has("fallback_enabled") ? (
+              <Check
+                label="Fallback a premium si falla el local"
                 checked={formState.fallbackEnabled}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, fallbackEnabled: event.target.checked }))
-                }
+                onChange={(checked) => set("fallbackEnabled", checked)}
               />
-              Fallback enabled
-            </label>
-          ) : null}
+            ) : null}
+          </FormSection>
 
-          {runtimeEnforcedFields.has("routing_quality_target") ? (
-            <div>
-              <label className="field-label" htmlFor="routing-quality-target">
-                Routing quality target
-              </label>
-              <input
-                id="routing-quality-target"
-                className="field-input"
-                inputMode="decimal"
-                value={formState.routingQualityTarget}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, routingQualityTarget: event.target.value }))
-                }
-              />
-              <p className="mt-2 text-sm text-ink-4">
-                Quality the learned router must keep (0.5 to 1.0): it takes the cheapest operating point that meets
-                it, and 1.0 sends every request to the frontier model. Compare targets on the Evaluación page.
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("rate_limit_requests_per_minute") ? (
-            <div>
-              <label className="field-label" htmlFor="rate-limit-rpm">
-                Rate limit (requests per minute)
-              </label>
-              <input
-                id="rate-limit-rpm"
-                className="field-input"
-                inputMode="numeric"
-                placeholder="Unlimited"
-                value={formState.rateLimitRequestsPerMinute}
-                onChange={(event) =>
-                  setFormState((current) => ({ ...current, rateLimitRequestsPerMinute: event.target.value }))
-                }
-              />
-              <p className="mt-2 text-sm text-ink-4">
-                Public chat and embeddings requests this tenant may send per minute; leave empty for no limit. Over
-                the limit the gateway answers 429 with Retry-After and records the rejection in the ledger.
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("semantic_cache_enabled") ? (
-            <div className="space-y-4 rounded-2xl border border-line bg-canvas px-4 py-4">
-              <label className="flex items-center gap-3 text-sm font-medium text-ink-2">
+          <FormSection title="Límites">
+            {has("rate_limit_requests_per_minute") ? (
+              <Field id="rate-limit-rpm" label="Límite de pedidos por minuto" hint="Sobre el límite el gateway responde 429 con Retry-After.">
                 <input
-                  type="checkbox"
-                  checked={formState.semanticCacheEnabled}
-                  onChange={(event) =>
-                    setFormState((current) => ({ ...current, semanticCacheEnabled: event.target.checked }))
-                  }
+                  id="rate-limit-rpm"
+                  className="field-input max-w-40"
+                  inputMode="numeric"
+                  placeholder="Sin límite"
+                  value={formState.rateLimitRequestsPerMinute}
+                  onChange={(event) => set("rateLimitRequestsPerMinute", event.target.value)}
                 />
-                Semantic cache enabled
-              </label>
-              <p className="text-sm text-ink-4">
-                Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the
-                draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.
-              </p>
-              <div className="grid gap-4 md:grid-cols-2">
-                <div>
-                  <label className="field-label" htmlFor="semantic-cache-similarity-threshold">
-                    Semantic cache similarity threshold
-                  </label>
+              </Field>
+            ) : null}
+            {has("max_premium_cost_per_request") ? (
+              <Field id="max-premium-cost" label="Costo premium máximo por pedido (USD)">
+                <input
+                  id="max-premium-cost"
+                  className="field-input max-w-40"
+                  inputMode="decimal"
+                  value={formState.maxPremiumCostPerRequest}
+                  onChange={(event) => set("maxPremiumCostPerRequest", event.target.value)}
+                />
+              </Field>
+            ) : null}
+            <div className="grid gap-4 sm:grid-cols-2">
+              {has("hard_budget_limit_usd") ? (
+                <Field id="hard-budget-limit-usd" label="Presupuesto duro acumulado (USD)" hint="Vacío: sin límite.">
+                  <input
+                    id="hard-budget-limit-usd"
+                    className="field-input"
+                    inputMode="decimal"
+                    value={formState.hardBudgetLimitUsd}
+                    onChange={(event) => set("hardBudgetLimitUsd", event.target.value)}
+                  />
+                </Field>
+              ) : null}
+              {has("hard_budget_enforcement") ? (
+                <Field
+                  id="hard-budget-enforcement"
+                  label="Al agotarse el presupuesto"
+                  hint={hardBudgetConfigured ? undefined : "Primero definir el presupuesto duro."}
+                >
+                  <select
+                    id="hard-budget-enforcement"
+                    className="field-input"
+                    value={formState.hardBudgetEnforcement}
+                    disabled={!hardBudgetConfigured}
+                    onChange={(event) =>
+                      set("hardBudgetEnforcement", event.target.value as NonNullable<TenantPolicy["hard_budget_enforcement"]>)
+                    }
+                  >
+                    <option value="downgrade">Degradar a local el tráfico automático</option>
+                    <option value="deny">Denegar el tráfico premium</option>
+                  </select>
+                </Field>
+              ) : null}
+            </div>
+            {softSignalFields.has("soft_budget_usd") ? (
+              <Field id="soft-budget-usd" label="Presupuesto blando (USD)" hint="Solo aviso: no bloquea ni degrada.">
+                <input
+                  id="soft-budget-usd"
+                  className="field-input max-w-40"
+                  inputMode="decimal"
+                  value={formState.softBudgetUsd}
+                  onChange={(event) => set("softBudgetUsd", event.target.value)}
+                />
+              </Field>
+            ) : null}
+          </FormSection>
+
+          {has("semantic_cache_enabled") ? (
+            <FormSection title="Caché semántico">
+              <Check
+                label="Caché semántico activado"
+                checked={formState.semanticCacheEnabled}
+                onChange={(checked) => set("semanticCacheEnabled", checked)}
+              />
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field id="semantic-cache-similarity-threshold" label="Umbral de similitud" hint="0 a 1, por cada búsqueda.">
                   <input
                     id="semantic-cache-similarity-threshold"
                     className="field-input"
                     inputMode="decimal"
                     value={formState.semanticCacheSimilarityThreshold}
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        semanticCacheSimilarityThreshold: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => set("semanticCacheSimilarityThreshold", event.target.value)}
                   />
-                  <p className="mt-2 text-sm text-ink-4">
-                    Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every
-                    lookup.
-                  </p>
-                </div>
-                <div>
-                  <label className="field-label" htmlFor="semantic-cache-max-entry-age-hours">
-                    Semantic cache max entry age hours
-                  </label>
+                </Field>
+                <Field id="semantic-cache-max-entry-age-hours" label="Antigüedad máxima (h)" hint="Entre 1 y 720.">
                   <input
                     id="semantic-cache-max-entry-age-hours"
                     className="field-input"
                     inputMode="numeric"
                     value={formState.semanticCacheMaxEntryAgeHours}
-                    onChange={(event) =>
-                      setFormState((current) => ({
-                        ...current,
-                        semanticCacheMaxEntryAgeHours: event.target.value,
-                      }))
-                    }
+                    onChange={(event) => set("semanticCacheMaxEntryAgeHours", event.target.value)}
                   />
-                  <p className="mt-2 text-sm text-ink-4">
-                    Cached answers older than this are ignored on lookup for this tenant.
-                  </p>
-                </div>
+                </Field>
               </div>
-            </div>
+            </FormSection>
           ) : null}
 
-          {runtimeEnforcedFields.has("allowed_premium_models") ? (
-            <div>
-              <h4 className="text-base font-semibold text-ink">
-                Premium model allowlist
-              </h4>
-              <p className="mt-2 text-sm text-ink-4">
-                Seeded from policy metadata and open to manual additions when needed.
-              </p>
-              <div className="mt-4">
-                <ModelAllowlistInput
-                  knownModels={options.known_premium_models}
-                  value={formState.allowedPremiumModels}
-                  onChange={(nextValue) =>
-                    setFormState((current) => ({ ...current, allowedPremiumModels: nextValue }))
-                  }
-                />
+          {has("allowed_premium_models") ? (
+            <FormSection title="Modelos premium permitidos">
+              <ModelAllowlistInput
+                knownModels={options.known_premium_models}
+                value={formState.allowedPremiumModels}
+                onChange={(nextValue) => set("allowedPremiumModels", nextValue)}
+              />
+            </FormSection>
+          ) : null}
+
+          {has("evidence_retention_window") || has("metadata_minimization_level") ? (
+            <FormSection title="Evidencia">
+              <div className="grid gap-4 sm:grid-cols-2">
+                {has("evidence_retention_window") ? (
+                  <Field id="evidence-retention-window" label="Retención de evidencia">
+                    <select
+                      id="evidence-retention-window"
+                      className="field-input"
+                      value={formState.evidenceRetentionWindow}
+                      onChange={(event) =>
+                        set("evidenceRetentionWindow", event.target.value as TenantPolicy["evidence_retention_window"])
+                      }
+                    >
+                      <option value="24h">24 h</option>
+                      <option value="7d">7 días</option>
+                      <option value="30d">30 días</option>
+                      <option value="90d">90 días</option>
+                    </select>
+                  </Field>
+                ) : null}
+                {has("metadata_minimization_level") ? (
+                  <Field id="metadata-minimization-level" label="Minimización de metadatos" hint="Estricta no guarda las señales de ruteo.">
+                    <select
+                      id="metadata-minimization-level"
+                      className="field-input"
+                      value={formState.metadataMinimizationLevel}
+                      onChange={(event) =>
+                        set("metadataMinimizationLevel", event.target.value as TenantPolicy["metadata_minimization_level"])
+                      }
+                    >
+                      <option value="standard">Estándar</option>
+                      <option value="strict">Estricta</option>
+                    </select>
+                  </Field>
+                ) : null}
               </div>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("max_premium_cost_per_request") ? (
-            <div>
-              <label className="field-label" htmlFor="max-premium-cost">
-                Max premium cost per request
-              </label>
-              <input
-                id="max-premium-cost"
-                className="field-input"
-                inputMode="decimal"
-                value={formState.maxPremiumCostPerRequest}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    maxPremiumCostPerRequest: event.target.value,
-                  }))
-                }
-              />
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("hard_budget_limit_usd") ? (
-            <div>
-              <label className="field-label" htmlFor="hard-budget-limit-usd">
-                Hard cumulative budget limit USD
-              </label>
-              <input
-                id="hard-budget-limit-usd"
-                className="field-input"
-                inputMode="decimal"
-                value={formState.hardBudgetLimitUsd}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    hardBudgetLimitUsd: event.target.value,
-                  }))
-                }
-              />
-              <p className="mt-2 text-sm text-ink-4">
-                Tracks cumulative premium spend for the tenant. Leave blank to disable the hard budget guardrail.
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("hard_budget_enforcement") ? (
-            <div>
-              <label className="field-label" htmlFor="hard-budget-enforcement">
-                Hard budget enforcement
-              </label>
-              <select
-                id="hard-budget-enforcement"
-                className="field-input"
-                value={formState.hardBudgetEnforcement}
-                disabled={!hardBudgetConfigured}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    hardBudgetEnforcement: event.target.value as NonNullable<
-                      TenantPolicy["hard_budget_enforcement"]
-                    >,
-                  }))
-                }
-              >
-                <option value="downgrade">Downgrade compatible auto-routed traffic to local</option>
-                <option value="deny">Deny premium traffic once the limit is exhausted</option>
-              </select>
-              <p className="mt-2 text-sm text-ink-4">
-                {hardBudgetConfigured
-                  ? "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed."
-                  : "Set a hard cumulative budget limit first to activate this enforcement choice."}
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("evidence_retention_window") ? (
-            <div>
-              <label className="field-label" htmlFor="evidence-retention-window">
-                Evidence retention window
-              </label>
-              <select
-                id="evidence-retention-window"
-                className="field-input"
-                value={formState.evidenceRetentionWindow}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    evidenceRetentionWindow: event.target.value as TenantPolicy["evidence_retention_window"],
-                  }))
-                }
-              >
-                <option value="24h">24h</option>
-                <option value="7d">7d</option>
-                <option value="30d">30d</option>
-                <option value="90d">90d</option>
-              </select>
-              <p className="mt-2 text-sm text-ink-4">
-                Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.
-              </p>
-            </div>
-          ) : null}
-
-          {runtimeEnforcedFields.has("metadata_minimization_level") ? (
-            <div>
-              <label className="field-label" htmlFor="metadata-minimization-level">
-                Metadata minimization level
-              </label>
-              <select
-                id="metadata-minimization-level"
-                className="field-input"
-                value={formState.metadataMinimizationLevel}
-                onChange={(event) =>
-                  setFormState((current) => ({
-                    ...current,
-                    metadataMinimizationLevel: event.target.value as TenantPolicy["metadata_minimization_level"],
-                  }))
-                }
-              >
-                <option value="standard">Standard</option>
-                <option value="strict">Strict</option>
-              </select>
-              <p className="mt-2 text-sm text-ink-4">
-                Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.
-              </p>
-            </div>
+            </FormSection>
           ) : null}
         </div>
-      </section>
 
-      {softSignalFields.has("soft_budget_usd") ? (
-        <section className="panel px-6 py-5">
-          <h3 className="text-lg font-semibold text-ink">Soft budget advisory</h3>
-          <p className="mt-2 text-sm text-ink-4">
-            Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
-          </p>
-          <Alert variant="warning" className="mt-4">
-            <AlertDescription>
-              Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.
-            </AlertDescription>
-          </Alert>
-          <div className="mt-4">
-            <label className="field-label" htmlFor="soft-budget-usd">
-              Soft budget USD
-            </label>
-            <input
-              id="soft-budget-usd"
-              className="field-input"
-              inputMode="decimal"
-              value={formState.softBudgetUsd}
-              onChange={(event) =>
-                setFormState((current) => ({
-                  ...current,
-                  softBudgetUsd: event.target.value,
-                }))
-              }
-            />
+        <aside className="border-t border-line xl:border-t-0 xl:border-l" aria-labelledby="policy-preview-heading">
+          <div className="flex flex-col gap-4 px-6 py-6 xl:sticky xl:top-0" aria-live="polite">
+            <div className="flex items-baseline justify-between gap-3">
+              <h2 id="policy-preview-heading" className="m-0 text-lg font-semibold text-ink">
+                Vista previa
+              </h2>
+              {dirty ? (
+                <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-semibold text-warn">
+                  <AlertCircle aria-hidden className="size-3.5" />
+                  Cambios sin guardar
+                </span>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" disabled={isSaving || isSimulating} onClick={() => void handleSimulate()}>
+                {isSimulating ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : <Telescope aria-hidden className="size-4" />}
+                Simular
+              </Button>
+              <Button type="submit" disabled={!dirty || isSaving || isSimulating}>
+                {isSaving ? <LoaderCircle aria-hidden className="size-4 animate-spin" /> : <Save aria-hidden className="size-4" />}
+                Guardar política
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={!dirty || isSaving || isSimulating}
+                onClick={() => setFormState(toFormState(initialPolicy))}
+              >
+                <RotateCcw aria-hidden className="size-4" />
+                Descartar cambios
+              </Button>
+            </div>
+
+            {isSimulating ? <LoadingRows rows={3} label="Simulando el borrador" /> : null}
+            {simulationError ? (
+              <Alert variant="destructive">
+                <AlertDescription>La simulación falló: {simulationError}</AlertDescription>
+              </Alert>
+            ) : null}
+            {!isSimulating && !simulationError && !simulationResult ? (
+              <p className="m-0 border border-dashed border-line px-4 py-4 text-sm text-ink-3">
+                Simular para comparar el borrador con el tráfico reciente antes de guardar.
+              </p>
+            ) : null}
+
+            {simulationResult && previewDecision ? (
+              <div className="flex flex-col gap-4">
+                <div className="flex flex-col gap-1 border-y border-line-strong py-3">
+                  <span className="font-label text-[13px] font-semibold text-ink-3">{previewDecision.badge}</span>
+                  <h3 className="m-0 text-base font-semibold text-ink">{previewDecision.title}</h3>
+                  {previewDecision.body ? <p className="m-0 text-sm text-ink-2">{previewDecision.body}</p> : null}
+                </div>
+                <Readout
+                  items={[
+                    { label: "Pedidos evaluados", value: String(simulationResult.summary.evaluated_rows) },
+                    { label: "Rutas que cambian", value: String(simulationResult.summary.changed_routes) },
+                    { label: "Nuevas denegaciones", value: String(simulationResult.summary.newly_denied) },
+                    { label: "Δ costo premium", value: formatUsd(simulationResult.summary.premium_cost_delta) },
+                  ]}
+                />
+                <p className="m-0 text-[13px] text-ink-3">
+                  {`Comparado contra ${simulationResult.window.returned_rows} pedidos recientes. No se guardó nada.`}
+                </p>
+                {simulationResult.window.returned_rows === 0 ? (
+                  <Alert variant="warning">
+                    <AlertDescription>No hubo tráfico reciente en la ventana de la simulación.</AlertDescription>
+                  </Alert>
+                ) : simulationResult.changed_requests.length === 0 ? (
+                  <Alert variant="success" role="status">
+                    <AlertDescription>Ningún pedido cambia de resultado en esta ventana.</AlertDescription>
+                  </Alert>
+                ) : (
+                  <section aria-labelledby="changed-sample-heading" className="flex flex-col gap-2">
+                    <h3 id="changed-sample-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
+                      Pedidos que cambian
+                    </h3>
+                    <ul className="m-0 flex list-none flex-col divide-y divide-line border-y border-line p-0">
+                      {simulationResult.changed_requests.map((change) => (
+                        <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
+                          <div className="flex flex-wrap items-center gap-2 text-sm">
+                            <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>
+                            <span className="font-mono text-[12px] text-ink-3">{change.requested_model}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                            <span>{change.baseline_route_target}</span>
+                            <ArrowRight aria-hidden className="size-3.5 text-ink-3" />
+                            <span>{change.simulated_route_target}</span>
+                          </div>
+                          <p className="m-0 text-[13px] text-ink-2">{renderChangedRequestSummary(change)}</p>
+                          <p className="m-0 text-[12px] text-ink-3">{renderChangedRequestParity(change)}</p>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+                {simulationResult.approximation_notes.length > 0 ? (
+                  <div className="text-[13px] text-ink-3">
+                    <div className="font-semibold text-ink-2">Notas de la simulación</div>
+                    <ul className="mt-1 list-disc pl-5">
+                      {simulationResult.approximation_notes.map((note) => (
+                        <li key={note}>{note}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
-        </section>
-      ) : null}
-
-      <PolicyAdvancedSection />
+        </aside>
+      </div>
     </form>
+  );
+}
+
+function FormSection({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <section className="flex flex-col gap-4">
+      <h2 className="m-0 border-b border-line pb-2 text-lg font-semibold text-ink">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
+function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: ReactNode }) {
+  return (
+    <div>
+      <label className="field-label" htmlFor={id}>
+        {label}
+      </label>
+      {children}
+      {hint ? <p className="mt-1.5 text-[13px] text-ink-3">{hint}</p> : null}
+    </div>
+  );
+}
+
+function Check({
+  label,
+  hint,
+  checked,
+  onChange,
+}: {
+  label: string;
+  hint?: string;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+}) {
+  return (
+    <div>
+      <label className="flex items-center gap-2.5 text-[15px] font-medium text-ink">
+        <input type="checkbox" className="size-4 accent-ink" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        {label}
+      </label>
+      {hint ? <p className="mt-1 ml-[26px] text-[13px] text-ink-3">{hint}</p> : null}
+    </div>
   );
 }

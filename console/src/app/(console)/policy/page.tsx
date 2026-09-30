@@ -14,6 +14,8 @@ import {
   type TenantPolicy,
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
+import { PageHeader } from "@/components/system/page-header";
+import { EmptyState, LoadingRows } from "@/components/system/state";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -81,8 +83,32 @@ export default function PolicyPage() {
     },
   });
 
+  const tenantSelect = (
+    <select
+      id="policy-tenant-select"
+      aria-label="Tenant"
+      className="h-9 min-w-56 rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
+      value={selectedTenantId}
+      onChange={(event) => setSelectedTenantId(event.target.value)}
+    >
+      {tenantsQuery.data?.map((tenant) => (
+        <option key={tenant.id} value={tenant.id}>
+          {tenant.name}
+        </option>
+      ))}
+    </select>
+  );
+  const header = <PageHeader title="Política" cells={[{ label: "Tenant", value: tenantSelect }]} />;
+
   if (tenantsQuery.isLoading || optionsQuery.isLoading || policyQuery.isLoading) {
-    return <div className="panel px-6 py-8 text-sm text-ink-4">Loading policy editor...</div>;
+    return (
+      <section>
+        {header}
+        <div className="px-6 py-6">
+          <LoadingRows rows={8} label="Cargando la política" />
+        </div>
+      </section>
+    );
   }
 
   if (tenantsQuery.isError || optionsQuery.isError || policyQuery.isError) {
@@ -90,48 +116,34 @@ export default function PolicyPage() {
       (tenantsQuery.error as Error | undefined)?.message ||
       (optionsQuery.error as Error | undefined)?.message ||
       (policyQuery.error as Error | undefined)?.message ||
-      "Unable to load policy editor.";
+      "No se pudo cargar la política.";
     return (
-      <Alert variant="destructive">
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <section>
+        {header}
+        <div className="px-6 py-6">
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </div>
+      </section>
     );
   }
 
   const selectedTenant = tenantsQuery.data?.find((tenant) => tenant.id === selectedTenantId) ?? null;
   if (!selectedTenant || !policyQuery.data || !optionsQuery.data) {
-    return <div className="panel px-6 py-8 text-sm text-ink-4">No tenant policy available.</div>;
+    return (
+      <section>
+        {header}
+        <div className="px-6 py-6">
+          <EmptyState title="No hay tenants. Crear uno en Tenants." />
+        </div>
+      </section>
+    );
   }
 
   return (
-    <section className="space-y-6">
-      <div className="panel flex flex-col gap-4 px-6 py-5 md:flex-row md:items-center md:justify-between">
-        <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Policy</div>
-          <p className="mt-2 text-sm text-ink-3">
-            Load a tenant policy, compare the current baseline against a candidate draft using recent persisted traffic, and save explicitly only after the preview evidence supports the change.
-          </p>
-        </div>
-
-        <div>
-          <label className="field-label" htmlFor="policy-tenant-select">
-            Tenant
-          </label>
-          <select
-            id="policy-tenant-select"
-            className="field-input min-w-56"
-            value={selectedTenantId}
-            onChange={(event) => setSelectedTenantId(event.target.value)}
-          >
-            {tenantsQuery.data?.map((tenant) => (
-              <option key={tenant.id} value={tenant.id}>
-                {tenant.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
+    <section>
+      {header}
       <PolicyForm
         key={selectedTenantId}
         tenantName={selectedTenant.name}
@@ -142,7 +154,7 @@ export default function PolicyPage() {
         simulationResult={latestSimulation}
         simulationError={
           simulationMutation.isError
-            ? (simulationMutation.error as Error | undefined)?.message ?? "Unable to preview policy changes."
+            ? (simulationMutation.error as Error | undefined)?.message ?? "No se pudo simular el borrador."
             : null
         }
         onSimulate={async (payload) => {
