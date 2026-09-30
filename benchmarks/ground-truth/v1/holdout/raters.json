@@ -1,7 +1,7 @@
 {
   "human-es-1": {
     "kind": "human",
-    "note": "Spanish hold-out, 50 pairs drawn before any judge ran",
+    "note": "Spanish hold-out, 50 pairs drawn before any judge ran; rater flagged own grades on code pairs as low-confidence: the labelling terminal re-wraps code blocks (textwrap.fill)",
     "person": "rater-a",
     "status": "active"
   }

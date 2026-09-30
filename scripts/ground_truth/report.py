@@ -109,6 +109,10 @@ def render_markdown(s: dict) -> str:
         else:
             out.append(f"Spanish hold-out ({h['compared']} pairs, {h['status']}): kappa {h['kappa']:.3f} "
                        f"[{h['ci95'][0]:.3f}, {h['ci95'][1]:.3f}]" + (" — **judge-limited**" if h["judge_limited"] else ""))
+        nc = v.get("holdout_es_excluding_code")
+        if nc and nc.get("kappa") is not None:
+            out.append(f"Excluding code pairs (post hoc, rater low-confidence): {nc['compared']} pairs, "
+                       f"kappa {nc['kappa']:.3f} [{nc['ci95'][0]:.3f}, {nc['ci95'][1]:.3f}]")
         out += ["", "Position flip rate: " + ", ".join(f"`{m}` {r:.1%}" for m, r in v["position_flip_rate"].items()),
                 f"Inter-judge kappa: {_fmt(v['inter_judge_kappa'])}", ""]
     out += ["## Tiers", ""]
@@ -170,9 +174,18 @@ def thesis_judges(s: dict) -> str:
         partial = "" if h["status"] == "complete" else ", resultado parcial"
         text += (f"Sobre el hold-out en español ({h['compared']} pares sorteados antes de correr los "
                  f"jueces{partial}) la regla elegida obtuvo kappa {h['kappa']:.2f} "
-                 f"(IC 95 % {h['ci95'][0]:.2f}–{h['ci95'][1]:.2f}).")
+                 f"(IC 95 % {h['ci95'][0]:.2f}–{h['ci95'][1]:.2f}). El acuerdo bruto fue "
+                 f"{h['raw_agreement']:.0%}; el lector juzgó sustituibles {h['human_substitutable']} de "
+                 f"{h['compared']}, y en los desacuerdos el ensamble fue más estricto que el lector "
+                 f"{h['judges_stricter']} veces y más laxo {h['judges_laxer']}.")
         if h["judge_limited"]:
             text += " Al quedar por debajo de 0.4, el ground truth se declara limitado por los jueces."
+    nc = v.get("holdout_es_excluding_code")
+    if h["status"] != "pending" and nc and nc.get("kappa") is not None:
+        text += (f" Análisis post hoc, no pre-registrado: el evaluador marcó como de baja confianza sus "
+                 f"notas sobre pares de código, porque la terminal de etiquetado reenvuelve los bloques de "
+                 f"código; sin esos pares ({nc['compared']}) el kappa es {nc['kappa']:.2f} "
+                 f"(IC 95 % {nc['ci95'][0]:.2f}–{nc['ci95'][1]:.2f}).")
     flips = ", ".join(f"{m.split('/')[-1]} {r:.0%}" for m, r in v["position_flip_rate"].items())
     return text + f" Tasa de cambio de veredicto al invertir posiciones: {flips}."
 

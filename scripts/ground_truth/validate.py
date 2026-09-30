@@ -90,6 +90,10 @@ def holdout_agreement(pair_grades: dict[str, list[str]], human: dict[str, str], 
         "compared": len(common),
         "excluded_without_full_grades": len(set(human) - set(pair_grades)),
         "all_rules_for_reference": rule_kappas(pair_grades, human),
+        "raw_agreement": sum(1 for a, b in sample if a == b) / len(sample),
+        "judges_stricter": sum(1 for a, b in sample if b and not a),
+        "judges_laxer": sum(1 for a, b in sample if a and not b),
+        "human_substitutable": sum(1 for _, b in sample if b),
     }
     try:
         interval = stats.bootstrap_ci(
@@ -107,6 +111,10 @@ def holdout_agreement(pair_grades: dict[str, list[str]], human: dict[str, str], 
         "resamples_used": interval.resamples_used,
         "judge_limited": interval.point < JUDGE_LIMITED_BELOW,
     }
+
+
+def without_task(human: dict[str, str], task: str) -> dict[str, str]:
+    return {pid: g for pid, g in human.items() if not pid.split(":", 2)[2].startswith(f"{task}-")}
 
 
 def _judgements(root: Path, set_name: str) -> list[records.Judgement]:
@@ -131,6 +139,11 @@ def validate(root: Path) -> dict:
     return {
         "rule_selection": selection,
         "holdout_es": holdout_agreement(corpus_grades, human_es, chosen, seed=SEED),
+        # Post hoc: the rater flagged code pairs as low-confidence because the
+        # labelling terminal re-wraps code blocks. Not pre-registered.
+        "holdout_es_excluding_code": holdout_agreement(
+            corpus_grades, without_task(human_es, "code"), chosen, seed=SEED
+        ),
         "position_flip_rate": {m: position_flip_rate(corpus, m) for m in judge.JUDGES},
         "inter_judge_kappa": inter_judge_kappa(corpus),
         "corpus_pairs_with_full_grades": len(corpus_grades),

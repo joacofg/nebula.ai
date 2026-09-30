@@ -36,7 +36,8 @@ Rule selection on 22 EN pilot pairs graded by `human-3` (20 substitutable / 2 no
 
 **Chosen: `R3_ordinal_mean`.**
 
-**Spanish hold-out: PENDING** (no human labels yet).
+Spanish hold-out (50 pairs, complete): kappa 0.308 [-0.070, 0.638] — **judge-limited**
+Excluding code pairs (post hoc, rater low-confidence): 40 pairs, kappa 0.437 [0.000, 0.778]
 
 Position flip rate: `deepseek/deepseek-chat-v3-0324` 8.1%, `google/gemini-2.5-flash` 12.5%
 Inter-judge kappa: 0.617

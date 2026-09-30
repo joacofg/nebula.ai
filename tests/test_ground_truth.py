@@ -627,7 +627,9 @@ def test_tier_files_cover_every_rule_for_sensitivity():
 def _summary(reviewed=0, holdout_status="pending"):
     holdout_es = {"status": holdout_status, "labelled": 0, "compared": 0}
     if holdout_status != "pending":
-        holdout_es.update(compared=30, kappa=0.5, ci95=[0.2, 0.7], judge_limited=False)
+        holdout_es.update(compared=30, kappa=0.5, ci95=[0.2, 0.7], judge_limited=False,
+                          raw_agreement=0.8, human_substitutable=27, judges_stricter=4,
+                          judges_laxer=2)
     return {
         "prompts": {"es": {"code": 200}, "en": {"code": 50}},
         "translation": {"translator": "m", "rejected": 1, "numbers_restyled": 2,
@@ -666,3 +668,25 @@ def test_ensure_preregistered_requires_the_holdout_committed(tmp_path):
 
     with pytest.raises(RuntimeError, match="hold-out"):
         judge.ensure_preregistered(tmp_path, run_git=git)
+
+
+def test_without_task_drops_one_stratum_by_pair_id():
+    human = {"es:qwen7b:code-0001": "equivalent", "es:haiku:factual_qa-0002": "partial"}
+    assert validate.without_task(human, "code") == {"es:haiku:factual_qa-0002": "partial"}
+
+
+def test_thesis_text_reports_the_low_confidence_code_sensitivity():
+    s = _summary(holdout_status="complete")
+    s["validation"]["holdout_es_excluding_code"] = {
+        "status": "partial", "compared": 40, "kappa": 0.6, "ci95": [0.3, 0.8]}
+    text = report.thesis_judges(s)
+    assert "código" in text and "0.60" in text and "post hoc" in text
+
+
+def test_holdout_agreement_reports_raw_agreement_and_direction():
+    grades = {"a": ["equivalent"] * 4, "b": ["divergent"] * 4, "c": ["divergent"] * 4,
+              "d": ["equivalent"] * 4}
+    human = {"a": "equivalent", "b": "equivalent", "c": "divergent", "d": "partial"}
+    got = validate.holdout_agreement(grades, human, "R1_unanimous", seed=1)
+    assert got["raw_agreement"] == pytest.approx(0.5)
+    assert got["judges_stricter"] == 1 and got["judges_laxer"] == 1
