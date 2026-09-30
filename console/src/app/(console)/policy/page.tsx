@@ -15,6 +15,8 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { PageHeader } from "@/components/system/page-header";
+import Link from "next/link";
+
 import { EmptyState, LoadingRows } from "@/components/system/state";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
@@ -135,7 +137,18 @@ export default function PolicyPage() {
       <section>
         {header}
         <div className="px-6 py-6">
-          <EmptyState title="No hay tenants. Crear uno en Tenants." />
+          {(tenantsQuery.data ?? []).length === 0 ? (
+            <EmptyState
+              title="No hay tenants."
+              action={
+                <Link href="/tenants" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark">
+                  Crear tenant
+                </Link>
+              }
+            />
+          ) : (
+            <EmptyState title="Elegir un tenant." />
+          )}
         </div>
       </section>
     );

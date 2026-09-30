@@ -1,3 +1,4 @@
+import userEvent from "@testing-library/user-event";
 import { screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,6 +68,16 @@ describe("tenants page", () => {
     mockedListTenants.mockResolvedValue([]);
     renderWithProviders(<TenantsPage />);
     expect(await screen.findByText("Todavía no hay tenants.")).toBeInTheDocument();
+  });
+
+  it("says when the search matches no tenant", async () => {
+    renderWithProviders(<TenantsPage />);
+    await screen.findByText("Tenant A");
+
+    await userEvent.type(screen.getByPlaceholderText("Buscar por id o nombre"), "zzz");
+
+    expect(screen.getByText("Sin resultados.")).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Tenants" })).not.toBeInTheDocument();
   });
 
 });
