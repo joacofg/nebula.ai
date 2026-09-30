@@ -11,6 +11,7 @@ import { LedgerTable } from "@/components/ledger/ledger-table";
 import { getTenantRecommendations, listTenants, listUsageLedger } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { ErrorAlert } from "@/components/system/state";
 
 function formatPercent(value: number) {
   return `${Math.round(value * 100)}%`;
@@ -189,9 +190,7 @@ export default function ObservabilityPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
           {ledgerQuery.isError ? (
-            <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-              {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
-            </div>
+            <ErrorAlert error={ledgerQuery.error} fallback="Unable to load the usage ledger." />
           ) : (
             <LedgerTable
               rows={ledgerQuery.data ?? []}
@@ -240,11 +239,7 @@ export default function ObservabilityPage() {
             </article>
 
             {recommendationsQuery.isError ? (
-              <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-                {recommendationsQuery.error instanceof Error
-                  ? recommendationsQuery.error.message
-                  : "Unable to load tenant recommendations."}
-              </div>
+              <ErrorAlert error={recommendationsQuery.error} fallback="Unable to load tenant recommendations." />
             ) : recommendationsQuery.isLoading ? (
               <div className="panel px-6 py-5 text-sm text-ink-4">Loading grounded recommendations...</div>
             ) : recommendationsQuery.data ? (
@@ -524,11 +519,7 @@ export default function ObservabilityPage() {
                   </header>
 
                   {runtimeHealthQuery.isError ? (
-                    <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-                      {runtimeHealthQuery.error instanceof Error
-                        ? runtimeHealthQuery.error.message
-                        : "Unable to load dependency health."}
-                    </div>
+                    <ErrorAlert error={runtimeHealthQuery.error} fallback="Unable to load dependency health." />
                   ) : (
                     <RuntimeHealthCards
                       dependencies={runtimeHealthQuery.data?.dependencies ?? {}}
@@ -538,11 +529,7 @@ export default function ObservabilityPage() {
                 </section>
               </>
             ) : runtimeHealthQuery.isError ? (
-              <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-                {runtimeHealthQuery.error instanceof Error
-                  ? runtimeHealthQuery.error.message
-                  : "Unable to load dependency health."}
-              </div>
+              <ErrorAlert error={runtimeHealthQuery.error} fallback="Unable to load dependency health." />
             ) : (
               <section className="space-y-4">
                 <header className="panel px-6 py-5">

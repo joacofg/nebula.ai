@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 
 import type { ApiKeyCreateInput, TenantRecord } from "@/lib/admin-api";
-import { useDialogDismiss } from "@/lib/use-dialog-dismiss";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const API_KEYS_ENDPOINT = "/api/admin/api-keys";
 
@@ -45,12 +46,6 @@ export function CreateApiKeyDialog({
     setError(null);
   }, [open, selectedTenantId, tenants]);
 
-  useDialogDismiss(open, onClose);
-
-  if (!open) {
-    return null;
-  }
-
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim()) {
@@ -80,36 +75,29 @@ export function CreateApiKeyDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-30 flex items-center justify-center bg-ink/35 px-4 py-6 backdrop-blur-xs">
-      <div role="dialog" aria-modal="true" aria-label="Create API key" className="panel w-full max-w-2xl px-6 py-6">
-        <div className="flex items-start justify-between gap-4">
-          <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">New API key</div>
-            <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
-              Issue client credentials with tenant scope
-            </h3>
-            <p className="mt-2 text-sm text-ink-4">
-              Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
-              {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
-              key may access.
-            </p>
-            <p className="mt-2 text-sm text-ink-4">
-              Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
-              when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
-              then to the only allowed tenant. If you authorize multiple tenants without a default
-              <span className="font-(--font-fira-code)"> tenant_id</span>, public callers must send the tenant header.
-            </p>
-          </div>
-          <button type="button" className="secondary-button px-3 py-2" onClick={onClose}>
-            Close
-          </button>
-        </div>
+    <Dialog open={open} onOpenChange={(next) => (next ? null : onClose())}>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">New API key</div>
+          <DialogTitle className="text-xl font-semibold text-ink">Issue client credentials with tenant scope</DialogTitle>
+          <DialogDescription className="text-sm text-ink-4">
+            Creates a client API key through <span className="font-(--font-fira-code)">{API_KEYS_ENDPOINT}</span>.
+            {" "}Use <span className="font-(--font-fira-code)">allowed_tenant_ids</span> to define every tenant the
+            key may access.
+          </DialogDescription>
+          <p className="text-sm text-ink-4">
+            Nebula resolves requests by honoring an explicit <span className="font-(--font-fira-code)">X-Nebula-Tenant-ID</span>
+            when it matches an allowed tenant; otherwise it falls back to <span className="font-(--font-fira-code)">tenant_id</span>,
+            then to the only allowed tenant. If you authorize multiple tenants without a default
+            <span className="font-(--font-fira-code)"> tenant_id</span>, public callers must send the tenant header.
+          </p>
+        </DialogHeader>
 
-        <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
+        <form className="mt-2 space-y-4" onSubmit={handleSubmit}>
           {error ? (
-            <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-              {error}
-            </div>
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           ) : null}
 
           <div>
@@ -171,7 +159,7 @@ export function CreateApiKeyDialog({
             Create API key
           </button>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

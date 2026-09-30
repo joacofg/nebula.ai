@@ -92,3 +92,30 @@ describe("create-api-key-dialog", () => {
     });
   });
 });
+
+describe("create-api-key-dialog focus", () => {
+  it("keeps keyboard focus inside the dialog and closes on Escape", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    renderWithProviders(
+      <>
+        <button type="button">Outside</button>
+        <CreateApiKeyDialog
+          open
+          tenants={TENANTS}
+          selectedTenantId="tenant-a"
+          isSaving={false}
+          onClose={onClose}
+          onSubmit={vi.fn().mockResolvedValue(undefined)}
+        />
+      </>,
+    );
+    const dialog = screen.getByRole("dialog");
+    for (let i = 0; i < 8; i += 1) {
+      await user.tab();
+      expect(dialog).toContainElement(document.activeElement as HTMLElement);
+    }
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalled();
+  });
+});

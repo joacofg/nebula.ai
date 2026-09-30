@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type ApplyTargetProps = {
   adminKey: string;
@@ -86,9 +87,11 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
         </div>
       ) : null}
       {mutation.isError ? (
-        <div role="alert" className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-          No se pudo aplicar: {mutation.error instanceof Error ? mutation.error.message : "error desconocido"}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>
+            No se pudo aplicar: {mutation.error instanceof Error ? mutation.error.message : "error desconocido"}
+          </AlertDescription>
+        </Alert>
       ) : null}
     </div>
   );

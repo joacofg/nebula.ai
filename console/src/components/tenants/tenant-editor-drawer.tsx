@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, PanelRightOpen } from "lucide-react";
 
 import type { TenantInput, TenantRecord } from "@/lib/admin-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const TENANT_UPDATE_HINT = "/api/admin/tenants/";
 
@@ -122,9 +123,9 @@ export function TenantEditorDrawer({
 
       <form className="mt-6 space-y-4" onSubmit={handleSubmit}>
         {error ? (
-          <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : null}
 
         <div>

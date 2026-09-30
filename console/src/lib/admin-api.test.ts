@@ -80,6 +80,15 @@ describe("admin-api router evaluation", () => {
     await expect(getRouterEvaluation("nebula-admin-key")).resolves.toBeNull();
   });
 
+  it("treats a 404 that is not the missing replay as an error", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "Not Found" }), { status: 404 })),
+    );
+
+    await expect(getRouterEvaluation("nebula-admin-key")).rejects.toThrow("Not Found");
+  });
+
   it("throws the gateway detail on other failures", async () => {
     vi.stubGlobal(
       "fetch",
