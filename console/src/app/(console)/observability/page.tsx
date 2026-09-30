@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
@@ -14,7 +16,7 @@ import { RuntimeHealthCards } from "@/components/health/runtime-health-cards";
 import { LedgerFilters } from "@/components/ledger/ledger-filters";
 import { LedgerRequestDetail } from "@/components/ledger/ledger-request-detail";
 import { LedgerTable } from "@/components/ledger/ledger-table";
-import { getTenantRecommendations, listTenants, listUsageLedger } from "@/lib/admin-api";
+import { getTenantRecommendations, listTenants, listUsageLedger, type RecommendationBundle } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
 import { ErrorAlert } from "@/components/system/state";
@@ -93,6 +95,20 @@ export default function ObservabilityPage() {
   const tabTrigger =
     "h-10 flex-none rounded-none border-0 px-4 text-[15px] font-semibold text-ink-3 data-active:text-ink after:bg-mark group-data-horizontal/tabs:after:bottom-[-1px]";
 
+  /** The three tenant tabs share one query, so each shows its failure and loading state. */
+  function tenantContext(render: (bundle: RecommendationBundle) => ReactNode, noun: string) {
+    if (recommendationsQuery.isError) {
+      return <ErrorAlert error={recommendationsQuery.error} fallback="No se pudo cargar el contexto del tenant." />;
+    }
+    if (recommendationsQuery.isLoading) {
+      return <LoadingRows rows={3} label="Cargando el contexto del tenant" />;
+    }
+    if (recommendationsQuery.data) {
+      return render(recommendationsQuery.data);
+    }
+    return <p className="m-0 text-sm text-ink-3">Elegir un tenant para ver {noun}.</p>;
+  }
+
   return (
     <section>
       <PageHeader
@@ -153,29 +169,13 @@ export default function ObservabilityPage() {
             <TabsTrigger value="dependencies" className={tabTrigger}>Dependencias</TabsTrigger>
           </TabsList>
           <TabsContent value="recommendations" className="pt-5">
-            {recommendationsQuery.isError ? (
-              <ErrorAlert error={recommendationsQuery.error} fallback="No se pudieron cargar las recomendaciones." />
-            ) : recommendationsQuery.isLoading ? (
-              <LoadingRows rows={3} label="Cargando recomendaciones" />
-            ) : recommendationsQuery.data ? (
-              <Recommendations bundle={recommendationsQuery.data} />
-            ) : (
-              <p className="m-0 text-sm text-ink-3">Elegir un tenant para ver sus recomendaciones.</p>
-            )}
+            {tenantContext((bundle) => <Recommendations bundle={bundle} />, "sus recomendaciones")}
           </TabsContent>
           <TabsContent value="cache" className="pt-5">
-            {recommendationsQuery.data ? (
-              <CacheSummary cache={recommendationsQuery.data.cache_summary} />
-            ) : (
-              <p className="m-0 text-sm text-ink-3">Elegir un tenant para ver su caché.</p>
-            )}
+            {tenantContext((bundle) => <CacheSummary cache={bundle.cache_summary} />, "su caché")}
           </TabsContent>
           <TabsContent value="calibration" className="pt-5">
-            {recommendationsQuery.data ? (
-              <CalibrationSummary summary={recommendationsQuery.data.calibration_summary} />
-            ) : (
-              <p className="m-0 text-sm text-ink-3">Elegir un tenant para ver su calibración.</p>
-            )}
+            {tenantContext((bundle) => <CalibrationSummary summary={bundle.calibration_summary} />, "su calibración")}
           </TabsContent>
           <TabsContent value="dependencies" className="pt-5">
             {runtimeHealthQuery.isError ? (
