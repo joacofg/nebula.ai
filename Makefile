@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures demo
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -33,6 +33,10 @@ ollama-pull:
 
 run:
 	$(UVICORN) nebula.main:app --reload
+
+# Defense demo: checks, Qdrant, empty cache, gateway with the learned router, console, browser.
+demo:
+	./scripts/demo.sh
 
 smoke-openrouter:
 	PORT=8000 ./scripts/smoke_openrouter.sh
