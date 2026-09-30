@@ -67,12 +67,14 @@ class PolicyService:
         request: ChatCompletionRequest,
         tenant_context: AuthenticatedTenantContext,
         router_service: RouterService,
+        prompt_embedding: list[float] | None = None,
     ) -> PolicyResolution:
         evaluation = await self.evaluate(
             request=request,
             tenant_context=tenant_context,
             router_service=router_service,
             prompt=prompt,
+            prompt_embedding=prompt_embedding,
         )
         if evaluation.denied:
             assert evaluation.denial_detail is not None
@@ -111,6 +113,7 @@ class PolicyService:
         replay_context: ReplayRouteContext | None = None,
         before_timestamp: datetime | None = None,
         evidence_summary_override: CalibrationEvidenceSummary | None = None,
+        prompt_embedding: list[float] | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
         evidence_summary = evidence_summary_override
@@ -131,6 +134,7 @@ class PolicyService:
                 routing_mode=policy.routing_mode_default,
                 policy=policy,
                 evidence_summary=evidence_summary,
+                prompt_embedding=prompt_embedding,
             )
 
         calibrated_routing_gated = False
@@ -160,7 +164,8 @@ class PolicyService:
 
         projected_premium_cost: float | None = None
         if denial_detail is None and route_decision.target == "premium":
-            premium_model = self._resolve_premium_model(request)
+            # The decision's model (economy or frontier tier) is what the provider will serve.
+            premium_model = route_decision.model or self._resolve_premium_model(request)
             if policy.allowed_premium_models and premium_model not in policy.allowed_premium_models:
                 denial_detail = f"Premium model '{premium_model}' is not allowed for this tenant."
             else:
@@ -247,7 +252,7 @@ class PolicyService:
     ) -> bool:
         if policy.calibrated_routing_enabled:
             return False
-        return route_decision.reason == "token_complexity"
+        return route_decision.reason in {"token_complexity", "learned_router"}
 
     def _hard_budget_exceeded(
         self,
