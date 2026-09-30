@@ -117,6 +117,7 @@ que respalda cada caso, está en el Anexo A. La suite automática tiene 451 prue
 | CP-14 | Cabeceras `X-Nebula-*` en cada ruta | presentes y coherentes con el ledger | presentes | P |
 | CP-15 | Replay de la consola | coincide con el artefacto del router | coincide | P |
 | CP-16 | Pruebas de extremo a extremo de la consola | todas pasan | 2 fallan (observabilidad, playground) | F |
+| CP-17 | Cifras de la tesis al día con los reportes | ningún bloque desactualizado | al día | P |
 
 Los casos en F merecen una lectura. CP-04 y CP-07 son resultados negativos esperables y útiles:
 muestran que la regla anterior y la métrica anterior no servían, que es el motivo del trabajo.
