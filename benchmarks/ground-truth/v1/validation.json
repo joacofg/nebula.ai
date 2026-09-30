@@ -45,6 +45,18 @@
     "status": "partial"
   },
   "inter_judge_kappa": 0.6169714961382676,
+  "negatives_es": {
+    "ci95": [
+      0.6086866446346177,
+      0.9113954589934752
+    ],
+    "decoys_human_substitutable": 9,
+    "decoys_labelled": 10,
+    "human_agrees": 20,
+    "precision": 0.8,
+    "rejected_labelled": 25,
+    "status": "labelled"
+  },
   "position_flip_rate": {
     "deepseek/deepseek-chat-v3-0324": 0.08106666666666666,
     "google/gemini-2.5-flash": 0.1248

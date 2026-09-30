@@ -20,6 +20,9 @@
     "deepseek/deepseek-chat-v3-0324"
   ],
   "max_tokens": 1024,
+  "negatives_rule": "R3_ordinal_mean",
+  "negatives_seed": 20260930,
+  "negatives_sha256": "52690a16a8d3da89472fd4f0c41b9c2efca13ba65fe52d018d601179b3d22d80",
   "ollama_digests": {
     "llama3.2:3b": "a80c4f17acd55265feec403c7aef86be0c25983ab279d83f3bcd3abbcb5b8b72",
     "qwen2.5:7b": "845dbda0ea48ed749caafd9e6037047aa19acfcfd82e704d7ca97d631a0b697e"
