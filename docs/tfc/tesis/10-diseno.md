@@ -36,7 +36,7 @@ literatura revisada en el capítulo 8 [@moslem2026]:
 - **Cascada con verificación.** El pedido va primero al modelo barato y se escala si la respuesta
   no pasa un control, como en FrugalGPT [@frugalgpt] o AutoMix [@automix]. Juzga la respuesta
   real, pero cada escalamiento paga dos generaciones y un juicio. Con el modelo local tardando
-  una mediana de 21.3 s por respuesta en esta máquina (Tabla 11.6), una cascada que empieza por el
+  una mediana de 21.3 s por respuesta en esta máquina (Tabla 11.9), una cascada que empieza por el
   local sumaría esos segundos a todos los pedidos que terminan en el premium.
 - **Router aprendido que decide antes de generar.** Un clasificador estima la dificultad del
   pedido y lo manda directamente al nivel elegido, como Hybrid LLM [@hybridllm] y RouteLLM
@@ -57,7 +57,7 @@ al marco teórico, una alternativa descartada y su relación con los límites de
 | Decisión | Alternativas | Elegida | Justificación |
 |---|---|---|---|
 | D1. Cómo decidir la ruta | reglas fijas; cascada; router aprendido | router aprendido de tres niveles | Una sola generación por pedido, compatible con la latencia del modelo local; la frontera sale del entrenamiento [@hybridllm], [@routellm]. |
-| D2. Qué clasificador usar | kNN sobre embeddings; red neuronal; regresión logística | dos regresiones logísticas L2 | Con el mismo corpus, la logística es más barata que kNN en todos los niveles de calidad (USD 1.70 contra 1.76 cada mil prompts a calidad 0.95; Tabla 11.4 y reporte del router) y se sirve con un producto escalar, sin dependencias en el gateway. Con 1250 ejemplos una red no tiene datos para superarla. |
+| D2. Qué clasificador usar | kNN sobre embeddings; red neuronal; regresión logística | dos regresiones logísticas L2 | Con el mismo corpus, la logística es más barata que kNN en todos los niveles de calidad (USD 1.70 contra 1.76 cada mil prompts a calidad 0.95; Tabla 11.6) y se sirve con un producto escalar, sin dependencias en el gateway. Con 1250 ejemplos una red no tiene datos para superarla. |
 | D3. Cómo medir la calidad | similitud coseno; un juez LLM; ensamble de jueces validado | dos jueces de otra familia, en las dos posiciones, con reglas pre-registradas y validación humana | El coseno no separa calidad (AUC 0.25, sección 9.1); un juez solo tiene sesgos de posición y de autopreferencia [@wang2024fair], [@panickssery]. |
 | D4. Cómo aislar el caché | caché global; caché por usuario; caché por tenant | por tenant, con umbral y antigüedad de la política | Un caché global puede servirle a un cliente la respuesta generada para otro. Aislar por usuario, como MeanCache [@meancache], reduce mucho los aciertos. El tenant es la unidad de política del gateway. |
 | D5. Cómo acceder a los modelos premium | API directa de cada proveedor; LiteLLM como dependencia; OpenRouter | OpenRouter, con fallback local→premium | Una sola integración para los dos niveles premium, que además informa el costo real de cada llamada, que es el que usa la evaluación. El gateway sigue siendo self-hosted: lo externo son los modelos, no el plano de control. |
@@ -68,7 +68,7 @@ probó el prefijo `classification`, que dio un AUC apenas mayor (0.679 contra 0.
 local); la regla fijada de antemano exigía una mejora de al menos 0.02 para cambiar, y no la
 alcanzó. Mantener un solo vector evita un segundo llamado a Ollama por pedido (RNF-03). La segunda
 es el **modelo local**: con qwen2.5:7b, 742 de los 1000 prompts en español tienen una respuesta
-local sustituible, contra 615 con llama3.2:3b (Tabla 11.3); el modelo de 7B entra en los 16 GB
+local sustituible, contra 615 con llama3.2:3b (Tabla 11.4); el modelo de 7B entra en los 16 GB
 de la máquina, así que se eligió ese, y el de 3B queda como análisis de sensibilidad.
 
 ### El router de tres niveles

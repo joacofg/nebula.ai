@@ -7,8 +7,8 @@ mermaid-cli vía `npx`). Para Word conviene insertar el PNG; la frontera tambié
 | Figura | Archivo | Sección que la cita |
 |---|---|---|
 | 10.1 Arquitectura del gateway | `arquitectura.png` | 10.1 |
-| 10.2 Recorrido de un pedido de chat | `secuencia-request.png` | 10.3 |
-| 10.3 Modelo de datos | `modelo-datos.png` | 10.2 |
+| 10.2 Modelo de datos | `modelo-datos.png` | 10.2 |
+| 10.3 Recorrido de un pedido de chat | `secuencia-request.png` | 10.3 |
 | 10.4 Pipeline de etiquetado y entrenamiento del router | `pipeline-ml.png` | 10.3 |
 | 11.1 Frontera costo–calidad del router aprendido | `frontera.png` / `frontera.svg` | 11.2.3 |
 
