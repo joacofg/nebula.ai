@@ -1,5 +1,7 @@
 "use client";
 
+import type { RouterReplay } from "@/lib/router-replay";
+
 export type RoutingMode = "auto" | "local_only" | "premium_only";
 export type EvidenceRetentionWindow = "24h" | "7d" | "30d" | "90d";
 export type MetadataMinimizationLevel = "standard" | "strict";
@@ -20,6 +22,7 @@ export type TenantPolicy = {
   response_capture_enabled: boolean;
   evidence_retention_window: EvidenceRetentionWindow;
   metadata_minimization_level: MetadataMinimizationLevel;
+  routing_quality_target: number;
 };
 
 export type TenantRecord = {
@@ -238,6 +241,8 @@ export type PlaygroundCompletionResult = {
   tenantId: string;
   routeTarget: string;
   routeReason: string;
+  /** Learned-router tier (`local` / `economy` / `frontier`); empty for heuristic routes. */
+  routeTier: string;
   provider: string;
   cacheHit: boolean;
   fallbackUsed: boolean;
@@ -426,6 +431,28 @@ export function simulateTenantPolicy(
   });
 }
 
+export const ADMIN_ROUTER_EVALUATION_ENDPOINT = "/api/admin/evaluation/router";
+
+/** The learned router's out-of-fold replay; `null` when the gateway has none (404). */
+export async function getRouterEvaluation(adminKey: string): Promise<RouterReplay | null> {
+  const response = await fetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Nebula-Admin-Key": adminKey,
+    },
+    cache: "no-store",
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "Nebula admin request failed.");
+  }
+  return (await response.json()) as RouterReplay;
+}
+
 export function getPolicyOptions(adminKey: string) {
   return adminRequest<PolicyOptionsResponse>("/api/admin/policy/options", { adminKey });
 }
@@ -461,6 +488,7 @@ export async function createPlaygroundCompletion(
     tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,
     routeTarget: response.headers.get("X-Nebula-Route-Target") ?? "",
     routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
+    routeTier: response.headers.get("X-Nebula-Route-Tier") ?? "",
     provider: response.headers.get("X-Nebula-Provider") ?? "",
     cacheHit: response.headers.get("X-Nebula-Cache-Hit") === "true",
     fallbackUsed: response.headers.get("X-Nebula-Fallback-Used") === "true",

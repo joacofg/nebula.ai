@@ -67,12 +67,14 @@ beforeEach(() => {
     response_capture_enabled: false,
     evidence_retention_window: "30d",
     metadata_minimization_level: "standard",
+    routing_quality_target: 0.95,
   }));
   getPolicyOptionsMock.mockResolvedValue({
     routing_modes: ["auto", "local_only", "premium_only"],
     known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
     default_premium_model: "openai/gpt-4o-mini",
     runtime_enforced_fields: [
+      "routing_quality_target",
       "routing_mode_default",
       "allowed_premium_models",
       "semantic_cache_enabled",
@@ -104,6 +106,7 @@ beforeEach(() => {
     response_capture_enabled: false,
     evidence_retention_window: "30d",
     metadata_minimization_level: "standard",
+    routing_quality_target: 0.95,
   });
   simulateTenantPolicyMock.mockResolvedValue({
     tenant_id: "tenant-a",
@@ -123,6 +126,7 @@ beforeEach(() => {
       response_capture_enabled: false,
       evidence_retention_window: "30d",
       metadata_minimization_level: "standard",
+      routing_quality_target: 0.95,
     },
     calibration_summary: {
       tenant_id: "default",
@@ -374,6 +378,7 @@ describe("policy-page", () => {
         response_capture_enabled: false,
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
+        routing_quality_target: 0.95,
       },
       calibration_summary: {
         tenant_id: "default",
@@ -449,6 +454,7 @@ describe("policy-page", () => {
         response_capture_enabled: false,
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
+        routing_quality_target: 0.95,
       },
       calibration_summary: {
         tenant_id: "default",

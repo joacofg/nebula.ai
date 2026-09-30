@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 
@@ -178,6 +179,7 @@ async def get_policy_options(
         runtime_enforced_fields=[
             "routing_mode_default",
             "calibrated_routing_enabled",
+            "routing_quality_target",
             "allowed_premium_models",
             "semantic_cache_enabled",
             "semantic_cache_similarity_threshold",
@@ -192,6 +194,20 @@ async def get_policy_options(
         soft_signal_fields=["soft_budget_usd"],
         advisory_fields=["prompt_capture_enabled", "response_capture_enabled"],
     )
+
+
+@router.get("/evaluation/router")
+async def get_router_evaluation(
+    container: ServiceContainer = Depends(require_admin),
+) -> Response:
+    """The learned router's out-of-fold replay: read-only, no model is called."""
+    path = Path(container.settings.router_replay_path)
+    if not path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"No router replay at {path}; run `python -m scripts.router.train`.",
+        )
+    return Response(content=path.read_bytes(), media_type="application/json")
 
 
 @router.get("/api-keys", response_model=list[ApiKeyRecord])

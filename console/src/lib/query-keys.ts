@@ -10,4 +10,5 @@ export const queryKeys = {
   usageLedger: (filters: UsageLedgerFilters = {}) => ["usage-ledger", filters] as const,
   usageLedgerEntry: (requestId: string) => ["usage-ledger-entry", requestId] as const,
   runtimeHealth: ["runtime-health"] as const,
+  routerEvaluation: ["router-evaluation"] as const,
 };

@@ -3,6 +3,7 @@ type PlaygroundMetadataProps = {
   tenantId: string;
   routeTarget: string;
   routeReason: string;
+  routeTier: string;
   provider: string;
   cacheHit: boolean;
   fallbackUsed: boolean;
@@ -24,6 +25,7 @@ export function PlaygroundMetadata({
   tenantId,
   routeTarget,
   routeReason,
+  routeTier,
   provider,
   cacheHit,
   fallbackUsed,
@@ -49,6 +51,7 @@ export function PlaygroundMetadata({
         <MetadataRow label="Tenant" value={displayValue(tenantId)} mono />
         <MetadataRow label="Route target" value={displayValue(routeTarget)} />
         <MetadataRow label="Route reason" value={displayValue(routeReason)} />
+        <MetadataRow label="Route tier" value={displayValue(routeTier)} />
         <MetadataRow label="Provider" value={displayValue(provider)} />
         <MetadataRow label="Policy mode" value={displayValue(policyMode)} />
         <MetadataRow label="Policy outcome" value={displayValue(policyOutcome)} />
