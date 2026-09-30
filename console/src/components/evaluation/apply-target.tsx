@@ -75,18 +75,18 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
           {mutation.isPending ? "Guardando…" : "Aplicar a este tenant"}
         </button>
       </div>
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-ink-3">
         Guarda <code className="font-mono text-xs">routing_quality_target = {target.toFixed(3)}</code> en la política del
         tenant; el resto de la política no cambia.
       </p>
       {mutation.isSuccess ? (
-        <div role="status" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <div role="status" className="rounded-xl border border-ok-line bg-ok-soft px-4 py-3 text-sm text-ok">
           Guardado: routing_quality_target = {mutation.data.routing_quality_target.toFixed(3)} en{" "}
           {tenantName(mutation.variables.id)}
         </div>
       ) : null}
       {mutation.isError ? (
-        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div role="alert" className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
           No se pudo aplicar: {mutation.error instanceof Error ? mutation.error.message : "error desconocido"}
         </div>
       ) : null}

@@ -115,17 +115,17 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
   return (
     <section className="panel space-y-4 px-6 py-5" aria-labelledby="playground-decision-heading">
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Decisión</div>
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Decisión</div>
         <h3
           id="playground-decision-heading"
-          className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950"
+          className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
         >
           Por qué este nivel
         </h3>
       </div>
 
       {explanation.kind === "cache" ? (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-ink-2">
           Respuesta servida desde el caché semántico
           {explanation.score !== null ? ` (similitud ${formatProb(explanation.score)})` : ""}: no se llamó a ningún
           modelo, así que el nivel del router no se aplicó.
@@ -133,34 +133,34 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
       ) : explanation.kind === "learned" ? (
         <div className="space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
-            <span className="rounded-full bg-slate-900 px-3 py-1 font-mono text-xs font-semibold text-white">
+            <span className="rounded-full bg-ink px-3 py-1 font-mono text-xs font-semibold text-surface">
               Nivel: {explanation.tier}
             </span>
-            <span className="text-slate-600">Router aprendido {explanation.version}</span>
+            <span className="text-ink-3">Router aprendido {explanation.version}</span>
           </div>
           <ol className="space-y-2">
             {explanation.steps.map((step) => (
               <li
                 key={step}
-                className="rounded-xl border border-border bg-slate-50 px-4 py-2.5 font-mono text-sm text-slate-900 [overflow-wrap:anywhere]"
+                className="rounded-xl border border-line bg-canvas px-4 py-2.5 font-mono text-sm text-ink wrap-anywhere"
               >
                 {step}
               </li>
             ))}
           </ol>
-          {explanation.note ? <p className="text-sm text-amber-900">{explanation.note}</p> : null}
+          {explanation.note ? <p className="text-sm text-warn">{explanation.note}</p> : null}
           {explanation.fallback ? (
-            <p className="text-sm text-amber-900">
+            <p className="text-sm text-warn">
               Falló el modelo local y la request se sirvió con el proveedor premium (fallback).
             </p>
           ) : null}
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink-4">
             Regla del gateway: el punto de operación más barato con calidad ≥ objetivo; luego p_local ≥ τ_local → local,
             si no p_economy ≥ τ_economy → economy, si no frontier.
           </p>
         </div>
       ) : explanation.kind === "embedding_unavailable" ? (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-ink-2">
           {explanation.status === "embedding_dimension_mismatch"
             ? "El embedding del prompt no tiene la dimensión que espera el router aprendido"
             : "El router aprendido no pudo calcular el embedding del prompt"}
@@ -168,12 +168,12 @@ export function PlaygroundDecision({ entry, routeTier }: PlaygroundDecisionProps
           {explanation.fallback ? " Después falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : explanation.kind === "heuristic" ? (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-ink-2">
           Ruteo heurístico (token_complexity){explanation.detail}: el router aprendido no estuvo activo para esta request.
           {explanation.fallback ? " Falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : (
-        <p className="text-sm text-slate-700">
+        <p className="text-sm text-ink-2">
           El ledger no registró señales de ruteo para esta request (por ejemplo, con minimización estricta de
           metadatos).
         </p>

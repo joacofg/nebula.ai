@@ -383,17 +383,17 @@ export function PolicyForm({
       <header className="panel px-6 py-5">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Policy</div>
-            <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+            <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Policy</div>
+            <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
               Policy for {tenantName}
             </h2>
-            <p className="mt-2 text-sm text-slate-600">
+            <p className="mt-2 text-sm text-ink-3">
               Structured governance controls with explicit preview and save semantics.
             </p>
           </div>
           <div className="flex items-center gap-2">
             {dirty ? (
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700">
+              <span className="inline-flex items-center gap-2 rounded-full bg-warn-soft px-3 py-1 text-xs font-semibold text-warn">
                 <AlertCircle className="h-3.5 w-3.5" />
                 Unsaved changes
               </span>
@@ -425,7 +425,7 @@ export function PolicyForm({
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+        <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
           {error}
         </div>
       ) : null}
@@ -433,30 +433,30 @@ export function PolicyForm({
       <section className="panel px-6 py-5" aria-live="polite">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Preview before save</h3>
-            <p className="mt-2 text-sm text-slate-500">
+            <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">Preview before save</h3>
+            <p className="mt-2 text-sm text-ink-4">
               Compare the current draft against the tenant&apos;s recent persisted baseline before deciding whether to save.
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700">
+          <span className="rounded-full bg-canvas px-3 py-1 text-xs font-medium text-ink-2">
             Save remains explicit
           </span>
         </div>
 
         {isSimulating ? (
-          <div className="mt-4 rounded-xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900">
+          <div className="mt-4 rounded-xl border border-mark-line bg-mark-soft px-4 py-3 text-sm text-mark">
             Simulating draft policy against recent tenant traffic...
           </div>
         ) : null}
 
         {simulationError ? (
-          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-900">
+          <div className="mt-4 rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
             Preview failed: {simulationError}
           </div>
         ) : null}
 
         {!isSimulating && !simulationError && !simulationResult ? (
-          <div className="mt-4 rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+          <div className="mt-4 rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-4">
             Run a preview to compare this draft against recent ledger-backed requests before saving.
           </div>
         ) : null}
@@ -467,91 +467,91 @@ export function PolicyForm({
               className={[
                 "rounded-2xl border px-4 py-4",
                 previewDecision?.tone === "rose"
-                  ? "border-rose-200 bg-rose-50"
+                  ? "border-danger-line bg-danger-soft"
                   : previewDecision?.tone === "emerald"
-                    ? "border-emerald-200 bg-emerald-50"
+                    ? "border-ok-line bg-ok-soft"
                     : previewDecision?.tone === "amber"
-                      ? "border-amber-200 bg-amber-50"
-                      : "border-sky-200 bg-sky-50",
+                      ? "border-warn-line bg-warn-soft"
+                      : "border-mark-line bg-mark-soft",
               ].join(" ")}
             >
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-white/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-700">
+                <span className="rounded-full bg-surface/80 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-ink-2">
                   {previewDecision?.badge}
                 </span>
-                <span className="text-xs font-medium text-slate-600">Preview only — save stays separate.</span>
+                <span className="text-xs font-medium text-ink-3">Preview only — save stays separate.</span>
               </div>
-              <h4 className="mt-3 font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="mt-3 font-(--font-fira-code) text-base font-semibold text-ink">
                 {previewDecision?.title}
               </h4>
-              <p className="mt-2 text-sm text-slate-700">{previewDecision?.body}</p>
-              <p className="mt-2 text-sm font-medium text-slate-900">{previewDecision?.nextStep}</p>
+              <p className="mt-2 text-sm text-ink-2">{previewDecision?.body}</p>
+              <p className="mt-2 text-sm font-medium text-ink">{previewDecision?.nextStep}</p>
             </div>
 
             <div className="grid gap-3 md:grid-cols-4">
-              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Evaluated requests</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950">
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Evaluated requests</div>
+                <div className="mt-2 text-2xl font-semibold text-ink">
                   {simulationResult.summary.evaluated_rows}
                 </div>
               </div>
-              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Changed routes</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950">
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Changed routes</div>
+                <div className="mt-2 text-2xl font-semibold text-ink">
                   {simulationResult.summary.changed_routes}
                 </div>
               </div>
-              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Newly denied</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950">
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Newly denied</div>
+                <div className="mt-2 text-2xl font-semibold text-ink">
                   {simulationResult.summary.newly_denied}
                 </div>
               </div>
-              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3">
-                <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Premium cost delta</div>
-                <div className="mt-2 text-2xl font-semibold text-slate-950">
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3">
+                <div className="text-xs uppercase tracking-[0.2em] text-ink-4">Premium cost delta</div>
+                <div className="mt-2 text-2xl font-semibold text-ink">
                   {formatUsd(simulationResult.summary.premium_cost_delta)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
+            <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink-2">
               Compared {simulationResult.window.returned_rows} recent persisted request(s) against this draft baseline. This preview did not save the policy.
             </div>
 
             {simulationResult.window.returned_rows === 0 ? (
-              <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+              <div className="rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
                 No recent traffic matched the replay window, so there was nothing to preview.
               </div>
             ) : simulationResult.changed_requests.length === 0 ? (
-              <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <div className="rounded-xl border border-ok-line bg-ok-soft px-4 py-3 text-sm text-ok">
                 No request outcomes changed in this replay window.
               </div>
             ) : (
               <div className="space-y-3">
                 <div>
-                  <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+                  <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
                     Changed request sample
                   </h4>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-ink-4">
                     Supporting evidence only: bounded sample of persisted requests whose route, status, policy outcome, or projected cost changed between the current baseline and this draft.
                   </p>
                 </div>
                 <ul className="space-y-3">
                   {simulationResult.changed_requests.map((change) => (
-                    <li key={change.request_id} className="rounded-xl border border-border bg-white px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-950">
+                    <li key={change.request_id} className="rounded-xl border border-line bg-surface px-4 py-3">
+                      <div className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
                         <span>{change.request_id}</span>
-                        <span className="text-slate-400">•</span>
+                        <span className="text-ink-4">•</span>
                         <span>{change.requested_model}</span>
                       </div>
-                      <div className="mt-2 flex items-center gap-2 text-sm text-slate-600">
+                      <div className="mt-2 flex items-center gap-2 text-sm text-ink-3">
                         <span>{change.baseline_route_target}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                         <span>{change.simulated_route_target}</span>
                       </div>
-                      <p className="mt-2 text-sm text-slate-600">{renderChangedRequestSummary(change)}</p>
-                      <p className="mt-1 text-xs text-slate-500">{renderChangedRequestParity(change)}</p>
+                      <p className="mt-2 text-sm text-ink-3">{renderChangedRequestSummary(change)}</p>
+                      <p className="mt-1 text-xs text-ink-4">{renderChangedRequestParity(change)}</p>
                     </li>
                   ))}
                 </ul>
@@ -559,8 +559,8 @@ export function PolicyForm({
             )}
 
             {simulationResult.approximation_notes.length > 0 ? (
-              <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-600">
-                <div className="font-medium text-slate-900">Replay notes</div>
+              <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink-3">
+                <div className="font-medium text-ink">Replay notes</div>
                 <ul className="mt-2 list-disc space-y-1 pl-5">
                   {simulationResult.approximation_notes.map((note) => (
                     <li key={note}>{note}</li>
@@ -575,35 +575,35 @@ export function PolicyForm({
       <section className="panel px-6 py-5">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">
+            <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">
               Runtime-enforced controls
             </h3>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-2 text-sm text-ink-4">
               These controls change live routing behavior. Hard budget settings are cumulative tenant spend guardrails, not advisory reporting thresholds.
             </p>
           </div>
-          <span className="rounded-full bg-sky-50 px-3 py-1 text-xs font-semibold text-sky-700">
+          <span className="rounded-full bg-mark-soft px-3 py-1 text-xs font-semibold text-mark">
             Applies in live request evaluation
           </span>
         </div>
-        <div className="mt-4 rounded-xl border border-sky-100 bg-sky-50 px-4 py-3 text-sm text-sky-950">
+        <div className="mt-4 rounded-xl border border-mark-soft bg-mark-soft px-4 py-3 text-sm text-mark">
           When the hard cumulative budget is exhausted, Nebula either downgrades compatible auto-routed traffic to local or denies premium routing, depending on the enforcement mode below.
         </div>
-        <div className="mt-4 rounded-2xl border border-border bg-slate-50 px-4 py-4">
+        <div className="mt-4 rounded-2xl border border-line bg-canvas px-4 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
                 Effective evidence boundary
               </h4>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-ink-3">
                 Runtime-enforced guidance derived from the retention and minimization controls below.
               </p>
             </div>
-            <span className="rounded-full bg-white px-3 py-1 text-xs font-semibold text-slate-700">
+            <span className="rounded-full bg-surface px-3 py-1 text-xs font-semibold text-ink-2">
               Local runtime evidence
             </span>
           </div>
-          <div className="mt-4 space-y-3 text-sm text-slate-700">
+          <div className="mt-4 space-y-3 text-sm text-ink-2">
             <p>{evidenceBoundarySummary.retention}</p>
             <p>{evidenceBoundarySummary.inspectableWhileRetained}</p>
             <p>{evidenceBoundarySummary.minimizationEffect}</p>
@@ -636,8 +636,8 @@ export function PolicyForm({
           ) : null}
 
           {runtimeEnforcedFields.has("calibrated_routing_enabled") ? (
-            <div className="space-y-2 rounded-2xl border border-border bg-slate-50 px-4 py-4">
-              <label className="flex items-center gap-3 text-sm font-medium text-slate-800">
+            <div className="space-y-2 rounded-2xl border border-line bg-canvas px-4 py-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-ink-2">
                 <input
                   type="checkbox"
                   checked={formState.calibratedRoutingEnabled}
@@ -650,14 +650,14 @@ export function PolicyForm({
                 />
                 Calibrated routing enabled
               </label>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-4">
                 Tenant-scoped rollout valve for token-complexity auto routing. Turning this off keeps explicit model overrides and policy-forced routing intact while forcing auto-routed requests onto the local path.
               </p>
             </div>
           ) : null}
 
           {runtimeEnforcedFields.has("fallback_enabled") ? (
-            <label className="flex items-center gap-3 rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800">
+            <label className="flex items-center gap-3 rounded-xl border border-line bg-canvas px-4 py-3 text-sm font-medium text-ink-2">
               <input
                 type="checkbox"
                 checked={formState.fallbackEnabled}
@@ -683,7 +683,7 @@ export function PolicyForm({
                   setFormState((current) => ({ ...current, routingQualityTarget: event.target.value }))
                 }
               />
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Quality the learned router must keep (0.5 to 1.0): it takes the cheapest operating point that meets
                 it, and 1.0 sends every request to the frontier model. Compare targets on the Evaluación page.
               </p>
@@ -705,7 +705,7 @@ export function PolicyForm({
                   setFormState((current) => ({ ...current, rateLimitRequestsPerMinute: event.target.value }))
                 }
               />
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Public chat and embeddings requests this tenant may send per minute; leave empty for no limit. Over
                 the limit the gateway answers 429 with Retry-After and records the rejection in the ledger.
               </p>
@@ -713,8 +713,8 @@ export function PolicyForm({
           ) : null}
 
           {runtimeEnforcedFields.has("semantic_cache_enabled") ? (
-            <div className="space-y-4 rounded-2xl border border-border bg-slate-50 px-4 py-4">
-              <label className="flex items-center gap-3 text-sm font-medium text-slate-800">
+            <div className="space-y-4 rounded-2xl border border-line bg-canvas px-4 py-4">
+              <label className="flex items-center gap-3 text-sm font-medium text-ink-2">
                 <input
                   type="checkbox"
                   checked={formState.semanticCacheEnabled}
@@ -724,7 +724,7 @@ export function PolicyForm({
                 />
                 Semantic cache enabled
               </label>
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink-4">
                 Runtime-enforced cache controls stay in this policy editor. Adjust them deliberately, preview the
                 draft against recent ledger-backed traffic, and save explicitly when the evidence supports the change.
               </p>
@@ -745,7 +745,7 @@ export function PolicyForm({
                       }))
                     }
                   />
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-ink-4">
                     Minimum cosine similarity a cached answer needs to be served to this tenant. Applied on every
                     lookup.
                   </p>
@@ -766,7 +766,7 @@ export function PolicyForm({
                       }))
                     }
                   />
-                  <p className="mt-2 text-sm text-slate-500">
+                  <p className="mt-2 text-sm text-ink-4">
                     Cached answers older than this are ignored on lookup for this tenant.
                   </p>
                 </div>
@@ -776,10 +776,10 @@ export function PolicyForm({
 
           {runtimeEnforcedFields.has("allowed_premium_models") ? (
             <div>
-              <h4 className="font-[var(--font-fira-code)] text-base font-semibold text-slate-950">
+              <h4 className="font-(--font-fira-code) text-base font-semibold text-ink">
                 Premium model allowlist
               </h4>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Seeded from policy metadata and open to manual additions when needed.
               </p>
               <div className="mt-4">
@@ -831,7 +831,7 @@ export function PolicyForm({
                   }))
                 }
               />
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Tracks cumulative premium spend for the tenant. Leave blank to disable the hard budget guardrail.
               </p>
             </div>
@@ -859,7 +859,7 @@ export function PolicyForm({
                 <option value="downgrade">Downgrade compatible auto-routed traffic to local</option>
                 <option value="deny">Deny premium traffic once the limit is exhausted</option>
               </select>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 {hardBudgetConfigured
                   ? "Applies when cumulative premium spend reaches the hard budget limit. Explicit premium requests still deny when downgrade is not allowed."
                   : "Set a hard cumulative budget limit first to activate this enforcement choice."}
@@ -888,7 +888,7 @@ export function PolicyForm({
                 <option value="30d">30d</option>
                 <option value="90d">90d</option>
               </select>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Runtime-enforced evidence retention sets how long governed ledger metadata remains historically inspectable before expiration markers say it should age out.
               </p>
             </div>
@@ -913,7 +913,7 @@ export function PolicyForm({
                 <option value="standard">Standard</option>
                 <option value="strict">Strict</option>
               </select>
-              <p className="mt-2 text-sm text-slate-500">
+              <p className="mt-2 text-sm text-ink-4">
                 Strict minimization suppresses governed metadata fields like route signals at write time; standard preserves them when available for operator inspection.
               </p>
             </div>
@@ -923,11 +923,11 @@ export function PolicyForm({
 
       {softSignalFields.has("soft_budget_usd") ? (
         <section className="panel px-6 py-5">
-          <h3 className="font-[var(--font-fira-code)] text-lg font-semibold text-slate-950">Soft budget advisory</h3>
-          <p className="mt-2 text-sm text-slate-500">
+          <h3 className="font-(--font-fira-code) text-lg font-semibold text-ink">Soft budget advisory</h3>
+          <p className="mt-2 text-sm text-ink-4">
             Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
           </p>
-          <div className="mt-4 rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          <div className="mt-4 rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
             Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.
           </div>
           <div className="mt-4">

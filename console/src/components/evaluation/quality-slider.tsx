@@ -20,7 +20,7 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
         <label htmlFor="quality-target" className="field-label mb-0">
           Calidad objetivo
         </label>
-        <output htmlFor="quality-target" className="font-mono text-2xl font-semibold text-slate-950">
+        <output htmlFor="quality-target" className="font-mono text-2xl font-semibold text-ink">
           {value.toFixed(3)}
         </output>
       </div>
@@ -32,9 +32,9 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
         step={QUALITY_STEP}
         value={value}
         onChange={(event) => onChange(snapTarget(Number(event.target.value)))}
-        className="mt-3 w-full accent-sky-700"
+        className="mt-3 w-full accent-mark"
       />
-      <div className="mt-1 flex justify-between font-mono text-xs text-slate-500">
+      <div className="mt-1 flex justify-between font-mono text-xs text-ink-4">
         <span>{QUALITY_MIN.toFixed(2)}</span>
         <span>{QUALITY_MAX.toFixed(2)}</span>
       </div>

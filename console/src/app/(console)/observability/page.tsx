@@ -38,32 +38,32 @@ function formatTimestamp(value: string | null) {
 
 function recommendationTone(category: "policy" | "cache" | "info") {
   if (category === "policy") {
-    return "border-amber-200 bg-amber-50 text-amber-950";
+    return "border-warn-line bg-warn-soft text-warn";
   }
   if (category === "cache") {
-    return "border-sky-200 bg-sky-50 text-sky-950";
+    return "border-mark-line bg-mark-soft text-mark";
   }
-  return "border-slate-200 bg-slate-50 text-slate-950";
+  return "border-line bg-canvas text-ink";
 }
 
 function cacheInsightTone(level: "info" | "notice" | "warning") {
   if (level === "warning") {
-    return "border-rose-200 bg-rose-50 text-rose-950";
+    return "border-danger-line bg-danger-soft text-danger";
   }
   if (level === "notice") {
-    return "border-amber-200 bg-amber-50 text-amber-950";
+    return "border-warn-line bg-warn-soft text-warn";
   }
-  return "border-slate-200 bg-slate-50 text-slate-900";
+  return "border-line bg-canvas text-ink";
 }
 
 function calibrationBadgeTone(state: "sufficient" | "thin" | "stale" | "degraded") {
   if (state === "sufficient") {
-    return "border-emerald-200 bg-emerald-50 text-emerald-900";
+    return "border-ok-line bg-ok-soft text-ok";
   }
   if (state === "stale") {
-    return "border-amber-200 bg-amber-50 text-amber-950";
+    return "border-warn-line bg-warn-soft text-warn";
   }
-  return "border-slate-200 bg-slate-50 text-slate-900";
+  return "border-line bg-canvas text-ink";
 }
 
 export default function ObservabilityPage() {
@@ -143,11 +143,11 @@ export default function ObservabilityPage() {
   return (
     <section className="space-y-6">
       <header className="panel px-6 py-5">
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Observability</div>
-        <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Observability</div>
+        <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
           Selected request evidence first
         </h2>
-        <p className="mt-2 max-w-3xl text-sm text-slate-600">
+        <p className="mt-2 max-w-3xl text-sm text-ink-3">
           Start with one persisted ledger row for the selected request ID so operators can confirm the final route,
           fallback, provider, routing inspection, and policy evidence behind the same request first corroborated
           through public X-Request-ID and X-Nebula-* headers. Calibration readiness, grounded recommendations,
@@ -176,11 +176,11 @@ export default function ObservabilityPage() {
 
       <section className="space-y-4">
         <header className="panel px-6 py-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Selected request</div>
-          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Selected request</div>
+          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
             Inspect one persisted ledger row before reading tenant context
           </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
             Pick the request first. The selected ledger row remains the authoritative persisted record for route,
             provider, fallback, calibration state, and policy outcome. The cards below help explain the same
             investigation, but they do not overrule the selected request evidence.
@@ -189,7 +189,7 @@ export default function ObservabilityPage() {
 
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(320px,0.8fr)]">
           {ledgerQuery.isError ? (
-            <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+            <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
               {ledgerQuery.error instanceof Error ? ledgerQuery.error.message : "Unable to load the usage ledger."}
             </div>
           ) : (
@@ -210,11 +210,11 @@ export default function ObservabilityPage() {
 
       <section className="space-y-4">
         <header className="panel px-6 py-5">
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Next operator step</div>
-          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Next operator step</div>
+          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
             Follow-up context for the selected request
           </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
             After the persisted request row is clear, use these supporting cards to decide the next operator action.
             Recommendations, calibration, cache posture, and dependency health stay subordinate to the selected
             request and point toward policy preview as the comparison surface before any save elsewhere in the console.
@@ -224,14 +224,14 @@ export default function ObservabilityPage() {
         <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)]">
           <section className="space-y-4" aria-labelledby="selected-request-follow-up-heading">
             <article className="panel px-6 py-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Follow-up guidance</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Follow-up guidance</div>
               <h3
                 id="selected-request-follow-up-heading"
-                className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950"
+                className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
               >
                 Grounded follow-up guidance for the selected request
               </h3>
-              <p className="mt-2 max-w-3xl text-sm text-slate-600">
+              <p className="mt-2 max-w-3xl text-sm text-ink-3">
                 Recommendations are derived from recent ledger-backed traffic plus supporting runtime context. They stay
                 bounded operator guidance for the selected-request investigation, point operators back toward the next
                 comparison or follow-up action, and do not replace the persisted ledger row. Compare options in policy
@@ -240,48 +240,48 @@ export default function ObservabilityPage() {
             </article>
 
             {recommendationsQuery.isError ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+              <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
                 {recommendationsQuery.error instanceof Error
                   ? recommendationsQuery.error.message
                   : "Unable to load tenant recommendations."}
               </div>
             ) : recommendationsQuery.isLoading ? (
-              <div className="panel px-6 py-5 text-sm text-slate-500">Loading grounded recommendations...</div>
+              <div className="panel px-6 py-5 text-sm text-ink-4">Loading grounded recommendations...</div>
             ) : recommendationsQuery.data ? (
               <div className="space-y-4">
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
                   <article className="panel px-6 py-5">
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Recommendations</div>
-                    <div className="mt-3 text-2xl font-semibold text-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Recommendations</div>
+                    <div className="mt-3 text-2xl font-semibold text-ink">
                       {recommendationSummary.recommendationCount}
                     </div>
-                    <p className="mt-2 text-sm text-slate-600">Bounded operator actions currently surfaced for this tenant.</p>
+                    <p className="mt-2 text-sm text-ink-3">Bounded operator actions currently surfaced for this tenant.</p>
                   </article>
                   <article className="panel px-6 py-5">
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Ledger window</div>
-                    <div className="mt-3 text-2xl font-semibold text-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Ledger window</div>
+                    <div className="mt-3 text-2xl font-semibold text-ink">
                       {recommendationSummary.evaluatedRequests}
                     </div>
-                    <p className="mt-2 text-sm text-slate-600">Recent ledger-backed requests evaluated for this summary.</p>
+                    <p className="mt-2 text-sm text-ink-3">Recent ledger-backed requests evaluated for this summary.</p>
                   </article>
                   <article className="panel px-6 py-5">
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Estimated hit rate</div>
-                    <div className="mt-3 text-2xl font-semibold text-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Estimated hit rate</div>
+                    <div className="mt-3 text-2xl font-semibold text-ink">
                       {formatPercent(recommendationsQuery.data.cache_summary.estimated_hit_rate)}
                     </div>
-                    <p className="mt-2 text-sm text-slate-600">Observed cache effectiveness from recent traffic patterns.</p>
+                    <p className="mt-2 text-sm text-ink-3">Observed cache effectiveness from recent traffic patterns.</p>
                   </article>
                   <article className="panel px-6 py-5">
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Avoided premium cost</div>
-                    <div className="mt-3 text-2xl font-semibold text-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Avoided premium cost</div>
+                    <div className="mt-3 text-2xl font-semibold text-ink">
                       {formatUsd(recommendationsQuery.data.cache_summary.avoided_premium_cost_usd)}
                     </div>
-                    <p className="mt-2 text-sm text-slate-600">Estimated premium spend avoided by semantic-cache reuse.</p>
+                    <p className="mt-2 text-sm text-ink-3">Estimated premium spend avoided by semantic-cache reuse.</p>
                   </article>
                 </div>
 
                 {recommendationsQuery.data.recommendations.length === 0 ? (
-                  <div className="panel px-6 py-5 text-sm text-slate-600">
+                  <div className="panel px-6 py-5 text-sm text-ink-3">
                     No immediate recommendation cards were derived from the current ledger window and runtime context.
                   </div>
                 ) : (
@@ -295,17 +295,17 @@ export default function ObservabilityPage() {
                           <div className="text-xs font-semibold uppercase tracking-[0.24em] opacity-80">
                             {recommendation.category} recommendation • priority {recommendation.priority}
                           </div>
-                          <h4 className="mt-2 font-[var(--font-fira-code)] text-lg font-semibold">
+                          <h4 className="mt-2 font-(--font-fira-code) text-lg font-semibold">
                             {recommendation.title}
                           </h4>
                         </div>
-                        <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-700">
+                        <span className="rounded-full bg-surface/70 px-3 py-1 text-xs font-semibold text-ink-2">
                           {recommendation.code}
                         </span>
                       </div>
                       <p className="mt-3 text-sm leading-6">{recommendation.summary}</p>
-                      <div className="mt-4 rounded-xl border border-white/60 bg-white/60 px-4 py-3 text-sm text-slate-800">
-                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                      <div className="mt-4 rounded-xl border border-surface/60 bg-surface/60 px-4 py-3 text-sm text-ink-2">
+                        <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                           Recommended action
                         </div>
                         <p className="mt-2">{recommendation.recommended_action}</p>
@@ -313,11 +313,11 @@ export default function ObservabilityPage() {
                       {recommendation.evidence.length > 0 ? (
                         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                           {recommendation.evidence.map((item) => (
-                            <div key={`${recommendation.code}-${item.label}`} className="rounded-xl bg-white/70 px-4 py-3">
-                              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                            <div key={`${recommendation.code}-${item.label}`} className="rounded-xl bg-surface/70 px-4 py-3">
+                              <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                                 {item.label}
                               </dt>
-                              <dd className="mt-2 text-sm font-medium text-slate-900">{item.value}</dd>
+                              <dd className="mt-2 text-sm font-medium text-ink">{item.value}</dd>
                             </div>
                           ))}
                         </dl>
@@ -331,14 +331,14 @@ export default function ObservabilityPage() {
 
           <section className="space-y-4" aria-labelledby="policy-preview-follow-up-heading">
             <article className="panel px-6 py-5">
-              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Next comparison</div>
+              <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Next comparison</div>
               <h3
                 id="policy-preview-follow-up-heading"
-                className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950"
+                className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink"
               >
                 Policy preview follow-up for the same request
               </h3>
-              <p className="mt-2 text-sm text-slate-600">
+              <p className="mt-2 text-sm text-ink-3">
                 Use calibration, cache, and dependency context to judge whether a policy preview comparison is grounded
                 enough for this same selected request. This page stays inspection-only: preview before saving in the
                 policy editor, and keep the persisted request row as the authoritative evidence seam.
@@ -350,10 +350,10 @@ export default function ObservabilityPage() {
                 <article className="panel px-6 py-5">
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
+                      <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
                         Calibration evidence
                       </div>
-                      <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                      <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
                         Tenant-scoped replay readiness context
                       </h3>
                     </div>
@@ -363,53 +363,53 @@ export default function ObservabilityPage() {
                       {recommendationsQuery.data.calibration_summary.state}
                     </span>
                   </div>
-                  <p className="mt-2 text-sm text-slate-600">
+                  <p className="mt-2 text-sm text-ink-3">
                     This summary is derived from existing ledger metadata for the selected tenant. It helps operators
                     judge whether calibration evidence is sufficient, stale, or still thin before deciding whether a
                     replay or policy preview comparison is grounded enough, without turning Observability into a
                     replacement for the persisted request record.
                   </p>
-                  <div className="mt-4 rounded-xl border border-border bg-slate-50 px-4 py-4">
-                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">State reason</div>
-                    <p className="mt-2 text-sm font-medium text-slate-950">
+                  <div className="mt-4 rounded-xl border border-line bg-canvas px-4 py-4">
+                    <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">State reason</div>
+                    <p className="mt-2 text-sm font-medium text-ink">
                       {recommendationsQuery.data.calibration_summary.state_reason}
                     </p>
                   </div>
                   <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Eligible calibrated rows
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.calibration_summary.eligible_request_count}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Sufficiency threshold
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.calibration_summary.thin_request_threshold}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Latest eligible row
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {formatTimestamp(recommendationsQuery.data.calibration_summary.latest_eligible_request_at)}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Rollout-disabled rows
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.calibration_summary.gated_request_count}
                       </dd>
                     </div>
                   </dl>
-                  <p className="mt-4 text-sm text-slate-600">
+                  <p className="mt-4 text-sm text-ink-3">
                     Keep using the ledger row and request ID correlation as the primary proof. This tenant summary only
                     explains whether replay and calibration posture are grounded by enough recent metadata-backed traffic.
                   </p>
@@ -417,11 +417,11 @@ export default function ObservabilityPage() {
 
                 <section className="panel space-y-4 px-6 py-5">
                   <div>
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Semantic cache</div>
-                    <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Semantic cache</div>
+                    <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
                       Cache effectiveness and runtime controls
                     </h3>
-                    <p className="mt-2 text-sm text-slate-600">
+                    <p className="mt-2 text-sm text-ink-3">
                       This summary shows the current runtime-enforced cache posture and the supporting evidence behind it.
                       Use it to decide whether the next step is a policy preview comparison; tune these controls in the
                       existing policy editor because this page stays inspection-only.
@@ -429,43 +429,43 @@ export default function ObservabilityPage() {
                   </div>
 
                   <dl className="grid gap-4 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Cache enabled</dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Cache enabled</dt>
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.cache_summary.enabled ? "Yes" : "No"}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Runtime status</dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Runtime status</dt>
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.cache_summary.runtime_status}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Similarity threshold
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.cache_summary.similarity_threshold.toFixed(2)}
                       </dd>
                     </div>
-                    <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                    <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+                      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                         Max entry age
                       </dt>
-                      <dd className="mt-2 text-sm font-medium text-slate-900">
+                      <dd className="mt-2 text-sm font-medium text-ink">
                         {recommendationsQuery.data.cache_summary.max_entry_age_hours} hours
                       </dd>
                     </div>
                   </dl>
 
-                  <div className="rounded-xl border border-border bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                    <span className="font-medium text-slate-900">Runtime detail:</span>{" "}
+                  <div className="rounded-xl border border-line bg-canvas px-4 py-3 text-sm text-ink-2">
+                    <span className="font-medium text-ink">Runtime detail:</span>{" "}
                     {recommendationsQuery.data.cache_summary.runtime_detail}
                   </div>
 
                   {recommendationsQuery.data.cache_summary.insights.length === 0 ? (
-                    <div className="rounded-xl border border-dashed border-slate-300 px-4 py-3 text-sm text-slate-500">
+                    <div className="rounded-xl border border-dashed border-line px-4 py-3 text-sm text-ink-4">
                       No additional cache insights were derived from the current evidence window.
                     </div>
                   ) : (
@@ -480,11 +480,11 @@ export default function ObservabilityPage() {
                               <div className="text-xs font-semibold uppercase tracking-[0.2em] opacity-80">
                                 {insight.level} cache insight
                               </div>
-                              <h4 className="mt-2 font-[var(--font-fira-code)] text-base font-semibold">
+                              <h4 className="mt-2 font-(--font-fira-code) text-base font-semibold">
                                 {insight.title}
                               </h4>
                             </div>
-                            <span className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold text-slate-700">
+                            <span className="rounded-full bg-surface/70 px-3 py-1 text-xs font-semibold text-ink-2">
                               {insight.code}
                             </span>
                           </div>
@@ -492,11 +492,11 @@ export default function ObservabilityPage() {
                           {insight.evidence.length > 0 ? (
                             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
                               {insight.evidence.map((item) => (
-                                <div key={`${insight.code}-${item.label}`} className="rounded-xl bg-white/70 px-4 py-3">
-                                  <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+                                <div key={`${insight.code}-${item.label}`} className="rounded-xl bg-surface/70 px-4 py-3">
+                                  <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">
                                     {item.label}
                                   </dt>
-                                  <dd className="mt-2 text-sm font-medium text-slate-900">{item.value}</dd>
+                                  <dd className="mt-2 text-sm font-medium text-ink">{item.value}</dd>
                                 </div>
                               ))}
                             </dl>
@@ -509,13 +509,13 @@ export default function ObservabilityPage() {
 
                 <section className="space-y-4">
                   <header className="panel px-6 py-5">
-                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">
+                    <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">
                       Dependency health
                     </div>
-                    <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                    <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
                       Dependency health context
                     </h3>
-                    <p className="mt-2 max-w-2xl text-sm text-slate-600">
+                    <p className="mt-2 max-w-2xl text-sm text-ink-3">
                       These dependency states do not replace the ledger record; they provide supporting runtime context for the
                       same investigation. Required dependency failures block confidence immediately, while degraded optional
                       dependencies stay visible here so operators can explain reduced capability without losing the persisted
@@ -524,7 +524,7 @@ export default function ObservabilityPage() {
                   </header>
 
                   {runtimeHealthQuery.isError ? (
-                    <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+                    <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
                       {runtimeHealthQuery.error instanceof Error
                         ? runtimeHealthQuery.error.message
                         : "Unable to load dependency health."}
@@ -538,7 +538,7 @@ export default function ObservabilityPage() {
                 </section>
               </>
             ) : runtimeHealthQuery.isError ? (
-              <div className="rounded-xl border border-rose-200 bg-rose-50 px-6 py-5 text-sm text-rose-900">
+              <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
                 {runtimeHealthQuery.error instanceof Error
                   ? runtimeHealthQuery.error.message
                   : "Unable to load dependency health."}
@@ -546,8 +546,8 @@ export default function ObservabilityPage() {
             ) : (
               <section className="space-y-4">
                 <header className="panel px-6 py-5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Dependency health</div>
-                  <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+                  <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Dependency health</div>
+                  <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
                     Dependency health context
                   </h3>
                 </header>

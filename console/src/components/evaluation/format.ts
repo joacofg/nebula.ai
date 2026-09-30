@@ -46,9 +46,9 @@ export function formatTau(tau: number | null | undefined) {
 // Categorical slots 1–3 of the dataviz reference palette, validated all-pairs
 // on the light surface (CVD ΔE ≥ 9.2); tier text stays in slate ink.
 export const TIER_COLORS: Record<Tier, string> = {
-  local: "#2a78d6",
-  economy: "#eb6834",
-  frontier: "#1baf7a",
+  local: "var(--color-tier-local)",
+  economy: "var(--color-tier-economy)",
+  frontier: "var(--color-tier-frontier)",
 };
 
 export const TIER_LABELS: Record<Tier, string> = {

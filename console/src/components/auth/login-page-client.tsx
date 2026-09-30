@@ -21,37 +21,37 @@ export function LoginPageClient() {
   return (
     <main className="min-h-screen px-4 py-10 sm:px-6 lg:px-8">
       <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-center">
-        <section className="rounded-[2rem] border border-slate-200/80 bg-slate-950 px-6 py-8 text-white shadow-panel sm:px-8 sm:py-10">
-          <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-sky-200">
+        <section className="rounded-4xl border border-line/80 bg-ink px-6 py-8 text-surface shadow-panel sm:px-8 sm:py-10">
+          <div className="inline-flex items-center gap-2 rounded-full border border-surface/10 bg-surface/5 px-3 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-mark-line">
             Self-hosted governance
           </div>
-          <h2 className="mt-6 max-w-2xl font-[var(--font-fira-code)] text-3xl font-semibold leading-tight sm:text-4xl">
+          <h2 className="mt-6 max-w-2xl font-(--font-fira-code) text-3xl font-semibold leading-tight sm:text-4xl">
             Precise tenant control without dropping into raw admin calls.
           </h2>
-          <p className="mt-4 max-w-xl text-base text-slate-300">
+          <p className="mt-4 max-w-xl text-base text-on-panel-2">
             Nebula&apos;s operator console wraps the existing admin-key trust model in a compact,
             technical UI tuned for self-hosted governance work.
           </p>
 
           <div className="mt-8 grid gap-4 sm:grid-cols-3">
             <div className="shell-card px-4 py-4">
-              <LockKeyhole className="h-5 w-5 text-sky-300" />
+              <LockKeyhole className="h-5 w-5 text-mark-line" />
               <h3 className="mt-3 text-sm font-semibold">Memory-only access</h3>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-on-panel-2">
                 The admin key stays in React state only. Refresh ends the session by design.
               </p>
             </div>
             <div className="shell-card px-4 py-4">
-              <ArrowRight className="h-5 w-5 text-sky-300" />
+              <ArrowRight className="h-5 w-5 text-mark-line" />
               <h3 className="mt-3 text-sm font-semibold">Direct to tenants</h3>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-on-panel-2">
                 Successful sign-in lands on the tenant management surface immediately.
               </p>
             </div>
             <div className="shell-card px-4 py-4">
-              <ServerCrash className="h-5 w-5 text-sky-300" />
+              <ServerCrash className="h-5 w-5 text-mark-line" />
               <h3 className="mt-3 text-sm font-semibold">Proxy boundary</h3>
-              <p className="mt-2 text-sm text-slate-300">
+              <p className="mt-2 text-sm text-on-panel-2">
                 Browser requests stay same-origin while the console forwards them to the FastAPI admin API.
               </p>
             </div>

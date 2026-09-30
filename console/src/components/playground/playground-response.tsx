@@ -6,13 +6,13 @@ export function PlaygroundResponse({ content }: PlaygroundResponseProps) {
   return (
     <section className="panel space-y-4 px-6 py-5">
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Response</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Response</div>
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
           Assistant output
         </h3>
       </div>
 
-      <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4 text-sm leading-7 text-slate-800">
+      <div className="rounded-2xl border border-line bg-canvas px-4 py-4 text-sm leading-7 text-ink-2">
         {content}
       </div>
     </section>

@@ -92,17 +92,17 @@ export default function TenantsPage() {
     <section className="space-y-6">
       <header className="panel flex flex-col gap-4 px-6 py-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Tenants</div>
-          <h2 className="mt-2 font-[var(--font-fira-code)] text-2xl font-semibold text-slate-950">
+          <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Tenants</div>
+          <h2 className="mt-2 font-(--font-fira-code) text-2xl font-semibold text-ink">
             Tenant operations
           </h2>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
             Tenants are Nebula&apos;s enforced runtime boundary for policy, request attribution, and usage.
             Use API keys to segment which callers can reach each tenant, and treat app or workload names as
             team conventions you capture in tenant names, key names, or notes rather than as product objects.
           </p>
-          <p className="mt-2 max-w-3xl text-sm text-slate-600">
-            This console surface stays grounded in <span className="font-[var(--font-fira-code)]">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
+          <p className="mt-2 max-w-3xl text-sm text-ink-3">
+            This console surface stays grounded in <span className="font-(--font-fira-code)">{ADMIN_TENANTS_ENDPOINT}</span>: create real tenant records here, then issue tenant-scoped API keys separately when you need caller-specific access.
           </p>
         </div>
         <button
@@ -119,7 +119,7 @@ export default function TenantsPage() {
         <div className="space-y-4">
           <div className="panel flex flex-col gap-4 px-5 py-4 md:flex-row md:items-center">
             <label className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-4" />
               <input
                 className="field-input pl-9"
                 placeholder="Search tenant id or name"
@@ -128,8 +128,8 @@ export default function TenantsPage() {
               />
             </label>
 
-            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
-              <SlidersHorizontal className="h-4 w-4 text-slate-400" />
+            <label className="flex items-center gap-2 text-sm font-semibold text-ink-2">
+              <SlidersHorizontal className="h-4 w-4 text-ink-4" />
               <select
                 className="field-input min-w-36"
                 value={statusFilter}
@@ -143,9 +143,9 @@ export default function TenantsPage() {
           </div>
 
           {tenantsQuery.isLoading ? (
-            <div className="panel px-6 py-8 text-sm text-slate-500">Loading tenant inventory...</div>
+            <div className="panel px-6 py-8 text-sm text-ink-4">Loading tenant inventory...</div>
           ) : tenantsQuery.isError ? (
-            <div className="panel border-rose-200 bg-rose-50 px-6 py-8 text-sm text-rose-900">
+            <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">
               {tenantsQuery.error instanceof Error ? tenantsQuery.error.message : "Unable to load tenants."}
             </div>
           ) : (

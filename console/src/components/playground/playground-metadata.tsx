@@ -36,11 +36,11 @@ export function PlaygroundMetadata({
   return (
     <section className="panel space-y-4 px-6 py-5">
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Metadata</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Metadata</div>
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">
           Immediate response evidence
         </h3>
-        <p className="mt-2 text-sm text-slate-600">
+        <p className="mt-2 text-sm text-ink-3">
           These fields describe the live route, policy, and tenant evidence before the ledger finishes
           recording the same request.
         </p>
@@ -73,12 +73,12 @@ function MetadataRow({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
+    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
+      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
       <dd
         className={[
-          "mt-2 text-sm text-slate-900 [overflow-wrap:anywhere]",
-          mono ? "font-[var(--font-fira-code)]" : "",
+          "mt-2 text-sm text-ink wrap-anywhere",
+          mono ? "font-(--font-fira-code)" : "",
         ].join(" ")}
       >
         {value}

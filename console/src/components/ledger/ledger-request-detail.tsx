@@ -365,7 +365,7 @@ function formatSuppressedFields(fields: string[]) {
 
 export function LedgerRequestDetail({ entry, calibrationSummary = null }: LedgerRequestDetailProps) {
   if (!entry) {
-    return <div className="panel px-6 py-5 text-sm text-slate-500">Select a ledger row to inspect request detail.</div>;
+    return <div className="panel px-6 py-5 text-sm text-ink-4">Select a ledger row to inspect request detail.</div>;
   }
 
   const routeSignals = asRouteSignals(entry.route_signals);
@@ -383,9 +383,9 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
   return (
     <section className="panel space-y-4 px-6 py-5">
       <div>
-        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-sky-700">Request detail</div>
-        <h3 className="mt-2 font-[var(--font-fira-code)] text-xl font-semibold text-slate-950">{entry.request_id}</h3>
-        <p className="mt-2 text-sm text-slate-600">
+        <div className="text-xs font-semibold uppercase tracking-[0.24em] text-mark">Request detail</div>
+        <h3 className="mt-2 font-(--font-fira-code) text-xl font-semibold text-ink">{entry.request_id}</h3>
+        <p className="mt-2 text-sm text-ink-3">
           This persisted ledger record is the authoritative evidence row for this request ID while the row still
           exists. It explains the retained route, provider, fallback, cache, and policy outcome that operators first
           corroborate through the public response headers before reading broader tenant guidance
@@ -421,12 +421,12 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
       </dl>
       <section className="space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h4 className="text-sm font-semibold text-slate-950">Effective evidence boundary</h4>
-          <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-900">
+          <h4 className="text-sm font-semibold text-ink">Effective evidence boundary</h4>
+          <span className="rounded-full border border-mark-line bg-mark-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-mark">
             Row-level governance truth
           </span>
         </div>
-        <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4 text-sm text-slate-700">
+        <div className="rounded-2xl border border-line bg-canvas px-4 py-4 text-sm text-ink-2">
           <p>
             Retained means the row is still inside its evidence retention window and is the authoritative record
             for this request.
@@ -444,16 +444,16 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
       {calibrationExplanation ? (
         <section className="space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h4 className="text-sm font-semibold text-slate-950">Calibration evidence</h4>
-            <span className="rounded-full border border-sky-200 bg-sky-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-sky-900">
+            <h4 className="text-sm font-semibold text-ink">Calibration evidence</h4>
+            <span className="rounded-full border border-mark-line bg-mark-soft px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-mark">
               {calibrationExplanation.badge}
             </span>
           </div>
-          <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Summary</div>
-            <p className="mt-2 text-sm font-medium text-slate-950">{calibrationExplanation.summary}</p>
-            <p className="mt-2 text-sm text-slate-600">{calibrationExplanation.detail}</p>
-            <p className="mt-3 text-xs text-slate-500">{calibrationSummary?.state_reason}</p>
+          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
+            <p className="mt-2 text-sm font-medium text-ink">{calibrationExplanation.summary}</p>
+            <p className="mt-2 text-sm text-ink-3">{calibrationExplanation.detail}</p>
+            <p className="mt-3 text-xs text-ink-4">{calibrationSummary?.state_reason}</p>
           </div>
           <dl className="grid gap-4 sm:grid-cols-2">
             {calibrationExplanation.fields.map((field) => (
@@ -464,11 +464,11 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
       ) : null}
       {budgetExplanation ? (
         <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-950">Budget policy evidence</h4>
-          <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Summary</div>
-            <p className="mt-2 text-sm font-medium text-slate-950">{budgetExplanation.summary}</p>
-            {budgetExplanation.detail ? <p className="mt-2 text-sm text-slate-600">{budgetExplanation.detail}</p> : null}
+          <h4 className="text-sm font-semibold text-ink">Budget policy evidence</h4>
+          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
+            <p className="mt-2 text-sm font-medium text-ink">{budgetExplanation.summary}</p>
+            {budgetExplanation.detail ? <p className="mt-2 text-sm text-ink-3">{budgetExplanation.detail}</p> : null}
           </div>
           <dl className="grid gap-4 sm:grid-cols-2">
             {budgetExplanation.fields.map((field) => (
@@ -479,11 +479,11 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
       ) : null}
       {routingInspection ? (
         <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-950">Routing inspection</h4>
-          <div className="rounded-2xl border border-border bg-slate-50 px-4 py-4">
-            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Summary</div>
-            <p className="mt-2 text-sm font-medium text-slate-950">{routingInspection.summary}</p>
-            <p className="mt-2 text-sm text-slate-600">{routingInspection.detail}</p>
+          <h4 className="text-sm font-semibold text-ink">Routing inspection</h4>
+          <div className="rounded-2xl border border-line bg-canvas px-4 py-4">
+            <div className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">Summary</div>
+            <p className="mt-2 text-sm font-medium text-ink">{routingInspection.summary}</p>
+            <p className="mt-2 text-sm text-ink-3">{routingInspection.detail}</p>
           </div>
           <dl className="grid gap-4 sm:grid-cols-2">
             {routingInspection.fields.map((field) => (
@@ -494,7 +494,7 @@ export function LedgerRequestDetail({ entry, calibrationSummary = null }: Ledger
       ) : null}
       {routeSignals ? (
         <section className="space-y-3">
-          <h4 className="text-sm font-semibold text-slate-950">Route signals</h4>
+          <h4 className="text-sm font-semibold text-ink">Route signals</h4>
           <dl className="grid gap-4 sm:grid-cols-2">
             {tokenCount !== undefined ? <DetailRow label="Token count" value={String(tokenCount)} /> : null}
             {complexityTier !== undefined ? (
@@ -526,12 +526,12 @@ function DetailRow({
   mono?: boolean;
 }) {
   return (
-    <div className="rounded-2xl border border-border bg-white px-4 py-4">
-      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</dt>
+    <div className="rounded-2xl border border-line bg-surface px-4 py-4">
+      <dt className="text-xs font-semibold uppercase tracking-[0.2em] text-ink-4">{label}</dt>
       <dd
         className={[
-          "mt-2 text-sm text-slate-900 [overflow-wrap:anywhere]",
-          mono ? "font-[var(--font-fira-code)]" : "",
+          "mt-2 text-sm text-ink wrap-anywhere",
+          mono ? "font-(--font-fira-code)" : "",
         ].join(" ")}
       >
         {value}
