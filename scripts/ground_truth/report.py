@@ -113,6 +113,12 @@ def render_markdown(s: dict) -> str:
         if nc and nc.get("kappa") is not None:
             out.append(f"Excluding code pairs (post hoc, rater low-confidence): {nc['compared']} pairs, "
                        f"kappa {nc['kappa']:.3f} [{nc['ci95'][0]:.3f}, {nc['ci95'][1]:.3f}]")
+        ng = v.get("negatives_es")
+        if ng and ng.get("status") == "labelled":
+            out.append(f"Targeted rejections (not random, no code): human agrees with {ng['human_agrees']}/"
+                       f"{ng['rejected_labelled']} ensemble rejections ({ng['precision']:.1%}, Wilson "
+                       f"[{ng['ci95'][0]:.3f}, {ng['ci95'][1]:.3f}]); decoys substitutable "
+                       f"{ng['decoys_human_substitutable']}/{ng['decoys_labelled']}")
         out += ["", "Position flip rate: " + ", ".join(f"`{m}` {r:.1%}" for m, r in v["position_flip_rate"].items()),
                 f"Inter-judge kappa: {_fmt(v['inter_judge_kappa'])}", ""]
     out += ["## Tiers", ""]
@@ -186,6 +192,13 @@ def thesis_judges(s: dict) -> str:
                  f"notas sobre pares de código, porque la terminal de etiquetado reenvuelve los bloques de "
                  f"código; sin esos pares ({nc['compared']}) el kappa es {nc['kappa']:.2f} "
                  f"(IC 95 % {nc['ci95'][0]:.2f}–{nc['ci95'][1]:.2f}).")
+    ng = v.get("negatives_es")
+    if ng and ng.get("status") == "labelled":
+        text += (f" Como el hold-out tuvo pocos negativos, un segundo conjunto dirigido —no aleatorio, "
+                 f"sin pares de código— mezcló a ciegas pares que el ensamble rechazó con pares que aceptó: "
+                 f"el lector coincidió con el rechazo en {ng['human_agrees']} de {ng['rejected_labelled']} "
+                 f"({ng['precision']:.0%}, IC 95 % {ng['ci95'][0]:.0%}–{ng['ci95'][1]:.0%}), y juzgó "
+                 f"sustituibles {ng['decoys_human_substitutable']} de {ng['decoys_labelled']} aceptados.")
     flips = ", ".join(f"{m.split('/')[-1]} {r:.0%}" for m, r in v["position_flip_rate"].items())
     return text + f" Tasa de cambio de veredicto al invertir posiciones: {flips}."
 

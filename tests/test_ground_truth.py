@@ -13,6 +13,7 @@ from scripts.ground_truth import (
     holdout,
     judge,
     llm,
+    negatives,
     records,
     report,
     review,
@@ -690,3 +691,55 @@ def test_holdout_agreement_reports_raw_agreement_and_direction():
     got = validate.holdout_agreement(grades, human, "R1_unanimous", seed=1)
     assert got["raw_agreement"] == pytest.approx(0.5)
     assert got["judges_stricter"] == 1 and got["judges_laxer"] == 1
+
+
+def _verdict_pairs():
+    ps = _corpus_pairs()
+    # Reject every qwen and llama pair, accept every haiku pair.
+    verdicts = {p.pair_id: gt_pairs.split_pair_id(p.pair_id)[1] == "haiku" for p in ps}
+    return ps, verdicts
+
+
+def test_negatives_draw_mixes_decoys_skips_code_and_holdout_prompts():
+    ps, verdicts = _verdict_pairs()
+    excluded = {"factual_qa-0000", "open_writing-0001"}
+    got = negatives.select(ps, verdicts, exclude_prompts=excluded, rejected=25, decoys=10, seed=4)
+    assert got == negatives.select(list(reversed(ps)), verdicts, exclude_prompts=excluded,
+                                   rejected=25, decoys=10, seed=4)
+    assert sum(1 for p in got if not verdicts[p.pair_id]) == 25
+    assert sum(1 for p in got if verdicts[p.pair_id]) == 10
+    assert not any(p.task_type == "code" for p in got)
+    assert not any(gt_pairs.split_pair_id(p.pair_id)[2] in excluded for p in got)
+    counts = Counter(p.task_type for p in got if not verdicts[p.pair_id])
+    assert max(counts.values()) - min(counts.values()) <= 1
+
+
+def test_negatives_file_leaves_every_drawn_pair_to_grade(tmp_path):
+    from scripts.metric_validation import label
+
+    ps, verdicts = _verdict_pairs()
+    built = negatives.build(ps, verdicts, exclude_prompts=set(), seed=4, rater_id="human-es-1")
+    cal = label.calibration_items(built, rater_id="human-es-1")
+    queue = label.scored_queue(built, tmp_path / "x.jsonl", rater_id="human-es-1", calibration=cal)
+    assert len(queue) == negatives.REJECTED + negatives.DECOYS
+
+
+def test_rejection_precision_with_wilson_interval():
+    verdicts = {"a": False, "b": False, "c": False, "d": False, "e": True}
+    human = {"a": "divergent", "b": "partial", "c": "equivalent", "d": "divergent",
+             "e": "equivalent"}
+    got = validate.rejection_precision(verdicts, human)
+    assert got["rejected_labelled"] == 4 and got["human_agrees"] == 3
+    assert got["precision"] == pytest.approx(0.75)
+    low, high = got["ci95"]
+    assert 0.0 < low < 0.75 < high < 1.0
+    assert got["decoys_labelled"] == 1 and got["decoys_human_substitutable"] == 1
+
+
+def test_thesis_text_reports_rejection_precision_as_a_targeted_check():
+    s = _summary(holdout_status="complete")
+    s["validation"]["negatives_es"] = {
+        "status": "labelled", "rejected_labelled": 25, "human_agrees": 18, "precision": 0.72,
+        "ci95": [0.52, 0.86], "decoys_labelled": 10, "decoys_human_substitutable": 9}
+    text = report.thesis_judges(s)
+    assert "18 de 25" in text and "72" in text and "no aleatori" in text

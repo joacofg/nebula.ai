@@ -113,6 +113,34 @@ def holdout_agreement(pair_grades: dict[str, list[str]], human: dict[str, str], 
     }
 
 
+def wilson(successes: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    """Wilson score interval: honest at small n and near 0 or 1."""
+    if n == 0:
+        raise ValueError("Wilson interval needs at least one trial.")
+    p = successes / n
+    centre = (p + z * z / (2 * n)) / (1 + z * z / n)
+    half = z * ((p * (1 - p) / n + z * z / (4 * n * n)) ** 0.5) / (1 + z * z / n)
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def rejection_precision(verdicts: dict[str, bool], human: dict[str, str]) -> dict:
+    """Of the pairs the ensemble rejected, how many the human also rejects."""
+    rejected = [p for p in human if p in verdicts and not verdicts[p]]
+    decoys = [p for p in human if p in verdicts and verdicts[p]]
+    if not rejected:
+        return {"status": "pending", "rejected_labelled": 0}
+    agrees = sum(1 for p in rejected if not rubric.is_substitutable(human[p]))
+    return {
+        "status": "labelled",
+        "rejected_labelled": len(rejected),
+        "human_agrees": agrees,
+        "precision": agrees / len(rejected),
+        "ci95": list(wilson(agrees, len(rejected))),
+        "decoys_labelled": len(decoys),
+        "decoys_human_substitutable": sum(1 for p in decoys if rubric.is_substitutable(human[p])),
+    }
+
+
 def without_task(human: dict[str, str], task: str) -> dict[str, str]:
     return {pid: g for pid, g in human.items() if not pid.split(":", 2)[2].startswith(f"{task}-")}
 
@@ -143,6 +171,11 @@ def validate(root: Path) -> dict:
         # labelling terminal re-wraps code blocks. Not pre-registered.
         "holdout_es_excluding_code": holdout_agreement(
             corpus_grades, without_task(human_es, "code"), chosen, seed=SEED
+        ),
+        "negatives_es": rejection_precision(
+            {pid: ensemble.substitutable(chosen, g) for pid, g in corpus_grades.items()},
+            {lab.pair_id: lab.grade for lab in mv_labels.read(root / "negatives" / "labels" / f"{holdout.RATER}.jsonl")
+             if not lab.pair_id.startswith("xpr:")},
         ),
         "position_flip_rate": {m: position_flip_rate(corpus, m) for m in judge.JUDGES},
         "inter_judge_kappa": inter_judge_kappa(corpus),
