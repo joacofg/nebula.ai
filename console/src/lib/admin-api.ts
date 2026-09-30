@@ -1,5 +1,7 @@
 "use client";
 
+import type { RouterReplay } from "@/lib/router-replay";
+
 export type RoutingMode = "auto" | "local_only" | "premium_only";
 export type EvidenceRetentionWindow = "24h" | "7d" | "30d" | "90d";
 export type MetadataMinimizationLevel = "standard" | "strict";
@@ -424,6 +426,28 @@ export function simulateTenantPolicy(
     method: "POST",
     body: payload,
   });
+}
+
+export const ADMIN_ROUTER_EVALUATION_ENDPOINT = "/api/admin/evaluation/router";
+
+/** The learned router's out-of-fold replay; `null` when the gateway has none (404). */
+export async function getRouterEvaluation(adminKey: string): Promise<RouterReplay | null> {
+  const response = await fetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
+    method: "GET",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Nebula-Admin-Key": adminKey,
+    },
+    cache: "no-store",
+  });
+  if (response.status === 404) {
+    return null;
+  }
+  if (!response.ok) {
+    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    throw new Error(body.detail ?? "Nebula admin request failed.");
+  }
+  return (await response.json()) as RouterReplay;
 }
 
 export function getPolicyOptions(adminKey: string) {

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { createPlaygroundCompletion } from "@/lib/admin-api";
+import { createPlaygroundCompletion, getRouterEvaluation } from "@/lib/admin-api";
 
 describe("admin-api playground completion", () => {
   afterEach(() => {
@@ -46,5 +46,44 @@ describe("admin-api playground completion", () => {
       policyMode: "auto",
       policyOutcome: "allowed",
     });
+  });
+});
+
+describe("admin-api router evaluation", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("returns the replay payload from the admin proxy", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ version: 1, router_label: "v1", rows: [] }), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+
+    await expect(getRouterEvaluation("nebula-admin-key")).resolves.toMatchObject({ version: 1 });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/admin/evaluation/router",
+      expect.objectContaining({
+        headers: expect.objectContaining({ "X-Nebula-Admin-Key": "nebula-admin-key" }),
+      }),
+    );
+  });
+
+  it("returns null when the gateway has no replay file", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "No router replay" }), { status: 404 })),
+    );
+
+    await expect(getRouterEvaluation("nebula-admin-key")).resolves.toBeNull();
+  });
+
+  it("throws the gateway detail on other failures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "Invalid admin key." }), { status: 401 })),
+    );
+
+    await expect(getRouterEvaluation("bad")).rejects.toThrow("Invalid admin key.");
   });
 });
