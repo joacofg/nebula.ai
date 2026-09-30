@@ -1,0 +1,54 @@
+erDiagram
+    TENANTS ||--|| TENANT_POLICIES : "tiene"
+    TENANTS ||--o{ API_KEYS : "emite"
+    TENANTS ||--o{ USAGE_LEDGER : "registra"
+    TENANTS ||--o{ CACHE_POINT : "aísla"
+    TENANTS {
+        string id PK
+        string name
+        bool active
+        json metadata_json
+    }
+    TENANT_POLICIES {
+        string tenant_id PK,FK
+        string routing_mode_default
+        float routing_quality_target
+        int rate_limit_requests_per_minute
+        json allowed_premium_models_json
+        bool semantic_cache_enabled
+        float semantic_cache_similarity_threshold
+        int semantic_cache_max_entry_age_hours
+        bool fallback_enabled
+        float soft_budget_usd
+        float hard_budget_limit_usd
+    }
+    API_KEYS {
+        string id PK
+        string key_hash
+        string key_prefix
+        string tenant_id FK
+        datetime revoked_at
+    }
+    USAGE_LEDGER {
+        int id PK
+        string request_id
+        string tenant_id
+        string final_route_target
+        string final_provider
+        bool fallback_used
+        bool cache_hit
+        int total_tokens
+        float estimated_cost
+        float latency_ms
+        string terminal_status
+        string route_reason
+        json route_signals
+    }
+    CACHE_POINT {
+        vector embedding "Qdrant"
+        string tenant_id
+        string prompt
+        string response
+        string model
+        datetime created_at
+    }

@@ -1,0 +1,22 @@
+flowchart TB
+    subgraph gt["Etiquetas de referencia (ground truth)"]
+        direction LR
+        src["Dolly · GSM8K · MBPP"] --> sample["Muestreo estratificado<br/>1000 prompts, 5 tareas"]
+        sample --> tr["Traducción al español<br/>+ controles"]
+        sample --> en["250 pareados<br/>en inglés"]
+        tr --> cand["4 candidatos<br/>qwen2.5:7b · llama3.2:3b<br/>claude-haiku-4.5 · gpt-4.1"]
+        en --> cand
+        cand --> judges["2 jueces × 2 posiciones<br/>gemini-2.5-flash · deepseek-v3"]
+        judges --> rule["Regla R3<br/>(elegida sobre 22 pares EN)"]
+        human["Lector humano<br/>hold-out 50 ES · dirigido 25+10"] -. valida .-> rule
+        rule --> tiers["Nivel más barato<br/>sustituible por prompt"]
+    end
+    subgraph rt["Router aprendido"]
+        direction LR
+        embed["Embedding<br/>nomic-embed-text"] --> lr["2 regresiones logísticas L2<br/>CV 5 folds por prompt"]
+        lr --> front["Frontera costo–calidad<br/>+ estimación anidada"]
+        front --> art["learned_router_v1.json<br/>pesos + puntos de operación"]
+        art --> gw["Gateway"]
+        art --> replay["Consola: replay"]
+    end
+    gt --> rt

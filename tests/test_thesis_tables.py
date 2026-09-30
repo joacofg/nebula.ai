@@ -104,3 +104,19 @@ def test_metric_validation_block_cites_the_cosine_auc():
 
 def test_repo_thesis_is_up_to_date():
     assert tables.main(["--check"]) == 0
+
+
+def test_frontier_figure_plots_the_curve_and_the_baselines(tmp_path):
+    from scripts.thesis import figures
+
+    report = json.loads(Path("benchmarks/router/v1/report.json").read_text())
+    fig = figures.frontier_figure(report)
+    ax = fig.axes[0]
+    assert len(ax.lines) == 1
+    assert len(ax.lines[0].get_xdata()) == len(report["learned"]["pareto"])
+    labels = " ".join(t.get_text() for t in ax.texts)
+    for label in ("todo local", "todo económico", "todo frontier", "heurística", "objetivo 0.95"):
+        assert label in labels
+    written = figures.write_frontier(report, tmp_path / "frontera")
+    assert [p.suffix for p in written] == [".png", ".svg"]
+    assert all(p.stat().st_size > 0 for p in written)

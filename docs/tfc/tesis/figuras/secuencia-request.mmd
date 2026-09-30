@@ -1,0 +1,38 @@
+sequenceDiagram
+    autonumber
+    participant C as Cliente
+    participant G as Gateway
+    participant E as Ollama (embedding)
+    participant P as Política / router
+    participant Q as Qdrant (caché)
+    participant L as Proveedor elegido
+    participant F as Premium (respaldo)
+    participant D as PostgreSQL (ledger)
+    C->>G: POST /v1/chat/completions + X-Nebula-API-Key
+    G->>G: autentica el tenant y descuenta un token del limitador
+    alt límite excedido
+        G-->>C: 429 + Retry-After
+    end
+    G->>E: embedding del último mensaje del usuario
+    E-->>G: vector (se usa para el caché y para el router)
+    G->>P: política del tenant + vector
+    P-->>G: nivel (local, económico o frontier) y motivo
+    G->>Q: búsqueda filtrada por tenant y antigüedad
+    alt acierto con similitud ≥ umbral
+        Q-->>G: respuesta guardada
+        G->>D: fila con ruta cache
+        G-->>C: respuesta + X-Nebula-Route-Target: cache
+    else sin acierto
+        G->>L: completion en el nivel elegido
+        alt falla el modelo local y la política permite fallback
+            G->>F: mismo pedido al proveedor premium
+            F-->>G: respuesta
+        else responde
+            L-->>G: respuesta
+        end
+        opt caché habilitado en la política
+            G->>Q: guarda la respuesta para el tenant
+        end
+        G->>D: fila con ruta, costo estimado y motivo
+        G-->>C: respuesta + cabeceras X-Nebula-*
+    end
