@@ -47,6 +47,7 @@ class PolicyResolution:
     projected_premium_cost: float | None
     hard_budget_exceeded: bool = False
     tenant_spend_total: float | None = None
+    allowed_premium_models: tuple[str, ...] = ()
 
 
 class PolicyService:
@@ -101,6 +102,7 @@ class PolicyService:
             projected_premium_cost=evaluation.projected_premium_cost,
             hard_budget_exceeded=evaluation.hard_budget_exceeded,
             tenant_spend_total=evaluation.tenant_spend_total,
+            allowed_premium_models=tuple(tenant_context.policy.allowed_premium_models),
         )
 
     async def evaluate(
@@ -165,6 +167,7 @@ class PolicyService:
         projected_premium_cost: float | None = None
         if denial_detail is None and route_decision.target == "premium":
             # The decision's model (economy or frontier tier) is what the provider will serve.
+            route_decision = self._escalate_disallowed_economy(route_decision, policy)
             premium_model = route_decision.model or self._resolve_premium_model(request)
             if policy.allowed_premium_models and premium_model not in policy.allowed_premium_models:
                 denial_detail = f"Premium model '{premium_model}' is not allowed for this tenant."
@@ -242,6 +245,27 @@ class PolicyService:
             evidence_summary=evidence_summary,
             denied=denial_detail is not None,
             denial_detail=denial_detail,
+        )
+
+    def _escalate_disallowed_economy(self, route_decision: RouteDecision, policy) -> RouteDecision:
+        """A learned economy pick the tenant does not allow moves up to an allowed frontier."""
+        allowed = policy.allowed_premium_models
+        frontier = self.settings.premium_model
+        if (
+            not allowed
+            or route_decision.reason != "learned_router"
+            or route_decision.model is None
+            or route_decision.model in allowed
+            or route_decision.model == frontier
+            or frontier not in allowed
+        ):
+            return route_decision
+        return RouteDecision(
+            target="premium",
+            reason=route_decision.reason,
+            signals={**route_decision.signals, "tier": "frontier", "tier_escalated": "economy_not_allowed"},
+            score=route_decision.score,
+            model=frontier,
         )
 
     def _calibrated_routing_disabled(

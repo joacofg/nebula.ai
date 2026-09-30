@@ -240,7 +240,7 @@ class ChatService:
             try:
                 result = await self._complete_with_provider(
                     fallback_provider,
-                    self._fallback_request(request),
+                    self._fallback_request(request, policy_resolution),
                     request_id,
                     tenant_context.tenant.id,
                 )
@@ -674,7 +674,7 @@ class ChatService:
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,
-                    request=self._fallback_request(request),
+                    request=self._fallback_request(request, policy_resolution),
                     prompt=prompt,
                     response_id=response_id,
                     created=created,
@@ -904,8 +904,18 @@ class ChatService:
             return request
         return request.model_copy(update={"model": decision_model})
 
-    def _fallback_request(self, request: ChatCompletionRequest) -> ChatCompletionRequest:
-        return self._provider_request(request, self.settings.economy_model)
+    def _fallback_model(self, policy_resolution: PolicyResolution) -> str | None:
+        """Economy when configured and the tenant allows it; otherwise the provider default."""
+        economy = self.settings.economy_model
+        allowed = policy_resolution.allowed_premium_models
+        if economy and (not allowed or economy in allowed):
+            return economy
+        return None
+
+    def _fallback_request(
+        self, request: ChatCompletionRequest, policy_resolution: PolicyResolution
+    ) -> ChatCompletionRequest:
+        return self._provider_request(request, self._fallback_model(policy_resolution))
 
     def _route_tier(
         self,
@@ -913,13 +923,17 @@ class ChatService:
         route_target: str,
         fallback_used: bool,
         signals: dict[str, Any],
+        policy_resolution: PolicyResolution,
     ) -> str:
         if route_target in {"local", "cache", "denied"}:
             return route_target
         if fallback_used:
-            return "economy" if self.settings.economy_model else "frontier"
+            return "economy" if self._fallback_model(policy_resolution) else "frontier"
         tier = signals.get("tier")
-        return tier if tier in {"economy", "frontier"} else "frontier"
+        if tier in {"economy", "frontier"}:
+            return tier
+        model = policy_resolution.route_decision.model
+        return "economy" if model and model == self.settings.economy_model else "frontier"
 
     def _resolved_usage(
         self,
@@ -1005,6 +1019,7 @@ class ChatService:
                 route_target=route_target,
                 fallback_used=fallback_used,
                 signals=signals,
+                policy_resolution=policy_resolution,
             ),
         )
 
@@ -1032,6 +1047,7 @@ class ChatService:
                 route_target=route_target,
                 fallback_used=fallback_used,
                 signals=policy_resolution.route_decision.signals,
+                policy_resolution=policy_resolution,
             ),
         }
         route_mode = policy_resolution.route_decision.signals.get("route_mode")

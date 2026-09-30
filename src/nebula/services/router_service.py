@@ -157,7 +157,7 @@ class RouterService:
         if requested_model and request.model == self.settings.local_model:
             return RouteDecision(target="local", reason="explicit_local_model")
         if requested_model:
-            return RouteDecision(target="premium", reason="explicit_premium_model")
+            return RouteDecision(target="premium", reason="explicit_premium_model", model=request.model)
         if routing_mode == "local_only":
             return RouteDecision(target="local", reason="policy_local_only")
         if routing_mode == "premium_only":

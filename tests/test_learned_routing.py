@@ -284,7 +284,7 @@ async def test_explicit_model_and_forced_modes_bypass_the_learned_router() -> No
     assert (explicit.target, explicit.reason, explicit.model) == (
         "premium",
         "explicit_premium_model",
-        None,
+        FRONTIER_MODEL,
     )
     assert (premium_only.target, premium_only.reason) == ("premium", "policy_premium_only")
     assert (local_only.target, local_only.reason) == ("local", "policy_local_only")
@@ -310,12 +310,21 @@ async def test_calibrated_routing_disabled_also_disables_the_learned_router() ->
 
 
 async def test_allowed_models_check_uses_the_decision_model() -> None:
-    denied = await _evaluate(_policy(allowed_premium_models=[FRONTIER_MODEL]), ECONOMY_VECTOR)
+    denied = await _evaluate(_policy(allowed_premium_models=["other/model"]), ECONOMY_VECTOR)
     allowed = await _evaluate(_policy(allowed_premium_models=[ECONOMY_MODEL]), ECONOMY_VECTOR)
 
     assert denied.denied is True
     assert denied.denial_detail == f"Premium model '{ECONOMY_MODEL}' is not allowed for this tenant."
     assert allowed.denied is False
+
+
+async def test_a_disallowed_economy_tier_escalates_to_an_allowed_frontier() -> None:
+    evaluation = await _evaluate(_policy(allowed_premium_models=[FRONTIER_MODEL]), ECONOMY_VECTOR)
+
+    assert evaluation.denied is False
+    assert evaluation.route_decision.model == FRONTIER_MODEL
+    assert evaluation.route_decision.signals["tier"] == "frontier"
+    assert evaluation.route_decision.signals["tier_escalated"] == "economy_not_allowed"
 
 
 async def test_cost_cap_is_priced_by_the_decision_model() -> None:
@@ -667,7 +676,7 @@ def test_denied_request_reports_the_denied_tier(tmp_path: Path) -> None:
         with TestClient(app) as client:
             _mount(app)
             store = app.state.container.governance_store
-            store.upsert_policy("default", TenantPolicy(allowed_premium_models=[FRONTIER_MODEL]))
+            store.upsert_policy("default", TenantPolicy(allowed_premium_models=["other/model"]))
             response = _chat(client, "economy prompt")
 
     assert response.status_code == 403
@@ -693,3 +702,32 @@ def test_route_tier_header_without_the_learned_router() -> None:
     assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
     # Disabled router: the chat path never embeds for routing.
     assert embeddings.calls == []
+
+
+def test_fallback_uses_frontier_when_the_tenant_does_not_allow_economy(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _, premium, _, _ = _mount(app, local_fails=True)
+            store = app.state.container.governance_store
+            store.upsert_policy("default", TenantPolicy(allowed_premium_models=[FRONTIER_MODEL]))
+            response = _chat(client, "local prompt")
+            streamed = _chat(client, "local prompt", stream=True)
+
+    assert response.status_code == 200 and streamed.status_code == 200
+    # No economy model is requested: the provider serves its configured frontier model.
+    assert ECONOMY_MODEL not in premium.requested_models and len(premium.requested_models) == 2
+    assert response.headers["X-Nebula-Route-Tier"] == "frontier"
+    assert streamed.headers["X-Nebula-Route-Tier"] == "frontier"
+
+
+def test_an_explicit_economy_model_is_reported_as_the_economy_tier(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app)
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={"model": ECONOMY_MODEL, "messages": [{"role": "user", "content": "hi"}]},
+            )
+
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
