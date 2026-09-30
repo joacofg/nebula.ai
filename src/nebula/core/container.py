@@ -20,6 +20,7 @@ from nebula.services.retention_lifecycle_service import RetentionLifecycleServic
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
+from nebula.services.rate_limiter import RateLimiter
 
 
 class ServiceContainer:
@@ -27,6 +28,7 @@ class ServiceContainer:
         self.settings = settings
         pricing_path = Path(__file__).resolve().parents[3] / "benchmarks" / "pricing.json"
         self.pricing_catalog = PricingCatalog.from_path(pricing_path)
+        self.rate_limiter = RateLimiter()
         self.governance_store = GovernanceStore(
             settings=settings,
             session_factory=create_session_factory(settings),

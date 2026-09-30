@@ -24,6 +24,12 @@ COMPLETION_COUNT = Counter(
     ["provider", "result", "stream"],
 )
 
+RATE_LIMITED_COUNT = Counter(
+    "nebula_rate_limited_total",
+    "Requests rejected by the per-tenant rate limit.",
+    ["tenant"],
+)
+
 FALLBACK_COUNT = Counter(
     "nebula_fallback_total",
     "Total fallbacks from local to premium provider.",
