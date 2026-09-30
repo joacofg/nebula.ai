@@ -22,6 +22,7 @@ export type TenantPolicy = {
   response_capture_enabled: boolean;
   evidence_retention_window: EvidenceRetentionWindow;
   metadata_minimization_level: MetadataMinimizationLevel;
+  routing_quality_target: number;
 };
 
 export type TenantRecord = {

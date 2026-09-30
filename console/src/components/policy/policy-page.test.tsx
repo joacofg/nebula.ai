@@ -67,6 +67,7 @@ beforeEach(() => {
     response_capture_enabled: false,
     evidence_retention_window: "30d",
     metadata_minimization_level: "standard",
+    routing_quality_target: 0.95,
   }));
   getPolicyOptionsMock.mockResolvedValue({
     routing_modes: ["auto", "local_only", "premium_only"],
@@ -104,6 +105,7 @@ beforeEach(() => {
     response_capture_enabled: false,
     evidence_retention_window: "30d",
     metadata_minimization_level: "standard",
+    routing_quality_target: 0.95,
   });
   simulateTenantPolicyMock.mockResolvedValue({
     tenant_id: "tenant-a",
@@ -123,6 +125,7 @@ beforeEach(() => {
       response_capture_enabled: false,
       evidence_retention_window: "30d",
       metadata_minimization_level: "standard",
+      routing_quality_target: 0.95,
     },
     calibration_summary: {
       tenant_id: "default",
@@ -374,6 +377,7 @@ describe("policy-page", () => {
         response_capture_enabled: false,
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
+        routing_quality_target: 0.95,
       },
       calibration_summary: {
         tenant_id: "default",
@@ -449,6 +453,7 @@ describe("policy-page", () => {
         response_capture_enabled: false,
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
+        routing_quality_target: 0.95,
       },
       calibration_summary: {
         tenant_id: "default",

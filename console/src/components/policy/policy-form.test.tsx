@@ -25,6 +25,7 @@ const baseSimulationResult: PolicySimulationResponse = {
     response_capture_enabled: false,
     evidence_retention_window: "30d",
     metadata_minimization_level: "standard",
+    routing_quality_target: 0.95,
   },
   approximation_notes: ["Replay uses stored route signals rather than raw prompt text."],
   window: {
@@ -116,6 +117,7 @@ function renderPolicyForm({
         response_capture_enabled: false,
         evidence_retention_window: "30d",
         metadata_minimization_level: "standard",
+        routing_quality_target: 0.95,
       }}
       options={{
         routing_modes: ["auto", "local_only", "premium_only"],
@@ -305,6 +307,7 @@ describe("policy-form", () => {
           response_capture_enabled: false,
       evidence_retention_window: "30d",
       metadata_minimization_level: "standard",
+      routing_quality_target: 0.95,
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],
@@ -386,6 +389,7 @@ describe("policy-form", () => {
           response_capture_enabled: false,
       evidence_retention_window: "30d",
       metadata_minimization_level: "standard",
+      routing_quality_target: 0.95,
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],
@@ -437,6 +441,7 @@ describe("policy-form", () => {
           response_capture_enabled: false,
       evidence_retention_window: "30d",
       metadata_minimization_level: "standard",
+      routing_quality_target: 0.95,
         }}
         options={{
           routing_modes: ["auto", "local_only", "premium_only"],
