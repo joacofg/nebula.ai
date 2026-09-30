@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -87,3 +87,13 @@ console-test:
 
 console-e2e:
 	npm --prefix console run e2e
+
+# Thesis: rewrite every <!-- GEN:... --> block from the committed reports (no network).
+thesis-tables:
+	$(PYTHON) -m scripts.thesis.tables
+
+# Thesis figures: the frontier from the router report (matplotlib) and the Mermaid
+# sources in docs/tfc/tesis/figuras rendered to PNG (downloads mermaid-cli on first run).
+thesis-figures:
+	$(PYTHON) -m scripts.thesis.figures
+	cd docs/tfc/tesis/figuras && for f in *.mmd; do npx -y -p @mermaid-js/mermaid-cli@12.0.0 mmdc -q -i "$$f" -o "$${f%.mmd}.png" -b white -s 2 || exit 1; done

@@ -1,0 +1,33 @@
+flowchart LR
+    cliente["Aplicación cliente<br/>(API compatible con OpenAI)"]
+    consola["Consola de operación<br/>Next.js 15"]
+    subgraph gw["Gateway Nebula — FastAPI, Python 3.12"]
+        direction TB
+        auth["Autenticación<br/>X-Nebula-API-Key → tenant"]
+        rl["Limitador por tenant<br/>token bucket"]
+        emb["Embedding del prompt<br/>(uno por pedido)"]
+        pol["Resolución de política<br/>presupuestos, modelos permitidos"]
+        router["Router de tres niveles<br/>dos logísticas + umbrales"]
+        cache["Caché semántico<br/>aislado por tenant, TTL, umbral"]
+        prov["Proveedores<br/>local · económico · frontier<br/>fallback ante falla"]
+        ledger["Ledger de uso<br/>costo, ruta, motivo"]
+        admin["API de administración<br/>/v1/admin/*"]
+    end
+    pg[("PostgreSQL 16<br/>tenants, políticas,<br/>claves, ledger")]
+    qd[("Qdrant<br/>vectores del caché")]
+    ol["Ollama<br/>qwen2.5:7b ·<br/>nomic-embed-text"]
+    orr["OpenRouter<br/>claude-haiku-4.5 · gpt-4.1"]
+
+    cliente -->|POST /v1/chat/completions| auth --> rl --> emb --> pol --> router
+    router --> cache
+    cache -->|miss| prov
+    prov --> ledger
+    cache -->|hit| ledger
+    consola --> admin
+    admin --> pg
+    ledger --> pg
+    pol --> pg
+    cache <--> qd
+    emb --> ol
+    prov --> ol
+    prov --> orr
