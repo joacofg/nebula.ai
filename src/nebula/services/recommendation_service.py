@@ -93,6 +93,8 @@ class RecommendationService:
         )
 
     def _compute_metrics(self, ledger: list[UsageLedgerRecord]) -> RecommendationMetrics:
+        # Requests rejected by the rate limit never ran; counting them would dilute every rate.
+        ledger = [row for row in ledger if row.terminal_status != "rate_limited"]
         total_requests = len(ledger)
         premium_requests = sum(1 for row in ledger if row.final_route_target == "premium")
         cache_hits = sum(1 for row in ledger if row.cache_hit)

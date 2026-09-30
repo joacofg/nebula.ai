@@ -298,6 +298,7 @@ def test_policy_options_endpoint_is_admin_protected_and_includes_default_model()
         "routing_mode_default",
         "calibrated_routing_enabled",
         "routing_quality_target",
+        "rate_limit_requests_per_minute",
         "allowed_premium_models",
         "semantic_cache_enabled",
         "semantic_cache_similarity_threshold",

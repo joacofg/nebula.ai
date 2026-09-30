@@ -1,6 +1,12 @@
-from fastapi import Header, Request
+import logging
+from datetime import UTC, datetime
+from uuid import uuid4
+
+from fastapi import Depends, Header, HTTPException, Request, Response, status
 
 from nebula.core.container import ServiceContainer
+from nebula.models.governance import UsageLedgerRecord
+from nebula.observability.metrics import RATE_LIMITED_COUNT
 from nebula.services.auth_service import (
     ADMIN_API_KEY_HEADER,
     API_KEY_HEADER,
@@ -43,3 +49,87 @@ def require_admin(
     container = get_container(request)
     container.auth_service.authenticate_admin(admin_api_key)
     return container
+
+
+logger = logging.getLogger(__name__)
+
+
+def _record_rejection(container: ServiceContainer, record: UsageLedgerRecord) -> None:
+    container.governance_store.record_usage(record)
+
+
+def _rate_limit_headers(result) -> dict[str, str]:
+    return {
+        "X-RateLimit-Limit": str(result.limit),
+        "X-RateLimit-Remaining": str(result.remaining),
+        "X-RateLimit-Reset": str(result.reset_seconds),
+    }
+
+
+async def get_rate_limited_tenant_context(
+    request: Request,
+    response: Response,
+    tenant_context: AuthenticatedTenantContext = Depends(get_tenant_context),
+) -> AuthenticatedTenantContext:
+    """Authenticate, then spend one of the tenant's requests for this minute.
+
+    Runs before routing, so a rejected request costs neither an embedding nor a model call.
+    """
+    limit = tenant_context.policy.rate_limit_requests_per_minute
+    if limit is None:
+        return tenant_context
+    container = get_container(request)
+    tenant_id = tenant_context.tenant.id
+    result = await container.rate_limiter.acquire(tenant_id, limit_per_minute=limit)
+    headers = _rate_limit_headers(result)
+    request.state.rate_limit_headers = headers
+    if result.allowed:
+        response.headers.update(headers)
+        return tenant_context
+
+    RATE_LIMITED_COUNT.labels(tenant_id).inc()
+    is_embeddings = request.url.path.endswith("/embeddings")
+    requested_model = "unknown" if is_embeddings else "nebula-auto"
+    try:
+        body = await request.json()
+        model = body.get("model") if isinstance(body, dict) else None
+        if isinstance(model, str) and model:
+            requested_model = model[:255]  # unvalidated input: bounded to the column
+    except Exception:  # noqa: BLE001 - a malformed body is still a rate-limited request
+        pass
+    request_id = getattr(request.state, "request_id", None) or f"req-{uuid4().hex}"
+    try:
+        _record_rejection(container, UsageLedgerRecord(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            requested_model=requested_model,
+            final_route_target="denied",
+            final_provider="none",
+            fallback_used=False,
+            cache_hit=False,
+            response_model=None,
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            estimated_cost=None,
+            latency_ms=None,
+            timestamp=datetime.now(UTC),
+            terminal_status="rate_limited",
+            route_reason="rate_limited",
+            policy_outcome=f"rate_limit={limit}/min",
+            message_type="embeddings" if is_embeddings else "chat",
+        ))
+    except Exception:  # noqa: BLE001 - the 429 must reach the client even if the ledger write fails
+        logger.exception("rate_limit_ledger_write_failed tenant_id=%s", tenant_id)
+    raise HTTPException(
+        status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+        detail=f"Tenant rate limit of {limit} requests per minute exceeded.",
+        headers={
+            **headers,
+            "Retry-After": str(result.retry_after_seconds),
+            "X-Nebula-Tenant-ID": tenant_id,
+            "X-Nebula-Route-Target": "denied",
+            "X-Nebula-Route-Reason": "rate_limited",
+            "X-Nebula-Route-Tier": "denied",
+        },
+    )

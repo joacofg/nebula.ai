@@ -36,6 +36,7 @@ class TenantPolicyModel(Base):
     routing_quality_target: Mapped[float] = mapped_column(
         Float, nullable=False, default=0.95, server_default="0.95"
     )
+    rate_limit_requests_per_minute: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     allowed_premium_models_json: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     semantic_cache_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     semantic_cache_similarity_threshold: Mapped[float] = mapped_column(Float, nullable=False, default=0.9)

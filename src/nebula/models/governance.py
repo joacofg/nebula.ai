@@ -14,6 +14,7 @@ TerminalStatus = Literal[
     "fallback_completed",
     "policy_denied",
     "provider_error",
+    "rate_limited",
 ]
 CalibrationEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
 # M009 keeps the externally-visible calibration_summary field name for compatibility,
@@ -40,6 +41,8 @@ class TenantPolicy(BaseModel):
     calibrated_routing_enabled: bool = True
     # Learned router: the cheapest operating point whose out-of-fold quality meets this.
     routing_quality_target: float = Field(default=0.95, ge=0.5, le=1.0)
+    # Public chat/embeddings requests per minute; None means unlimited.
+    rate_limit_requests_per_minute: int | None = Field(default=None, ge=1, le=100_000)
     allowed_premium_models: list[str] = Field(default_factory=list)
     semantic_cache_enabled: bool = True
     semantic_cache_similarity_threshold: float = Field(default=0.9, ge=0, le=1)

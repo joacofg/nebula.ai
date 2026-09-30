@@ -23,6 +23,7 @@ export type TenantPolicy = {
   evidence_retention_window: EvidenceRetentionWindow;
   metadata_minimization_level: MetadataMinimizationLevel;
   routing_quality_target: number;
+  rate_limit_requests_per_minute?: number | null;
 };
 
 export type TenantRecord = {

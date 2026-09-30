@@ -22,6 +22,7 @@ const TERMINAL_STATUS_OPTIONS = [
   "fallback_completed",
   "policy_denied",
   "provider_error",
+  "rate_limited",
 ];
 
 export function LedgerFilters({
