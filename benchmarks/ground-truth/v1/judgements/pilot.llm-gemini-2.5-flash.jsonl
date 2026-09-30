@@ -1,0 +1,44 @@
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-08", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-13", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-14", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-13", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-05", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "divergent", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-14", "reply": "{\"grade\": \"divergent\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-08", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-05", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-15", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-15", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:code-16", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:factual_qa-03", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:code-16", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:factual_qa-08", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:factual_qa-08", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:factual_qa-03", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:factual_qa-09", "reply": "```json\n{\n \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:factual_qa-10", "reply": "{\"grade\": \"equivalent\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:factual_qa-09", "reply": "```json\n{\n  \"grade\": \"partial\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:factual_qa-13", "reply": "```json\n{\n \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:factual_qa-10", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:open_writing-01", "reply": "{\"grade\": \"equivalent\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:factual_qa-13", "reply": "```json\n{\n \"grade\": \"partial\"\n}\n```", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:multistep_reasoning-14", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:multistep_reasoning-14", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:open_writing-01", "reply": "```json\n{\n \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:open_writing-05", "reply": "{\"grade\": \"equivalent\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:open_writing-05", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:open_writing-08", "reply": "```json\n{\n \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:open_writing-08", "reply": "{\"grade\": \"minor_loss\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:open_writing-09", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:open_writing-13", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:open_writing-09", "reply": "```json\n{\n  \"grade\": \"equivalent\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:open_writing-13", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:summarisation-04", "reply": "```json\n{\n  \"grade\": \"equivalent\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "lvp:summarisation-08", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:summarisation-04", "reply": "```json\n{\n  \"grade\": \"equivalent\"\n}\n```", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "pvp:open_writing-02", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "pvp:code-04", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "minor_loss", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "pvp:open_writing-02", "reply": "```json\n{\n  \"grade\": \"minor_loss\"\n}\n```", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "pvp:code-04", "reply": "{\"grade\": \"partial\"}", "status": "ok"}
+{"grade": "partial", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "lvp:summarisation-08", "reply": "```json\n{\n  \"grade\": \"partial\"\n}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ba", "pair_id": "pvp:open_writing-05", "reply": "```json\n{\"grade\": \"equivalent\"}\n```", "status": "ok"}
+{"grade": "equivalent", "judge": "google/gemini-2.5-flash", "orientation": "ab", "pair_id": "pvp:open_writing-05", "reply": "```json\n{\n \"grade\": \"equivalent\"\n}\n```", "status": "ok"}

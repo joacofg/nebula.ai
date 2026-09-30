@@ -1,0 +1,66 @@
+{
+  "corpus_pairs_with_full_grades": 3750,
+  "holdout_es": {
+    "all_rules_for_reference": {
+      "R1_unanimous": 0.13223140495867758,
+      "R2_majority": 0.17647058823529396,
+      "R3_ordinal_mean": 0.3076923076923072
+    },
+    "ci95": [
+      -0.07003891050583584,
+      0.637886439216651
+    ],
+    "compared": 50,
+    "excluded_without_full_grades": 0,
+    "human_substitutable": 45,
+    "judge_limited": true,
+    "judges_laxer": 2,
+    "judges_stricter": 7,
+    "kappa": 0.3076923076923072,
+    "labelled": 50,
+    "raw_agreement": 0.82,
+    "resamples_used": 2000,
+    "status": "complete"
+  },
+  "holdout_es_excluding_code": {
+    "all_rules_for_reference": {
+      "R1_unanimous": 0.1499999999999999,
+      "R2_majority": 0.26174496644295286,
+      "R3_ordinal_mean": 0.436619718309859
+    },
+    "ci95": [
+      0.0,
+      0.7782505910165483
+    ],
+    "compared": 40,
+    "excluded_without_full_grades": 0,
+    "human_substitutable": 37,
+    "judge_limited": false,
+    "judges_laxer": 0,
+    "judges_stricter": 6,
+    "kappa": 0.436619718309859,
+    "labelled": 40,
+    "raw_agreement": 0.85,
+    "resamples_used": 1999,
+    "status": "partial"
+  },
+  "inter_judge_kappa": 0.6169714961382676,
+  "position_flip_rate": {
+    "deepseek/deepseek-chat-v3-0324": 0.08106666666666666,
+    "google/gemini-2.5-flash": 0.1248
+  },
+  "rule_selection": {
+    "chosen": "R3_ordinal_mean",
+    "compared": 22,
+    "human_not_substitutable": 2,
+    "human_substitutable": 20,
+    "kappas": {
+      "R1_unanimous": -0.015384615384615333,
+      "R2_majority": 0.3265306122448984,
+      "R3_ordinal_mean": 0.645161290322581
+    },
+    "rater": "human-3",
+    "selection": "pairs the pilot chose because two earlier judges disagreed on them",
+    "set": "pilot-en"
+  }
+}
