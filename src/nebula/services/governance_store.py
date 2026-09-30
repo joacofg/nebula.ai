@@ -202,6 +202,7 @@ class GovernanceStore:
             current.routing_mode_default = policy.routing_mode_default
             current.calibrated_routing_enabled = policy.calibrated_routing_enabled
             current.routing_quality_target = policy.routing_quality_target
+            current.rate_limit_requests_per_minute = policy.rate_limit_requests_per_minute
             current.allowed_premium_models_json = policy.allowed_premium_models
             current.semantic_cache_enabled = policy.semantic_cache_enabled
             current.semantic_cache_similarity_threshold = policy.semantic_cache_similarity_threshold
@@ -575,6 +576,7 @@ class GovernanceStore:
             routing_mode_default=row.routing_mode_default,
             calibrated_routing_enabled=row.calibrated_routing_enabled,
             routing_quality_target=row.routing_quality_target,
+            rate_limit_requests_per_minute=row.rate_limit_requests_per_minute,
             allowed_premium_models=row.allowed_premium_models_json,
             semantic_cache_enabled=row.semantic_cache_enabled,
             semantic_cache_similarity_threshold=row.semantic_cache_similarity_threshold,
