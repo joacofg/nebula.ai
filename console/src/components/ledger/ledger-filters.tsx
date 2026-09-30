@@ -44,7 +44,7 @@ export function LedgerFilters({
   onRefresh,
 }: LedgerFiltersProps) {
   const cell = "flex min-w-[150px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5 first:border-l-0";
-  const wide = "flex min-w-[210px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5";
+  const wide = "flex min-w-[250px] flex-[1.4] flex-col gap-1 border-l border-line px-4 py-2.5";
   const control =
     "h-9 w-full rounded-[2px] border border-line bg-surface px-2 text-[15px] text-ink transition-colors focus:border-ink";
   return (
