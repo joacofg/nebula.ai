@@ -11,6 +11,7 @@ import type {
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import { PolicyAdvancedSection } from "@/components/policy/policy-advanced-section";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -425,9 +426,9 @@ export function PolicyForm({
       </header>
 
       {error ? (
-        <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-          {error}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       ) : null}
 
       <section className="panel px-6 py-5" aria-live="polite">
@@ -450,9 +451,9 @@ export function PolicyForm({
         ) : null}
 
         {simulationError ? (
-          <div className="mt-4 rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-            Preview failed: {simulationError}
-          </div>
+          <Alert variant="destructive" className="mt-4">
+            <AlertDescription>Preview failed: {simulationError}</AlertDescription>
+          </Alert>
         ) : null}
 
         {!isSimulating && !simulationError && !simulationResult ? (
@@ -520,13 +521,13 @@ export function PolicyForm({
             </div>
 
             {simulationResult.window.returned_rows === 0 ? (
-              <div className="rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
-                No recent traffic matched the replay window, so there was nothing to preview.
-              </div>
+              <Alert variant="warning">
+                <AlertDescription>No recent traffic matched the replay window, so there was nothing to preview.</AlertDescription>
+              </Alert>
             ) : simulationResult.changed_requests.length === 0 ? (
-              <div className="rounded-xl border border-ok-line bg-ok-soft px-4 py-3 text-sm text-ok">
-                No request outcomes changed in this replay window.
-              </div>
+              <Alert variant="success">
+                <AlertDescription>No request outcomes changed in this replay window.</AlertDescription>
+              </Alert>
             ) : (
               <div className="space-y-3">
                 <div>
@@ -927,9 +928,11 @@ export function PolicyForm({
           <p className="mt-2 text-sm text-ink-4">
             Advisory only. Exceeding this threshold adds operator-visible policy outcome metadata, but it does not block, downgrade, or deny routing.
           </p>
-          <div className="mt-4 rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
-            Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.
-          </div>
+          <Alert variant="warning" className="mt-4">
+            <AlertDescription>
+              Use this to flag spend pressure for operators. Use the hard budget controls above when tenant traffic must change at runtime.
+            </AlertDescription>
+          </Alert>
           <div className="mt-4">
             <label className="field-label" htmlFor="soft-budget-usd">
               Soft budget USD

@@ -16,6 +16,7 @@ import {
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PolicyPage() {
   const queryClient = useQueryClient();
@@ -90,7 +91,11 @@ export default function PolicyPage() {
       (optionsQuery.error as Error | undefined)?.message ||
       (policyQuery.error as Error | undefined)?.message ||
       "Unable to load policy editor.";
-    return <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">{error}</div>;
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>{error}</AlertDescription>
+      </Alert>
+    );
   }
 
   const selectedTenant = tenantsQuery.data?.find((tenant) => tenant.id === selectedTenantId) ?? null;

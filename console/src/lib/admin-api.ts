@@ -444,11 +444,13 @@ export async function getRouterEvaluation(adminKey: string): Promise<RouterRepla
     },
     cache: "no-store",
   });
-  if (response.status === 404) {
-    return null;
-  }
   if (!response.ok) {
     const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    // Only the gateway's "no replay file" 404 means "nothing to show"; any other 404
+    // (an older gateway without the endpoint, a proxy miss) is a real error.
+    if (response.status === 404 && body.detail?.startsWith("No router replay")) {
+      return null;
+    }
     throw new Error(body.detail ?? "Nebula admin request failed.");
   }
   return (await response.json()) as RouterReplay;

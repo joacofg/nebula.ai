@@ -1,4 +1,5 @@
 import { RuntimeHealthDependency } from "@/lib/admin-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type RuntimeHealthCardsProps = {
   dependencies: Record<string, RuntimeHealthDependency>;
@@ -57,9 +58,9 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
   return (
     <section className="space-y-4">
       {hasOptionalDegradation ? (
-        <div className="rounded-xl border border-warn-line bg-warn-soft px-6 py-4 text-sm text-warn">
-          Optional dependency degradation does not block gateway readiness.
-        </div>
+        <Alert variant="warning">
+          <AlertDescription>Optional dependency degradation does not block gateway readiness.</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

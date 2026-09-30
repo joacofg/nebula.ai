@@ -13,11 +13,22 @@ import {
   revokeApiKey,
   type ApiKeyRecord,
 } from "@/lib/admin-api";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CreateApiKeyDialog } from "@/components/api-keys/create-api-key-dialog";
 import { ApiKeyTable } from "@/components/api-keys/api-key-table";
 import { RevealApiKeyDialog } from "@/components/api-keys/reveal-api-key-dialog";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { ErrorAlert } from "@/components/system/state";
 
 export default function ApiKeysPage() {
   const queryClient = useQueryClient();
@@ -26,6 +37,7 @@ export default function ApiKeysPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [revealedApiKey, setRevealedApiKey] = useState<string | null>(null);
   const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [pendingRevoke, setPendingRevoke] = useState<ApiKeyRecord | null>(null);
 
   const tenantsQuery = useQuery({
     queryKey: queryKeys.tenants,
@@ -72,10 +84,16 @@ export default function ApiKeysPage() {
   const tenantOptions = tenantsQuery.data ?? [];
   const apiKeys = useMemo(() => apiKeysQuery.data ?? [], [apiKeysQuery.data]);
 
-  async function handleRevoke(apiKey: ApiKeyRecord) {
-    if (!window.confirm(`Revoke ${apiKey.name}?`)) {
+  function handleRevoke(apiKey: ApiKeyRecord) {
+    setPendingRevoke(apiKey);
+  }
+
+  async function confirmRevoke() {
+    if (!pendingRevoke) {
       return;
     }
+    const apiKey = pendingRevoke;
+    setPendingRevoke(null);
     setRevokingId(apiKey.id);
     await revokeMutation.mutateAsync(apiKey.id);
   }
@@ -130,9 +148,7 @@ export default function ApiKeysPage() {
       {apiKeysQuery.isLoading ? (
         <div className="panel px-6 py-8 text-sm text-ink-4">Loading API key inventory...</div>
       ) : apiKeysQuery.isError ? (
-        <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">
-          {apiKeysQuery.error instanceof Error ? apiKeysQuery.error.message : "Unable to load API keys."}
-        </div>
+        <ErrorAlert error={apiKeysQuery.error} fallback="Unable to load API keys." />
       ) : (
         <ApiKeyTable apiKeys={apiKeys} onRevoke={handleRevoke} revokingId={revokingId} />
       )}
@@ -147,6 +163,23 @@ export default function ApiKeysPage() {
           await createMutation.mutateAsync(payload);
         }}
       />
+
+      <AlertDialog open={pendingRevoke !== null} onOpenChange={(open) => (open ? null : setPendingRevoke(null))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Revoke {pendingRevoke?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Callers using this key stop reaching Nebula. The record stays visible for audit.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={() => void confirmRevoke()}>
+              Revoke key
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <RevealApiKeyDialog
         apiKey={revealedApiKey}

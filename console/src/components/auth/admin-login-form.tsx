@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
 import { useAdminSession } from "@/lib/admin-session-provider";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const REAUTH_MESSAGES: Record<string, string> = {
   "session-expired": "Your in-memory admin session is gone. Enter the Nebula admin key again.",
@@ -71,9 +72,9 @@ export function AdminLoginForm({ reason }: AdminLoginFormProps) {
         ) : null}
 
         {error ? (
-          <div className="rounded-xl border border-danger-line bg-danger-soft px-4 py-3 text-sm text-danger">
-            {error}
-          </div>
+          <Alert variant="destructive">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         ) : null}
 
         <div>

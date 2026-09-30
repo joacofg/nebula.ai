@@ -19,6 +19,8 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { ErrorAlert } from "@/components/system/state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PlaygroundPage() {
   const { adminKey } = useAdminSession();
@@ -84,9 +86,7 @@ export default function PlaygroundPage() {
               Loading tenant inventory...
             </div>
           ) : tenantsQuery.isError ? (
-            <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-              {tenantsQuery.error instanceof Error ? tenantsQuery.error.message : "Unable to load tenants."}
-            </div>
+            <ErrorAlert error={tenantsQuery.error} fallback="Unable to load tenants." />
           ) : (
             <PlaygroundForm
               tenants={tenantsQuery.data ?? []}
@@ -143,9 +143,7 @@ function PlaygroundResponseCard({
 
   if (error) {
     return (
-      <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-        {error.message}
-      </div>
+      <ErrorAlert error={error} fallback="Unable to complete the request." />
     );
   }
 
@@ -160,9 +158,9 @@ function PlaygroundResponseCard({
   return (
     <div className="space-y-4">
       {result.errorDetail ? (
-        <div className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-          {result.errorDetail}
-        </div>
+        <Alert variant="destructive">
+          <AlertDescription>{result.errorDetail}</AlertDescription>
+        </Alert>
       ) : null}
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
       <PlaygroundMetadata
@@ -181,11 +179,13 @@ function PlaygroundResponseCard({
       {recordedOutcomeQuery.isLoading ? (
         <div className="panel px-6 py-5 text-sm text-ink-4">Loading recorded outcome...</div>
       ) : recordedOutcomeQuery.isError ? (
-        <div className="rounded-xl border border-warn-line bg-warn-soft px-6 py-5 text-sm text-warn">
-          {recordedOutcomeQuery.error instanceof Error
-            ? recordedOutcomeQuery.error.message
-            : "Unable to load recorded outcome."}
-        </div>
+        <Alert variant="warning">
+          <AlertDescription>
+            {recordedOutcomeQuery.error instanceof Error
+              ? recordedOutcomeQuery.error.message
+              : "Unable to load recorded outcome."}
+          </AlertDescription>
+        </Alert>
       ) : recordedOutcomeQuery.data ? (
         <>
           <PlaygroundDecision entry={recordedOutcomeQuery.data} routeTier={result.routeTier ?? ""} />

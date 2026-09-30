@@ -17,6 +17,7 @@ import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
 import { TenantEditorDrawer } from "@/components/tenants/tenant-editor-drawer";
 import { TenantTable } from "@/components/tenants/tenant-table";
+import { ErrorAlert } from "@/components/system/state";
 
 type DrawerState =
   | { mode: "create"; tenant: null }
@@ -145,9 +146,7 @@ export default function TenantsPage() {
           {tenantsQuery.isLoading ? (
             <div className="panel px-6 py-8 text-sm text-ink-4">Loading tenant inventory...</div>
           ) : tenantsQuery.isError ? (
-            <div className="panel border-danger-line bg-danger-soft px-6 py-8 text-sm text-danger">
-              {tenantsQuery.error instanceof Error ? tenantsQuery.error.message : "Unable to load tenants."}
-            </div>
+            <ErrorAlert error={tenantsQuery.error} fallback="Unable to load tenants." />
           ) : (
             <TenantTable
               tenants={filteredTenants}

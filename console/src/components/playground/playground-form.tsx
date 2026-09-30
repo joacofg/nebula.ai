@@ -3,6 +3,7 @@
 import { LoaderCircle, SendHorizontal } from "lucide-react";
 
 import type { TenantRecord } from "@/lib/admin-api";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type PlaygroundFormProps = {
   tenants: TenantRecord[];
@@ -56,9 +57,9 @@ export function PlaygroundForm({
       </div>
 
       {sessionMissing ? (
-        <div className="rounded-xl border border-warn-line bg-warn-soft px-4 py-3 text-sm text-warn">
-          Operator session missing.
-        </div>
+        <Alert variant="warning">
+          <AlertDescription>Operator session missing.</AlertDescription>
+        </Alert>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2">

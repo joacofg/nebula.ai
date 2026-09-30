@@ -30,6 +30,7 @@ import {
   replayOrder,
   type RouterReplay,
 } from "@/lib/router-replay";
+import { ErrorAlert } from "@/components/system/state";
 
 const DEFAULT_TARGET = 0.95;
 const REPLAY_SEED = 20260930;
@@ -260,9 +261,7 @@ export default function EvaluationPage() {
       {replayQuery.isLoading ? (
         <div className="panel px-6 py-5 text-sm text-ink-4">Cargando el replay del router…</div>
       ) : replayQuery.isError ? (
-        <div role="alert" className="rounded-xl border border-danger-line bg-danger-soft px-6 py-5 text-sm text-danger">
-          {replayQuery.error instanceof Error ? replayQuery.error.message : "No se pudo cargar el replay del router."}
-        </div>
+        <ErrorAlert error={replayQuery.error} fallback="No se pudo cargar el replay del router." />
       ) : replayQuery.data ? (
         <EvaluationBody replay={replayQuery.data} adminKey={adminKey ?? ""} />
       ) : (
