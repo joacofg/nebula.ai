@@ -14,6 +14,8 @@ type DecisionPathProps = {
   chosen: DecisionTier;
   /** Trace the path on mount (skipped under prefers-reduced-motion). */
   animate?: boolean;
+  /** Drawn at its own size for a narrow panel, so the labels stay legible. */
+  compact?: boolean;
   className?: string;
 };
 
@@ -71,38 +73,45 @@ function usePrefersReducedMotion() {
   return reduced;
 }
 
-const BOX_W = 124;
-const BOX_H = 34;
-const ROW = 62;
-const START_X = 8;
-const BOX_X0 = 56;
-const STEP_X = 150;
-const END_X = 430;
-const WIDTH = 500;
+type Geometry = {
+  boxW: number;
+  boxH: number;
+  row: number;
+  startX: number;
+  boxX0: number;
+  stepX: number;
+  endX: number;
+  width: number;
+};
+
+/** Wide: scaled to fill a column. Compact: drawn 1:1 for a ~350 px panel, τ inside each box. */
+const WIDE: Geometry = { boxW: 124, boxH: 34, row: 62, startX: 8, boxX0: 56, stepX: 150, endX: 430, width: 500 };
+const COMPACT: Geometry = { boxW: 112, boxH: 44, row: 60, startX: 6, boxX0: 22, stepX: 96, endX: 252, width: 336 };
 const TIERS = ["local", "economy", "frontier"] as const;
 
 /**
  * The router cascade drawn as a signal path: every tier is on the sheet, the evaluated
  * steps show their probability and threshold, and only the branch that won is inked.
  */
-export function DecisionPath({ steps, chosen, animate = false, className }: DecisionPathProps) {
+export function DecisionPath({ steps, chosen, animate = false, compact = false, className }: DecisionPathProps) {
+  const g = compact ? COMPACT : WIDE;
   const reduced = usePrefersReducedMotion();
   const trace = animate && !reduced;
   const winnerIndex = steps.findIndex((s) => s.tier === chosen && clears(s));
   // The row where the path leaves toward its terminal: the winning step, or frontier.
   const exitRow = winnerIndex >= 0 ? winnerIndex : Math.max(steps.length, 2);
-  const height = 24 + 3 * ROW;
-  const cy = (row: number) => 36 + row * ROW;
-  const boxX = (i: number) => BOX_X0 + i * STEP_X;
+  const height = 24 + 3 * g.row;
+  const cy = (row: number) => 36 + row * g.row;
+  const boxX = (i: number) => g.boxX0 + i * g.stepX;
   const chosenRow = TIERS.indexOf(chosen as (typeof TIERS)[number]);
 
-  const ink: string[] = [`M${START_X} ${cy(0)} H${boxX(0)}`];
+  const ink: string[] = [`M${g.startX} ${cy(0)} H${boxX(0)}`];
   const faint: string[] = [];
   for (let i = 0; i < 2; i += 1) {
     const x = boxX(i);
-    const into = i + 1 < 2 ? boxX(i + 1) : END_X;
-    const drop = `M${x + BOX_W / 2} ${cy(i) + BOX_H / 2} V${cy(i + 1)} H${into}`;
-    const across = `M${x + BOX_W} ${cy(i)} H${END_X}`;
+    const into = i + 1 < 2 ? boxX(i + 1) : g.endX;
+    const drop = `M${x + g.boxW / 2} ${cy(i) + g.boxH / 2} V${cy(i + 1)} H${into}`;
+    const across = `M${x + g.boxW} ${cy(i)} H${g.endX}`;
     if (i < exitRow) {
       ink.push(drop);
       faint.push(across);
@@ -117,11 +126,12 @@ export function DecisionPath({ steps, chosen, animate = false, className }: Deci
     <svg
       role="img"
       aria-label={describe(steps, chosen, exitRow)}
-      viewBox={`0 0 ${WIDTH} ${height}`}
-      className={cn("block h-auto w-full max-w-[600px] overflow-visible", className)}
+      viewBox={`0 0 ${g.width} ${height}`}
+      width={compact ? g.width : undefined}
+      className={cn("block h-auto overflow-visible", compact ? "max-w-full" : "w-full max-w-[600px]", className)}
     >
       <path d={faint.join(" ")} fill="none" strokeWidth={1} className="stroke-line" />
-      <circle cx={START_X} cy={cy(0)} r={4} className="fill-ink" />
+      <circle cx={g.startX} cy={cy(0)} r={4} className="fill-ink" />
       {steps.slice(0, 2).map((step, i) => {
         const x = boxX(i);
         const evaluated = i <= exitRow;
@@ -131,16 +141,21 @@ export function DecisionPath({ steps, chosen, animate = false, className }: Deci
           <g key={step.tier} data-stage={step.tier} data-evaluated={String(evaluated)} className={evaluated ? "" : "opacity-40"}>
             <rect
               x={x}
-              y={cy(i) - BOX_H / 2}
-              width={BOX_W}
-              height={BOX_H}
+              y={cy(i) - g.boxH / 2}
+              width={g.boxW}
+              height={g.boxH}
               className={cn("fill-surface", won ? "stroke-ink" : "stroke-line-strong")}
               strokeWidth={won ? 1.5 : 1}
             />
-            <text x={x + BOX_W / 2} y={cy(i) + 4.5} textAnchor="middle" className="fill-ink font-label text-[13px]">
+            <text x={x + g.boxW / 2} y={compact ? cy(i) - 3 : cy(i) + 4.5} textAnchor="middle" className="fill-ink font-label text-[13px]">
               {step.p === null ? `p ${step.tier} sin dato` : `p ${step.tier} ${fmt(step.p)}`}
             </text>
-            <text x={x + BOX_W + 8} y={cy(i) - 7} className="fill-ink-3 font-mono text-[11px]">
+            <text
+              x={compact ? x + g.boxW / 2 : x + g.boxW + 8}
+              y={compact ? cy(i) + 13 : cy(i) - 7}
+              textAnchor={compact ? "middle" : undefined}
+              className="fill-ink-3 font-label text-[12px]"
+            >
               {`τ ${tau}`}
             </text>
           </g>
@@ -158,8 +173,8 @@ export function DecisionPath({ steps, chosen, animate = false, className }: Deci
             data-chosen={isChosen ? "true" : undefined}
             className={isChosen ? "" : "opacity-40"}
           >
-            <rect x={END_X} y={cy(row) - 7} width={14} height={14} className={isChosen ? (SWATCH[chosen] ?? "fill-ink") : (SWATCH[tier] ?? "fill-line")} />
-            <text x={END_X + 22} y={cy(row) + 4.5} className={cn("fill-ink font-label text-[14px]", isChosen ? "font-semibold" : "")}>
+            <rect x={g.endX} y={cy(row) - 7} width={14} height={14} className={isChosen ? (SWATCH[chosen] ?? "fill-ink") : (SWATCH[tier] ?? "fill-line")} />
+            <text x={g.endX + 22} y={cy(row) + 4.5} className={cn("fill-ink font-label text-[14px]", isChosen ? "font-semibold" : "")}>
               {isChosen ? tierLabel(chosen) : tier}
             </text>
           </g>

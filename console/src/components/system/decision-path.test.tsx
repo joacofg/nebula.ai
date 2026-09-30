@@ -99,4 +99,42 @@ describe("DecisionPath", () => {
     expect(img.querySelector('[data-stage="frontier"]')).toHaveAttribute("data-evaluated", "false");
     expect(img.querySelector("[data-chosen=true]")).toHaveTextContent("local");
   });
+
+  it("draws the τ labels in the sans label face, not the mono one that lacks Greek", () => {
+    render(<DecisionPath steps={[{ tier: "local", p: 0.41, tau: 0.82 }, { tier: "economy", p: 0.95, tau: 0.92 }]} chosen="economy" />);
+    const taus = [...screen.getByRole("img").querySelectorAll("text")].filter((t) => t.textContent?.startsWith("τ"));
+    expect(taus).toHaveLength(2);
+    for (const tau of taus) {
+      expect(tau).toHaveClass("font-label");
+      expect(tau).not.toHaveClass("font-mono");
+    }
+  });
+
+  it("renders the compact layout at its drawn size, with each threshold inside its box", () => {
+    render(
+      <DecisionPath
+        compact
+        steps={[
+          { tier: "local", p: 0.41, tau: 0.82 },
+          { tier: "economy", p: 0.95, tau: 0.92 },
+        ]}
+        chosen="economy"
+      />,
+    );
+    const img = screen.getByRole("img");
+    const [, , viewWidth] = (img.getAttribute("viewBox") ?? "").split(" ").map(Number);
+    expect(Number(img.getAttribute("width"))).toBe(viewWidth);
+    expect(viewWidth).toBeLessThanOrEqual(352);
+    for (const tier of ["local", "economy"]) {
+      const stage = img.querySelector(`[data-stage="${tier}"]`)!;
+      const box = stage.querySelector("rect")!;
+      const tau = [...stage.querySelectorAll("text")].find((t) => t.textContent?.startsWith("τ"))!;
+      const left = Number(box.getAttribute("x"));
+      const x = Number(tau.getAttribute("x"));
+      expect(x).toBeGreaterThan(left);
+      expect(x).toBeLessThan(left + Number(box.getAttribute("width")));
+    }
+    expect(img).toHaveAccessibleName("Decisión: local descartado (0.41 < 0.82), economy elegido (0.95 ≥ 0.92)");
+  });
 });
+
