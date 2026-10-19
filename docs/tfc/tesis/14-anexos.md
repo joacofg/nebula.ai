@@ -24,7 +24,7 @@ test de la suite (archivo y nombre) o un reporte versionado del repositorio.
 | CP-13 | Objetivo de calidad por tenant | vectores distintos con objetivo fijo; objetivo por encima de todo punto medido | el nivel sigue al vector; un objetivo de 1.0 manda al frontier | se cumple | P | `tests/test_learned_routing.py::test_learned_router_picks_the_tier_from_the_vector`, `::test_quality_target_above_every_point_routes_to_frontier` |
 | CP-14 | Cabeceras `X-Nebula-*` | pedidos por cada ruta | presentes y coherentes con el ledger | presentes y coherentes | P | `tests/test_response_headers.py::test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_parity` |
 | CP-15 | Replay de la consola | archivo de replay empaquetado | coincide con el artefacto | coincide | P | `tests/test_evaluation_api.py::test_the_packaged_replay_matches_the_artifact` |
-| CP-16 | Extremo a extremo de la consola | Playwright contra el stack local | todas las pruebas pasan | fallan `observability.spec.ts` y `playground.spec.ts` (selectores ambiguos, previos a esta etapa) | F | `console/e2e/` |
+| CP-16 | Extremo a extremo de la consola | Playwright contra el stack local | todas las pruebas pasan | pasan los siete archivos, tras corregir los selectores ambiguos de `observability.spec.ts` y `playground.spec.ts` | P | `console/e2e/` |
 | CP-17 | Cifras de la tesis al día | `python -m scripts.thesis.tables --check` | ningún bloque desactualizado | al día | P | `tests/test_thesis_tables.py::test_repo_thesis_is_up_to_date` |
 
 ## Anexo B. Rúbrica y prompt de los jueces

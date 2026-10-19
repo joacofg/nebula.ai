@@ -103,7 +103,7 @@ español como condición para declarar el ground truth "no limitado por los juec
 ### 11.2.2 Casos de prueba
 
 La Tabla 11.3 resume los casos de prueba. La tabla completa, con la entrada y el test o reporte
-que respalda cada caso, está en el Anexo A. La suite automática tiene 453 pruebas del backend (pytest) y 131 de la consola (Vitest), todas en verde al cierre de esta etapa, más siete archivos de pruebas de extremo a extremo con Playwright.
+que respalda cada caso, está en el Anexo A. La suite automática tiene 458 pruebas del backend (pytest) y 182 de la consola (Vitest), todas en verde en la última corrida (19 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
 
 **Tabla 11.3.** Casos de prueba (P = pasó, F = falló).
 
@@ -124,14 +124,15 @@ que respalda cada caso, está en el Anexo A. La suite automática tiene 453 prue
 | CP-13 | Objetivo de calidad por tenant | el nivel sigue al vector con el objetivo fijo; un objetivo de 1.0 manda al frontier | se cumple; el reparto por objetivo es el de la Tabla 11.8 | P |
 | CP-14 | Cabeceras `X-Nebula-*` en cada ruta | presentes y coherentes con el ledger | presentes | P |
 | CP-15 | Replay de la consola | coincide con el artefacto del router | coincide | P |
-| CP-16 | Pruebas de extremo a extremo de la consola | todas pasan | 2 fallan (observabilidad, playground) | F |
+| CP-16 | Pruebas de extremo a extremo de la consola | todas pasan | pasan los siete archivos | P |
 | CP-17 | Cifras de la tesis al día con los reportes | ningún bloque desactualizado | al día | P |
 
 Los casos en F merecen una lectura. CP-04 y CP-07 son resultados negativos esperables y útiles:
 muestran que la regla anterior y la métrica anterior no servían, que es el motivo del trabajo.
-CP-05 es el que hay que discutir con más cuidado, y se retoma en 11.2.4 y 11.2.5. CP-16 son dos
-pruebas de la consola con selectores ambiguos, que ya fallaban antes de esta etapa y se corrigen
-junto con el rediseño de la interfaz; no afectan al gateway ni a la evaluación.
+CP-05 es el que hay que discutir con más cuidado, y se retoma en 11.2.4 y 11.2.5. CP-16 llegó a
+fallar: dos pruebas de la consola usaban selectores ambiguos, que encontraban varios elementos. Se
+reescribieron con roles accesibles y nombres exactos junto con el rediseño de la interfaz, y desde
+entonces pasan los siete archivos.
 
 ### 11.2.3 Resultados
 
