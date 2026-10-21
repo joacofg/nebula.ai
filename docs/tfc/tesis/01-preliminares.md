@@ -12,13 +12,17 @@ Ingeniería en Informática
 gateways de LLM self-hosted**
 
 Alumno: Joaquín Fernández de Gamboa
-Tutor: Prof. Adrián Tozzi
+Tutor: Ing. Adrián Tozzi
 Docente del Taller de Trabajo Final de Carrera: Ing. Sergio Omar Aguilera
 Año: 2026
 
 ## 2. Agradecimientos
 
-> COMPLETAR (Joaquín): agradecimientos.
+Quiero agradecer al Ing. Adrián Tozzi, que aceptó ser el tutor de este trabajo y lo orientó con sus
+sugerencias, y al Ing. Sergio Omar Aguilera, que acompañó desde el Taller de Trabajo Final de
+Carrera cada etapa, de la idea directriz a las conclusiones, con correcciones que mejoraron el
+resultado. Agradezco también a la Universidad de Belgrano y a los docentes de la carrera, y a mi
+familia, por el apoyo durante estos años.
 
 ## 4. Organización del documento
 
@@ -42,6 +46,5 @@ trabajo; el Anexo D explica cómo reproducirlas.
 **Autor.** Joaquín Fernández de Gamboa. Estudiante de Ingeniería en Informática, Universidad de
 Belgrano. joaquin.fernandez@comunidad.ub.edu.ar
 
-**Tutor.** Prof. Adrián Tozzi.
-
-> COMPLETAR (Joaquín): título, cargo o asignatura y mail del tutor.
+**Tutor.** Ing. Adrián Tozzi. Docente de Sistemas Inteligentes, Universidad de Belgrano.
+adrian.tozzi@comunidad.ub.edu.ar
