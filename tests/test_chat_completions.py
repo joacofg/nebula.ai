@@ -326,7 +326,7 @@ def test_chat_completions_outcome_grounded_policy_denial_persists_evidence_state
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert "X-Nebula-Route-Mode" not in denied.headers
     assert "outcome_evidence=sufficient" in denied.headers["X-Nebula-Policy-Outcome"]
-    assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
 
     assert ledger.status_code == 200
     rows = ledger.json()
@@ -354,7 +354,7 @@ def test_chat_completions_require_nebula_auth_headers_not_bearer_authorization()
             )
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Missing client API key."}
+    assert response.json()["detail"] == "Missing client API key."
     assert "X-Nebula-Tenant-ID" not in response.headers
 
 

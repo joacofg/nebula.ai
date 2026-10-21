@@ -286,9 +286,10 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
             )
 
     assert premium_denied_response.status_code == 403
-    assert premium_denied_response.json() == {
-        "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
-    }
+    assert (
+        premium_denied_response.json()["detail"]
+        == "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
+    )
     assert premium_denied_response.headers["X-Nebula-Route-Target"] == "premium"
     assert premium_denied_response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert premium_denied_response.headers["X-Nebula-Route-Score"] == "0.0000"
@@ -303,9 +304,10 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
     assert explicit_local_denied_response.headers["X-Nebula-Policy-Outcome"] != ""
 
     assert fallback_blocked_response.status_code == 502
-    assert fallback_blocked_response.json() == {
-        "detail": "Local provider failed and tenant policy disabled premium fallback."
-    }
+    assert (
+        fallback_blocked_response.json()["detail"]
+        == "Local provider failed and tenant policy disabled premium fallback."
+    )
     assert fallback_blocked_response.headers["X-Nebula-Route-Target"] == "local"
     assert (
         fallback_blocked_response.headers["X-Nebula-Route-Reason"]

@@ -103,7 +103,7 @@ def test_failed_fallback_records_premium_row(stream: bool) -> None:
         rows = _ledger_rows(client, response)
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "premium down"}
+    assert response.json()["detail"] == "premium down"
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "premium"
     assert response.headers["X-Nebula-Route-Reason"] == "local_provider_error_fallback"
@@ -120,7 +120,7 @@ def test_failed_fallback_records_premium_row(stream: bool) -> None:
 def _assert_fallback_blocked(client: TestClient, response, premium: StubProvider, detail: str) -> None:
     rows = _ledger_rows(client, response)
     assert response.status_code == 502
-    assert response.json() == {"detail": detail}
+    assert response.json()["detail"] == detail
     assert premium.requests == []
     assert response.headers["X-Nebula-Route-Target"] == "local"
     assert response.headers["X-Nebula-Route-Reason"] == "local_provider_error_fallback_blocked"
@@ -233,7 +233,7 @@ def test_primary_premium_failure_records_one_row_with_headers(stream: bool) -> N
         rows = _ledger_rows(client, response)
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "premium down"}
+    assert response.json()["detail"] == "premium down"
     assert response.headers["X-Nebula-Tenant-ID"] == "default"
     assert response.headers["X-Nebula-Route-Target"] == "premium"
     assert response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"

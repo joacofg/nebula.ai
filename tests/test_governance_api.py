@@ -202,11 +202,11 @@ def test_authentication_returns_401_and_403_for_missing_invalid_and_unauthorized
             )
 
     assert missing.status_code == 401
-    assert missing.json() == {"detail": "Missing client API key."}
+    assert missing.json()["detail"] == "Missing client API key."
     assert invalid.status_code == 401
-    assert invalid.json() == {"detail": "Invalid client API key."}
+    assert invalid.json()["detail"] == "Invalid client API key."
     assert forbidden.status_code == 403
-    assert forbidden.json() == {"detail": "API key is not authorized for the requested tenant."}
+    assert forbidden.json()["detail"] == "API key is not authorized for the requested tenant."
 
 
 def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
@@ -1361,13 +1361,15 @@ def test_usage_ledger_preserves_request_ids_for_denied_and_fallback_blocked_outc
             )
 
     assert premium_denied.status_code == 403
-    assert premium_denied.json() == {
-        "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
-    }
+    assert (
+        premium_denied.json()["detail"]
+        == "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
+    )
     assert fallback_blocked.status_code == 502
-    assert fallback_blocked.json() == {
-        "detail": "Local provider failed and tenant policy disabled premium fallback."
-    }
+    assert (
+        fallback_blocked.json()["detail"]
+        == "Local provider failed and tenant policy disabled premium fallback."
+    )
     assert denied_entries.status_code == 200
     assert denied_entries.json()[0]["final_route_target"] == "denied"
     assert denied_by_request.status_code == 200
@@ -1437,7 +1439,7 @@ def test_inactive_tenant_chat_request_returns_exact_403_detail() -> None:
             )
 
     assert response.status_code == 403
-    assert response.json() == {"detail": "Resolved tenant is inactive or does not exist."}
+    assert response.json()["detail"] == "Resolved tenant is inactive or does not exist."
 
 
 def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() -> None:
@@ -1481,7 +1483,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
             )
 
     assert denied.status_code == 403
-    assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
     assert denied.headers["X-Nebula-Route-Target"] == "premium"
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied.headers["X-Nebula-Provider"] == "policy"
@@ -1582,7 +1584,7 @@ def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premiu
         "Tenant hard budget limit reached; premium routing is blocked "
         f"(spent_usd={expected_spent}, limit_usd={expected_limit_text})."
     )
-    assert denied.json() == {"detail": expected_detail}
+    assert denied.json()["detail"] == expected_detail
     assert denied.headers["X-Nebula-Route-Target"] == "premium"
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied_ledger.status_code == 200

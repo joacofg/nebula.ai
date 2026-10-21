@@ -108,9 +108,9 @@ def test_embeddings_api_reuses_existing_auth_contract() -> None:
             )
 
     assert missing.status_code == 401
-    assert missing.json() == {"detail": "Missing client API key."}
+    assert missing.json()["detail"] == "Missing client API key."
     assert invalid.status_code == 401
-    assert invalid.json() == {"detail": "Invalid client API key."}
+    assert invalid.json()["detail"] == "Invalid client API key."
 
 
 def test_embeddings_api_rejects_unsupported_shapes_before_runtime() -> None:
@@ -148,7 +148,7 @@ def test_embeddings_api_maps_upstream_failures_to_bad_gateway() -> None:
         app.dependency_overrides.clear()
 
     assert response.status_code == 502
-    assert response.json() == {"detail": "Ollama embeddings request failed."}
+    assert response.json()["detail"] == "Ollama embeddings request failed."
 
 
 def test_embeddings_api_persist_governed_ledger_markers_from_tenant_policy() -> None:

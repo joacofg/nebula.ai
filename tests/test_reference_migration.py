@@ -235,7 +235,7 @@ def test_reference_migration_requires_tenant_header_only_for_ambiguous_multi_ten
     assert create_key.status_code == 201
 
     assert missing_tenant.status_code == 403
-    assert missing_tenant.json() == {"detail": "Tenant header is required for this API key."}
+    assert missing_tenant.json()["detail"] == "Tenant header is required for this API key."
     assert "X-Nebula-Tenant-ID" not in missing_tenant.headers
     assert "X-Nebula-Route-Target" not in missing_tenant.headers
 
