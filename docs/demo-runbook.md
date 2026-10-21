@@ -40,7 +40,7 @@ The manual checklist below is the fallback if the script stops on a check.
 4. `make run` (in its own terminal) — wait for "Application startup complete"; `curl -s localhost:8000/health/dependencies` all healthy.
 5. `make console-dev` (in its own terminal) — open http://localhost:3000, sign in with admin key.
    ⚠️ Session is memory-only: do NOT reload the tab mid-demo (you'd be logged out).
-6. Fresh data: `python scripts/seed_demo_data.py` (idempotent; ~2 min).
+6. Fresh data: `python scripts/seed_demo_data.py` (idempotent; ~2 min). An existing tenant and active key are reused; if the demo key was revoked the script stops with instructions instead of seeding (see the last row of Troubleshooting).
 7. Keep a terminal visible with `curl` ready (recovery + wow moments).
 
 ## The story (5–10 min)
@@ -104,3 +104,4 @@ held-out accuracy (that is the nested estimate in `benchmarks/router/v1/report.m
 | Beat 2/3 unexpectedly routes cache | You skipped the cache-reset step; any prompt sent before the demo is cached. Use a fresh variation of the prompt (different topic, keep/omit the hint keyword accordingly). |
 | Everything on fire | Terminal fallback: the Beat 6 curl works with just the gateway up and demonstrates the full routing story headlessly. |
 | Gateway fails at startup with "Can't locate revision identified by ..." | The local database predates the September 2026 migration collapse. Delete `.nebula/nebula.db`, run `make migrate`, then re-run `scripts/seed_demo_data.py`. |
+| `seed_demo_data.py` stops with "La clave de demo fue revocada…", or `make demo` prints "api key acme-demo-key: revocada" | The demo key was revoked, and the gateway keeps a revoked key's secret, so it cannot be created again. `make demo` still launches (the Playground does not use that key) but the seed cannot send traffic. Delete `.nebula/nebula.db`, run `make migrate`, then run `make demo` again. |

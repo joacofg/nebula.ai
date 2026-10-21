@@ -1694,8 +1694,10 @@ def test_creating_an_api_key_with_an_existing_secret_returns_409() -> None:
         with TestClient(app) as client:
             _create_tenant(client, "acme")
             first = _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
-            duplicate = _create_key(client, name="second", tenant_id="acme", key="shared-secret-key")
-            keys = client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
+            duplicate = _create_key(
+                client, name="second", tenant_id="acme", key="shared-secret-key"
+            )
+            keys =client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
 
     assert first.status_code == 201
     assert duplicate.status_code == 409
@@ -1733,12 +1735,65 @@ def test_creating_an_api_key_for_an_unknown_tenant_returns_404() -> None:
     assert by_allowed_list.json() == {"detail": "Unknown tenant: ghost"}
 
 
+def test_creating_an_api_key_for_a_tenant_missing_from_its_allowed_list_returns_404() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "a")
+            response = _create_key(client, name="k", tenant_id="ghost", allowed_tenant_ids=["a"])
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_an_unknown_tenant_wins_over_a_duplicate_secret() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            response = _create_key(
+                client, name="second", tenant_id="ghost", key="shared-secret-key"
+            )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_a_duplicate_secret_that_slips_past_the_check_is_still_a_409(monkeypatch) -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            # Simulates a concurrent create: the other request inserts between the
+            # duplicate check and the commit, so only the unique constraint sees it.
+            store = app.state.container.governance_store
+            monkeypatch.setattr(store, "find_api_key_by_secret", lambda *args, **kwargs: None)
+            raced = _create_key(client, name="second", tenant_id="acme", key="shared-secret-key")
+
+    assert raced.status_code == 409
+    assert raced.json() == {"detail": "An API key with this secret already exists."}
+
+
+def test_creating_an_api_key_bound_to_no_tenant_returns_422() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            omitted = _create_key(client, name="loose")
+            empty = _create_key(client, name="loose", tenant_id=None, allowed_tenant_ids=[])
+
+    expected = {"detail": "API keys must be bound to at least one tenant."}
+    assert omitted.status_code == 422
+    assert omitted.json() == expected
+    assert empty.status_code == 422
+    assert empty.json() == expected
+
+
 def test_listing_api_keys_by_tenant_includes_keys_scoped_through_allowed_tenant_ids() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
             for tenant_id in ("a", "b", "c"):
                 _create_tenant(client, tenant_id)
-            shared = _create_key(client, name="shared", tenant_id=None, allowed_tenant_ids=["a", "b"])
+            shared = _create_key(
+                client, name="shared", tenant_id=None, allowed_tenant_ids=["a", "b"]
+            )
             own_b = _create_key(client, name="own-b", tenant_id="b")
             _create_key(client, name="own-c", tenant_id="c")
             for_b = client.get("/v1/admin/api-keys?tenant_id=b", headers=admin_headers())

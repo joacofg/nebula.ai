@@ -31,6 +31,7 @@ from nebula.services.governance_store import (
     ApiKeyAlreadyExistsError,
     TenantAlreadyExistsError,
     UnknownTenantError,
+    UnscopedApiKeyError,
 )
 
 router = APIRouter(prefix="/admin", tags=["admin"])
@@ -223,6 +224,8 @@ async def create_api_key(
             allowed_tenant_ids=payload.allowed_tenant_ids,
             raw_key=payload.key,
         )
+    except UnscopedApiKeyError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
     except UnknownTenantError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except ApiKeyAlreadyExistsError as error:

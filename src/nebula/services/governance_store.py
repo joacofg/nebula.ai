@@ -9,6 +9,7 @@ from threading import RLock
 from uuid import uuid4
 
 from sqlalchemy import delete, func, inspect, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from nebula.core.config import Settings
@@ -33,8 +34,12 @@ class UnknownTenantError(ValueError):
     """A key was scoped to a tenant that does not exist; the message is safe to return."""
 
 
+class UnscopedApiKeyError(ValueError):
+    """A key was requested without any tenant; the message is safe to return."""
+
+
 class ApiKeyAlreadyExistsError(ValueError):
-    """A key row (revoked or not) already owns this secret's hash; the message is safe to return."""
+    """A key row, revoked or not, already owns this secret; the message is safe to return."""
 
 
 @dataclass(slots=True, frozen=True)
@@ -240,19 +245,16 @@ class GovernanceStore:
         raw_key: str | None = None,
     ) -> tuple[ApiKeyRecord, str]:
         if tenant_id is None and not allowed_tenant_ids:
-            raise ValueError("API keys must be bound to at least one tenant.")
+            raise UnscopedApiKeyError("API keys must be bound to at least one tenant.")
         resolved_allowed_tenant_ids = allowed_tenant_ids or ([tenant_id] if tenant_id else [])
+        self._require_tenants([*resolved_allowed_tenant_ids, *([tenant_id] if tenant_id else [])])
         now = self._now()
         secret = raw_key or f"nbk_{secrets.token_urlsafe(24)}"
-        # The hash is unique across revoked rows too, so a revoked key still owns its secret.
-        if self.find_api_key_by_secret(secret, include_revoked=True) is not None:
+        # A generated secret cannot collide. A supplied one can, and the hash is unique across
+        # revoked rows too, so a revoked key still owns its secret.
+        if raw_key and self.find_api_key_by_secret(raw_key, include_revoked=True) is not None:
             raise ApiKeyAlreadyExistsError("An API key with this secret already exists.")
         with self._session() as session:
-            for allowed_tenant_id in resolved_allowed_tenant_ids:
-                if session.get(TenantModel, allowed_tenant_id) is None:
-                    raise UnknownTenantError(f"Unknown tenant: {allowed_tenant_id}")
-            if tenant_id and session.get(TenantModel, tenant_id) is None:
-                raise UnknownTenantError(f"Unknown tenant: {tenant_id}")
             api_key = ApiKeyModel(
                 id=str(uuid4()),
                 name=name,
@@ -265,10 +267,23 @@ class GovernanceStore:
                 updated_at=now,
             )
             session.add(api_key)
-            session.commit()
+            try:
+                session.commit()
+            except IntegrityError as error:
+                # Another request stored this secret after the check above. key_hash is the
+                # only unique column an insert with validated tenants can violate.
+                raise ApiKeyAlreadyExistsError(
+                    "An API key with this secret already exists."
+                ) from error
         stored = self.find_api_key(secret)
         assert stored is not None
         return stored.to_record(), secret
+
+    def _require_tenants(self, tenant_ids: list[str]) -> None:
+        with self._session() as session:
+            for tenant_id in tenant_ids:
+                if session.get(TenantModel, tenant_id) is None:
+                    raise UnknownTenantError(f"Unknown tenant: {tenant_id}")
 
     def ensure_api_key(
         self,
@@ -279,7 +294,7 @@ class GovernanceStore:
         allowed_tenant_ids: list[str],
     ) -> ApiKeyRecord:
         # A revoked row still owns its hash (unique), so it counts as found:
-        # inserting the same secret again would only raise IntegrityError.
+        # inserting the same secret again would only raise ApiKeyAlreadyExistsError.
         stored = self.find_api_key_by_secret(raw_key, include_revoked=True)
         if stored is not None:
             return stored.to_record()
@@ -307,14 +322,16 @@ class GovernanceStore:
 
     def list_api_keys(self, tenant_id: str | None = None) -> list[ApiKeyRecord]:
         with self._session() as session:
-            rows = session.scalars(select(ApiKeyModel).order_by(ApiKeyModel.created_at.desc())).all()
+            stmt = select(ApiKeyModel).order_by(ApiKeyModel.created_at.desc())
+            rows = session.scalars(stmt).all()
             if tenant_id:
                 # allowed_tenant_ids is a JSON column, so match it here rather than in SQL;
                 # a key scoped only through that list has no tenant_id of its own.
                 rows = [
                     row
                     for row in rows
-                    if row.tenant_id == tenant_id or tenant_id in (row.allowed_tenant_ids_json or [])
+                    if tenant_id == row.tenant_id
+                    or tenant_id in (row.allowed_tenant_ids_json or [])
                 ]
             return [self._stored_api_key_from_model(row).to_record() for row in rows]
 
