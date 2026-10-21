@@ -11,7 +11,7 @@ from uuid import uuid4
 from fastapi import HTTPException, status
 
 from nebula.core.config import Settings
-from nebula.models.governance import UsageLedgerRecord
+from nebula.models.governance import TerminalStatus, UsageLedgerRecord
 from nebula.models.openai import (
     ChatCompletionChunk,
     ChatCompletionChunkChoice,
@@ -862,14 +862,11 @@ class ChatService:
         response_model: str | None,
         usage: CompletionUsage | None,
         latency_ms: float | None,
-        terminal_status: Literal[
-            "completed",
-            "cache_hit",
-            "fallback_completed",
-            "provider_error",
-            "client_disconnected",
-        ],
+        terminal_status: TerminalStatus,
     ) -> None:
+        # Must never await anything that can suspend: the stream wrapper calls this from a
+        # `finally` that runs during cancellation or generator close, where a suspension can
+        # be cut short before the row is written.
         estimated_cost = 0.0
         if metadata.route_target == "premium":
             effective_model = response_model or request.model
@@ -1128,13 +1125,7 @@ class ChatService:
             # Any exit that is not a normal end or a provider failure (GeneratorExit when the
             # generator is closed, CancelledError when the serving task is cancelled) means the
             # client went away mid-stream.
-            terminal_status: Literal[
-                "completed",
-                "cache_hit",
-                "fallback_completed",
-                "provider_error",
-                "client_disconnected",
-            ] = "client_disconnected"
+            terminal_status: TerminalStatus = "client_disconnected"
             try:
                 async for event in stream:
                     model = self._extract_model_from_sse(event)
