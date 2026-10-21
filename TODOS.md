@@ -6,14 +6,15 @@
 **Priority:** P2
 **Detail:** Mobile nav toggle below `lg`; componentize ~22 duplicated rose error banners; wire or delete dead tokens `--color-success`/`--color-danger` and unify rose-vs-pink danger; consolidate 76 magic `tracking-[…]` values into a token; trim happy-talk page headers; replace login 3-column feature grid; modal focus trap (Escape done); skeleton loading states; form label casing (id/name/Description/active — asserted in tests). Full report: `~/.gstack/projects/joacofg-nebula.ai/designs/design-audit-20260713/`.
 
-## Backend / API
-
-### Admin create endpoints return 500 instead of 409 on duplicates
-**Priority:** P2
-**Noticed:** demo-polish rehearsal, 2026-07-16.
-**Detail:** `POST /v1/admin/tenants` with an existing tenant id raises `ValueError("Tenant already exists")` (`src/nebula/services/governance_store.py:154`) which surfaces as HTTP 500; `create_api_key` has no duplicate guard at all. Both should return 409 with a clear detail message. Also: the api-key existence check in `scripts/seed_demo_data.py` matches revoked keys because `list_api_keys` doesn't filter `revoked_at` — fix alongside the 409 work.
-
 ## Completed
+
+### Admin create endpoints returned 500 instead of 409 on duplicates
+**Priority:** P2
+**Completed:** 2026-10-21
+**Resolution:** The store raises typed errors that the admin routes map to
+409 (duplicate tenant id or API-key secret), 404 (unknown tenant) and 422 (key
+scoped to no tenant). `scripts/seed_demo_data.py` now recognises a revoked demo
+key instead of treating it as missing.
 
 ### `budget_penalty` was a dead routing signal
 **Priority:** P2

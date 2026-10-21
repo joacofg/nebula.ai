@@ -52,6 +52,8 @@ The supported self-hosted profile is already encoded in the template:
 - `NEBULA_DEFAULT_MODEL=nebula-auto`
 - `NEBULA_QDRANT_URL=http://qdrant:6333`
 
+`NEBULA_RUNTIME_PROFILE` does not change how requests are routed. It only gates startup validation: outside `NEBULA_ENV=local` the gateway refuses to start unless the profile is `premium_first`. The active profile is also reported by `/health/ready`.
+
 `NEBULA_ADMIN_API_KEY` is required for the operator console login flow.
 
 For the supported first request and credential split, continue with [`quickstart.md`](quickstart.md).
@@ -101,7 +103,7 @@ Paste `NEBULA_ADMIN_API_KEY` into the login screen. The console keeps the key in
 
 This topology is designed for product proof and pilot evaluation:
 
-- premium-first routing with explicit fallbacks
+- routing between a local model and a premium provider, with explicit fallbacks
 - operator-visible governance and policy controls
 - semantic caching through Qdrant
 - benchmark and demo flows that use the same runtime shape as the deployed gateway
@@ -127,3 +129,7 @@ This topology is designed for product proof and pilot evaluation:
 ## Rate limiting and process count
 
 Per-tenant rate limits are enforced in memory by the gateway process. Keep the gateway at one uvicorn process (the default in `docker-compose.selfhosted.yml`); with several processes each keeps its own counters and a tenant's effective limit multiplies.
+
+## Budgets
+
+A tenant's soft and hard budgets (`soft_budget_usd`, `hard_budget_limit_usd`) are checked against the estimated cost of that tenant's ledger rows that still exist. Each row is deleted once its evidence retention window expires (`evidence_retention_window` in the tenant policy: `24h`, `7d`, `30d` by default, or `90d`; the window in force when the row was written applies), so a budget behaves as a rolling budget over that window, not as a calendar-month or lifetime cap. With `NEBULA_RETENTION_CLEANUP_ENABLED=false` nothing expires and the budget becomes a lifetime total.
