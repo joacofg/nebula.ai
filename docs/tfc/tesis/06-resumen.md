@@ -1,50 +1,24 @@
 # 6. Resumen
 
-Los equipos que integran modelos de lenguaje de gran escala en sus productos suelen elegir un modelo
-premium y usarlo para todo el tráfico. Así pagan el precio más alto también por consultas que un
-modelo más barato, o uno local, resolvería igual de bien. Los gateways de IA que existen ya rutean
-entre proveedores, hacen fallback y cachean respuestas, pero deciden con reglas que escribe el
-operador y no miden si lo que sirvieron por la ruta barata le sirvió a quien lo pidió.
-
-Este trabajo presenta Nebula, un gateway de IA self-hosted que decide, consulta por consulta, qué
-modelo la atiende. La hipótesis es que un gateway así puede reducir el gasto en inferencia premium
-en al menos un 30 % respecto de mandar todo al modelo premium, manteniendo una tasa de respuestas
-aceptables no más de 5 puntos por debajo de la de esa línea base.
-
-El gateway expone una API compatible con la de OpenAI, aplica la política de cada cliente (tenant),
-consulta un caché semántico aislado por tenant y elige entre tres niveles: un modelo local
-(qwen2.5:7b, servido con Ollama), un modelo premium económico (claude-haiku-4.5) y un modelo
-premium frontier (gpt-4.1). La decisión la toma un router aprendido: dos regresiones logísticas
-estiman, a partir del embedding del prompt, la probabilidad de que la respuesta del modelo local y
-la del económico puedan reemplazar a la del frontier, y una cascada sobre dos umbrales elige el
-nivel más barato que alcanza. Cada par de umbrales es un punto de una frontera costo–calidad, y el
-operador elige el de cada tenant declarando la calidad que necesita, desde una consola que simula
-el efecto antes de aplicarlo.
-
-Para entrenar y evaluar el router hubo que construir la evidencia. Se armó un corpus de 1000
-prompts en español y 250 en inglés, a partir de tres conjuntos de datos públicos, y cuatro modelos
-respondieron cada uno. La calidad se definió como sustituibilidad: si la respuesta barata podría
-haber reemplazado a la del frontier sin que quien preguntó quedara peor. La similitud coseno, la
-métrica propuesta al inicio, resultó no distinguir calidad (AUC 0.25 contra un lector humano), así
-que el instrumento pasó a ser un ensamble de dos jueces LLM de otras familias, con reglas fijadas en
-un pre-registro y validado contra el lector humano antes de usarlo. Los jueces coincidieron con el
-lector en el 82 % de los pares en español; en los desacuerdos fueron más estrictos que el lector
-(siete veces contra dos), así que la calidad que miden tiende a subestimarse.
-
-El router se evaluó con una estimación anidada, que no deja que un prompt influya en los parámetros
-que lo rutean. Con el objetivo de calidad en 0.95 entrega una calidad de 0.957 y gasta USD 1.70
-cada mil prompts, un 31 % menos que mandar todo al frontier (intervalo del 95 %: 28 % a 35 %) y un
-17 % menos que una mezcla aleatoria de niveles de igual calidad. La hipótesis se verifica, y con
-una medición conservadora: los jueces son más exigentes que el lector humano, y el caché, que no
-aporta en un corpus sin consultas repetidas, sumaría ahorro en tráfico real. La heurística que usaba
-la versión anterior, que en la suite de escenarios ahorraba un 40 %, resultó tener sobre el corpus
-la calidad de mandar todo al modelo local. El ahorro se paga en latencia (21.3 s de mediana del modelo local contra 2.5 s del frontier)
-y es menor en español que en inglés.
-
-El trabajo aporta un gateway self-hosted funcional, un router con una frontera costo–calidad
-operable, un corpus bilingüe con etiquetas validadas contra una persona y un procedimiento
-reproducible para rehacer la evidencia. Quedan como líneas futuras un segundo evaluador humano, el
-aprendizaje en línea del router y la evaluación del caché sobre tráfico con repetición.
+Los equipos que construyen productos sobre modelos de lenguaje grandes suelen elegir un modelo
+premium y mandarle todo el tráfico, aunque muchas consultas las resolvería igual de bien un modelo
+más barato o uno local. Los gateways de IA existentes rutean, hacen fallback y cachean, pero deciden
+con reglas que escribe el operador y no miden si lo que sirvieron por la ruta barata alcanzaba. Este
+trabajo presenta Nebula, un gateway de IA self-hosted que elige, consulta por consulta, entre un
+modelo local (qwen2.5:7b), uno premium económico (claude-haiku-4.5) y uno frontier (gpt-4.1) con un
+router aprendido: dos regresiones logísticas sobre el embedding del prompt estiman si la respuesta
+de cada nivel barato podría reemplazar a la del frontier, y una cascada sobre dos umbrales elige el
+nivel más barato que alcanza. El operador elige para cada tenant un punto de la frontera
+costo–calidad. Para entrenar y evaluar el router, cuatro modelos respondieron un corpus de 1000
+prompts en español y 250 en inglés, y un ensamble de dos jueces LLM de otras familias, validado
+contra un lector humano con reglas pre-registradas, juzgó las respuestas. La similitud coseno, la
+métrica propuesta al inicio, no distinguía calidad (AUC 0.25). En una estimación anidada con el
+objetivo de calidad en 0.95, el router logra una calidad de 0.957 a USD 1.70 cada mil prompts: un 31
+% menos que mandar todo al frontier (IC 95 % 28–35 %) y un 17 % menos que una mezcla aleatoria de
+niveles de igual calidad. La hipótesis, al menos un 30 % de ahorro con una caída no mayor a 5 puntos
+en las respuestas aceptables, se verifica, y la medición es conservadora: los jueces son más
+estrictos que el lector humano, y el caché semántico, que no aporta en un corpus sin consultas
+repetidas, sumaría ahorro en tráfico real.
 
 **Palabras clave:** gateway de IA, enrutamiento de modelos, caché semántico, LLM como juez,
 optimización de costos, self-hosted.
