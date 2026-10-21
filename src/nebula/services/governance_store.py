@@ -92,21 +92,18 @@ class GovernanceStore:
         self.engine.dispose()
 
     def ensure_bootstrap(self) -> None:
-        self.create_tenant(
-            tenant_id=self.settings.bootstrap_tenant_id,
-            name=self.settings.bootstrap_tenant_name,
-            description="Bootstrap workspace for local development and smoke tests.",
-            metadata={"bootstrap": True},
-            active=True,
-            policy=self.default_policy(),
-            upsert=True,
-        )
-        self.ensure_api_key(
-            raw_key=self.settings.bootstrap_api_key,
-            name=self.settings.bootstrap_api_key_name,
-            tenant_id=self.settings.bootstrap_tenant_id,
-            allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
-        )
+        # Runs on every startup: an existing tenant keeps whatever the operator
+        # changed (name, active flag, policy); only a missing one is seeded.
+        if self.get_tenant(self.settings.bootstrap_tenant_id) is None:
+            self.create_tenant(
+                tenant_id=self.settings.bootstrap_tenant_id,
+                name=self.settings.bootstrap_tenant_name,
+                description="Bootstrap workspace for local development and smoke tests.",
+                metadata={"bootstrap": True},
+                active=True,
+                policy=self.default_policy(),
+            )
+        self.operator_api_key()
 
     def default_policy(self) -> TenantPolicy:
         allowed = [self.settings.premium_model]
@@ -266,7 +263,9 @@ class GovernanceStore:
         tenant_id: str | None,
         allowed_tenant_ids: list[str],
     ) -> ApiKeyRecord:
-        stored = self.find_api_key(raw_key)
+        # A revoked row still owns its hash (unique), so it counts as found:
+        # inserting the same secret again would only raise IntegrityError.
+        stored = self.find_api_key_by_secret(raw_key, include_revoked=True)
         if stored is not None:
             return stored.to_record()
         record, _ = self.create_api_key(
@@ -276,6 +275,20 @@ class GovernanceStore:
             raw_key=raw_key,
         )
         return record
+
+    def operator_api_key(self) -> ApiKeyRecord:
+        """The bootstrap key record that operator flows run under, revoked or not.
+
+        Operator flows (admin recommendations, simulation, playground) borrow this
+        record as their tenant context; they never authenticate with it, so a
+        revoked key must not break them. It is created only if no row has its hash.
+        """
+        return self.ensure_api_key(
+            raw_key=self.settings.bootstrap_api_key,
+            name=self.settings.bootstrap_api_key_name,
+            tenant_id=self.settings.bootstrap_tenant_id,
+            allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
+        )
 
     def list_api_keys(self, tenant_id: str | None = None) -> list[ApiKeyRecord]:
         with self._session() as session:
@@ -297,13 +310,17 @@ class GovernanceStore:
             return self._stored_api_key_from_model(row).to_record()
 
     def find_api_key(self, raw_key: str) -> StoredApiKey | None:
+        """The key a client may authenticate with: revoked keys are not found."""
+        return self.find_api_key_by_secret(raw_key, include_revoked=False)
+
+    def find_api_key_by_secret(
+        self, raw_key: str, *, include_revoked: bool
+    ) -> StoredApiKey | None:
         with self._session() as session:
-            row = session.scalar(
-                select(ApiKeyModel).where(
-                    ApiKeyModel.key_hash == self._hash_key(raw_key),
-                    ApiKeyModel.revoked_at.is_(None),
-                )
-            )
+            stmt = select(ApiKeyModel).where(ApiKeyModel.key_hash == self._hash_key(raw_key))
+            if not include_revoked:
+                stmt = stmt.where(ApiKeyModel.revoked_at.is_(None))
+            row = session.scalar(stmt)
             return self._stored_api_key_from_model(row) if row else None
 
     def record_usage(self, record: UsageLedgerRecord) -> UsageLedgerRecord:

@@ -120,12 +120,7 @@ async def get_tenant_recommendations(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
     tenant_context = AuthenticatedTenantContext(
         tenant=tenant,
-        api_key=container.governance_store.ensure_api_key(
-            raw_key=container.settings.bootstrap_api_key,
-            name=container.settings.bootstrap_api_key_name,
-            tenant_id=container.settings.bootstrap_tenant_id,
-            allowed_tenant_ids=[container.settings.bootstrap_tenant_id],
-        ),
+        api_key=container.governance_store.operator_api_key(),
         policy=container.governance_store.get_policy(tenant_id),
     )
     return await container.recommendation_service.build_summary(tenant_context=tenant_context)
@@ -147,21 +142,10 @@ async def simulate_tenant_policy(
                 detail="from_timestamp must be less than or equal to to_timestamp.",
             )
 
-    bootstrap_key = container.governance_store.find_api_key(container.settings.bootstrap_api_key)
-    if bootstrap_key is None:
-        bootstrap_api_key = container.governance_store.ensure_api_key(
-            raw_key=container.settings.bootstrap_api_key,
-            name=container.settings.bootstrap_api_key_name,
-            tenant_id=container.settings.bootstrap_tenant_id,
-            allowed_tenant_ids=[container.settings.bootstrap_tenant_id],
-        )
-    else:
-        bootstrap_api_key = bootstrap_key.to_record()
-
     return await container.policy_simulation_service.simulate(
         tenant_context=AuthenticatedTenantContext(
             tenant=tenant,
-            api_key=bootstrap_api_key,
+            api_key=container.governance_store.operator_api_key(),
             policy=container.governance_store.get_policy(tenant_id),
         ),
         payload=payload,

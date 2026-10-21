@@ -106,19 +106,8 @@ class AuthService:
                 detail="Tenant is inactive.",
             )
 
-        bootstrap_key = self.store.find_api_key(self.settings.bootstrap_api_key)
-        if bootstrap_key is None:
-            bootstrap_record = self.store.ensure_api_key(
-                raw_key=self.settings.bootstrap_api_key,
-                name=self.settings.bootstrap_api_key_name,
-                tenant_id=self.settings.bootstrap_tenant_id,
-                allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
-            )
-        else:
-            bootstrap_record = bootstrap_key.to_record()
-
         return AuthenticatedTenantContext(
             tenant=tenant,
-            api_key=bootstrap_record,
+            api_key=self.store.operator_api_key(),
             policy=self.store.get_policy(tenant.id),
         )

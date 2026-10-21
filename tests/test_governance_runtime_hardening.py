@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 from fastapi import HTTPException
+from fastapi.testclient import TestClient
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
@@ -15,10 +16,12 @@ from nebula.models.governance import (
     TenantRecord,
 )
 from nebula.models.openai import ChatCompletionRequest
+from nebula.providers.base import CompletionResult
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyService
 from nebula.services.router_service import RouterService
+from tests.support import StubProvider, admin_headers, configured_app, usage
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -294,3 +297,109 @@ async def test_hard_budget_evaluate_uses_before_timestamp_for_replay_windows() -
     assert evaluation.denied is True
     assert evaluation.hard_budget_exceeded is True
     assert evaluation.tenant_spend_total == 12.0
+
+
+def test_restart_keeps_bootstrap_tenant_policy() -> None:
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            tenant_id = store.settings.bootstrap_tenant_id
+            store.update_tenant(tenant_id, active=False)
+            store.upsert_policy(
+                tenant_id,
+                store.default_policy().model_copy(
+                    update={
+                        "rate_limit_requests_per_minute": 5,
+                        "routing_quality_target": 0.8,
+                        "hard_budget_limit_usd": 1.0,
+                    }
+                ),
+            )
+
+            store.ensure_bootstrap()
+
+            tenant = store.get_tenant(tenant_id)
+            policy = store.get_policy(tenant_id)
+
+    assert tenant is not None
+    assert tenant.active is False
+    assert policy.rate_limit_requests_per_minute == 5
+    assert policy.routing_quality_target == 0.8
+    assert policy.hard_budget_limit_usd == 1.0
+
+
+def _revoke_bootstrap_key(store: GovernanceStore) -> None:
+    bootstrap = store.find_api_key(store.settings.bootstrap_api_key)
+    assert bootstrap is not None
+    store.revoke_api_key(bootstrap.id)
+
+
+def test_restart_with_revoked_bootstrap_key() -> None:
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            _revoke_bootstrap_key(store)
+
+            store.ensure_bootstrap()
+
+            still_usable = store.find_api_key(store.settings.bootstrap_api_key)
+
+    assert still_usable is None
+
+
+def test_operator_flows_work_with_revoked_bootstrap_key() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="local response",
+                    model="llama3.2:3b",
+                    provider="ollama",
+                    usage=usage(),
+                ),
+            )
+            container.provider_registry.local_provider = container.local_provider
+            _revoke_bootstrap_key(container.governance_store)
+
+            policy = client.get("/v1/admin/tenants/default/policy", headers=admin_headers()).json()
+            recommendations = client.get(
+                "/v1/admin/tenants/default/recommendations", headers=admin_headers()
+            )
+            simulation = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={"candidate_policy": policy},
+            )
+            playground = client.post(
+                "/v1/admin/playground/completions",
+                headers=admin_headers(),
+                json={
+                    "tenant_id": "default",
+                    "model": "nebula-auto",
+                    "messages": [{"role": "user", "content": "hi"}],
+                    "stream": False,
+                },
+            )
+
+    assert recommendations.status_code == 200
+    assert simulation.status_code == 200
+    assert playground.status_code == 200
+
+
+def test_fresh_database_gets_bootstrap_tenant_and_key() -> None:
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            tenant = store.get_tenant(store.settings.bootstrap_tenant_id)
+            policy = store.get_policy(store.settings.bootstrap_tenant_id)
+            key = store.find_api_key(store.settings.bootstrap_api_key)
+
+    assert tenant is not None
+    assert tenant.name == store.settings.bootstrap_tenant_name
+    assert tenant.active is True
+    assert policy == store.default_policy()
+    assert key is not None
+    assert key.revoked_at is None
+    assert key.allowed_tenant_ids == [store.settings.bootstrap_tenant_id]
