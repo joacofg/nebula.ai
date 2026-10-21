@@ -34,11 +34,6 @@ function formatScore(value: unknown) {
   return numericValue.toFixed(2);
 }
 
-function formatBudgetProximity(value: unknown) {
-  const numericValue = typeof value === "number" ? value : Number(value);
-  return Number.isNaN(numericValue) ? null : `${Math.round(numericValue * 100)} %`;
-}
-
 function budgetSection(policyOutcome: string | null | undefined): Section | null {
   if (!policyOutcome) {
     return null;
@@ -118,7 +113,6 @@ function heuristicSection(signals: RouteSignals | null, routeReason: string | nu
       ["Score por tokens", components.token_score],
       ["Bono por palabra clave", components.keyword_bonus],
       ["Bono de política", components.policy_bonus],
-      ["Penalidad de presupuesto", components.budget_penalty],
     ];
     for (const [label, raw] of parts) {
       const value = formatScore(raw);
@@ -146,10 +140,6 @@ function signalsSection(signals: RouteSignals | null): Section | null {
   }
   if (signals.model_constraint !== undefined) {
     items.push({ label: "Restricción de modelo", value: yesNo(Boolean(signals.model_constraint)) });
-  }
-  const proximity = signals.budget_proximity == null ? null : formatBudgetProximity(signals.budget_proximity);
-  if (proximity) {
-    items.push({ label: "Cercanía al presupuesto", value: proximity });
   }
   return items.length ? { title: "Señales", summary: null, items } : null;
 }

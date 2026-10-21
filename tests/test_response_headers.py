@@ -324,7 +324,7 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
     assert ledger_body[0]["final_route_target"] == "local"
     assert ledger_body[0]["route_reason"] == "local_provider_error_fallback_blocked"
     assert ledger_body[0]["terminal_status"] == "provider_error"
-    assert ledger_body[0]["route_signals"]["budget_proximity"] is None
+    assert "budget_proximity" not in ledger_body[0]["route_signals"]
     assert ledger_body[0]["route_signals"]["calibrated_routing"] is True
     assert ledger_body[0]["route_signals"]["complexity_tier"] == "low"
     assert ledger_body[0]["route_signals"]["degraded_routing"] is False
@@ -337,7 +337,6 @@ def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> N
     assert ledger_body[0]["route_signals"]["outcome_evidence"]["eligible_request_count"] == 0
     assert ledger_body[0]["route_signals"]["outcome_evidence"]["excluded_request_count"] == 2
     assert ledger_body[0]["route_signals"]["score_components"] == {
-        "budget_penalty": 0.0,
         "evidence_penalty": 0.05,
         "keyword_bonus": 0.0,
         "outcome_bonus": 0.0,

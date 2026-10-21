@@ -54,13 +54,11 @@ test("operator can inspect request-first outage and recovery truth on observabil
             complexity_tier: "high",
             keyword_match: true,
             model_constraint: false,
-            budget_proximity: 0.2,
             score_components: {
               total_score: 0.88,
               token_score: 0.63,
               keyword_bonus: 0.15,
               policy_bonus: 0.1,
-              budget_penalty: 0,
             },
           },
           message_type: "chat",

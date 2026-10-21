@@ -41,11 +41,10 @@ const heuristicSignals = {
   complexity_tier: "medium",
   keyword_match: true,
   model_constraint: true,
-  budget_proximity: null,
   route_mode: "calibrated",
   calibrated_routing: true,
   degraded_routing: false,
-  score_components: { token_score: 1, keyword_bonus: 0.2, policy_bonus: 0.1, budget_penalty: 0, total_score: 1 },
+  score_components: { token_score: 1, keyword_bonus: 0.2, policy_bonus: 0.1, total_score: 1 },
 };
 
 describe("ledger-request-detail", () => {
@@ -139,9 +138,28 @@ describe("ledger-request-detail", () => {
     expect(group("Score por tokens")).toHaveTextContent("1.00");
     expect(group("Bono por palabra clave")).toHaveTextContent("0.20");
     expect(group("Bono de política")).toHaveTextContent("0.10");
-    expect(group("Penalidad de presupuesto")).toHaveTextContent("0.00");
     expect(group("Tokens contados")).toHaveTextContent("842");
     expect(group("Complejidad")).toHaveTextContent("medium");
+  });
+
+  it("ignores the retired budget keys that older ledger rows still carry", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          route_reason: "token_complexity",
+          route_signals: {
+            ...heuristicSignals,
+            budget_proximity: 0.2,
+            score_components: { ...heuristicSignals.score_components, budget_penalty: 0 },
+          },
+        }}
+      />,
+    );
+    expect(group("Bono de política")).toHaveTextContent("0.10");
+    expect(group("Tokens contados")).toHaveTextContent("842");
+    expect(screen.queryByRole("group", { name: "Penalidad de presupuesto" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Cercanía al presupuesto" })).not.toBeInTheDocument();
   });
 
   it("names degraded, rollout-disabled and unscored heuristic rows", () => {
@@ -151,7 +169,7 @@ describe("ledger-request-detail", () => {
           ...mockEntry,
           route_reason: "token_complexity",
           route_signals: { ...heuristicSignals, route_mode: "degraded", calibrated_routing: false, degraded_routing: true,
-            score_components: { token_score: 0.6, keyword_bonus: 0, policy_bonus: 0, budget_penalty: 0, total_score: 0.6 } },
+            score_components: { token_score: 0.6, keyword_bonus: 0, policy_bonus: 0, total_score: 0.6 } },
         }}
       />,
     );

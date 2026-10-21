@@ -257,7 +257,6 @@ def test_chat_completions_outcome_grounded_request_persists_matching_route_signa
         "token_score": 0.016,
         "keyword_bonus": 0.2,
         "policy_bonus": 0.1,
-        "budget_penalty": 0.0,
         "outcome_bonus": 0.15,
         "evidence_penalty": 0.0,
         "total_score": route_score,
