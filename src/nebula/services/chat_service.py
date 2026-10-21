@@ -87,19 +87,6 @@ class ChatService:
         self.policy_service = policy_service
         self.embeddings_service = embeddings_service
 
-    async def create_completion(
-        self,
-        request: ChatCompletionRequest,
-        tenant_context: AuthenticatedTenantContext,
-        request_id: str | None = None,
-    ) -> ChatCompletionResponse:
-        envelope = await self.create_completion_with_metadata(
-            request,
-            tenant_context=tenant_context,
-            request_id=request_id,
-        )
-        return envelope.response
-
     async def create_completion_with_metadata(
         self,
         request: ChatCompletionRequest,
@@ -260,20 +247,6 @@ class ChatService:
         )
         return CompletionResponseEnvelope(response=response, metadata=metadata)
 
-    async def stream_completion(
-        self,
-        request: ChatCompletionRequest,
-        tenant_context: AuthenticatedTenantContext,
-        request_id: str | None = None,
-    ):
-        envelope = await self.stream_completion_with_metadata(
-            request,
-            tenant_context=tenant_context,
-            request_id=request_id,
-        )
-        async for event in envelope.stream:
-            yield event
-
     async def stream_completion_with_metadata(
         self,
         request: ChatCompletionRequest,
@@ -364,7 +337,7 @@ class ChatService:
                     return message.content
                 return str(message.content)
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="At least one user message is required.",
         )
 

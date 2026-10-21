@@ -49,7 +49,7 @@ async def create_embeddings(
             policy_outcome=str(exc),
         )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
     except EmbeddingsUpstreamError as exc:

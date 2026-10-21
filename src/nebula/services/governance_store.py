@@ -5,7 +5,6 @@ import secrets
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from threading import RLock
 from uuid import uuid4
 
 from sqlalchemy import delete, func, inspect, select
@@ -91,7 +90,6 @@ class GovernanceStore:
     def __init__(self, settings: Settings, session_factory: sessionmaker[Session]) -> None:
         self.settings = settings
         self.session_factory = session_factory
-        self._lock = RLock()
         self.engine = session_factory.kw["bind"]
 
     def initialize(self) -> None:
@@ -147,7 +145,6 @@ class GovernanceStore:
         metadata: dict[str, object],
         active: bool,
         policy: TenantPolicy | None = None,
-        upsert: bool = False,
     ) -> TenantRecord:
         now = self._now()
         with self._session() as session:
@@ -163,12 +160,6 @@ class GovernanceStore:
                     updated_at=now,
                 )
                 session.add(tenant)
-            elif upsert:
-                tenant.name = name
-                tenant.description = description
-                tenant.metadata_json = metadata
-                tenant.active = active
-                tenant.updated_at = now
             else:
                 raise TenantAlreadyExistsError(f"Tenant '{tenant_id}' already exists.")
             session.commit()
@@ -285,27 +276,6 @@ class GovernanceStore:
                 if session.get(TenantModel, tenant_id) is None:
                     raise UnknownTenantError(f"Unknown tenant: {tenant_id}")
 
-    def ensure_api_key(
-        self,
-        *,
-        raw_key: str,
-        name: str,
-        tenant_id: str | None,
-        allowed_tenant_ids: list[str],
-    ) -> ApiKeyRecord:
-        # A revoked row still owns its hash (unique), so it counts as found:
-        # inserting the same secret again would only raise ApiKeyAlreadyExistsError.
-        stored = self.find_api_key_by_secret(raw_key, include_revoked=True)
-        if stored is not None:
-            return stored.to_record()
-        record, _ = self.create_api_key(
-            name=name,
-            tenant_id=tenant_id,
-            allowed_tenant_ids=allowed_tenant_ids,
-            raw_key=raw_key,
-        )
-        return record
-
     def operator_api_key(self) -> ApiKeyRecord:
         """The bootstrap key record that operator flows run under, revoked or not.
 
@@ -313,12 +283,19 @@ class GovernanceStore:
         record as their tenant context; they never authenticate with it, so a
         revoked key must not break them. It is created only if no row has its hash.
         """
-        return self.ensure_api_key(
-            raw_key=self.settings.bootstrap_api_key,
+        raw_key = self.settings.bootstrap_api_key
+        # A revoked row still owns its hash (unique), so it counts as found:
+        # inserting the same secret again would only raise ApiKeyAlreadyExistsError.
+        stored = self.find_api_key_by_secret(raw_key, include_revoked=True)
+        if stored is not None:
+            return stored.to_record()
+        record, _ = self.create_api_key(
             name=self.settings.bootstrap_api_key_name,
             tenant_id=self.settings.bootstrap_tenant_id,
             allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
+            raw_key=raw_key,
         )
+        return record
 
     def list_api_keys(self, tenant_id: str | None = None) -> list[ApiKeyRecord]:
         with self._session() as session:

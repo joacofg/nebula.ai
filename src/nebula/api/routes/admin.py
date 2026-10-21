@@ -147,7 +147,7 @@ async def simulate_tenant_policy(
     if payload.to_timestamp is not None and payload.from_timestamp is not None:
         if payload.from_timestamp > payload.to_timestamp:
             raise HTTPException(
-                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
                 detail="from_timestamp must be less than or equal to to_timestamp.",
             )
 
@@ -225,7 +225,9 @@ async def create_api_key(
             raw_key=payload.key,
         )
     except UnscopedApiKeyError as error:
-        raise HTTPException(status_code=422, detail=str(error)) from error
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(error)
+        ) from error
     except UnknownTenantError as error:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
     except ApiKeyAlreadyExistsError as error:
@@ -276,7 +278,7 @@ async def create_playground_completion(
     if payload.stream:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Playground only supports non-streaming requests in Phase 3.",
+            detail="Playground only supports non-streaming requests.",
         )
 
     tenant_context = container.auth_service.resolve_playground_context(payload.tenant_id)

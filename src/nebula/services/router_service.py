@@ -85,14 +85,6 @@ class RouterService:
         self.settings = settings
         self.learned = learned
 
-    @property
-    def uses_embeddings(self) -> bool:
-        """Whether live routing wants the prompt's embedding (the learned router is loaded)."""
-        return self.learned is not None
-
-    async def choose_target(self, prompt: str, request: ChatCompletionRequest) -> RouteTarget:
-        return (await self.choose_target_with_reason(prompt, request)).target
-
     async def choose_target_for_replay(
         self,
         request: ChatCompletionRequest,
@@ -139,11 +131,6 @@ class RouterService:
             )
             return self._heuristic_with_learned_signal(breakdown, "embedding_dimension_mismatch")
         return self._learned_decision(breakdown, prompt_embedding, policy)
-
-    def resolve_model(self, target: RouteTarget) -> str:
-        if target == "local":
-            return self.settings.local_model
-        return self.settings.premium_model
 
     def _explicit_override_decision(
         self,
@@ -347,8 +334,8 @@ class RouterService:
         )
 
     def _signals_from_breakdown(self, breakdown: CalibratedScoreBreakdown) -> dict[str, Any]:
-        # Keep route_mode for request-level parity and replay; M009 derives the summary-level
-        # outcome-evidence state separately so degraded can win as a tenant summary outcome.
+        # Keep route_mode for request-level parity and replay; the summary-level
+        # outcome-evidence state is derived separately so degraded can win as a tenant summary outcome.
         return {
             "token_count": breakdown.token_count,
             "complexity_tier": breakdown.complexity_tier,

@@ -18,19 +18,10 @@ TerminalStatus = Literal[
     "client_disconnected",
 ]
 CalibrationEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
-# M009 keeps the externally-visible calibration_summary field name for compatibility,
-# but downstream slices should treat it as the shared outcome-evidence summary seam.
+# The externally visible field keeps the name calibration_summary for compatibility;
+# treat it as the shared outcome-evidence summary.
 OutcomeEvidenceState = CalibrationEvidenceState
 CalibrationEvidenceScope = Literal["tenant", "tenant_window"]
-CalibrationDegradedReason = Literal[
-    "missing_route_signals",
-    "degraded_replay_signals",
-]
-CalibrationExcludedReason = Literal[
-    "explicit_model_override",
-    "policy_forced_routing",
-]
-CalibrationGatedReason = Literal["calibrated_routing_disabled"]
 EvidenceRetentionWindow = Literal["24h", "7d", "30d", "90d"]
 MetadataMinimizationLevel = Literal["standard", "strict"]
 GovernedMetadataField = Literal["route_signals"]
