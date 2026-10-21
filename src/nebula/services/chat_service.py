@@ -34,7 +34,7 @@ from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.provider_registry import ProviderRegistry
-from nebula.services.router_service import RouterService
+from nebula.services.router_service import RouteTarget, RouterService
 from nebula.services.semantic_cache_service import CacheHit, SemanticCacheService
 
 logger = logging.getLogger(__name__)
@@ -189,40 +189,16 @@ class ChatService:
                 provider.name,
                 exc,
             )
-            if route_decision.target != "local":
-                COMPLETION_COUNT.labels(provider.name, "error", "false").inc()
-                await self._fail_provider(
-                    request=request,
-                    request_id=request_id,
-                    tenant_id=tenant_context.tenant.id,
-                    resolution=policy_resolution,
-                    route_target=route_decision.target,
-                    route_reason=route_decision.reason,
-                    provider_name=provider.name,
-                    fallback_used=False,
-                    detail=str(exc),
-                    started_at=started_at,
-                    cause=exc,
-                )
-            fallback_model = self._fallback_model(policy_resolution)
-            block_reason = self.policy_service.premium_fallback_block_reason(
-                request, policy_resolution, fallback_model
+            fallback_model = await self._fallback_model_or_fail(
+                request=request,
+                request_id=request_id,
+                tenant_id=tenant_context.tenant.id,
+                resolution=policy_resolution,
+                provider_name=provider.name,
+                started_at=started_at,
+                cause=exc,
+                stream=False,
             )
-            if block_reason is not None:
-                COMPLETION_COUNT.labels(provider.name, "error", "false").inc()
-                await self._fail_provider(
-                    request=request,
-                    request_id=request_id,
-                    tenant_id=tenant_context.tenant.id,
-                    resolution=policy_resolution,
-                    route_target="local",
-                    route_reason="local_provider_error_fallback_blocked",
-                    provider_name=provider.name,
-                    fallback_used=False,
-                    detail=block_reason,
-                    started_at=started_at,
-                    cause=exc,
-                )
 
             fallback_provider = self.provider_registry.get("premium")
             FALLBACK_COUNT.labels("local_provider_error").inc()
@@ -240,19 +216,15 @@ class ChatService:
                     tenant_context.tenant.id,
                 )
             except ProviderError as fallback_exc:
-                COMPLETION_COUNT.labels(fallback_provider.name, "error", "false").inc()
-                await self._fail_provider(
+                await self._fail_fallback(
                     request=request,
                     request_id=request_id,
                     tenant_id=tenant_context.tenant.id,
                     resolution=policy_resolution,
-                    route_target="premium",
-                    route_reason="local_provider_error_fallback",
                     provider_name=fallback_provider.name,
-                    fallback_used=True,
-                    detail=str(fallback_exc),
                     started_at=started_at,
                     cause=fallback_exc,
+                    stream=False,
                 )
             COMPLETION_COUNT.labels(fallback_provider.name, "fallback", "false").inc()
             metadata = self._metadata(
@@ -609,38 +581,16 @@ class ChatService:
                 ),
             )
         except ProviderError as exc:
-            if route_decision.target != "local":
-                await self._fail_provider(
-                    request=request,
-                    request_id=request_id,
-                    tenant_id=tenant_id,
-                    resolution=policy_resolution,
-                    route_target=route_decision.target,
-                    route_reason=route_decision.reason,
-                    provider_name=provider.name,
-                    fallback_used=False,
-                    detail=str(exc),
-                    started_at=started_at,
-                    cause=exc,
-                )
-            fallback_model = self._fallback_model(policy_resolution)
-            block_reason = self.policy_service.premium_fallback_block_reason(
-                request, policy_resolution, fallback_model
+            fallback_model = await self._fallback_model_or_fail(
+                request=request,
+                request_id=request_id,
+                tenant_id=tenant_id,
+                resolution=policy_resolution,
+                provider_name=provider.name,
+                started_at=started_at,
+                cause=exc,
+                stream=True,
             )
-            if block_reason is not None:
-                await self._fail_provider(
-                    request=request,
-                    request_id=request_id,
-                    tenant_id=tenant_id,
-                    resolution=policy_resolution,
-                    route_target="local",
-                    route_reason="local_provider_error_fallback_blocked",
-                    provider_name=provider.name,
-                    fallback_used=False,
-                    detail=block_reason,
-                    started_at=started_at,
-                    cause=exc,
-                )
 
             logger.warning("stream_fallback request_id=%s tenant_id=%s error=%s", request_id, tenant_id, exc)
             FALLBACK_COUNT.labels("local_provider_error").inc()
@@ -664,18 +614,15 @@ class ChatService:
                     cache_vector=cache_vector,
                 )
             except ProviderError as fallback_exc:
-                await self._fail_provider(
+                await self._fail_fallback(
                     request=request,
                     request_id=request_id,
                     tenant_id=tenant_id,
                     resolution=policy_resolution,
-                    route_target="premium",
-                    route_reason="local_provider_error_fallback",
                     provider_name=fallback_provider.name,
-                    fallback_used=True,
-                    detail=str(fallback_exc),
                     started_at=started_at,
                     cause=fallback_exc,
+                    stream=True,
                 )
 
             return (
@@ -1019,7 +966,7 @@ class ChatService:
         request_id: str | None,
         tenant_id: str,
         resolution: PolicyResolution,
-        route_target: Literal["local", "premium"],
+        route_target: RouteTarget,
         route_reason: str,
         provider_name: str,
         fallback_used: bool,
@@ -1058,6 +1005,81 @@ class ChatService:
                 policy_resolution=resolution,
             ),
         ) from cause
+
+    async def _fallback_model_or_fail(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        request_id: str | None,
+        tenant_id: str,
+        resolution: PolicyResolution,
+        provider_name: str,
+        started_at: float,
+        cause: ProviderError,
+        stream: bool,
+    ) -> str:
+        """After the routed provider failed: the premium model to fall back to, or the 502.
+
+        Only a local failure falls back, and only when the tenant would allow that premium request.
+        """
+        route_decision = resolution.route_decision
+        route_reason = route_decision.reason
+        detail = str(cause)
+        if route_decision.target == "local":
+            fallback_model = self._fallback_model(resolution)
+            block_reason = self.policy_service.premium_fallback_block_reason(
+                request, resolution, fallback_model
+            )
+            if block_reason is None:
+                return fallback_model
+            route_reason = "local_provider_error_fallback_blocked"
+            detail = block_reason
+        if not stream:
+            # A streaming provider counts its own errors inside the stream.
+            COMPLETION_COUNT.labels(provider_name, "error", "false").inc()
+        await self._fail_provider(
+            request=request,
+            request_id=request_id,
+            tenant_id=tenant_id,
+            resolution=resolution,
+            route_target=route_decision.target,
+            route_reason=route_reason,
+            provider_name=provider_name,
+            fallback_used=False,
+            detail=detail,
+            started_at=started_at,
+            cause=cause,
+        )
+
+    async def _fail_fallback(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        request_id: str | None,
+        tenant_id: str,
+        resolution: PolicyResolution,
+        provider_name: str,
+        started_at: float,
+        cause: ProviderError,
+        stream: bool,
+    ) -> NoReturn:
+        """The premium fallback failed too: the 502 and its row are the fallback's, not local's."""
+        if not stream:
+            # A streaming provider counts its own errors inside the stream.
+            COMPLETION_COUNT.labels(provider_name, "error", "false").inc()
+        await self._fail_provider(
+            request=request,
+            request_id=request_id,
+            tenant_id=tenant_id,
+            resolution=resolution,
+            route_target="premium",
+            route_reason="local_provider_error_fallback",
+            provider_name=provider_name,
+            fallback_used=True,
+            detail=str(cause),
+            started_at=started_at,
+            cause=cause,
+        )
 
     def _error_headers(
         self,

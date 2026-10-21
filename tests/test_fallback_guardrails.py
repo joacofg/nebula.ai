@@ -8,6 +8,7 @@ from contextlib import contextmanager
 import pytest
 from fastapi.testclient import TestClient
 
+from nebula.core.container import ServiceContainer
 from nebula.providers.base import CompletionChunk, CompletionResult
 from tests.support import (
     FakeCacheService,
@@ -23,11 +24,13 @@ STREAM_MODES = pytest.mark.parametrize("stream", [False, True], ids=["non_stream
 
 
 @contextmanager
-def fallback_client(**policy_updates: object) -> Iterator[tuple[TestClient, object, StubProvider]]:
+def fallback_client(
+    **policy_updates: object,
+) -> Iterator[tuple[TestClient, ServiceContainer, StubProvider]]:
     """A gateway whose local provider is down and whose premium provider records its calls."""
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         with TestClient(app) as client:
-            container = app.state.container
+            container: ServiceContainer = app.state.container
             settings = container.settings
             local = StubProvider(
                 "ollama",
@@ -199,3 +202,82 @@ def test_fallback_blocked_by_cost_cap(stream: bool) -> None:
             premium,
             "Local provider failed and the premium fallback exceeds the tenant per-request cost limit.",
         )
+
+
+@STREAM_MODES
+def test_fallback_blocked_by_disabled_fallback(stream: bool) -> None:
+    with fallback_client(fallback_enabled=False) as (client, _container, premium):
+        response = _chat(client, stream=stream)
+        _assert_fallback_blocked(
+            client,
+            response,
+            premium,
+            "Local provider failed and tenant policy disabled premium fallback.",
+        )
+
+
+@STREAM_MODES
+def test_primary_premium_failure_records_one_row_with_headers(stream: bool) -> None:
+    with fallback_client() as (client, container, premium):
+        premium.completion_error = provider_error("premium down")
+        premium.stream_error = provider_error("premium down")
+        response = _chat(client, stream=stream, model=container.settings.premium_model)
+        rows = _ledger_rows(client, response)
+
+    assert response.status_code == 502
+    assert response.json() == {"detail": "premium down"}
+    assert response.headers["X-Nebula-Tenant-ID"] == "default"
+    assert response.headers["X-Nebula-Route-Target"] == "premium"
+    assert response.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
+    assert response.headers["X-Nebula-Provider"] == "mock-premium"
+    assert response.headers["X-Nebula-Fallback-Used"] == "false"
+    assert len(rows) == 1
+    assert rows[0]["final_route_target"] == "premium"
+    assert rows[0]["route_reason"] == "explicit_premium_model"
+    assert rows[0]["final_provider"] == "mock-premium"
+    assert rows[0]["fallback_used"] is False
+    assert rows[0]["terminal_status"] == "provider_error"
+
+
+# Every fallback guard holds at once; each case relaxes the guards above it in the spec table,
+# so the detail must name the first guard still holding.
+_ALL_GUARDS: dict[str, object] = {
+    "fallback_enabled": False,
+    "routing_mode_default": "local_only",
+    "hard_budget_limit_usd": 0.0,
+    "hard_budget_enforcement": "downgrade",
+    "allowed_premium_models": ["some/other-model"],
+    "max_premium_cost_per_request": 0.0000001,
+}
+_NO_LOCAL_ONLY: dict[str, object] = {"fallback_enabled": True, "routing_mode_default": "auto"}
+_NO_BUDGET: dict[str, object] = {
+    **_NO_LOCAL_ONLY,
+    "hard_budget_limit_usd": None,
+    "hard_budget_enforcement": None,
+}
+_DISALLOWED_PREMIUM = (
+    "Local provider failed and premium model '{premium_model}' is not allowed for this tenant."
+)
+
+
+@STREAM_MODES
+@pytest.mark.parametrize(
+    ("relaxed", "detail"),
+    [
+        ({}, "Local provider failed and tenant policy disabled premium fallback."),
+        (
+            {"fallback_enabled": True},
+            "Local provider failed and tenant policy restricts routing to local only.",
+        ),
+        (_NO_LOCAL_ONLY, "Local provider failed and the tenant hard budget is exhausted."),
+        (_NO_BUDGET, _DISALLOWED_PREMIUM),
+    ],
+    ids=["disabled_first", "local_only_next", "hard_budget_next", "allowlist_next"],
+)
+def test_fallback_block_reason_follows_table_order(
+    stream: bool, relaxed: dict[str, object], detail: str
+) -> None:
+    with fallback_client(**{**_ALL_GUARDS, **relaxed}) as (client, container, premium):
+        response = _chat(client, stream=stream, max_tokens=4000)
+        expected = detail.format(premium_model=container.settings.premium_model)
+        _assert_fallback_blocked(client, response, premium, expected)
