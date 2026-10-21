@@ -16,6 +16,10 @@ está en `00-indice.md`, y las secciones 1, 2, 4 y 5 están juntas en `01-prelim
 - `make thesis-figures` dibuja la frontera desde el reporte del router (matplotlib) y exporta las
   fuentes Mermaid de `figuras/` a PNG.
 
+- `make thesis-docx` arma `docs/tfc/tesis.docx` (no versionado) con pandoc: carátula centrada,
+  índice de Word en la sección 3, cada capítulo en página nueva y sin las notas `COMPLETAR`.
+  Al abrirlo, Word pide actualizar el índice.
+
 ## Convenciones
 
 - Citas en formato IEEE, numeradas por orden de primera aparición en el documento.
