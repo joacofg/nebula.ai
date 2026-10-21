@@ -70,7 +70,7 @@ class TenantRecord(BaseModel):
 
 
 class TenantCreateRequest(BaseModel):
-    id: str = Field(min_length=1)
+    id: str = Field(min_length=1, max_length=255)
     name: str = Field(min_length=1)
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)

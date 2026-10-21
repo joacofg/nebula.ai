@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hmac
 import logging
 
 from fastapi import HTTPException, status
@@ -29,7 +30,10 @@ class AuthService:
         self.store = store
 
     def authenticate_admin(self, raw_admin_key: str | None) -> None:
-        if not raw_admin_key or raw_admin_key != self.settings.admin_api_key:
+        # Encode to bytes: compare_digest rejects non-ASCII str with a TypeError.
+        if not raw_admin_key or not hmac.compare_digest(
+            raw_admin_key.encode(), self.settings.admin_api_key.encode()
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Missing or invalid admin API key.",

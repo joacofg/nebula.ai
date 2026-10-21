@@ -194,14 +194,16 @@ def test_policy_simulation_and_recommendations_ignore_rate_limited_rows() -> Non
     assert recommendations["window_requests_evaluated"] == 1
 
 
-def test_a_hostile_model_value_still_gets_a_429() -> None:
+def test_a_hostile_embeddings_model_value_still_gets_a_429() -> None:
+    # Chat bounds `model` at validation (422); embeddings does not, so the 429 path must.
     with configured_app() as app:
         with TestClient(app) as client:
-            _mount(app)
+            app.dependency_overrides[get_embeddings_service] = lambda: _Embeddings()
             _limit(app, rpm=1)
-            _chat(client)
-            response = client.post("/v1/chat/completions", headers=auth_headers(),
-                                   json={"model": "x" * 5000, "messages": [{"role": "user", "content": "hi"}]})
+            client.post("/v1/embeddings", headers=auth_headers(),
+                        json={"model": "nomic-embed-text", "input": "hola"})
+            response = client.post("/v1/embeddings", headers=auth_headers(),
+                                   json={"model": "x" * 5000, "input": "hola"})
             rows = client.get(f"/v1/admin/usage/ledger?request_id={response.headers['X-Request-ID']}",
                               headers=admin_headers()).json()
 

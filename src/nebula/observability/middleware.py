@@ -9,10 +9,13 @@ from nebula.observability.metrics import REQUEST_COUNT, REQUEST_LATENCY
 
 logger = logging.getLogger(__name__)
 
+# The ledger stores request_id in a String(255) column; keep a client value well inside it.
+MAX_REQUEST_ID_LENGTH = 128
+
 
 class RequestContextMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request, call_next):
-        request_id = request.headers.get("x-request-id", str(uuid4()))
+        request_id = request.headers.get("x-request-id", str(uuid4()))[:MAX_REQUEST_ID_LENGTH]
         request.state.request_id = request_id
         token = set_request_id(request_id)
         started_at = perf_counter()

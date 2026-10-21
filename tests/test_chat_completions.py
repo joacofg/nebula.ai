@@ -408,3 +408,52 @@ def test_chat_completions_reject_requests_without_a_user_message() -> None:
     assert detail[0]["loc"] == ["body"]
     assert detail[0]["type"] == "value_error"
     assert detail[0]["msg"] == "Value error, At least one user message is required."
+
+
+def test_chat_completions_reject_a_model_name_longer_than_the_ledger_column() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "m" * 300,
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["type"] == "invalid_request_error"
+
+
+def test_an_oversized_request_id_header_is_bounded_in_the_ledger_and_the_response() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="local response",
+                    model=container.settings.local_model,
+                    provider="ollama",
+                    usage=usage(),
+                ),
+            )
+            container.provider_registry.local_provider = container.local_provider
+            container.cache_service = FakeCacheService()
+            container.chat_service.cache_service = container.cache_service
+
+            response = client.post(
+                "/v1/chat/completions",
+                headers={**auth_headers(), "X-Request-ID": "r" * 500},
+                json={"messages": [{"role": "user", "content": "hello"}]},
+            )
+            rows = client.get(
+                f"/v1/admin/usage/ledger?request_id={'r' * 128}",
+                headers=admin_headers(),
+            ).json()
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "r" * 128
+    assert len(rows) == 1
+    assert rows[0]["request_id"] == "r" * 128

@@ -277,6 +277,49 @@ def test_admin_session_endpoint() -> None:
     assert authorized.json() == {"status": "ok"}
 
 
+def test_admin_key_check_accepts_the_exact_key_and_rejects_a_near_miss() -> None:
+    # Regression guard for the constant-time compare: behavior is unchanged.
+    with configured_app() as app:
+        with TestClient(app) as client:
+            exact = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-key"))
+            near_miss = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-kex"))
+            longer = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-keyy"))
+
+    assert exact.status_code == 200
+    assert near_miss.status_code == 401
+    assert longer.status_code == 401
+
+
+def test_admin_key_check_rejects_a_non_ascii_key_instead_of_failing() -> None:
+    with configured_app() as app:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get(
+                "/v1/admin/session",
+                headers={"X-Nebula-Admin-Key": "nebula-admin-k\xe9y".encode("latin-1")},
+            )
+
+    assert response.status_code == 401
+
+
+def test_tenant_ids_longer_than_the_column_are_rejected_on_create() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            too_long = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "t" * 300, "name": "Too long"},
+            )
+            at_the_limit = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "t" * 255, "name": "At the limit"},
+            )
+
+    assert too_long.status_code == 422
+    assert isinstance(too_long.json()["detail"], list)
+    assert at_the_limit.status_code == 201
+
+
 def test_policy_options_endpoint_is_admin_protected_and_includes_default_model() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
