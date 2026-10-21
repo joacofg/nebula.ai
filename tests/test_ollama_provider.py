@@ -74,10 +74,22 @@ async def test_http_error_keeps_upstream_status_and_body() -> None:
     await provider.close()
 
 
+def _streamed_response(status_code: int, body: bytes, **kwargs) -> httpx.Response:
+    """A response whose body is still on the wire, as a real streaming upstream sends it.
+
+    `httpx.Response(..., json=...)` is pre-read by MockTransport, which hides a missing `aread()`.
+    """
+
+    async def body_stream():
+        yield body
+
+    return httpx.Response(status_code, content=body_stream(), **kwargs)
+
+
 @pytest.mark.asyncio
 async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(404, json={"error": "model 'x' not found"})
+        return _streamed_response(404, b'{"error": "model \'x\' not found"}')
 
     provider = _provider_with_handler(handler)
 
@@ -87,4 +99,23 @@ async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
 
     assert "stream failed: HTTP 404: " in str(exc_info.value)
     assert "model 'x' not found" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_redirect_response_is_a_provider_error() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(
+            308,
+            b"moved permanently",
+            headers={"location": "http://elsewhere.example/api/chat"},
+        )
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        async for _ in provider.stream_complete(_hello_request()):
+            pass
+
+    assert "stream failed: HTTP 308: moved permanently" in str(exc_info.value)
     await provider.close()

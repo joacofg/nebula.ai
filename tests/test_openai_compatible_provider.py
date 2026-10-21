@@ -200,10 +200,22 @@ async def test_http_error_body_is_truncated() -> None:
     await provider.close()
 
 
+def _streamed_response(status_code: int, body: bytes, **kwargs) -> httpx.Response:
+    """A response whose body is still on the wire, as a real streaming upstream sends it.
+
+    `httpx.Response(..., json=...)` is pre-read by MockTransport, which hides a missing `aread()`.
+    """
+
+    async def body_stream():
+        yield body
+
+    return httpx.Response(status_code, content=body_stream(), **kwargs)
+
+
 @pytest.mark.asyncio
 async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
     async def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(429, json={"error": {"message": "Rate limit exceeded"}})
+        return _streamed_response(429, b'{"error": {"message": "Rate limit exceeded"}}')
 
     provider = _provider_with_handler(handler)
 
@@ -213,4 +225,44 @@ async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
 
     assert "stream failed: HTTP 429: " in str(exc_info.value)
     assert "Rate limit exceeded" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_redirect_response_is_a_provider_error() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(
+            308,
+            b"moved permanently",
+            headers={"location": "https://elsewhere.example/api/v1/chat/completions"},
+        )
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        async for _ in provider.stream_complete(_hello_request()):
+            pass
+
+    assert "stream failed: HTTP 308: moved permanently" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_null_delta_content_is_an_empty_delta() -> None:
+    sse_body = (
+        b'data: {"choices":[{"delta":{"role":"assistant","content":null},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[{"delta":{"content":null},"finish_reason":"length"}]}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, sse_body, headers={"content-type": "text/event-stream"})
+
+    provider = _provider_with_handler(handler)
+
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert [chunk.delta for chunk in chunks] == ["", "hi", ""]
+    assert chunks[-1].finish_reason == "length"
     await provider.close()
