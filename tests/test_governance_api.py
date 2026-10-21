@@ -1762,7 +1762,7 @@ def test_creating_an_api_key_with_an_existing_secret_returns_409() -> None:
             duplicate = _create_key(
                 client, name="second", tenant_id="acme", key="shared-secret-key"
             )
-            keys =client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
+            keys = client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
 
     assert first.status_code == 201
     assert duplicate.status_code == 409

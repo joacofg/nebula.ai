@@ -9,9 +9,14 @@ from fastapi.testclient import TestClient
 from nebula.api.dependencies import get_embeddings_service
 from nebula.models.governance import TenantPolicy
 from nebula.services.embeddings_service import EmbeddingsUpstreamError
-from tests.support import admin_headers, auth_headers, configured_app
-from tests.test_embeddings_api import StubEmbeddingsResult, StubEmbeddingsService
-from tests.test_fallback_guardrails import fallback_client
+from tests.support import (
+    StubEmbeddingsResult,
+    StubEmbeddingsService,
+    admin_headers,
+    auth_headers,
+    configured_app,
+    fallback_client,
+)
 
 CHAT = "/v1/chat/completions"
 EMBEDDINGS = "/v1/embeddings"

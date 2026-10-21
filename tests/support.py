@@ -10,8 +10,10 @@ from uuid import uuid4
 
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 
 from nebula.core.config import get_settings
+from nebula.core.container import ServiceContainer
 from nebula.main import create_app
 from nebula.models.resilience import build_dependency_health
 from nebula.models.openai import ChatCompletionRequest
@@ -206,6 +208,73 @@ def usage(prompt_tokens: int = 8, completion_tokens: int = 4) -> CompletionUsage
 
 def provider_error(message: str) -> ProviderError:
     return ProviderError(message)
+
+
+class StubEmbeddingsResult:
+    def __init__(self, *, model: str, vectors: list[list[float]]) -> None:
+        self.model = model
+        self.data = [
+            type("EmbeddingVector", (), {"index": index, "embedding": vector})
+            for index, vector in enumerate(vectors)
+        ]
+
+
+class StubEmbeddingsService:
+    def __init__(self, *, result: StubEmbeddingsResult | None = None, error: Exception | None = None) -> None:
+        self.result = result
+        self.error = error
+        self.calls: list[dict[str, object]] = []
+
+    async def create_embeddings(self, *, model: str, input: str | list[str]):
+        self.calls.append({"model": model, "input": input})
+        if self.error is not None:
+            raise self.error
+        assert self.result is not None
+        return self.result
+
+    async def close(self) -> None:
+        return None
+
+
+@contextmanager
+def fallback_client(
+    **policy_updates: object,
+) -> Iterator[tuple[TestClient, ServiceContainer, StubProvider]]:
+    """A gateway whose local provider is down and whose premium provider records its calls."""
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container: ServiceContainer = app.state.container
+            settings = container.settings
+            local = StubProvider(
+                "ollama",
+                completion_error=provider_error("ollama down"),
+                stream_error=provider_error("ollama down"),
+            )
+            premium = StubProvider(
+                "mock-premium",
+                completion_result=CompletionResult(
+                    content="premium answer",
+                    model=settings.premium_model,
+                    provider="mock-premium",
+                    usage=usage(),
+                ),
+                stream_chunks=[
+                    CompletionChunk(delta="premium answer", model=settings.premium_model),
+                    CompletionChunk(delta="", model=settings.premium_model, finish_reason="stop"),
+                ],
+            )
+            container.local_provider = local
+            container.provider_registry.local_provider = local
+            container.premium_provider = premium
+            container.provider_registry.premium_provider = premium
+            container.cache_service = FakeCacheService()
+            container.chat_service.cache_service = container.cache_service
+            if policy_updates:
+                store = container.governance_store
+                store.upsert_policy(
+                    "default", store.get_policy("default").model_copy(update=policy_updates)
+                )
+            yield client, container, premium
 
 
 def _run_migrations(database_url: str) -> None:

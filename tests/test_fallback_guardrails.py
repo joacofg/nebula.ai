@@ -4,68 +4,24 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
-from contextlib import contextmanager
+from collections.abc import AsyncIterator, Awaitable, Callable
 
 import pytest
 from fastapi.testclient import TestClient
 
 from nebula.core.container import ServiceContainer
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
+from nebula.providers.base import CompletionChunk, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
 from tests.support import (
-    FakeCacheService,
     StubProvider,
     admin_headers,
     auth_headers,
-    configured_app,
+    fallback_client,
     provider_error,
-    usage,
 )
 
 STREAM_MODES = pytest.mark.parametrize("stream", [False, True], ids=["non_stream", "stream"])
-
-
-@contextmanager
-def fallback_client(
-    **policy_updates: object,
-) -> Iterator[tuple[TestClient, ServiceContainer, StubProvider]]:
-    """A gateway whose local provider is down and whose premium provider records its calls."""
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
-        with TestClient(app) as client:
-            container: ServiceContainer = app.state.container
-            settings = container.settings
-            local = StubProvider(
-                "ollama",
-                completion_error=provider_error("ollama down"),
-                stream_error=provider_error("ollama down"),
-            )
-            premium = StubProvider(
-                "mock-premium",
-                completion_result=CompletionResult(
-                    content="premium answer",
-                    model=settings.premium_model,
-                    provider="mock-premium",
-                    usage=usage(),
-                ),
-                stream_chunks=[
-                    CompletionChunk(delta="premium answer", model=settings.premium_model),
-                    CompletionChunk(delta="", model=settings.premium_model, finish_reason="stop"),
-                ],
-            )
-            container.local_provider = local
-            container.provider_registry.local_provider = local
-            container.premium_provider = premium
-            container.provider_registry.premium_provider = premium
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
-            if policy_updates:
-                store = container.governance_store
-                store.upsert_policy(
-                    "default", store.get_policy("default").model_copy(update=policy_updates)
-                )
-            yield client, container, premium
 
 
 def _chat(client: TestClient, *, stream: bool, model: str = "nebula-auto", **extra: object):

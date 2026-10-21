@@ -7,33 +7,7 @@ from fastapi.testclient import TestClient
 from nebula.api.dependencies import get_embeddings_service
 from nebula.api.routes.embeddings import _record_usage
 from nebula.models.governance import UsageLedgerRecord
-from tests.support import auth_headers, configured_app
-
-
-class StubEmbeddingsResult:
-    def __init__(self, *, model: str, vectors: list[list[float]]) -> None:
-        self.model = model
-        self.data = [
-            type("EmbeddingVector", (), {"index": index, "embedding": vector})
-            for index, vector in enumerate(vectors)
-        ]
-
-
-class StubEmbeddingsService:
-    def __init__(self, *, result: StubEmbeddingsResult | None = None, error: Exception | None = None) -> None:
-        self.result = result
-        self.error = error
-        self.calls: list[dict[str, object]] = []
-
-    async def create_embeddings(self, *, model: str, input: str | list[str]):
-        self.calls.append({"model": model, "input": input})
-        if self.error is not None:
-            raise self.error
-        assert self.result is not None
-        return self.result
-
-    async def close(self) -> None:
-        return None
+from tests.support import StubEmbeddingsResult, StubEmbeddingsService, auth_headers, configured_app
 
 
 def test_embeddings_api_accepts_authenticated_single_and_batch_requests() -> None:
