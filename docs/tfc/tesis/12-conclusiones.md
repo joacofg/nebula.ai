@@ -131,9 +131,6 @@ con el tráfico propio de cada organización.
 
 ## 12.3 Sobre el proceso de aprendizaje
 
-> COMPLETAR (Joaquín): este borrador se armó con hechos del proceso; revisalo y reescribilo en tu
-> voz.
-
 Lo que más me enseñó este trabajo fue tener que desconfiar de mis propias métricas. El plan original
 era medir la calidad con la similitud coseno, y la hipótesis del TP4 tenía un umbral de 0.90 que
 parecía razonable. Cuando la validé contra mi propio juicio, la métrica separó las respuestas buenas
