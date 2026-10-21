@@ -7,6 +7,7 @@ import pytest
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest
+from nebula.providers.base import ProviderError
 from nebula.providers.openai_compatible import OpenAICompatibleProvider
 
 
@@ -121,4 +122,95 @@ async def test_openai_compatible_provider_extracts_usage_from_response() -> None
     assert result.usage.prompt_tokens == 11
     assert result.usage.completion_tokens == 7
     assert result.usage.total_tokens == 18
+    await provider.close()
+
+
+def _provider_with_handler(handler) -> OpenAICompatibleProvider:
+    settings = Settings(
+        premium_provider="openai_compatible",
+        premium_base_url="https://openrouter.ai/api/v1",
+        premium_api_key="test-key",
+        premium_model="openai/gpt-4o-mini",
+    )
+    provider = OpenAICompatibleProvider(settings)
+    provider.client = httpx.AsyncClient(
+        base_url=settings.premium_base_url,
+        transport=httpx.MockTransport(handler),
+    )
+    return provider
+
+
+def _hello_request() -> ChatCompletionRequest:
+    return ChatCompletionRequest(
+        model="openai/gpt-4o-mini",
+        messages=[{"role": "user", "content": "hello"}],
+    )
+
+
+@pytest.mark.asyncio
+async def test_null_content_is_an_empty_answer() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": None}, "finish_reason": "length"}],
+                "model": "openai/gpt-4o-mini",
+                "usage": {"prompt_tokens": 11, "completion_tokens": 5, "total_tokens": 16},
+            },
+        )
+
+    provider = _provider_with_handler(handler)
+
+    result = await provider.complete(_hello_request())
+
+    assert result.content == ""
+    assert result.finish_reason == "length"
+    assert result.usage is not None
+    assert result.usage.total_tokens == 16
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_http_error_keeps_upstream_status_and_body() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(402, json={"error": {"message": "Insufficient credits"}})
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        await provider.complete(_hello_request())
+
+    assert "completion failed: HTTP 402: " in str(exc_info.value)
+    assert "Insufficient credits" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_http_error_body_is_truncated() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(500, text="a" * 300 + "b" * 1700)
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        await provider.complete(_hello_request())
+
+    _, body_part = str(exc_info.value).split("HTTP 500: ", 1)
+    assert body_part == "a" * 300
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(429, json={"error": {"message": "Rate limit exceeded"}})
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        async for _ in provider.stream_complete(_hello_request()):
+            pass
+
+    assert "stream failed: HTTP 429: " in str(exc_info.value)
+    assert "Rate limit exceeded" in str(exc_info.value)
     await provider.close()

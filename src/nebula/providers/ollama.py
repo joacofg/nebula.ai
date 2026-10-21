@@ -16,6 +16,16 @@ from nebula.providers.base import (
 )
 
 
+_ERROR_BODY_LIMIT = 300
+
+
+def _describe_http_error(exc: httpx.HTTPError) -> str:
+    """Keep the upstream status and the start of its body, which httpx drops from its message."""
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"HTTP {exc.response.status_code}: {exc.response.text[:_ERROR_BODY_LIMIT]}"
+    return str(exc)
+
+
 class OllamaProvider(CompletionProvider):
     name = "ollama"
 
@@ -32,7 +42,7 @@ class OllamaProvider(CompletionProvider):
             response = await self.client.post("/api/chat", json=payload)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise ProviderError(f"Ollama completion failed: {exc}") from exc
+            raise ProviderError(f"Ollama completion failed: {_describe_http_error(exc)}") from exc
 
         body = response.json()
         return CompletionResult(
@@ -53,6 +63,8 @@ class OllamaProvider(CompletionProvider):
         async def iterator():
             try:
                 async with self.client.stream("POST", "/api/chat", json=payload) as response:
+                    if response.is_error:
+                        await response.aread()
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line:
@@ -63,7 +75,9 @@ class OllamaProvider(CompletionProvider):
                             model=chunk.get("model", payload["model"]),
                             finish_reason="stop" if chunk.get("done") else None,
                         )
-            except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            except httpx.HTTPError as exc:
+                raise ProviderError(f"Ollama stream failed: {_describe_http_error(exc)}") from exc
+            except json.JSONDecodeError as exc:
                 raise ProviderError(f"Ollama stream failed: {exc}") from exc
 
         return iterator()

@@ -5,6 +5,7 @@ import pytest
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest
+from nebula.providers.base import ProviderError
 from nebula.providers.ollama import OllamaProvider
 
 
@@ -39,4 +40,51 @@ async def test_ollama_provider_extracts_usage_from_response() -> None:
     assert result.usage.prompt_tokens == 14
     assert result.usage.completion_tokens == 9
     assert result.usage.total_tokens == 23
+    await provider.close()
+
+
+def _provider_with_handler(handler) -> OllamaProvider:
+    provider = OllamaProvider(Settings())
+    provider.client = httpx.AsyncClient(
+        base_url="http://localhost:11434",
+        transport=httpx.MockTransport(handler),
+    )
+    return provider
+
+
+def _hello_request() -> ChatCompletionRequest:
+    return ChatCompletionRequest(
+        model="x",
+        messages=[{"role": "user", "content": "hello"}],
+    )
+
+
+@pytest.mark.asyncio
+async def test_http_error_keeps_upstream_status_and_body() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"error": "model 'x' not found"})
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        await provider.complete(_hello_request())
+
+    assert "completion failed: HTTP 404: " in str(exc_info.value)
+    assert "model 'x' not found" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_http_error_keeps_upstream_status_and_body() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(404, json={"error": "model 'x' not found"})
+
+    provider = _provider_with_handler(handler)
+
+    with pytest.raises(ProviderError) as exc_info:
+        async for _ in provider.stream_complete(_hello_request()):
+            pass
+
+    assert "stream failed: HTTP 404: " in str(exc_info.value)
+    assert "model 'x' not found" in str(exc_info.value)
     await provider.close()
