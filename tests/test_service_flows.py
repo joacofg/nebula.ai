@@ -135,6 +135,17 @@ class FakePolicyService:
         self.cache_enabled = cache_enabled
         self.fallback_enabled = fallback_enabled
         self.policy_outcome = policy_outcome
+        # The fallback rule reads only the resolution and pricing, so the fake applies the real one.
+        self._fallback_rules = PolicyService(
+            settings,
+            FakeGovernanceStore(),
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        )
+
+    def premium_fallback_block_reason(
+        self, request: ChatCompletionRequest, resolution: PolicyResolution, model: str
+    ) -> str | None:
+        return self._fallback_rules.premium_fallback_block_reason(request, resolution, model)
 
     async def resolve(
         self, *, prompt, request, tenant_context, router_service, prompt_embedding=None

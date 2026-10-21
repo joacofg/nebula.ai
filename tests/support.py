@@ -171,14 +171,19 @@ class StubProvider:
         self.completion_error = completion_error
         self.stream_chunks = stream_chunks or []
         self.stream_error = stream_error
+        # Every request this provider was asked to serve, streaming or not.
+        self.requests: list[ChatCompletionRequest] = []
 
     async def complete(self, request: ChatCompletionRequest) -> CompletionResult:
+        self.requests.append(request)
         if self.completion_error is not None:
             raise self.completion_error
         assert self.completion_result is not None
         return self.completion_result
 
     def stream_complete(self, request: ChatCompletionRequest):
+        self.requests.append(request)
+
         async def iterator():
             if self.stream_error is not None:
                 raise self.stream_error

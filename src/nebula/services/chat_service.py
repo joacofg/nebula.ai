@@ -5,7 +5,7 @@ import logging
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from time import perf_counter, time
-from typing import Any, AsyncIterator, Literal
+from typing import Any, AsyncIterator, Literal, NoReturn
 from uuid import uuid4
 
 from fastapi import HTTPException, status
@@ -189,45 +189,40 @@ class ChatService:
                 provider.name,
                 exc,
             )
-            if route_decision.target != "local" or not policy_resolution.fallback_enabled:
-                error_detail = str(exc)
-                error_headers: dict[str, str] | None = None
-                error_route_reason = route_decision.reason
-                if route_decision.target == "local" and not policy_resolution.fallback_enabled:
-                    error_detail = "Local provider failed and tenant policy disabled premium fallback."
-                    error_route_reason = "local_provider_error_fallback_blocked"
-                    error_headers = self._error_headers(
-                        tenant_id=tenant_context.tenant.id,
-                        route_target="local",
-                        route_reason=error_route_reason,
-                        provider=provider.name,
-                        fallback_used=False,
-                        policy_resolution=policy_resolution,
-                    )
+            if route_decision.target != "local":
                 COMPLETION_COUNT.labels(provider.name, "error", "false").inc()
-                await self._record_usage(
+                await self._fail_provider(
+                    request=request,
                     request_id=request_id,
                     tenant_id=tenant_context.tenant.id,
-                    request=request,
-                    metadata=self._metadata(
-                        tenant_id=tenant_context.tenant.id,
-                        route_target=route_decision.target,
-                        route_reason=error_route_reason,
-                        provider=provider.name,
-                        cache_hit=False,
-                        fallback_used=False,
-                        policy_resolution=policy_resolution,
-                    ),
-                    response_model=None,
-                    usage=None,
-                    latency_ms=(perf_counter() - started_at) * 1000,
-                    terminal_status="provider_error",
+                    resolution=policy_resolution,
+                    route_target=route_decision.target,
+                    route_reason=route_decision.reason,
+                    provider_name=provider.name,
+                    fallback_used=False,
+                    detail=str(exc),
+                    started_at=started_at,
+                    cause=exc,
                 )
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=error_detail,
-                    headers=error_headers,
-                ) from exc
+            fallback_model = self._fallback_model(policy_resolution)
+            block_reason = self.policy_service.premium_fallback_block_reason(
+                request, policy_resolution, fallback_model
+            )
+            if block_reason is not None:
+                COMPLETION_COUNT.labels(provider.name, "error", "false").inc()
+                await self._fail_provider(
+                    request=request,
+                    request_id=request_id,
+                    tenant_id=tenant_context.tenant.id,
+                    resolution=policy_resolution,
+                    route_target="local",
+                    route_reason="local_provider_error_fallback_blocked",
+                    provider_name=provider.name,
+                    fallback_used=False,
+                    detail=block_reason,
+                    started_at=started_at,
+                    cause=exc,
+                )
 
             fallback_provider = self.provider_registry.get("premium")
             FALLBACK_COUNT.labels("local_provider_error").inc()
@@ -240,34 +235,25 @@ class ChatService:
             try:
                 result = await self._complete_with_provider(
                     fallback_provider,
-                    self._fallback_request(request, policy_resolution),
+                    self._provider_request(request, fallback_model),
                     request_id,
                     tenant_context.tenant.id,
                 )
             except ProviderError as fallback_exc:
                 COMPLETION_COUNT.labels(fallback_provider.name, "error", "false").inc()
-                await self._record_usage(
+                await self._fail_provider(
+                    request=request,
                     request_id=request_id,
                     tenant_id=tenant_context.tenant.id,
-                    request=request,
-                    metadata=self._metadata(
-                        tenant_id=tenant_context.tenant.id,
-                        route_target="premium",
-                        route_reason="local_provider_error_fallback",
-                        provider=fallback_provider.name,
-                        cache_hit=False,
-                        fallback_used=True,
-                        policy_resolution=policy_resolution,
-                    ),
-                    response_model=None,
-                    usage=None,
-                    latency_ms=(perf_counter() - started_at) * 1000,
-                    terminal_status="provider_error",
-                )
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    resolution=policy_resolution,
+                    route_target="premium",
+                    route_reason="local_provider_error_fallback",
+                    provider_name=fallback_provider.name,
+                    fallback_used=True,
                     detail=str(fallback_exc),
-                ) from fallback_exc
+                    started_at=started_at,
+                    cause=fallback_exc,
+                )
             COMPLETION_COUNT.labels(fallback_provider.name, "fallback", "false").inc()
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
@@ -376,40 +362,19 @@ class ChatService:
             policy_resolution.policy_outcome,
         )
         provider = self.provider_registry.get(route_decision.target)
-        try:
-            stream, metadata = await self._prepare_stream_provider(
-                provider=provider,
-                request=request,
-                prompt=latest_user_prompt,
-                response_id=response_id,
-                created=created,
-                request_id=request_id,
-                tenant_id=tenant_context.tenant.id,
-                policy_resolution=policy_resolution,
-                cache_enabled=policy_resolution.cache_enabled,
-                cache_vector=cache_vector,
-            )
-        except HTTPException as exc:
-            if exc.status_code == status.HTTP_502_BAD_GATEWAY:
-                await self._record_usage(
-                    request_id=request_id,
-                    tenant_id=tenant_context.tenant.id,
-                    request=request,
-                    metadata=self._metadata(
-                        tenant_id=tenant_context.tenant.id,
-                        route_target=route_decision.target,
-                        route_reason=route_decision.reason,
-                        provider=provider.name,
-                        cache_hit=False,
-                        fallback_used=False,
-                        policy_resolution=policy_resolution,
-                    ),
-                    response_model=None,
-                    usage=None,
-                    latency_ms=(perf_counter() - started_at) * 1000,
-                    terminal_status="provider_error",
-                )
-            raise
+        stream, metadata = await self._prepare_stream_provider(
+            provider=provider,
+            request=request,
+            prompt=latest_user_prompt,
+            response_id=response_id,
+            created=created,
+            request_id=request_id,
+            tenant_id=tenant_context.tenant.id,
+            policy_resolution=policy_resolution,
+            cache_enabled=policy_resolution.cache_enabled,
+            started_at=started_at,
+            cache_vector=cache_vector,
+        )
 
         wrapped_stream = self._wrap_stream_with_ledger(
             stream=stream,
@@ -615,6 +580,7 @@ class ChatService:
         tenant_id: str,
         policy_resolution: PolicyResolution,
         cache_enabled: bool,
+        started_at: float,
         cache_vector: list[float] | None = None,
     ) -> tuple[AsyncIterator[bytes], CompletionMetadata]:
         route_decision = policy_resolution.route_decision
@@ -643,24 +609,38 @@ class ChatService:
                 ),
             )
         except ProviderError as exc:
-            if route_decision.target != "local" or not policy_resolution.fallback_enabled:
-                error_detail = str(exc)
-                error_headers: dict[str, str] | None = None
-                if route_decision.target == "local" and not policy_resolution.fallback_enabled:
-                    error_detail = "Local provider failed and tenant policy disabled premium fallback."
-                    error_headers = self._error_headers(
-                        tenant_id=tenant_id,
-                        route_target="local",
-                        route_reason="local_provider_error_fallback_blocked",
-                        provider=provider.name,
-                        fallback_used=False,
-                        policy_resolution=policy_resolution,
-                    )
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
-                    detail=error_detail,
-                    headers=error_headers,
-                ) from exc
+            if route_decision.target != "local":
+                await self._fail_provider(
+                    request=request,
+                    request_id=request_id,
+                    tenant_id=tenant_id,
+                    resolution=policy_resolution,
+                    route_target=route_decision.target,
+                    route_reason=route_decision.reason,
+                    provider_name=provider.name,
+                    fallback_used=False,
+                    detail=str(exc),
+                    started_at=started_at,
+                    cause=exc,
+                )
+            fallback_model = self._fallback_model(policy_resolution)
+            block_reason = self.policy_service.premium_fallback_block_reason(
+                request, policy_resolution, fallback_model
+            )
+            if block_reason is not None:
+                await self._fail_provider(
+                    request=request,
+                    request_id=request_id,
+                    tenant_id=tenant_id,
+                    resolution=policy_resolution,
+                    route_target="local",
+                    route_reason="local_provider_error_fallback_blocked",
+                    provider_name=provider.name,
+                    fallback_used=False,
+                    detail=block_reason,
+                    started_at=started_at,
+                    cause=exc,
+                )
 
             logger.warning("stream_fallback request_id=%s tenant_id=%s error=%s", request_id, tenant_id, exc)
             FALLBACK_COUNT.labels("local_provider_error").inc()
@@ -674,7 +654,7 @@ class ChatService:
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,
-                    request=self._fallback_request(request, policy_resolution),
+                    request=self._provider_request(request, fallback_model),
                     prompt=prompt,
                     response_id=response_id,
                     created=created,
@@ -684,10 +664,19 @@ class ChatService:
                     cache_vector=cache_vector,
                 )
             except ProviderError as fallback_exc:
-                raise HTTPException(
-                    status_code=status.HTTP_502_BAD_GATEWAY,
+                await self._fail_provider(
+                    request=request,
+                    request_id=request_id,
+                    tenant_id=tenant_id,
+                    resolution=policy_resolution,
+                    route_target="premium",
+                    route_reason="local_provider_error_fallback",
+                    provider_name=fallback_provider.name,
+                    fallback_used=True,
                     detail=str(fallback_exc),
-                ) from fallback_exc
+                    started_at=started_at,
+                    cause=fallback_exc,
+                )
 
             return (
                 fallback_stream,
@@ -904,18 +893,17 @@ class ChatService:
             return request
         return request.model_copy(update={"model": decision_model})
 
-    def _fallback_model(self, policy_resolution: PolicyResolution) -> str | None:
-        """Economy when configured and the tenant allows it; otherwise the provider default."""
+    def _fallback_model(self, policy_resolution: PolicyResolution) -> str:
+        """Economy when configured and the tenant allows it; otherwise the frontier model.
+
+        Always explicit: the request's own model may be the local model id, which the premium
+        provider must never receive.
+        """
         economy = self.settings.economy_model
         allowed = policy_resolution.allowed_premium_models
         if economy and (not allowed or economy in allowed):
             return economy
-        return None
-
-    def _fallback_request(
-        self, request: ChatCompletionRequest, policy_resolution: PolicyResolution
-    ) -> ChatCompletionRequest:
-        return self._provider_request(request, self._fallback_model(policy_resolution))
+        return self.settings.premium_model
 
     def _route_tier(
         self,
@@ -928,7 +916,8 @@ class ChatService:
         if route_target in {"local", "cache", "denied"}:
             return route_target
         if fallback_used:
-            return "economy" if self._fallback_model(policy_resolution) else "frontier"
+            fallback_model = self._fallback_model(policy_resolution)
+            return "economy" if fallback_model == self.settings.economy_model else "frontier"
         tier = signals.get("tier")
         if tier in {"economy", "frontier"}:
             return tier
@@ -1022,6 +1011,53 @@ class ChatService:
                 policy_resolution=policy_resolution,
             ),
         )
+
+    async def _fail_provider(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        request_id: str | None,
+        tenant_id: str,
+        resolution: PolicyResolution,
+        route_target: Literal["local", "premium"],
+        route_reason: str,
+        provider_name: str,
+        fallback_used: bool,
+        detail: str,
+        started_at: float,
+        cause: Exception,
+    ) -> NoReturn:
+        """Record the provider_error row and raise the 502; shared by both serving paths."""
+        await self._record_usage(
+            request_id=request_id,
+            tenant_id=tenant_id,
+            request=request,
+            metadata=self._metadata(
+                tenant_id=tenant_id,
+                route_target=route_target,
+                route_reason=route_reason,
+                provider=provider_name,
+                cache_hit=False,
+                fallback_used=fallback_used,
+                policy_resolution=resolution,
+            ),
+            response_model=None,
+            usage=None,
+            latency_ms=(perf_counter() - started_at) * 1000,
+            terminal_status="provider_error",
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=detail,
+            headers=self._error_headers(
+                tenant_id=tenant_id,
+                route_target=route_target,
+                route_reason=route_reason,
+                provider=provider_name,
+                fallback_used=fallback_used,
+                policy_resolution=resolution,
+            ),
+        ) from cause
 
     def _error_headers(
         self,

@@ -48,6 +48,7 @@ class PolicyResolution:
     hard_budget_exceeded: bool = False
     tenant_spend_total: float | None = None
     allowed_premium_models: tuple[str, ...] = ()
+    max_premium_cost_per_request: float | None = None
 
 
 class PolicyService:
@@ -103,6 +104,7 @@ class PolicyService:
             hard_budget_exceeded=evaluation.hard_budget_exceeded,
             tenant_spend_total=evaluation.tenant_spend_total,
             allowed_premium_models=tuple(tenant_context.policy.allowed_premium_models),
+            max_premium_cost_per_request=tenant_context.policy.max_premium_cost_per_request,
         )
 
     async def evaluate(
@@ -246,6 +248,32 @@ class PolicyService:
             denied=denial_detail is not None,
             denial_detail=denial_detail,
         )
+
+    def premium_fallback_block_reason(
+        self,
+        request: ChatCompletionRequest,
+        resolution: PolicyResolution,
+        model: str,
+    ) -> str | None:
+        """Why a local failure may not fall back to premium `model` for this tenant, if it may not."""
+        if not resolution.fallback_enabled:
+            return "Local provider failed and tenant policy disabled premium fallback."
+        if resolution.policy_mode == "local_only":
+            return "Local provider failed and tenant policy restricts routing to local only."
+        if resolution.hard_budget_exceeded:
+            return "Local provider failed and the tenant hard budget is exhausted."
+        # An empty allowlist means any premium model is allowed.
+        if resolution.allowed_premium_models and model not in resolution.allowed_premium_models:
+            return f"Local provider failed and premium model '{model}' is not allowed for this tenant."
+        cap = resolution.max_premium_cost_per_request
+        if cap is not None:
+            projected_cost = self._estimate_request_cost(request, model)
+            if projected_cost is not None and projected_cost > cap:
+                return (
+                    "Local provider failed and the premium fallback exceeds "
+                    "the tenant per-request cost limit."
+                )
+        return None
 
     def _escalate_disallowed_economy(self, route_decision: RouteDecision, policy) -> RouteDecision:
         """A learned economy pick the tenant does not allow moves up to an allowed frontier."""
