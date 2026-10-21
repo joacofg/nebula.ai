@@ -86,3 +86,34 @@ async def test_float_error_does_not_add_a_second(limit: int) -> None:
         await limiter.acquire("t", limit_per_minute=limit)
     denied = await limiter.acquire("t", limit_per_minute=limit)
     assert denied.retry_after_seconds == -(-60 // limit)  # ceil(60 / limit)
+
+
+async def test_raising_the_limit_grants_tokens_now() -> None:
+    limiter = RateLimiter(clock=Clock())
+    for _ in range(2):
+        await limiter.acquire("t", limit_per_minute=2)
+    raised = await limiter.acquire("t", limit_per_minute=5)
+    # The three extra tokens arrive at once instead of trickling in over the next minute.
+    assert raised.allowed is True
+    assert raised.remaining == 2
+
+
+async def test_idle_buckets_are_swept() -> None:
+    clock = Clock()
+    limiter = RateLimiter(clock=clock)
+    await limiter.acquire("t1", limit_per_minute=5)
+    clock.now += 61
+    await limiter.acquire("t2", limit_per_minute=5)
+    assert limiter.bucket_count == 1
+
+
+async def test_a_recently_used_bucket_survives_the_sweep() -> None:
+    clock = Clock()
+    limiter = RateLimiter(clock=clock)
+    await limiter.acquire("idle", limit_per_minute=1)  # starts the sweep interval
+    clock.now += 55
+    await limiter.acquire("busy", limit_per_minute=1)  # drains its only token
+    clock.now += 6  # 61 s into the interval: a sweep is due, but "busy" was used 6 s ago
+    denied = await limiter.acquire("busy", limit_per_minute=1)
+    assert denied.allowed is False
+    assert limiter.bucket_count == 1  # only "idle" went

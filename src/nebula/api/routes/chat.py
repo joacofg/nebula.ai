@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Request, Response, status
 from starlette.responses import StreamingResponse
 
-from nebula.api.dependencies import get_chat_service, get_rate_limited_tenant_context
+from nebula.api.dependencies import enforce_rate_limit, get_chat_service, get_tenant_context
 from nebula.models.openai import ChatCompletionRequest, ChatCompletionResponse
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.chat_service import ChatService
@@ -19,8 +19,9 @@ async def create_chat_completion(
     request: Request,
     response: Response,
     service: ChatService = Depends(get_chat_service),
-    tenant_context: AuthenticatedTenantContext = Depends(get_rate_limited_tenant_context),
+    tenant_context: AuthenticatedTenantContext = Depends(get_tenant_context),
 ) -> ChatCompletionResponse | StreamingResponse:
+    await enforce_rate_limit(request, response, tenant_context)
     request_id = getattr(request.state, "request_id", None)
     if payload.stream:
         stream_envelope = await service.stream_completion_with_metadata(
