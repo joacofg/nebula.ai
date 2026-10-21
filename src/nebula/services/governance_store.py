@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from collections import Counter
 from dataclasses import dataclass
@@ -24,6 +25,8 @@ from nebula.models.governance import (
 )
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 
+logger = logging.getLogger(__name__)
+
 
 class TenantAlreadyExistsError(ValueError):
     """A tenant with this id exists; the message is safe to return to the operator."""
@@ -39,6 +42,14 @@ class UnscopedApiKeyError(ValueError):
 
 class ApiKeyAlreadyExistsError(ValueError):
     """A key row, revoked or not, already owns this secret; the message is safe to return."""
+
+
+def default_tenant_policy(settings: Settings) -> TenantPolicy:
+    """The policy a new tenant gets: only the configured premium (and economy) model allowed."""
+    allowed = [settings.premium_model]
+    if settings.economy_model and settings.economy_model not in allowed:
+        allowed.append(settings.economy_model)
+    return TenantPolicy(allowed_premium_models=allowed)
 
 
 @dataclass(slots=True, frozen=True)
@@ -109,22 +120,37 @@ class GovernanceStore:
     def ensure_bootstrap(self) -> None:
         # Runs on every startup: an existing tenant keeps whatever the operator
         # changed (name, active flag, policy); only a missing one is seeded.
-        if self.get_tenant(self.settings.bootstrap_tenant_id) is None:
+        tenant_id = self.settings.bootstrap_tenant_id
+        if self.get_tenant(tenant_id) is None:
             self.create_tenant(
-                tenant_id=self.settings.bootstrap_tenant_id,
+                tenant_id=tenant_id,
                 name=self.settings.bootstrap_tenant_name,
                 description="Bootstrap workspace for local development and smoke tests.",
                 metadata={"bootstrap": True},
                 active=True,
                 policy=self.default_policy(),
             )
+        else:
+            self._warn_if_premium_model_disallowed(tenant_id)
         self.operator_api_key()
 
+    def _warn_if_premium_model_disallowed(self, tenant_id: str) -> None:
+        # The allowlist was seeded from the model settings of the first boot; a
+        # database shared by `make demo` and `make run` keeps the other one's.
+        allowed = self.get_policy(tenant_id).allowed_premium_models
+        premium_model = self.settings.premium_model
+        if allowed and premium_model not in allowed:
+            logger.warning(
+                "Bootstrap tenant '%s' does not allow the configured premium model '%s' "
+                "(stored allowlist: %s); premium requests for it will be denied. Add it to "
+                "the tenant policy in the console, or reset the database.",
+                tenant_id,
+                premium_model,
+                ", ".join(allowed),
+            )
+
     def default_policy(self) -> TenantPolicy:
-        allowed = [self.settings.premium_model]
-        if self.settings.economy_model and self.settings.economy_model not in allowed:
-            allowed.append(self.settings.economy_model)
-        return TenantPolicy(allowed_premium_models=allowed)
+        return default_tenant_policy(self.settings)
 
     def list_tenants(self) -> list[TenantRecord]:
         with self._session() as session:

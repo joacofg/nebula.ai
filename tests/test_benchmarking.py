@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 from pathlib import Path
 
 import httpx
 import pytest
 
+import nebula.benchmarking.run as benchmark_run
 from nebula.benchmarking.dataset import (
     PHASE5_COMPARISON_GROUPS,
     BenchmarkScenario,
@@ -18,6 +20,7 @@ from nebula.benchmarking.dataset import (
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.benchmarking.run import BenchmarkResult, BenchmarkRunner
 from nebula.core.config import Settings
+from nebula.models.governance import TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionUsage
 from nebula.services.router_service import RouterService
@@ -945,3 +948,130 @@ def test_an_unprobed_report_makes_no_claim_either_way(tmp_path) -> None:
 
     assert report["runtime_health"]["probe"] == "not attempted"
     assert "NOT COMPARABLE" not in runner._render_markdown(report)
+
+
+# --- bootstrap tenant policy -----------------------------------------------------
+
+
+class _FakeManagedServer:
+    """Stands in for the uvicorn subprocess; the HTTP calls go to a mock transport."""
+
+    def __init__(self, *, port: int, env_overrides: dict[str, str] | None = None) -> None:
+        self.base_url = f"http://127.0.0.1:{port}"
+
+    async def __aenter__(self) -> "_FakeManagedServer":
+        return self
+
+    async def __aexit__(self, *exc_info: object) -> None:
+        return None
+
+
+class _RecordingRunner(BenchmarkRunner):
+    def __init__(self, *args, events: list[str], **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.events = events
+
+    async def _run_groups(self, *, client, grouped, modes) -> list[BenchmarkResult]:
+        self.events.append(f"run {','.join(modes)}")
+        return []
+
+
+def _gateway_double(monkeypatch, events: list[str], *, policy_status: int = 200) -> list[dict]:
+    """Route every AsyncClient the runner opens to a handler that records calls."""
+    puts: list[dict] = []
+    real_client = httpx.AsyncClient
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "PUT":
+            events.append(f"PUT {request.url.path}")
+            puts.append(
+                {
+                    "admin_key": request.headers.get("X-Nebula-Admin-Key"),
+                    "body": json.loads(request.content),
+                }
+            )
+            return httpx.Response(policy_status, json={"detail": "refused"})
+        return httpx.Response(200, json={"status": "ready", "dependencies": {}})
+
+    def client_factory(*args, **kwargs) -> httpx.AsyncClient:
+        return real_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(benchmark_run, "ManagedServer", _FakeManagedServer)
+    monkeypatch.setattr(benchmark_run.httpx, "AsyncClient", client_factory)
+    return puts
+
+
+def _recording_runner(tmp_path, events: list[str], *, base_url: str | None) -> _RecordingRunner:
+    runner = _RecordingRunner(
+        base_url=base_url,
+        dataset_path=PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl",
+        pricing_path=PROJECT_ROOT / "benchmarks" / "pricing.json",
+        artifacts_root=tmp_path,
+        events=events,
+    )
+    runner.settings = runner.settings.model_copy(
+        update={
+            "premium_model": "openai/gpt-4o-mini",
+            "economy_model": "anthropic/claude-haiku-4.5",
+        }
+    )
+    return runner
+
+
+@pytest.mark.asyncio
+async def test_a_managed_run_resets_the_bootstrap_policy_before_measuring(
+    tmp_path, monkeypatch
+) -> None:
+    # `make demo`, `make run` and this harness share .nebula/nebula.db, and
+    # startup seeds the bootstrap tenant's allowlist only on first boot. After
+    # a demo the allowlist lacks the benchmark's premium model: premium_direct
+    # gets 403 and auto_fallback 502. Each managed gateway is put back on the
+    # harness's own default policy before any scenario runs.
+    events: list[str] = []
+    puts = _gateway_double(monkeypatch, events)
+    runner = _recording_runner(tmp_path, events, base_url=None)
+    grouped = group_scenarios(runner.scenarios)
+    normal_modes = [mode for mode in SCENARIO_MODE_ORDER if mode != "auto_fallback"]
+
+    await runner._execute_managed(grouped=grouped, normal_modes=normal_modes)
+
+    policy_path = f"/v1/admin/tenants/{runner.settings.bootstrap_tenant_id}/policy"
+    assert events == [
+        f"PUT {policy_path}",
+        f"run {','.join(normal_modes)}",
+        f"PUT {policy_path}",
+        "run auto_fallback",
+    ]
+    expected = TenantPolicy(
+        allowed_premium_models=["openai/gpt-4o-mini", "anthropic/claude-haiku-4.5"]
+    ).model_dump(mode="json")
+    assert [put["body"] for put in puts] == [expected, expected]
+    assert all(put["admin_key"] == runner.settings.admin_api_key for put in puts)
+
+
+@pytest.mark.asyncio
+async def test_a_failed_policy_reset_stops_the_managed_run(tmp_path, monkeypatch) -> None:
+    # Measuring on after a refused reset would report the very 403s and 502s
+    # the reset exists to prevent, as if they were routing results.
+    events: list[str] = []
+    _gateway_double(monkeypatch, events, policy_status=401)
+    runner = _recording_runner(tmp_path, events, base_url=None)
+
+    with pytest.raises(RuntimeError, match="bootstrap tenant policy"):
+        await runner._execute_managed(
+            grouped=group_scenarios(runner.scenarios), normal_modes=["premium_direct"]
+        )
+
+    assert not any(event.startswith("run") for event in events)
+
+
+@pytest.mark.asyncio
+async def test_an_external_run_leaves_the_tenant_policy_alone(tmp_path, monkeypatch) -> None:
+    # Under --base-url the tenant belongs to the operator of that gateway.
+    events: list[str] = []
+    puts = _gateway_double(monkeypatch, events)
+    runner = _recording_runner(tmp_path, events, base_url="http://127.0.0.1:8000")
+
+    await runner.run()
+
+    assert puts == []

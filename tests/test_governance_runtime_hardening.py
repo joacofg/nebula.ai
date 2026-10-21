@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -326,6 +327,62 @@ def test_restart_keeps_bootstrap_tenant_policy() -> None:
     assert policy.rate_limit_requests_per_minute == 5
     assert policy.routing_quality_target == 0.8
     assert policy.hard_budget_limit_usd == 1.0
+
+
+_STORE_LOGGER = "nebula.services.governance_store"
+
+
+def _restart_warnings(
+    caplog, allowed_premium_models: list[str] | None
+) -> tuple[list[str], str, str]:
+    """Restart with the given stored allowlist (None keeps the default one)."""
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            tenant_id = store.settings.bootstrap_tenant_id
+            if allowed_premium_models is not None:
+                store.upsert_policy(
+                    tenant_id,
+                    store.default_policy().model_copy(
+                        update={"allowed_premium_models": allowed_premium_models}
+                    ),
+                )
+            caplog.clear()
+            with caplog.at_level(logging.WARNING, logger=_STORE_LOGGER):
+                store.ensure_bootstrap()
+
+    messages = [
+        record.getMessage()
+        for record in caplog.records
+        if record.name == _STORE_LOGGER and record.levelno == logging.WARNING
+    ]
+    return messages, tenant_id, store.settings.premium_model
+
+
+def test_restart_warns_when_the_bootstrap_allowlist_lacks_the_premium_model(caplog) -> None:
+    # Startup never rewrites an existing bootstrap policy, so a database first
+    # booted with other model settings (`make demo` vs `make run`) keeps an
+    # allowlist that rejects this process's premium model with a 403.
+    messages, tenant_id, premium_model = _restart_warnings(
+        caplog, ["openai/gpt-4.1", "anthropic/claude-haiku-4.5"]
+    )
+
+    assert len(messages) == 1
+    assert tenant_id in messages[0]
+    assert premium_model in messages[0]
+    assert "openai/gpt-4.1" in messages[0]
+    assert "console" in messages[0]
+    assert "database" in messages[0]
+
+
+@pytest.mark.parametrize("allowed", [None, []], ids=["default", "empty"])
+def test_restart_is_quiet_when_the_premium_model_is_allowed(
+    caplog, allowed: list[str] | None
+) -> None:
+    # An empty allowlist allows every premium model.
+    messages, _, _ = _restart_warnings(caplog, allowed)
+
+    assert messages == []
 
 
 def _revoke_bootstrap_key(store: GovernanceStore) -> None:
