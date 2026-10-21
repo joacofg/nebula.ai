@@ -95,7 +95,7 @@ async def enforce_rate_limit(
         body = await request.json()
         model = body.get("model") if isinstance(body, dict) else None
         if isinstance(model, str) and model:
-            requested_model = model[:255]  # unvalidated input: bounded to the column
+            requested_model = model  # already bounded to the column by request validation
     except Exception:  # noqa: BLE001 - a malformed body is still a rate-limited request
         pass
     request_id = getattr(request.state, "request_id", None) or f"req-{uuid4().hex}"

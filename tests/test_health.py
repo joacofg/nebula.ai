@@ -284,8 +284,6 @@ def test_dependencies_include_mock_premium_provider_status() -> None:
     }
 
 
-
-
 def test_an_oversized_request_id_header_is_truncated_in_the_echo() -> None:
     with configured_app() as app:
         with TestClient(app) as client:

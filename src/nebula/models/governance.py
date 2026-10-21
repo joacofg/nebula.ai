@@ -71,7 +71,7 @@ class TenantRecord(BaseModel):
 
 class TenantCreateRequest(BaseModel):
     id: str = Field(min_length=1, max_length=255)
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     active: bool = True
@@ -97,7 +97,7 @@ class ApiKeyRecord(BaseModel):
 
 
 class ApiKeyCreateRequest(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=255)
     tenant_id: str | None = None
     allowed_tenant_ids: list[str] = Field(default_factory=list)
     key: str | None = Field(default=None, min_length=8)

@@ -320,6 +320,26 @@ def test_tenant_ids_longer_than_the_column_are_rejected_on_create() -> None:
     assert at_the_limit.status_code == 201
 
 
+def test_tenant_and_api_key_names_longer_than_the_column_are_rejected_on_create() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            tenant = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "long-name", "name": "n" * 300},
+            )
+            api_key = client.post(
+                "/v1/admin/api-keys",
+                headers=admin_headers(),
+                json={"name": "n" * 300, "tenant_id": "default"},
+            )
+
+    assert tenant.status_code == 422
+    assert isinstance(tenant.json()["detail"], list)
+    assert api_key.status_code == 422
+    assert isinstance(api_key.json()["detail"], list)
+
+
 def test_policy_options_endpoint_is_admin_protected_and_includes_default_model() -> None:
     with configured_app() as app:
         with TestClient(app) as client:

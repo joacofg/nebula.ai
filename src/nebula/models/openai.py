@@ -82,7 +82,7 @@ class ChatCompletionChunk(BaseModel):
 class EmbeddingsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    model: str = Field(min_length=1)
+    model: str = Field(min_length=1, max_length=255)
     input: str | list[str]
 
     @field_validator("model")

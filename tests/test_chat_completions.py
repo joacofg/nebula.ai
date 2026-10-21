@@ -426,6 +426,21 @@ def test_chat_completions_reject_a_model_name_longer_than_the_ledger_column() ->
     assert response.json()["error"]["type"] == "invalid_request_error"
 
 
+def test_chat_completions_accept_a_model_name_of_exactly_the_column_length() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "m" * 255,
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
+
+    assert response.status_code != 422
+
+
 def test_an_oversized_request_id_header_is_bounded_in_the_ledger_and_the_response() -> None:
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         with TestClient(app) as client:

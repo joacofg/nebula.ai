@@ -131,6 +131,31 @@ def test_embeddings_api_rejects_unsupported_shapes_before_runtime() -> None:
     assert extra_option.status_code == 422
 
 
+def test_embeddings_api_rejects_a_model_name_longer_than_the_ledger_column() -> None:
+    with configured_app() as app:
+        service = StubEmbeddingsService(
+            result=StubEmbeddingsResult(model="m" * 255, vectors=[[0.1, 0.2]])
+        )
+        app.dependency_overrides[get_embeddings_service] = lambda: service
+
+        with TestClient(app) as client:
+            too_long = client.post(
+                "/v1/embeddings",
+                headers=auth_headers(),
+                json={"model": "m" * 300, "input": "hello"},
+            )
+            at_the_limit = client.post(
+                "/v1/embeddings",
+                headers=auth_headers(),
+                json={"model": "m" * 255, "input": "hello"},
+            )
+
+    assert too_long.status_code == 422
+    assert too_long.json()["error"]["type"] == "invalid_request_error"
+    assert at_the_limit.status_code == 200
+    assert [call["model"] for call in service.calls] == ["m" * 255]
+
+
 def test_embeddings_api_maps_upstream_failures_to_bad_gateway() -> None:
     from nebula.services.embeddings_service import EmbeddingsUpstreamError
 
