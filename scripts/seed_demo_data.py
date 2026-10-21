@@ -64,6 +64,16 @@ CACHE_PROMPTS = [
 ]
 
 
+def has_active_demo_key(records: list[dict]) -> bool:
+    """True if the key list holds a usable demo key; a revoked one cannot authenticate."""
+    return any(
+        rec.get("name") == "acme-demo-key"
+        and rec.get("tenant_id") == DEMO_TENANT_ID
+        and not rec.get("revoked_at")
+        for rec in records
+    )
+
+
 def ensure_governance(client: httpx.Client) -> None:
     r = client.get(f"{BASE}/v1/admin/tenants/{DEMO_TENANT_ID}", headers=ADMIN_HEADERS)
     if r.status_code == 200:
@@ -87,11 +97,7 @@ def ensure_governance(client: httpx.Client) -> None:
 
     r = client.get(f"{BASE}/v1/admin/api-keys", headers=ADMIN_HEADERS)
     r.raise_for_status()
-    existing = any(
-        rec.get("name") == "acme-demo-key" and rec.get("tenant_id") == DEMO_TENANT_ID
-        for rec in r.json()
-    )
-    if existing:
+    if has_active_demo_key(r.json()):
         print("api key acme-demo-key: exists")
     else:
         r = client.post(

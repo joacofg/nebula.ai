@@ -1,4 +1,21 @@
 from scripts.demo_prepare import DEMO_QUALITY_TARGET, PREMIUM_MODELS, demo_policy
+from scripts.seed_demo_data import has_active_demo_key
+
+
+def _key(name="acme-demo-key", tenant_id="acme-demo", revoked_at=None):
+    return {"name": name, "tenant_id": tenant_id, "revoked_at": revoked_at}
+
+
+def test_seed_finds_the_active_demo_key():
+    assert has_active_demo_key([_key(name="other", tenant_id="other"), _key()]) is True
+
+
+def test_seed_treats_a_revoked_demo_key_as_absent():
+    assert has_active_demo_key([_key(revoked_at="2026-10-21T10:00:00Z")]) is False
+
+
+def test_seed_ignores_a_key_with_the_demo_name_on_another_tenant():
+    assert has_active_demo_key([_key(tenant_id="other")]) is False
 
 
 def test_sets_the_quality_target_the_three_example_prompts_are_tuned_for():

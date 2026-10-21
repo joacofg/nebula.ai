@@ -25,6 +25,18 @@ from nebula.models.governance import (
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 
 
+class TenantAlreadyExistsError(ValueError):
+    """A tenant with this id exists; the message is safe to return to the operator."""
+
+
+class UnknownTenantError(ValueError):
+    """A key was scoped to a tenant that does not exist; the message is safe to return."""
+
+
+class ApiKeyAlreadyExistsError(ValueError):
+    """A key row (revoked or not) already owns this secret's hash; the message is safe to return."""
+
+
 @dataclass(slots=True, frozen=True)
 class StoredApiKey:
     id: str
@@ -153,7 +165,7 @@ class GovernanceStore:
                 tenant.active = active
                 tenant.updated_at = now
             else:
-                raise ValueError(f"Tenant already exists: {tenant_id}")
+                raise TenantAlreadyExistsError(f"Tenant '{tenant_id}' already exists.")
             session.commit()
         resolved_policy = policy or self.default_policy()
         self.upsert_policy(tenant_id, resolved_policy)
@@ -232,12 +244,15 @@ class GovernanceStore:
         resolved_allowed_tenant_ids = allowed_tenant_ids or ([tenant_id] if tenant_id else [])
         now = self._now()
         secret = raw_key or f"nbk_{secrets.token_urlsafe(24)}"
+        # The hash is unique across revoked rows too, so a revoked key still owns its secret.
+        if self.find_api_key_by_secret(secret, include_revoked=True) is not None:
+            raise ApiKeyAlreadyExistsError("An API key with this secret already exists.")
         with self._session() as session:
             for allowed_tenant_id in resolved_allowed_tenant_ids:
                 if session.get(TenantModel, allowed_tenant_id) is None:
-                    raise ValueError(f"Unknown tenant: {allowed_tenant_id}")
+                    raise UnknownTenantError(f"Unknown tenant: {allowed_tenant_id}")
             if tenant_id and session.get(TenantModel, tenant_id) is None:
-                raise ValueError(f"Unknown tenant: {tenant_id}")
+                raise UnknownTenantError(f"Unknown tenant: {tenant_id}")
             api_key = ApiKeyModel(
                 id=str(uuid4()),
                 name=name,
@@ -292,10 +307,15 @@ class GovernanceStore:
 
     def list_api_keys(self, tenant_id: str | None = None) -> list[ApiKeyRecord]:
         with self._session() as session:
-            stmt = select(ApiKeyModel)
+            rows = session.scalars(select(ApiKeyModel).order_by(ApiKeyModel.created_at.desc())).all()
             if tenant_id:
-                stmt = stmt.where(ApiKeyModel.tenant_id == tenant_id)
-            rows = session.scalars(stmt.order_by(ApiKeyModel.created_at.desc())).all()
+                # allowed_tenant_ids is a JSON column, so match it here rather than in SQL;
+                # a key scoped only through that list has no tenant_id of its own.
+                rows = [
+                    row
+                    for row in rows
+                    if row.tenant_id == tenant_id or tenant_id in (row.allowed_tenant_ids_json or [])
+                ]
             return [self._stored_api_key_from_model(row).to_record() for row in rows]
 
     def revoke_api_key(self, api_key_id: str) -> ApiKeyRecord | None:

@@ -1664,3 +1664,87 @@ def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -
     assert body["changed_requests"][0]["simulated_route_target"] == "local"
     assert body["changed_requests"][0]["simulated_route_reason"] == "hard_budget_downgrade"
     assert "hard_budget=exceeded" in body["changed_requests"][0]["simulated_policy_outcome"]
+
+
+def _create_tenant(client: TestClient, tenant_id: str):
+    return client.post(
+        "/v1/admin/tenants",
+        headers=admin_headers(),
+        json={"id": tenant_id, "name": tenant_id.upper()},
+    )
+
+
+def test_creating_a_tenant_that_already_exists_returns_409() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            first = _create_tenant(client, "acme")
+            duplicate = _create_tenant(client, "acme")
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert duplicate.json() == {"detail": "Tenant 'acme' already exists."}
+
+
+def _create_key(client: TestClient, **payload):
+    return client.post("/v1/admin/api-keys", headers=admin_headers(), json=payload)
+
+
+def test_creating_an_api_key_with_an_existing_secret_returns_409() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            first = _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            duplicate = _create_key(client, name="second", tenant_id="acme", key="shared-secret-key")
+            keys = client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert duplicate.json() == {"detail": "An API key with this secret already exists."}
+    assert [key["name"] for key in keys.json()] == ["first"]
+
+
+def test_a_revoked_api_key_still_owns_its_secret() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            first = _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            revoked = client.post(
+                f"/v1/admin/api-keys/{first.json()['record']['id']}/revoke",
+                headers=admin_headers(),
+            )
+            reused = _create_key(client, name="again", tenant_id="acme", key="shared-secret-key")
+
+    assert revoked.status_code == 200
+    assert reused.status_code == 409
+    assert reused.json() == {"detail": "An API key with this secret already exists."}
+
+
+def test_creating_an_api_key_for_an_unknown_tenant_returns_404() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            by_tenant_id = _create_key(client, name="ghost-key", tenant_id="ghost")
+            by_allowed_list = _create_key(
+                client, name="ghost-key", tenant_id=None, allowed_tenant_ids=["ghost"]
+            )
+
+    assert by_tenant_id.status_code == 404
+    assert by_tenant_id.json() == {"detail": "Unknown tenant: ghost"}
+    assert by_allowed_list.status_code == 404
+    assert by_allowed_list.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_listing_api_keys_by_tenant_includes_keys_scoped_through_allowed_tenant_ids() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            for tenant_id in ("a", "b", "c"):
+                _create_tenant(client, tenant_id)
+            shared = _create_key(client, name="shared", tenant_id=None, allowed_tenant_ids=["a", "b"])
+            own_b = _create_key(client, name="own-b", tenant_id="b")
+            _create_key(client, name="own-c", tenant_id="c")
+            for_b = client.get("/v1/admin/api-keys?tenant_id=b", headers=admin_headers())
+            for_c = client.get("/v1/admin/api-keys?tenant_id=c", headers=admin_headers())
+
+    assert shared.status_code == 201
+    assert own_b.status_code == 201
+    assert {key["name"] for key in for_b.json()} == {"shared", "own-b"}
+    assert {key["name"] for key in for_c.json()} == {"own-c"}

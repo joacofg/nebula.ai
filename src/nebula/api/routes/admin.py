@@ -27,6 +27,11 @@ from nebula.models.governance import (
 )
 from nebula.models.openai import ChatCompletionRequest
 from nebula.services.auth_service import AuthenticatedTenantContext
+from nebula.services.governance_store import (
+    ApiKeyAlreadyExistsError,
+    TenantAlreadyExistsError,
+    UnknownTenantError,
+)
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -50,14 +55,17 @@ async def create_tenant(
     payload: TenantCreateRequest,
     container: ServiceContainer = Depends(require_admin),
 ) -> TenantRecord:
-    return container.governance_store.create_tenant(
-        tenant_id=payload.id,
-        name=payload.name,
-        description=payload.description,
-        metadata=payload.metadata,
-        active=payload.active,
-        policy=payload.policy,
-    )
+    try:
+        return container.governance_store.create_tenant(
+            tenant_id=payload.id,
+            name=payload.name,
+            description=payload.description,
+            metadata=payload.metadata,
+            active=payload.active,
+            policy=payload.policy,
+        )
+    except TenantAlreadyExistsError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
 
 
 @router.get("/tenants/{tenant_id}", response_model=TenantRecord)
@@ -208,12 +216,17 @@ async def create_api_key(
     payload: ApiKeyCreateRequest,
     container: ServiceContainer = Depends(require_admin),
 ) -> ApiKeyCreateResponse:
-    record, raw_key = container.governance_store.create_api_key(
-        name=payload.name,
-        tenant_id=payload.tenant_id,
-        allowed_tenant_ids=payload.allowed_tenant_ids,
-        raw_key=payload.key,
-    )
+    try:
+        record, raw_key = container.governance_store.create_api_key(
+            name=payload.name,
+            tenant_id=payload.tenant_id,
+            allowed_tenant_ids=payload.allowed_tenant_ids,
+            raw_key=payload.key,
+        )
+    except UnknownTenantError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error)) from error
+    except ApiKeyAlreadyExistsError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error)) from error
     return ApiKeyCreateResponse(api_key=raw_key, record=record)
 
 
