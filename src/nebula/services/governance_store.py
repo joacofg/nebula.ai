@@ -472,8 +472,9 @@ class GovernanceStore:
         with self._session() as session:
             stmt = select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
                 UsageLedgerModel.tenant_id == tenant_id,
+                # A stream the client abandoned still spent the premium tokens it streamed.
                 UsageLedgerModel.terminal_status.in_(
-                    ["completed", "fallback_completed", "cache_hit"]
+                    ["completed", "fallback_completed", "cache_hit", "client_disconnected"]
                 ),
             )
             if before_timestamp is not None:

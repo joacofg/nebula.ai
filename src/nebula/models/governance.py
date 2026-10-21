@@ -15,6 +15,7 @@ TerminalStatus = Literal[
     "policy_denied",
     "provider_error",
     "rate_limited",
+    "client_disconnected",
 ]
 CalibrationEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
 # M009 keeps the externally-visible calibration_summary field name for compatibility,

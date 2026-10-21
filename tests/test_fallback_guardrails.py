@@ -2,14 +2,18 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+import asyncio
+import json
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from contextlib import contextmanager
 
 import pytest
 from fastapi.testclient import TestClient
 
 from nebula.core.container import ServiceContainer
-from nebula.providers.base import CompletionChunk, CompletionResult
+from nebula.models.openai import ChatCompletionRequest
+from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
+from nebula.services.auth_service import AuthenticatedTenantContext
 from tests.support import (
     FakeCacheService,
     StubProvider,
@@ -77,13 +81,17 @@ def _chat(client: TestClient, *, stream: bool, model: str = "nebula-auto", **ext
     )
 
 
-def _ledger_rows(client: TestClient, response) -> list[dict]:
+def _ledger_rows_for(client: TestClient, request_id: str) -> list[dict]:
     ledger = client.get(
-        f"/v1/admin/usage/ledger?request_id={response.headers['X-Request-ID']}",
+        f"/v1/admin/usage/ledger?request_id={request_id}",
         headers=admin_headers(),
     )
     assert ledger.status_code == 200
     return ledger.json()
+
+
+def _ledger_rows(client: TestClient, response) -> list[dict]:
+    return _ledger_rows_for(client, response.headers["X-Request-ID"])
 
 
 @STREAM_MODES
@@ -281,3 +289,162 @@ def test_fallback_block_reason_follows_table_order(
         response = _chat(client, stream=stream, max_tokens=4000)
         expected = detail.format(premium_model=container.settings.premium_model)
         _assert_fallback_blocked(client, response, premium, expected)
+
+
+# Streams the client abandons or the upstream cuts short: one ledger row each, whatever the exit.
+
+
+class _MidStreamProvider(StubProvider):
+    """Streams one chunk, then `then` runs: the upstream failing or stalling."""
+
+    def __init__(self, name: str, *, model: str, then: Callable[[], Awaitable[None]]) -> None:
+        super().__init__(name)
+        self.model = model
+        self.then = then
+
+    def stream_complete(self, request: ChatCompletionRequest):
+        self.requests.append(request)
+
+        async def iterator():
+            yield CompletionChunk(delta="partial answer", model=self.model)
+            await self.then()
+
+        return iterator()
+
+
+async def _upstream_dies() -> None:
+    raise provider_error("upstream died")
+
+
+async def _upstream_stalls() -> None:
+    await asyncio.Event().wait()
+
+
+def _use_premium(container: ServiceContainer, provider: StubProvider) -> None:
+    container.premium_provider = provider
+    container.provider_registry.premium_provider = provider
+
+
+def _stream_request(model: str) -> ChatCompletionRequest:
+    return ChatCompletionRequest(
+        model=model,
+        stream=True,
+        messages=[{"role": "user", "content": "Say hi."}],
+    )
+
+
+def _tenant_context(container: ServiceContainer) -> AuthenticatedTenantContext:
+    return container.auth_service.resolve_tenant_context(
+        raw_api_key="nebula-dev-key", explicit_tenant_id="default"
+    )
+
+
+def _content_of(event: bytes) -> str | None:
+    payload = event.removeprefix(b"data: ").strip()
+    if payload == b"[DONE]":
+        return None
+    return json.loads(payload)["choices"][0]["delta"].get("content")
+
+
+async def _read_first_content(stream: AsyncIterator[bytes]) -> None:
+    async for event in stream:
+        if _content_of(event):
+            return
+    raise AssertionError("the stream ended without any content")
+
+
+async def test_abandoned_premium_stream_is_recorded() -> None:
+    with fallback_client() as (client, container, premium):
+        model = container.settings.premium_model
+        premium.stream_chunks = [
+            *(CompletionChunk(delta=f"word{n} ", model=model) for n in range(4)),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+        ]
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-abandoned",
+        )
+        await _read_first_content(envelope.stream)
+        await envelope.stream.aclose()  # what a disconnecting client does to the generator
+        rows = _ledger_rows_for(client, "req-abandoned")
+
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "client_disconnected"
+    assert rows[0]["final_route_target"] == "premium"
+    assert rows[0]["completion_tokens"] > 0
+    assert rows[0]["estimated_cost"] > 0
+
+
+async def test_cancelled_premium_stream_is_recorded() -> None:
+    # Starlette cancels the task serving a response when the client drops the connection.
+    with fallback_client() as (client, container, _premium):
+        model = container.settings.premium_model
+        _use_premium(container, _MidStreamProvider("mock-premium", model=model, then=_upstream_stalls))
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-cancelled",
+        )
+        first_content = asyncio.Event()
+
+        async def serve() -> None:
+            async for event in envelope.stream:
+                if _content_of(event):
+                    first_content.set()
+
+        serving = asyncio.create_task(serve())
+        await asyncio.wait_for(first_content.wait(), timeout=5)
+        serving.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await serving
+        rows = _ledger_rows_for(client, "req-cancelled")
+
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "client_disconnected"
+    assert rows[0]["completion_tokens"] > 0
+    assert rows[0]["estimated_cost"] > 0
+
+
+async def test_abandoned_stream_counts_toward_the_hard_budget() -> None:
+    # Spend 0 is under this limit, so the first stream runs; whatever it cost must then count.
+    with fallback_client(hard_budget_limit_usd=0.000000001) as (client, container, premium):
+        model = container.settings.premium_model
+        premium.stream_chunks = [
+            CompletionChunk(delta="word ", model=model),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+        ]
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-budget",
+        )
+        await _read_first_content(envelope.stream)
+        await envelope.stream.aclose()
+        follow_up = _chat(client, stream=False, model=model)
+
+    assert follow_up.status_code == 403
+    assert "hard_budget=exceeded" in follow_up.headers["X-Nebula-Policy-Outcome"]
+
+
+@pytest.mark.parametrize("via_fallback", [False, True], ids=["premium_primary", "after_fallback"])
+async def test_mid_stream_error_records_one_row(via_fallback: bool) -> None:
+    # Once a chunk is out the stream cannot fall back again, so the wrapper alone records it.
+    with fallback_client() as (client, container, _premium):
+        model = container.settings.premium_model
+        _use_premium(container, _MidStreamProvider("mock-premium", model=model, then=_upstream_dies))
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request("nebula-auto" if via_fallback else model),
+            tenant_context=_tenant_context(container),
+            request_id="req-mid-stream",
+        )
+        with pytest.raises(ProviderError, match="upstream died"):
+            async for _event in envelope.stream:
+                pass
+        rows = _ledger_rows_for(client, "req-mid-stream")
+
+    assert envelope.metadata.fallback_used is via_fallback
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "provider_error"
+    assert rows[0]["final_provider"] == "mock-premium"
+    assert rows[0]["fallback_used"] is via_fallback

@@ -10,6 +10,7 @@ describe("labels", () => {
     expect(reasonLabel(null)).toBe("—");
     expect(statusLabel("provider_error")).toBe("error del proveedor");
     expect(statusLabel("fallback_completed")).toBe("completado con fallback");
+    expect(statusLabel("client_disconnected")).toBe("cortado por el cliente");
   });
 
   it("pluralizes", () => {

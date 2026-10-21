@@ -894,6 +894,7 @@ class ChatService:
             "cache_hit",
             "fallback_completed",
             "provider_error",
+            "client_disconnected",
         ],
     ) -> None:
         estimated_cost = 0.0
@@ -1151,6 +1152,16 @@ class ChatService:
         async def iterator():
             content_parts: list[str] = []
             response_model: str | None = None
+            # Any exit that is not a normal end or a provider failure (GeneratorExit when the
+            # generator is closed, CancelledError when the serving task is cancelled) means the
+            # client went away mid-stream.
+            terminal_status: Literal[
+                "completed",
+                "cache_hit",
+                "fallback_completed",
+                "provider_error",
+                "client_disconnected",
+            ] = "client_disconnected"
             try:
                 async for event in stream:
                     model = self._extract_model_from_sse(event)
@@ -1160,36 +1171,33 @@ class ChatService:
                     if delta:
                         content_parts.append(delta)
                     yield event
+                terminal_status = (
+                    "cache_hit"
+                    if metadata.cache_hit
+                    else "fallback_completed"
+                    if metadata.fallback_used
+                    else "completed"
+                )
             except Exception:
+                terminal_status = "provider_error"
+                raise
+            finally:
+                # Exactly one row per stream, whichever way it ended. _record_usage never
+                # suspends (the store write is synchronous), so it is safe to run while the
+                # generator is being closed or the task is being cancelled.
                 await self._record_usage(
                     request_id=request_id,
                     tenant_id=metadata.tenant_id,
                     request=request,
                     metadata=metadata,
                     response_model=response_model,
-                    usage=None,
+                    usage=(
+                        None
+                        if terminal_status == "provider_error"
+                        else self.policy_service.estimate_usage(request, "".join(content_parts))
+                    ),
                     latency_ms=(perf_counter() - started_at) * 1000,
-                    terminal_status="provider_error",
+                    terminal_status=terminal_status,
                 )
-                raise
-
-            final_content = "".join(content_parts)
-            usage = self.policy_service.estimate_usage(request, final_content)
-            await self._record_usage(
-                request_id=request_id,
-                tenant_id=metadata.tenant_id,
-                request=request,
-                metadata=metadata,
-                response_model=response_model,
-                usage=usage,
-                latency_ms=(perf_counter() - started_at) * 1000,
-                terminal_status=(
-                    "cache_hit"
-                    if metadata.cache_hit
-                    else "fallback_completed"
-                    if metadata.fallback_used
-                    else "completed"
-                ),
-            )
 
         return iterator()

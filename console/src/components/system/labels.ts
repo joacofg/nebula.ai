@@ -21,6 +21,7 @@ const STATUSES: Record<string, string> = {
   policy_denied: "denegado por política",
   provider_error: "error del proveedor",
   rate_limited: "límite de pedidos",
+  client_disconnected: "cortado por el cliente",
 };
 
 const ROUTES: Record<string, string> = { cache: "caché", denied: "denegado" };
