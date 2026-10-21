@@ -70,8 +70,10 @@ jobs:
         run: npm run test -- --run
 
       # tsc and vitest never run Next's production compile, so a route or
-      # config that only breaks under `next build` (and under the standalone
-      # server the Docker image ships) would reach main unnoticed.
+      # config that only breaks under `next build` would reach main unnoticed.
+      # This step compiles and emits the standalone bundle the Docker image
+      # ships; it does not run it. Serving that bundle is the console-e2e
+      # job's work.
       - name: Build
         run: npm run build
 
@@ -97,10 +99,13 @@ jobs:
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
 
-      # No gateway is needed: every spec mocks the browser's calls to
-      # /api/admin/*, /api/playground/completions and /api/runtime/health with
-      # page.route. The Playwright webServer builds the console and serves the
-      # standalone output on 127.0.0.1:3001.
+      # No gateway is needed: each spec mocks, with page.route, the console API
+      # calls it asserts on (/api/admin/*, and /api/playground/completions in
+      # playground.spec.ts). Only observability.spec.ts mocks
+      # /api/runtime/health; in the other specs the console's health poll finds
+      # no gateway and fails without touching what they assert. The Playwright
+      # webServer builds the console and serves the standalone output on
+      # 127.0.0.1:3001.
       - name: E2E
         run: npm run e2e
 

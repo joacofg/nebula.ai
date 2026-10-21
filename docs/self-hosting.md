@@ -117,6 +117,16 @@ This topology is designed for product proof and pilot evaluation:
 - Estimated premium cost in benchmark artifacts is based on `benchmarks/pricing.json`, not provider invoice reconciliation.
 - **Upgrading from a deployment created before September 2026:** the Alembic history was collapsed into a single initial revision, so `alembic upgrade head` fails with "Can't locate revision identified by '20260411_0010'" on an existing database. Recreate it: stop the stack, remove the `postgres_data` volume (`docker compose -f docker-compose.selfhosted.yml down -v`), start again so the migration runs on an empty database, and re-create tenants and keys (or run `scripts/seed_demo_data.py` for the demo tenant). Semantic-cache points written before the upgrade lack a tenant id and are never served again; clear the Qdrant volume at the same time to reclaim the space.
 
+## Rate limiting and process count
+
+Per-tenant rate limits are enforced in memory by the gateway process. Keep the gateway at one uvicorn process (the default in `docker-compose.selfhosted.yml`); with several processes each keeps its own counters and a tenant's effective limit multiplies.
+
+A request rejected by validation (422) spends no token, so it carries no `X-RateLimit-*` headers.
+
+## Budgets
+
+A tenant's soft and hard budgets (`soft_budget_usd`, `hard_budget_limit_usd`) are checked against its spend: the sum of the estimated cost of the tenant's completed, fallback, cache-hit and abandoned-stream (`client_disconnected`) requests whose ledger rows are still inside the evidence retention window. Denied, rate-limited and provider-error rows add nothing. The cleanup job deletes each row once its window expires (`evidence_retention_window` in the tenant policy: `24h`, `7d`, `30d` by default, or `90d`; the window in force when the row was written applies), so a budget behaves as a rolling budget over that window, not as a calendar-month or lifetime cap. A row without an expiry never ages out and counts for as long as it exists, and with `NEBULA_RETENTION_CLEANUP_ENABLED=false` nothing is deleted, so the budget becomes a lifetime total.
+
 ## Related docs
 
 - [README](../README.md)
@@ -124,12 +134,3 @@ This topology is designed for product proof and pilot evaluation:
 - [Architecture](architecture.md)
 - [Evaluation](evaluation.md)
 - [Demo runbook](demo-runbook.md)
-
-
-## Rate limiting and process count
-
-Per-tenant rate limits are enforced in memory by the gateway process. Keep the gateway at one uvicorn process (the default in `docker-compose.selfhosted.yml`); with several processes each keeps its own counters and a tenant's effective limit multiplies.
-
-## Budgets
-
-A tenant's soft and hard budgets (`soft_budget_usd`, `hard_budget_limit_usd`) are checked against the estimated cost of that tenant's ledger rows that still exist. Each row is deleted once its evidence retention window expires (`evidence_retention_window` in the tenant policy: `24h`, `7d`, `30d` by default, or `90d`; the window in force when the row was written applies), so a budget behaves as a rolling budget over that window, not as a calendar-month or lifetime cap. With `NEBULA_RETENTION_CLEANUP_ENABLED=false` nothing expires and the budget becomes a lifetime total.
