@@ -9,12 +9,19 @@ from fastapi import FastAPI
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 from nebula.providers.base import CompletionResult
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
+from nebula.services.semantic_cache_service import SemanticCacheService
 from tests.support import (
     FakeCacheService,
+    FakeClock,
+    FixedVectorEmbeddings,
+    LateQdrant,
+    LookupCounts,
     StubProvider,
     auth_headers,
+    cache_lookups,
     configured_app,
     usage,
+    use_fake_cache,
 )
 
 
@@ -44,8 +51,7 @@ def _install_serving_stubs(app: FastAPI) -> None:
         ),
     )
     container.provider_registry.local_provider = container.local_provider
-    container.cache_service = FakeCacheService()
-    container.chat_service.cache_service = container.cache_service
+    use_fake_cache(container)
 
 
 def _semantic_cache_outage_payload(detail: str = "Qdrant unavailable: injected semantic cache outage") -> dict[str, object]:
@@ -240,8 +246,7 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
     async with configured_outage_client() as (app, client):
         failing_cache = StatefulSemanticCacheService()
         failing_cache.set_outage()
-        app.state.container.cache_service = failing_cache
-        app.state.container.chat_service.cache_service = failing_cache
+        use_fake_cache(app.state.container, failing_cache)
         app.state.container.runtime_health_service.semantic_cache = failing_cache
 
         response = await client.post(
@@ -304,6 +309,82 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
         "enabled": True,
     }
 
+
+
+@pytest.mark.asyncio
+# Payload indexes are a no-op in local Qdrant, and the client says so on every index.
+@pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
+async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_restart() -> None:
+    async with configured_outage_client() as (app, client):
+        container = app.state.container
+        qdrant, clock = LateQdrant(), FakeClock()
+        embeddings = FixedVectorEmbeddings([1.0] * container.settings.embedding_dimensions)
+        cache = SemanticCacheService(
+            settings=container.settings, embeddings_service=embeddings, client=qdrant, clock=clock
+        )
+        await cache.initialize()  # at startup, before Qdrant is up
+        container.chat_service.cache_service = cache
+        container.chat_service.embeddings_service = embeddings
+        container.runtime_health_service.semantic_cache = cache
+
+        async def chat() -> httpx.Response:
+            response = await client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={"model": "nebula-auto", "messages": [{"role": "user", "content": "hola"}]},
+            )
+            assert response.status_code == 200
+            return response
+
+        async def cache_health() -> dict[str, object]:
+            return (await client.get("/health/dependencies")).json()["dependencies"]["semantic_cache"]
+
+        counts = LookupCounts()
+        while_down = await chat()
+        health_while_down = await cache_health()
+        qdrant.up = True
+        clock.now += 30.0
+        recovering = await chat()  # retries initialization, then looks up
+        storing = await chat()
+        hit = await chat()
+        health_after = await cache_health()
+        counted = counts.since()
+
+    assert health_while_down["status"] == "degraded"
+    assert health_after["status"] == "ready"
+    assert [r.headers["X-Nebula-Cache-Hit"] for r in (while_down, recovering, storing)] == [
+        "false",
+        "false",
+        "false",
+    ]
+    assert hit.headers["X-Nebula-Cache-Hit"] == "true"
+    assert counted == {"disabled": 1, "no_candidate": 2, "hit": 1}
+    # A disabled cache costs no embedding. The lookup that re-enables it embeds on its own and
+    # has no vector to store its answer under; the next request embeds once and stores it.
+    assert embeddings.calls == ["hola", "hola", "hola"]
+
+
+@pytest.mark.asyncio
+async def test_a_cache_lookup_that_raises_is_a_miss_not_a_500() -> None:
+    async with configured_outage_client() as (app, client):
+        use_fake_cache(
+            app.state.container, FakeCacheService(lookup_error=RuntimeError("qdrant exploded"))
+        )
+        before = cache_lookups("error")
+
+        response = await client.post(
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "messages": [{"role": "user", "content": "A broken cache must not break chat"}],
+            },
+        )
+
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["message"]["content"] == "local outage-safe response"
+    assert response.headers["X-Nebula-Cache-Hit"] == "false"
+    assert cache_lookups("error") - before == 1
 
 
 @pytest.mark.asyncio
@@ -518,8 +599,7 @@ async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_read
     async with configured_outage_client() as (app, client):
         cache_service = StatefulSemanticCacheService()
         cache_service.set_outage()
-        app.state.container.cache_service = cache_service
-        app.state.container.chat_service.cache_service = cache_service
+        use_fake_cache(app.state.container, cache_service)
         app.state.container.runtime_health_service.semantic_cache = cache_service
         app.state.container.runtime_health_service.embeddings_service = (
             ReachableLocalOllamaHealth()

@@ -344,7 +344,7 @@ septiembre de 2026).
 |---|---|---|---|---|
 | Despliegue self-hosted | Sí | Sí (versión open source) | No (administrado) | Sí |
 | Caché semántica | Sí | Sí | No (coincidencia exacta) | Sí |
-| Aislamiento del caché | Por clave, equipo o usuario | Por namespace | Por solicitud idéntica | Por tenant, con umbral y antigüedad de la política |
+| Aislamiento del caché | Por clave, equipo o usuario | Por namespace | Por solicitud idéntica | Por tenant, conversación y nivel, con umbral y antigüedad de la política |
 | Decisión de ruta | Reglas y balanceo configurados | Reglas condicionales sobre metadatos | Reglas | Router aprendido sobre el prompt, con objetivo de calidad por tenant |
 | Calidad de lo servido | No se mide | No se mide | No se mide | Estimada fuera de línea sobre un corpus juzgado, con jueces validados contra un lector humano (no se mide en producción) |
 | Ahorro contra una línea base reproducible | No | No | No | Sí |

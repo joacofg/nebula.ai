@@ -16,7 +16,7 @@ test de la suite (archivo y nombre) o un reporte versionado del repositorio.
 | CP-05 | Acuerdo jueces–humano en español | 50 pares sorteados antes de los jueces | κ ≥ 0.4 (pre-registrado) | κ 0.31 (IC −0.07–0.64) | F | `benchmarks/ground-truth/v1/validation.json` |
 | CP-06 | Rechazos confirmados por el humano | 25 rechazados + 10 aceptados, a ciegas | mayoría de rechazos confirmados | 20 de 25 (80 %, Wilson 61–91 %) | P | ídem, `negatives_es` |
 | CP-07 | Similitud coseno como métrica de calidad | 22 pares EN con nota humana | AUC > 0.5 | AUC 0.25 (IC 0.00–0.56) | F | `benchmarks/metric-validation/report.json` |
-| CP-08 | Caché aislado por tenant y antigüedad | búsqueda con tenant y TTL de la política | filtro por tenant y fecha, umbral de la política | aplicado en la consulta a Qdrant | P | `tests/test_semantic_cache_service.py::test_lookup_filters_by_tenant_and_freshness_and_uses_tenant_threshold` |
+| CP-08 | Caché aislado por tenant y antigüedad | búsqueda con tenant y TTL de la política, en una conversación y un nivel | filtro por tenant, fecha, contexto de la conversación y nivel; umbral de la política | filtros aplicados en la consulta a Qdrant, umbral sobre el mejor candidato | P | `tests/test_semantic_cache_service.py::test_lookup_filters_by_tenant_and_freshness`, `::test_lookup_requires_same_context_hash`, `::test_frontier_request_never_gets_lower_tier_answer`, `::test_explicit_model_matches_only_same_model`, `::test_the_tenant_threshold_applies_to_the_best_candidate` |
 | CP-09 | Fallback local → premium | falla simulada del proveedor local | completa en el premium | completado, cabecera de fallback | P | `tests/test_service_flows.py::test_stream_completion_falls_back_to_premium_provider`, `tests/test_response_headers.py::test_response_headers_cover_local_premium_cache_and_fallback` |
 | CP-10 | Caída de Qdrant | caché inalcanzable | responde sin caché, salud degradada | responde, `/health/ready` degradado | P | `tests/test_phase10_outage_safety.py::test_semantic_cache_outage_keeps_chat_completion_serving_and_health_degraded` |
 | CP-11 | Caída de Ollama con el router activo | embedding que falla | decide con la heurística y lo registra | heurística, señal `learned_router` | P | `tests/test_learned_routing.py::test_embedding_failure_falls_back_to_the_heuristic` |
@@ -26,6 +26,7 @@ test de la suite (archivo y nombre) o un reporte versionado del repositorio.
 | CP-15 | Replay de la consola | archivo de replay empaquetado | coincide con el artefacto | coincide | P | `tests/test_evaluation_api.py::test_the_packaged_replay_matches_the_artifact` |
 | CP-16 | Extremo a extremo de la consola | Playwright contra el stack local | todas las pruebas pasan | pasan los siete archivos, tras corregir los selectores ambiguos de `observability.spec.ts` y `playground.spec.ts` | P | `console/e2e/` |
 | CP-17 | Cifras de la tesis al día | `python -m scripts.thesis.tables --check` | ningún bloque desactualizado | al día | P | `tests/test_thesis_tables.py::test_repo_thesis_is_up_to_date` |
+| CP-18 | Precisión del caché semántico (criterio pre-registrado) | 1999 pares de PAWS-X en español; replay con 173 paráfrasis válidas y los 1000 originales; umbrales de 0.80 a 0.99 | precisión ≥ 0.95 en los dos conjuntos en 0.90 | ningún umbral la alcanza; en 0.90, 0.453 y 0.803; en el mejor, 0.99, 0.620 y 0.920 | F | `benchmarks/cache/v1/report.json` → `preregistration`; `tests/test_cache_eval.py::test_the_committed_verdict_follows_from_its_own_grid`, `tests/test_cache_default_threshold.py::test_a_policy_built_without_the_field_uses_the_registered_default`, `tests/test_thesis_tables.py::test_the_cache_test_case_follows_the_registered_verdict` |
 
 ## Anexo B. Rúbrica y prompt de los jueces
 
@@ -91,6 +92,24 @@ cualquier juicio sobre el corpus. Lo esencial:
 - Enmienda 1 (antes de correr los jueces): se declara que los 22 pares de selección se eligieron
   por desacuerdo y quedaron 20/2, y se agrega el reporte de niveles bajo las tres reglas.
 
+El caché tiene su propio pre-registro, en `benchmarks/cache/v1/preregistration.md`, con sus
+enmiendas anteriores a cualquier precisión. Lo esencial:
+
+- Hay acierto en el umbral t cuando el mejor candidato del caché tiene coseno ≥ t, con
+  `nomic-embed-text` sin prefijo.
+- Conjuntos: los pares de prueba en español de PAWS-X y el replay de paráfrasis contra los 1000
+  prompts en español, con los originales consultados dejando uno afuera; los pares vecinos del
+  corpus y las dos revisiones humanas son descriptivos.
+- Criterio: el caché es seguro en t si la precisión llega a 0.95 en los dos conjuntos; el
+  veredicto se informa en 0.90, y un punto de la grilla (0.80 a 0.99) cuenta solo con al menos 20
+  aciertos en cada conjunto.
+- Si 0.90 no pasa, se recomienda el menor umbral seguro; si ninguno lo es, el de mayor precisión
+  mínima entre los dos conjuntos. El umbral recomendado pasa a ser el valor por defecto para los
+  tenants nuevos.
+- Declarado de antemano: los pares vecinos más cercanos se vieron antes de fijar el criterio, lo
+  que hacía probable que el replay fallara en 0.90; `nomic-embed-text-v2-moe` se mide solo como
+  sensibilidad.
+
 ## Anexo D. Reproducción
 
 Todo lo que cita este documento se regenera desde el repositorio.
@@ -111,6 +130,18 @@ versionan: se calculan con Ollama antes del entrenamiento.
 ollama pull nomic-embed-text
 python -m scripts.router.embed              # embeddings del corpus (local, sin costo)
 python -m scripts.router.train              # artefacto, replay y reporte del router
+```
+
+La medición del caché se rehace con un comando, sin APIs pagas; usa los mismos embeddings del
+corpus, y Ollama solo para los vectores que todavía no están calculados. Las revisiones humanas se
+hacen con el etiquetador ciego, y después de etiquetar se vuelven a correr los dos últimos
+comandos:
+
+```bash
+make cache-label SET=paraphrases            # revisión humana de la muestra de paráfrasis
+make cache-label SET=neighbors              # revisión humana de los pares vecinos
+make cache-eval                             # veredicto, curvas y ahorro: benchmarks/cache/v1/report.*
+make thesis-tables
 ```
 
 Las etapas que llaman a modelos (traducción, respuestas, jueces) están en `scripts/ground_truth/` y

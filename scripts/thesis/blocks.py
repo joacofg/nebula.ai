@@ -64,6 +64,31 @@ def apply(contents: dict[str, str], root: Path, *, write: bool) -> list[str]:
     return stale
 
 
+def apply_rows(rows: dict[str, dict[str, str]], root: Path, *, write: bool) -> list[str]:
+    """Rewrite generated table rows, ``{file name: {row id: row}}``.
+
+    A Markdown table cannot hold a GEN block, so a generated row is the one line of its file that
+    starts with ``| <row id> |``. Returns ``"file:id"`` for every row whose text changed;
+    ``write=False`` is a dry run.
+    """
+    stale: list[str] = []
+    for name, by_id in sorted(rows.items()):
+        path = root / name
+        lines = path.read_text(encoding="utf-8").split("\n")
+        changed = False
+        for row_id, row in sorted(by_id.items()):
+            at = [i for i, line in enumerate(lines) if line.startswith(f"| {row_id} |")]
+            if len(at) != 1:
+                raise BlockError(f"{path} has {len(at)} rows starting with '| {row_id} |', not one")
+            if lines[at[0]] != row:
+                stale.append(f"{name}:{row_id}")
+                lines[at[0]] = row
+                changed = True
+        if write and changed:
+            path.write_text("\n".join(lines), encoding="utf-8")
+    return stale
+
+
 def update_block(name: str, content: str, root: Path) -> None:
     located = find_blocks(root)
     if name not in located:

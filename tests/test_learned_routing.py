@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -16,7 +17,14 @@ from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.learned_router import LearnedRouterModel
 from nebula.services.policy_service import PolicyService
 from nebula.services.router_service import RouterService
-from tests.support import FakeCacheService, admin_headers, auth_headers, configured_app, usage
+from tests.support import (
+    FakeCacheService,
+    admin_headers,
+    auth_headers,
+    cache_lookups,
+    configured_app,
+    usage,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -366,6 +374,33 @@ def test_container_loads_the_artifact_only_when_enabled(tmp_path: Path) -> None:
             assert router.learned.version == "v1-test"
 
 
+def test_an_artifact_trained_on_another_embedding_model_disables_the_learned_router(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    artifact = tmp_path / "other_embeddings.json"
+    artifact.write_text(
+        json.dumps({**_artifact(), "embedding_model": "nomic-embed-text-v2-moe"}), encoding="utf-8"
+    )
+    with configured_app(
+        NEBULA_LEARNED_ROUTER_ENABLED="true",
+        NEBULA_LEARNED_ROUTER_PATH=str(artifact),
+        NEBULA_EMBEDDING_MODEL="nomic-embed-text",
+    ) as app:
+        with caplog.at_level(logging.ERROR), TestClient(app) as client:
+            router = app.state.container.router_service
+            local, _, _, _ = _mount(app)
+            # Its vectors would come from a model it never saw: the heuristic keeps serving.
+            response = _chat(client, "hi")
+
+    assert router.learned is None
+    assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Reason"] == "token_complexity"
+    assert local.requested_models == ["nebula-auto"]
+    [record] = [r for r in caplog.records if r.levelno == logging.ERROR]
+    assert "nomic-embed-text-v2-moe" in record.getMessage()
+    assert "'nomic-embed-text'" in record.getMessage()
+
+
 def test_container_fails_loud_on_a_missing_or_invalid_artifact(tmp_path: Path) -> None:
     invalid = tmp_path / "invalid.json"
     invalid.write_text(json.dumps({**_artifact(), "version": 2}), encoding="utf-8")
@@ -436,9 +471,11 @@ class _FakeEmbeddings:
 
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.timeouts: list[float | None] = []
 
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
         self.calls.append(text)
+        self.timeouts.append(timeout)
         return self.VECTORS.get(text)  # anything else: Ollama is down
 
     async def close(self) -> None:
@@ -451,20 +488,13 @@ class _VectorRecordingCache(FakeCacheService):
         self.lookup_vectors: list[list[float] | None] = []
         self.store_vectors: list[list[float] | None] = []
 
-    async def lookup(
-        self, prompt, *, tenant_id, similarity_threshold, max_entry_age_hours, vector=None
-    ):
-        self.lookup_vectors.append(vector)
-        return await super().lookup(
-            prompt,
-            tenant_id=tenant_id,
-            similarity_threshold=similarity_threshold,
-            max_entry_age_hours=max_entry_age_hours,
-        )
+    async def lookup(self, prompt, **kwargs):
+        self.lookup_vectors.append(kwargs.get("vector"))
+        return await super().lookup(prompt, **kwargs)
 
-    async def store(self, prompt, response, model, *, tenant_id, vector=None):
-        self.store_vectors.append(vector)
-        await super().store(prompt, response, model, tenant_id=tenant_id)
+    async def store(self, response, **kwargs):
+        self.store_vectors.append(kwargs["vector"])
+        await super().store(response, **kwargs)
 
 
 def _learned_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
@@ -565,7 +595,7 @@ def test_local_decision_goes_to_the_local_provider(tmp_path: Path) -> None:
 def test_embedding_failure_falls_back_to_the_heuristic(tmp_path: Path) -> None:
     with configured_app(**_learned_env(tmp_path)) as app:
         with TestClient(app) as client:
-            _, premium, cache, _ = _mount(app)
+            _, premium, cache, embeddings = _mount(app)
             short = _chat(client, "hello there")
             keyword = _chat(client, "please debug this")
             row = _ledger_row(client, keyword)
@@ -577,9 +607,11 @@ def test_embedding_failure_falls_back_to_the_heuristic(tmp_path: Path) -> None:
     assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
     assert premium.requested_models == ["nebula-auto"]
     assert row["route_signals"]["learned_router"] == "embedding_unavailable"
-    # The cache still works as before: with no routing vector it embeds for itself.
-    assert cache.lookup_vectors == [None, None]
-    assert len(cache.lookup_calls) == 2
+    # The routing embedding was the cache's too: one failed attempt per request, not retried,
+    # and the requests are served without the cache.
+    assert embeddings.calls == ["hello there", "please debug this"]
+    assert cache.lookup_vectors == []
+    assert cache.stored_entries == []
 
 
 def test_cache_reuses_the_routing_embedding(tmp_path: Path) -> None:
@@ -600,15 +632,55 @@ def test_a_prefixed_router_embedding_is_not_reused_by_the_cache(tmp_path: Path) 
     with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
         with TestClient(app) as client:
             _, premium, cache, embeddings = _mount(app)
-            embeddings.VECTORS = {"classification: economy prompt": ECONOMY_VECTOR}
+            bare_vector = [1.0, 1.0]
+            embeddings.VECTORS = {
+                "classification: economy prompt": ECONOMY_VECTOR,
+                "economy prompt": bare_vector,
+            }
             response = _chat(client, "economy prompt")
 
     assert response.headers["X-Nebula-Route-Tier"] == "economy"
     assert premium.requested_models == [ECONOMY_MODEL]
-    assert embeddings.calls == ["classification: economy prompt"]
-    # The cache indexes the bare prompt, so it embeds on its own.
-    assert cache.lookup_vectors == [None]
-    assert cache.store_vectors == [None]
+    # The cache indexes the bare prompt: one more embedding, shared by its lookup and store.
+    assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
+    assert cache.lookup_vectors == [bare_vector]
+    assert cache.store_vectors == [bare_vector]
+
+
+def test_request_path_embeddings_wait_at_most_5_seconds(tmp_path: Path) -> None:
+    artifact = tmp_path / "prefixed.json"
+    artifact.write_text(json.dumps({**_artifact(), "prefix": "classification"}), encoding="utf-8")
+    with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
+        with TestClient(app) as client:
+            _, _, _, embeddings = _mount(app)
+            response = _chat(client, "economy prompt")
+
+    assert response.status_code == 200
+    # Routing's embedding, then the cache's: a chat request never waits longer on either.
+    assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
+    assert embeddings.timeouts == [5.0, 5.0]
+
+
+def test_a_failed_bare_prompt_embedding_skips_the_cache_once(tmp_path: Path) -> None:
+    artifact = tmp_path / "prefixed.json"
+    artifact.write_text(json.dumps({**_artifact(), "prefix": "classification"}), encoding="utf-8")
+    with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
+        with TestClient(app) as client:
+            _, premium, cache, embeddings = _mount(app)
+            # Routing embeds fine; the bare prompt (the cache's) does not.
+            embeddings.VECTORS = {"classification: economy prompt": ECONOMY_VECTOR}
+            before = cache_lookups("embedding_unavailable")
+            response = _chat(client, "economy prompt")
+            counted = cache_lookups("embedding_unavailable") - before
+
+    assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert premium.requested_models == [ECONOMY_MODEL]
+    # One bare-prompt attempt, not retried; the request is served without the cache.
+    assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
+    assert counted == 1
+    assert cache.lookup_vectors == []
+    assert cache.stored_entries == []
 
 
 def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:
@@ -619,6 +691,37 @@ def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:
 
     assert response.headers["X-Nebula-Route-Target"] == "cache"
     assert response.headers["X-Nebula-Route-Tier"] == "cache"
+
+
+def test_an_economy_routed_hit_avoids_the_economy_models_price(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app, cached_response="cached answer")
+            response = _chat(client, "economy prompt")
+            row = _ledger_row(client, response)
+
+    assert response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert row["route_signals"]["tier"] == "economy"
+    # "economy prompt" estimates to 4 prompt tokens and "cached answer" to 4 completion
+    # tokens, at claude-haiku-4.5's USD 1 / 5 per million: the economy price, not frontier's.
+    assert row["route_signals"]["cache_avoided_cost_usd"] == pytest.approx(4 * 1e-6 + 4 * 5e-6)
+    assert row["estimated_cost"] == 0.0
+
+
+def test_an_escalated_economy_hit_avoids_the_frontier_models_price(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app, cached_response="cached answer")
+            store = app.state.container.governance_store
+            store.upsert_policy("default", TenantPolicy(allowed_premium_models=[FRONTIER_MODEL]))
+            response = _chat(client, "economy prompt")
+            row = _ledger_row(client, response)
+
+    assert response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert row["route_signals"]["tier_escalated"] == "economy_not_allowed"
+    # The same 4 + 4 tokens at gpt-4.1's USD 2 / 8 per million: escalated, the tenant would
+    # have paid the frontier price.
+    assert row["route_signals"]["cache_avoided_cost_usd"] == pytest.approx(4 * 2e-6 + 4 * 8e-6)
 
 
 def test_local_failure_falls_back_to_the_economy_model(tmp_path: Path) -> None:
@@ -695,8 +798,8 @@ def test_route_tier_header_without_the_learned_router() -> None:
 
     assert short.headers["X-Nebula-Route-Tier"] == "local"
     assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
-    # Disabled router: the chat path never embeds for routing.
-    assert embeddings.calls == []
+    # Disabled router: the chat path never embeds for routing, only once per request for the cache.
+    assert embeddings.calls == ["hello there", "please debug this"]
 
 
 def test_fallback_uses_frontier_when_the_tenant_does_not_allow_economy(tmp_path: Path) -> None:

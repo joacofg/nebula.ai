@@ -3,12 +3,12 @@ from fastapi.testclient import TestClient
 from nebula.models.governance import TenantPolicy
 from nebula.providers.base import CompletionChunk, CompletionResult
 from tests.support import (
-    FakeCacheService,
     StubProvider,
     admin_headers,
     auth_headers,
     configured_app,
     usage,
+    use_fake_cache,
 )
 
 
@@ -26,8 +26,7 @@ def test_chat_completions_returns_openai_like_payload() -> None:
                 ),
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             response = client.post(
                 "/v1/chat/completions",
@@ -72,8 +71,7 @@ def test_chat_completions_streams_sse() -> None:
                 ],
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             with client.stream(
                 "POST",
@@ -128,8 +126,7 @@ def test_chat_completions_persist_governed_ledger_markers_from_tenant_policy() -
                 ),
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             response = client.post(
                 "/v1/chat/completions",
@@ -184,8 +181,7 @@ def test_chat_completions_outcome_grounded_request_persists_matching_route_signa
                 ),
             )
             container.provider_registry.premium_provider = container.premium_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             for index in range(5):
                 seeded = client.post(
@@ -277,8 +273,7 @@ def test_chat_completions_outcome_grounded_policy_denial_persists_evidence_state
                 ),
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
             client.put(
                 "/v1/admin/tenants/default/policy",
                 headers=admin_headers(),
@@ -371,8 +366,7 @@ def test_chat_completions_allow_bootstrap_key_without_explicit_tenant_header() -
                 ),
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             response = client.post(
                 "/v1/chat/completions",
@@ -455,8 +449,7 @@ def test_an_oversized_request_id_header_is_bounded_in_the_ledger_and_the_respons
                 ),
             )
             container.provider_registry.local_provider = container.local_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             response = client.post(
                 "/v1/chat/completions",

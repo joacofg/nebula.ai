@@ -16,12 +16,16 @@ sequenceDiagram
     G->>E: embedding del último mensaje del usuario
     E-->>G: vector (se usa para el caché y para el router)
     G->>P: política del tenant + vector
-    P-->>G: nivel (local, económico o frontier) y motivo
-    G->>Q: búsqueda filtrada por tenant y antigüedad
-    alt acierto con similitud ≥ umbral
-        Q-->>G: respuesta guardada
+    P-->>G: nivel (local, económico o frontier) y motivo<br/>(si se pasa un límite de gasto, la negativa queda en espera)
+    G->>Q: candidato más cercano del tenant, vigente y de la misma conversación
+    Note over G,Q: regla de nivel: en auto, respuestas del nivel elegido o de uno superior<br/>(con un modelo explícito, solo las de ese modelo)
+    Q-->>G: mejor candidato y su similitud coseno (o ninguno)
+    alt coseno ≥ umbral del tenant
         G->>D: fila con ruta cache
-        G-->>C: respuesta + X-Nebula-Route-Target: cache
+        G-->>C: respuesta guardada + X-Nebula-Route-Target: cache
+    else sin acierto y gasto denegado (presupuesto duro o tope por pedido)
+        G->>D: fila policy_denied
+        G-->>C: 403
     else sin acierto
         G->>L: completion en el nivel elegido
         alt falla el modelo local y la política permite fallback

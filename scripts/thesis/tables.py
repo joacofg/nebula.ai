@@ -1,9 +1,9 @@
-"""Regenerate every generated block of the thesis from the committed reports.
+"""Regenerate every generated block and table row of the thesis from the committed reports.
 
     python -m scripts.thesis.tables [--check]
 
 Reads only what is versioned under ``benchmarks/``: no network, no training.
-``--check`` writes nothing and exits 1 when a block is stale.
+``--check`` writes nothing and exits 1 when a block or a generated row is stale.
 """
 
 from __future__ import annotations
@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from scripts.metric_validation import rubric
@@ -41,6 +42,18 @@ TIER_FILES = {
 LANGS = {"es": "español", "en": "inglés"}
 TASKS = {"code": "código", "factual_qa": "preguntas factuales", "multistep_reasoning": "razonamiento",
          "open_writing": "escritura abierta", "summarisation": "resumen"}
+CACHE = Path("benchmarks/cache/v1")
+# Thresholds of the cache grid table (the recommended one is always added); the full grid is in
+# benchmarks/cache/v1/report.md.
+CACHE_GRID_SHOWN = (0.80, 0.85, 0.90, 0.95, 0.96, 0.97, 0.98, 0.99)
+# The thesis label of each cited repetition rate of the savings trace (sources in
+# scripts/cache_eval/report.py). A cited rate without a label here fails the block, so a new
+# citation cannot reach the thesis before its figure is checked and labeled.
+CITED_RATES = {"factbench_lmsys_duplicates": "duplicados de LMSYS-Chat-1M", "meancache": "MeanCache"}
+DROP_REASONS = {"too_short": "por cortas", "too_long": "por largas",
+                "empty_or_identical": "por vacías o idénticas al original"}
+PENDING = "pendiente"
+CACHE_VERDICTS = ("pass", "fail", "no_safe_threshold", "not_measurable")
 
 
 def _json(path: Path) -> dict:
@@ -183,11 +196,286 @@ def tier_distribution(gt_report: dict) -> str:
     return "\n".join(rows)
 
 
+def _t(t: float) -> str:
+    return f"{t:.2f}"
+
+
+def _n3(x: float | None) -> str:
+    return "—" if x is None else f"{x:.3f}"
+
+
+def _rate(r: float) -> str:
+    return f"{r * 100:.1f}".removesuffix(".0") + " %"
+
+
+def _join(items: list[str]) -> str:
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + " y " + items[-1]
+
+
+def _cache_models(report: dict) -> list[dict]:
+    """The production embedding first, then the sensitivity ones."""
+    return [report["models"]["production"], *report["models"]["sensitivity"]]
+
+
+def _known_verdict(verdict: str) -> str:
+    if verdict not in CACHE_VERDICTS:
+        raise ValueError(f"unknown cache verdict {verdict!r}")
+    return verdict
+
+
+def _cache_verdict_sentence(pre: dict) -> str:
+    d, r, verdict = pre["at_default"], pre["at_recommended"], _known_verdict(pre["verdict"])
+    default, product = _t(pre["default_t"]), _t(pre["product_default_t"])
+    if verdict == "not_measurable":
+        return (f"ningún umbral de la grilla tiene al menos {pre['min_hits']} aciertos en los dos conjuntos, "
+                f"así que el resultado es «no medible con estos datos». El valor por defecto del producto "
+                f"sigue en {product}.")
+    at_default = f"{_n3(d['precision_a'])} en PAWS-X y {_n3(d['precision_c'])} en el replay"
+    if verdict == "pass":
+        return (f"el caché es seguro en el umbral pre-registrado, {default}: la precisión fue {at_default}, "
+                f"con cobertura {_n3(d['recall_a'])} y {_n3(d['recall_c'])}. El valor por defecto del "
+                f"producto sigue en {product}.")
+    at_rec = f"{_n3(r['precision_a'])} en PAWS-X y {_n3(r['precision_c'])} en el replay"
+    recall = f"su cobertura es {_n3(r['recall_a'])} en PAWS-X y {_n3(r['recall_c'])} en el replay"
+    if verdict == "fail":
+        return (f"el umbral pre-registrado, {default}, no es seguro: la precisión fue {at_default}. El menor "
+                f"umbral seguro de la grilla es {_t(r['t'])}, con precisión {at_rec}; {recall}. El valor por "
+                f"defecto para los tenants nuevos pasa a {product}.")
+    return (f"ningún umbral de la grilla es seguro. En el umbral pre-registrado, {default}, la precisión "
+            f"fue {at_default}. El umbral recomendado es {_t(r['t'])}, el de mayor precisión mínima entre "
+            f"los dos conjuntos ({at_rec}), que no llega a {_t(pre['criterion'])}; {recall}. El valor por "
+            f"defecto para los tenants nuevos pasa a {product}.")
+
+
+def _cache_sensitivity_sentence(model: dict) -> str:
+    v, d, r = model["verdict"], model["at_default"], model["at_recommended"]
+    _known_verdict(v["verdict"])
+    if v["verdict"] == "pass":
+        outcome = f"daría un umbral seguro en {_t(v['default_t'])}"
+    elif v["verdict"] == "fail":
+        outcome = f"daría un umbral seguro desde {_t(r['t'])}"
+    elif v["verdict"] == "no_safe_threshold":
+        outcome = (f"no daría ningún umbral seguro (recomendaría {_t(r['t'])}, con precisión "
+                   f"{_n3(r['precision_a'])} en PAWS-X y {_n3(r['precision_c'])} en el replay)")
+    else:
+        outcome = "no podría medirse con estos datos"
+    return (f"Con `{model['name']}`, medido solo como sensibilidad, la precisión en "
+            f"{_t(v['default_t'])} es {_n3(d['precision_a'])} en PAWS-X y {_n3(d['precision_c'])} en "
+            f"el replay, y la misma regla {outcome}; no cambia nada en el producto.")
+
+
+def cache_verdict(report: dict) -> str:
+    """The pre-registered verdict of the cache measurement and what it does to the product default."""
+    pre = report["preregistration"]
+    grid = [p["t"] for p in pre["grid"]]
+    text = (f"Con el embedding de producción (`{pre['model']}`), la grilla de umbrales va de {_t(min(grid))} "
+            f"a {_t(max(grid))}, y un umbral cuenta solo si tiene al menos {pre['min_hits']} aciertos en cada "
+            f"conjunto. Resultado: {_cache_verdict_sentence(pre)}")
+    return " ".join([text, *(_cache_sensitivity_sentence(m) for m in report["models"]["sensitivity"])])
+
+
+def cache_test_case(report: dict) -> tuple[str, str]:
+    """The obtained result and the P/F status of test case CP-18 (the pre-registered criterion)."""
+    pre = report["preregistration"]
+    d, r, verdict = pre["at_default"], pre["at_recommended"], _known_verdict(pre["verdict"])
+    status = "P" if verdict == "pass" else "F"
+    if verdict == "not_measurable":
+        return "no medible: ningún umbral tiene aciertos suficientes", status
+    at_default = f"en {_t(pre['default_t'])}, {_n3(d['precision_a'])} y {_n3(d['precision_c'])}"
+    if verdict == "pass":
+        return at_default, status
+    at_rec = f"{_t(r['t'])}, {_n3(r['precision_a'])} y {_n3(r['precision_c'])}"
+    if verdict == "fail":
+        return f"{at_default}; la alcanza desde {at_rec}", status
+    return f"ningún umbral la alcanza; {at_default}; en el mejor, {at_rec}", status
+
+
+CP18_DESCRIPTION = "Precisión del caché semántico (criterio pre-registrado)"
+CP18_EVIDENCE = (
+    "`benchmarks/cache/v1/report.json` → `preregistration`; "
+    "`tests/test_cache_eval.py::test_the_committed_verdict_follows_from_its_own_grid`, "
+    "`tests/test_cache_default_threshold.py::test_a_policy_built_without_the_field_uses_the_registered_default`, "
+    "`tests/test_thesis_tables.py::test_the_cache_test_case_follows_the_registered_verdict`"
+)
+
+
+def cache_test_case_rows(report: dict) -> dict[str, dict[str, str]]:
+    """Row CP-18 of Table 11.3 and of Tabla A.1, built from the report."""
+    pre = report["preregistration"]
+    obtained, status = cache_test_case(report)
+    criterion, default = _t(pre["criterion"]), _t(pre["default_t"])
+    grid = [p["t"] for p in pre["grid"]]
+    pairs = report["pawsx"][report["models"]["production"]["key"]]["pairs"]
+    main = (f"| CP-18 | {CP18_DESCRIPTION} | ≥ {criterion} en PAWS-X y en el replay de paráfrasis, en "
+            f"{default} | {obtained} | {status} |")
+    entry = (f"{pairs} pares de PAWS-X en español; replay con {pre['valid_paraphrases']} paráfrasis válidas "
+             f"y los {pre['leave_one_out_originals']} originales; umbrales de {_t(min(grid))} a "
+             f"{_t(max(grid))}")
+    annex = (f"| CP-18 | {CP18_DESCRIPTION} | {entry} | precisión ≥ {criterion} en los dos conjuntos en "
+             f"{default} | {obtained} | {status} | {CP18_EVIDENCE} |")
+    return {"11-implantacion.md": {"CP-18": main}, "14-anexos.md": {"CP-18": annex}}
+
+
+def cache_grid(report: dict) -> str:
+    """Precision and recall of both sets at some grid thresholds, production embedding."""
+    pre = report["preregistration"]
+    marks = {_t(pre["default_t"]): " (pre-registrado)"}
+    shown = {_t(t) for t in CACHE_GRID_SHOWN}
+    if pre["recommended_t"] is not None:
+        marks[_t(pre["recommended_t"])] = " (recomendado)"
+        shown.add(_t(pre["recommended_t"]))
+    points = {_t(p["t"]): p for p in pre["grid"]}
+    rows = ["| Umbral | PAWS-X: aciertos | PAWS-X: precisión | PAWS-X: cobertura | Replay: aciertos | "
+            "Replay: precisión | Replay: cobertura |", "|---|---|---|---|---|---|---|"]
+    for t in sorted(shown, key=float):
+        p = points[t]
+        rows.append(f"| {t}{marks.get(t, '')} | {p['hits_a']} | {_n3(p['precision_a'])} | "
+                    f"{_n3(p['recall_a'])} | {p['hits_c']} | {_n3(p['precision_c'])} | {_n3(p['recall_c'])} |")
+    return "\n".join(rows)
+
+
+def cache_pawsx(report: dict) -> str:
+    """Set (a): how many PAWS-X pairs are paraphrases, and the precision range of each embedding."""
+    models = _cache_models(report)
+    first = report["pawsx"][models[0]["key"]]
+    ranges = []
+    for i, model in enumerate(models):
+        curve = [c for c in report["pawsx"][model["key"]]["curve"] if c["precision"] is not None]
+        low = min(c["precision"] for c in curve)
+        best = max(curve, key=lambda c: c["precision"])
+        where = f" (el máximo, en {_t(best['t'])})" if i == 0 else ""
+        ranges.append(f"de {_n3(low)} a {_n3(best['precision'])} con `{model['name']}`{where}")
+    return (f"El conjunto tiene {first['pairs']} pares de prueba en español, {first['paraphrases']} de ellos "
+            f"paráfrasis según su etiqueta ({first['paraphrases'] / first['pairs']:.3f} del total). Sobre la "
+            f"grilla, la precisión va {_join(ranges)}.")
+
+
+def _blocked(n: int) -> str:
+    if n == 0:
+        return "ningún acierto bloqueado por nivel"
+    return "1 acierto bloqueado por nivel" if n == 1 else f"{n} aciertos bloqueados por nivel"
+
+
+def cache_replay(report: dict) -> str:
+    """Set (c): the valid paraphrases, their hits and false hits, the tier rule and the human check."""
+    pp, pre = report["paraphrases"], report["preregistration"]
+    model = report["models"]["production"]
+    data = pp[model["key"]]
+    by_kind = sorted(pp["dropped_by_kind"].items(), key=lambda kv: (-kv[1], kv[0]))
+    dropped = (_join([f"{n} {DROP_REASONS[kind]}" for kind, n in by_kind]) if by_kind
+               else "ninguna")
+    cos = data["own_original_cosine"]
+    curve = {_t(p["t"]): p for p in data["curve"]}
+    ts = list(dict.fromkeys(_t(t) for t in (pre["default_t"], pre["product_default_t"])))
+    points = [curve[t] for t in ts]
+    hits = (f"En {ts[0]} el replay tuvo {points[0]['correct_hits']} aciertos correctos y "
+            f"{points[0]['false_hits']} falsos")
+    hits += "".join(f", y en {t}, {p['correct_hits']} correctos y {p['false_hits']} falsos"
+                    for t, p in zip(ts[1:], points[1:], strict=True))
+    if all(p["loo_hits"] == p["false_hits"] for p in points):
+        origin = "Todos los falsos aciertos vienen de originales que encontraron a otro prompt del corpus."
+    else:
+        origin = ("De los falsos aciertos, " + _join([f"{p['loo_hits']} en {t}" for t, p in zip(ts, points)])
+                  + " vienen de originales que encontraron a otro prompt del corpus.")
+    tier = pp["tier_vs_original"]
+    ordered = sorted(data["tier_rule_on"].items(), key=lambda kv: float(kv[0]))
+    rule = _join([f"{_n3(p['precision'])} en {t} ({_blocked(p['tier_blocked'])})" for t, p in ordered])
+    text = (f"Cumplen la regla de validez {pp['valid']} de las {pp['registered']} paráfrasis; "
+            f"descartadas: {dropped}. El coseno de cada paráfrasis con su original (`{model['name']}`) "
+            f"tiene mediana {_n3(cos['median'])}, cuartil inferior {_n3(cos['p25'])} y mínimo "
+            f"{_n3(cos['min'])}. {hits}. {origin} Cada paráfrasis se rutea con su propio vector: su nivel "
+            f"coincide con el de su original en {tier['same']}, es más alto en {tier['higher']} y más bajo "
+            f"en {tier['lower']}. Con la regla de nivel activa, la precisión es {rule}.")
+    check = report["paraphrase_validation"]
+    if check == PENDING:
+        return text + " Estado de la revisión humana de la muestra de paráfrasis: pendiente."
+    return text + (f" Revisión humana de la muestra de paráfrasis: {check['labeled']} de {check['sample']} pares "
+                   f"revisados; en {check['si']} la paráfrasis pide lo mismo que su original, en {check['no']} no, "
+                   f"y {check['unsure']} quedaron en duda (proporción fiel, sin las dudas: "
+                   f"{_n3(check['faithful_rate'])}).")
+
+
+def _band(band: dict) -> str:
+    if band["to"] is None:
+        return f"desde {_t(band['from'])}"
+    return f"entre {_t(band['from'])} y {_t(band['to'])}"
+
+
+def _band_counts(bands: list[dict]) -> str:
+    return _join([f"{band['pairs']} {_band(band)}" for band in bands])
+
+
+def cache_neighbors(report: dict) -> str:
+    """Set (b), descriptive: distinct corpus prompts close to each other, and the human check."""
+    n = report["neighbors"]
+    models = _cache_models(report)
+    lowest = min(b["from"] for b in n["bands"])
+    text = (f"Entre los prompts en español del corpus hay {n['pairs']} pares de prompts distintos con "
+            f"coseno de {_t(lowest)} o más con `{models[0]['name']}`: {_band_counts(n['bands'])}.")
+    for model in models[1:]:
+        text += (f" Con `{model['name']}`, entre los mismos prompts: "
+                 f"{_band_counts(n[model['key'] + '_bands'])}.")
+    human = n["human_labels"]
+    if human == PENDING:
+        return text + " Estado de la revisión humana de esos pares: pendiente."
+    shares = _join([f"{_n3(b['acceptable_share'])} {_band(b)}" for b in n["bands"]])
+    ordered = sorted(human["agreement"].items(), key=lambda kv: float(kv[0]))
+    agreement = _join([f"{_n3(a)} en {t}" for t, a in ordered])
+    return text + (f" Revisión humana de esos pares: {human['labeled']} de {human['pairs']} revisados, "
+                   f"{human['decided']} con respuesta sí o no. La proporción en que la respuesta a uno le "
+                   f"sirve al otro es {shares}. El acuerdo de la decisión del caché (servir si el coseno "
+                   f"llega al umbral) con la del revisor es {agreement}.")
+
+
+def cache_savings(report: dict) -> str:
+    """Cost and quality of the Spanish trace by repetition rate, the cache against the router alone."""
+    s, pre = report["savings"], report["preregistration"]
+    curves = s[report["models"]["production"]["key"]]
+    thresholds = list(dict.fromkeys(_t(t) for t in (pre["product_default_t"], pre["default_t"])))
+    by_rate = [{round(p["r"], 3): p for p in curves[t]["curve"]} for t in thresholds]
+    labels = {round(r, 3): CITED_RATES[key] for key, r in s["cited_rates"].items()}
+    first = thresholds[0]
+    header = (f"| Repetición | Router solo: costo | Router solo: calidad | Caché en {first}: costo | "
+              f"Caché en {first}: ahorro adicional | Caché en {first}: calidad |")
+    for t in thresholds[1:]:
+        header += f" Caché en {t}: ahorro adicional | Caché en {t}: calidad |"
+    rows = [header, "|---|" + "---|" * (5 + 2 * (len(thresholds) - 1))]
+    for r in sorted(by_rate[0]):
+        points = [curve[r] for curve in by_rate]
+        if len({round(p["router_only_cost_per_1000"], 9) for p in points}) != 1:
+            raise ValueError(f"the router-only cost of rate {r} differs between thresholds")
+        p = points[0]
+        label = _rate(r) + (f" ({labels[r]})" if r in labels else "")
+        row = (f"| {label} | {p['router_only_cost_per_1000']:.3f} | {p['router_only_quality']:.3f} | "
+               f"{p['cost_per_1000']:.3f} | {_pct(p['extra_saving_vs_router'])} | {p['quality']:.3f} |")
+        for q in points[1:]:
+            row += f" {_pct(q['extra_saving_vs_router'])} | {q['quality']:.3f} |"
+        rows.append(row)
+    c = s["consistency"]
+    if abs(c["r0_router_only_cost_per_1000"] - c["spanish_cost_per_1000"]) > 1e-9:
+        raise ValueError("the trace's router-only cost at r = 0 is not the router's cost on the Spanish prompts")
+    false_hits = _join([f"{c['r0_false_hits'][t]} en {t}" for t in thresholds])
+    top = by_rate[0][max(by_rate[0])]
+    repeats = top["repeats_exact"] + top["repeats_paraphrase"]
+    note = (f"La traza usa solo los {c['spanish_prompts']} prompts en español. Sobre el corpus completo "
+            f"({c['corpus_prompts']} prompts), el router del gateway cuesta USD "
+            f"{c['corpus_cost_per_1000']:.3f} cada mil (este trabajo cita la estimación anidada, USD "
+            f"{c['cited_cost_per_1000']:.2f}); sobre los prompts en español, que son más caros de rutear, "
+            f"cuesta USD {c['spanish_cost_per_1000']:.3f}, que es el costo del router solo en la traza sin "
+            f"repetición. Con repetición, el costo del router solo cambia porque cada traza tiene otra "
+            f"composición: en r = {_rate(top['r'])}, {top['fresh']} pedidos son prompts nuevos y los otros "
+            f"{repeats} repiten prompts ya pedidos, así que el costo medio depende de qué prompts entran y "
+            f"cuáles se repiten. Sin repetición, el caché igual sirve algunos pedidos: prompts distintos lo "
+            f"bastante parecidos a uno anterior, que cuentan como falsos aciertos ({false_hits}).")
+    return "\n".join(rows) + "\n\n" + note
+
+
 class GeneratorError(ValueError):
     pass
 
 
-def _render(name: str, source: Path, build) -> str:
+def _render[T](name: str, source: Path, build: Callable[[], T]) -> T:
+    """``build()``, with a malformed report reported by block name and file."""
     try:
         return build()
     except FileNotFoundError:
@@ -203,6 +491,8 @@ def render_all() -> dict[str, str]:
     summary = _render("corpus-fase2", GT_ROOT, lambda: gt_report.summarise(GT_ROOT))
     router_path, latency_path, gt_path = ROUTER / "report.json", ROUTER / "latency.json", GT_ROOT / "report.json"
     router, latency = _json(router_path), _json(latency_path)
+    cache_path = CACHE / "report.json"
+    cache = _json(cache_path)
     blocks_spec = (
         ("corpus-fase2", GT_ROOT, lambda: gt_report.thesis_corpus(summary)),
         ("judges-fase2", GT_ROOT, lambda: gt_report.thesis_judges(summary)),
@@ -215,8 +505,21 @@ def render_all() -> dict[str, str]:
         ("router-cost-at-quality", router_path, lambda: router_cost_at_quality(router)),
         ("router-latency", latency_path, lambda: router_latency(latency)),
         ("router-frontier-points", router_path, lambda: router_frontier_points(router)),
+        ("cache-verdict", cache_path, lambda: cache_verdict(cache)),
+        ("cache-grid", cache_path, lambda: cache_grid(cache)),
+        ("cache-pawsx", cache_path, lambda: cache_pawsx(cache)),
+        ("cache-replay", cache_path, lambda: cache_replay(cache)),
+        ("cache-neighbors", cache_path, lambda: cache_neighbors(cache)),
+        ("cache-savings", cache_path, lambda: cache_savings(cache)),
     )
     return {name: _render(name, source, build) for name, source, build in blocks_spec}
+
+
+def render_rows() -> dict[str, dict[str, str]]:
+    """Generated table rows, ``{file name: {row id: row}}`` (a Markdown table cannot hold a block)."""
+    cache_path = CACHE / "report.json"
+    cache = _json(cache_path)
+    return _render("cp-18", cache_path, lambda: cache_test_case_rows(cache))
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -225,11 +528,12 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     try:
         stale = blocks.apply(render_all(), THESIS_DIR, write=not args.check)
+        stale += blocks.apply_rows(render_rows(), THESIS_DIR, write=not args.check)
     except (FileNotFoundError, ValueError, KeyError) as exc:
         print(f"thesis-tables: {exc}", file=sys.stderr)
         return 2
     if args.check and stale:
-        print("stale GEN blocks: " + ", ".join(stale), file=sys.stderr)
+        print("stale GEN blocks or rows: " + ", ".join(stale), file=sys.stderr)
         return 1
     print(("updated: " + ", ".join(stale)) if stale else "thesis tables up to date")
     return 0

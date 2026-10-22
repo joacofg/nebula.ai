@@ -1,0 +1,27 @@
+{"prompt_id": "code-0058", "reason": "seed 20261022: identical to the original; seed 20261023: identical to the original", "length_ratio": 1.0}
+{"prompt_id": "code-0192", "reason": "seed 20261022: identical to the original; seed 20261023: identical to the original", "length_ratio": 1.0}
+{"prompt_id": "factual_qa-0028", "reason": "length ratio 0.0619 is below 0.5", "length_ratio": 0.061923583662714096}
+{"prompt_id": "factual_qa-0045", "reason": "length ratio 0.0665 is below 0.5", "length_ratio": 0.06648575305291723}
+{"prompt_id": "factual_qa-0086", "reason": "length ratio 0.0510 is below 0.5", "length_ratio": 0.051011433597185574}
+{"prompt_id": "factual_qa-0116", "reason": "length ratio 2.0588 is above 2.0", "length_ratio": 2.0588235294117645}
+{"prompt_id": "factual_qa-0128", "reason": "length ratio 0.0546 is below 0.5", "length_ratio": 0.05458089668615984}
+{"prompt_id": "factual_qa-0138", "reason": "length ratio 0.2113 is below 0.5", "length_ratio": 0.2113289760348584}
+{"prompt_id": "factual_qa-0175", "reason": "length ratio 0.0275 is below 0.5", "length_ratio": 0.027472527472527472}
+{"prompt_id": "factual_qa-0186", "reason": "length ratio 0.0781 is below 0.5", "length_ratio": 0.07808219178082192}
+{"prompt_id": "open_writing-0036", "reason": "length ratio 2.2000 is above 2.0", "length_ratio": 2.2}
+{"prompt_id": "open_writing-0118", "reason": "length ratio 3.2878 is above 2.0", "length_ratio": 3.287769784172662}
+{"prompt_id": "summarisation-0004", "reason": "length ratio 0.0484 is below 0.5", "length_ratio": 0.0484027105517909}
+{"prompt_id": "summarisation-0014", "reason": "length ratio 0.0652 is below 0.5", "length_ratio": 0.06521739130434782}
+{"prompt_id": "summarisation-0022", "reason": "length ratio 0.0582 is below 0.5", "length_ratio": 0.05822416302765648}
+{"prompt_id": "summarisation-0033", "reason": "length ratio 0.0468 is below 0.5", "length_ratio": 0.04676145339652449}
+{"prompt_id": "summarisation-0061", "reason": "length ratio 0.2146 is below 0.5", "length_ratio": 0.21462697537669975}
+{"prompt_id": "summarisation-0073", "reason": "length ratio 0.3944 is below 0.5", "length_ratio": 0.3944381384790011}
+{"prompt_id": "summarisation-0075", "reason": "length ratio 0.0500 is below 0.5", "length_ratio": 0.05004428697962799}
+{"prompt_id": "summarisation-0083", "reason": "length ratio 0.0577 is below 0.5", "length_ratio": 0.0577019568489714}
+{"prompt_id": "summarisation-0091", "reason": "length ratio 0.2731 is below 0.5", "length_ratio": 0.273125}
+{"prompt_id": "summarisation-0116", "reason": "length ratio 0.1096 is below 0.5", "length_ratio": 0.10955710955710955}
+{"prompt_id": "summarisation-0118", "reason": "length ratio 0.0190 is below 0.5", "length_ratio": 0.019001325673884226}
+{"prompt_id": "summarisation-0142", "reason": "length ratio 0.4979 is below 0.5", "length_ratio": 0.4979310344827586}
+{"prompt_id": "summarisation-0145", "reason": "length ratio 0.3507 is below 0.5", "length_ratio": 0.3506944444444444}
+{"prompt_id": "summarisation-0171", "reason": "length ratio 0.2108 is below 0.5", "length_ratio": 0.2107843137254902}
+{"prompt_id": "summarisation-0172", "reason": "length ratio 0.2448 is below 0.5", "length_ratio": 0.24482758620689654}

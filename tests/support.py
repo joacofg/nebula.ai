@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -11,6 +12,8 @@ from uuid import uuid4
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from prometheus_client import REGISTRY
+from qdrant_client import AsyncQdrantClient
 
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
@@ -104,8 +107,10 @@ class FakeCacheService:
         store_error: Exception | None = None,
     ) -> None:
         self.cached_response = cached_response
+        # (tenant_id, prompt, similarity_threshold, max_entry_age_hours); identity filters ignored.
         self.lookup_calls: list[tuple[str, str, float, int]] = []
-        self.stored_entries: list[tuple[str, str, str, str]] = []
+        # (tenant_id, response, model, tier_rank)
+        self.stored_entries: list[tuple[str, str, str, int]] = []
         self.enabled = True
         self.lookup_error = lookup_error
         self.store_error = store_error
@@ -129,8 +134,14 @@ class FakeCacheService:
         tenant_id: str,
         similarity_threshold: float,
         max_entry_age_hours: int,
+        context_hash: str,
+        min_tier_rank: int | None,
+        model: str | None,
         vector: list[float] | None = None,
     ) -> CacheHit | None:
+        # The real contract; the filters themselves are ignored.
+        if (min_tier_rank is None) == (model is None):
+            raise ValueError("Set exactly one of min_tier_rank or model.")
         self.lookup_calls.append((tenant_id, prompt, similarity_threshold, max_entry_age_hours))
         if self.lookup_error is not None:
             raise self.lookup_error
@@ -140,22 +151,123 @@ class FakeCacheService:
 
     async def store(
         self,
-        prompt: str,
         response: str,
-        model: str,
         *,
         tenant_id: str,
-        vector: list[float] | None = None,
+        vector: list[float] | None,
+        context_hash: str,
+        tier_rank: int,
+        model: str,
     ) -> None:
         if self.store_error is not None:
             raise self.store_error
-        self.stored_entries.append((tenant_id, prompt, response, model))
+        if vector is None:
+            return  # as the real cache: nothing to file the answer under
+        self.stored_entries.append((tenant_id, response, model, tier_rank))
 
     async def close(self) -> None:
         return None
 
     async def health_status(self) -> dict[str, object]:
         return self.health_status_payload
+
+
+class FixedVectorEmbeddings:
+    """Embeds every text to the same vector, recording each call; never leaves the process."""
+
+    def __init__(self, vector: list[float] | None = None) -> None:
+        self.vector = vector or [1.0, 0.0, 0.0]
+        self.calls: list[str] = []
+
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
+        self.calls.append(text)
+        return list(self.vector)
+
+    async def close(self) -> None:
+        return None
+
+
+class LateQdrant:
+    """An in-memory Qdrant that refuses every call until `up` is set: Qdrant starting late."""
+
+    def __init__(self) -> None:
+        self._client = AsyncQdrantClient(location=":memory:")
+        self.up = False
+        # What every call raises while Qdrant is down.
+        self.down_reason = "Qdrant is not up yet"
+        # Every SemanticCacheService initialization starts by asking for the collection (so
+        # does its health check: count only where nothing asks for health).
+        self.initializations = 0
+
+    def __getattr__(self, name: str):
+        method = getattr(self._client, name)
+
+        async def call(*args, **kwargs):
+            if name == "collection_exists":
+                self.initializations += 1
+            if not self.up:
+                raise ConnectionError(self.down_reason)
+            return await method(*args, **kwargs)
+
+        return call
+
+
+class FakeClock:
+    """A monotonic clock that only moves when a test moves `now`."""
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+def cache_lookups(result: str) -> float:
+    """The process-wide count of `nebula_cache_lookups_total{result=...}` so far."""
+    return REGISTRY.get_sample_value("nebula_cache_lookups_total", {"result": result}) or 0.0
+
+
+class LookupCounts:
+    """How many cache lookups ended in each result since this was created."""
+
+    RESULTS = (
+        "hit", "no_candidate", "below_threshold", "disabled", "embedding_unavailable", "error"
+    )
+
+    def __init__(self) -> None:
+        self._before = {result: cache_lookups(result) for result in self.RESULTS}
+
+    def since(self) -> dict[str, float]:
+        """The count of each result that moved; a result left out stayed at zero."""
+        counts = {result: cache_lookups(result) - self._before[result] for result in self.RESULTS}
+        return {result: count for result, count in counts.items() if count}
+
+
+CACHE_REPORT = Path(__file__).resolve().parents[1] / "benchmarks" / "cache" / "v1" / "report.json"
+
+
+def registered_cache_threshold() -> float:
+    """The threshold the cache measurement registered as the product default.
+
+    `preregistration.product_default_t` of the committed benchmarks/cache/v1/report.json.
+    """
+    report = json.loads(CACHE_REPORT.read_text(encoding="utf-8"))
+    return report["preregistration"]["product_default_t"]
+
+
+def use_fake_cache(
+    container: ServiceContainer, cache: FakeCacheService | None = None
+) -> FakeCacheService:
+    """Serve the chat path from a fake cache, with embeddings that never reach Ollama.
+
+    The chat path embeds each cache-enabled request itself (once, for lookup and store), so
+    swapping in a fake cache alone would still send every prompt to the real embeddings service.
+    """
+    cache = cache if cache is not None else FakeCacheService()
+    container.cache_service = cache
+    container.chat_service.cache_service = cache
+    container.chat_service.embeddings_service = FixedVectorEmbeddings()
+    return cache
 
 
 class StubProvider:
@@ -267,8 +379,7 @@ def fallback_client(
             container.provider_registry.local_provider = local
             container.premium_provider = premium
             container.provider_registry.premium_provider = premium
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
             if policy_updates:
                 store = container.governance_store
                 store.upsert_policy(

@@ -1,3 +1,4 @@
+import logging
 from pathlib import Path
 
 from nebula.benchmarking.pricing import PricingCatalog
@@ -8,7 +9,10 @@ from nebula.providers.ollama import OllamaProvider
 from nebula.providers.openai_compatible import OpenAICompatibleProvider
 from nebula.services.auth_service import AuthService
 from nebula.services.chat_service import ChatService
-from nebula.services.embeddings_service import OllamaEmbeddingsService
+from nebula.services.embeddings_service import (
+    REQUEST_PATH_EMBED_TIMEOUT_SECONDS,
+    OllamaEmbeddingsService,
+)
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.learned_router import LearnedRouterModel
 from nebula.services.policy_service import PolicyService
@@ -21,6 +25,8 @@ from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
 from nebula.services.semantic_cache_service import SemanticCacheService
 from nebula.services.rate_limiter import RateLimiter
+
+logger = logging.getLogger(__name__)
 
 
 class ServiceContainer:
@@ -56,6 +62,7 @@ class ServiceContainer:
         self.cache_service = SemanticCacheService(
             settings=settings,
             embeddings_service=self.embeddings_service,
+            embed_timeout=REQUEST_PATH_EMBED_TIMEOUT_SECONDS,
         )
         self.recommendation_service = RecommendationService(
             governance_store=self.governance_store,
@@ -65,6 +72,7 @@ class ServiceContainer:
             enabled=settings.retention_cleanup_enabled,
             interval_seconds=settings.retention_cleanup_interval_seconds,
             governance_store=self.governance_store,
+            semantic_cache=self.cache_service,
         )
         self.runtime_health_service = RuntimeHealthService(
             settings=settings,
@@ -100,7 +108,19 @@ class ServiceContainer:
         if not self.settings.learned_router_enabled:
             return None
         # Enabled but missing or invalid is a deployment error: fail at startup, not per request.
-        return LearnedRouterModel.from_file(self.settings.learned_router_path)
+        learned = LearnedRouterModel.from_file(self.settings.learned_router_path)
+        if learned.embedding_model != self.settings.embedding_model:
+            # Trained on another model's vectors, it would score this model's as noise. The
+            # gateway still serves, with heuristic routing, so the error is logged, not raised.
+            logger.error(
+                "learned_router_disabled: artifact %s was trained on embedding model %r, "
+                "but NEBULA_EMBEDDING_MODEL is %r; routing falls back to the heuristic",
+                self.settings.learned_router_path,
+                learned.embedding_model,
+                self.settings.embedding_model,
+            )
+            return None
+        return learned
 
     def _build_premium_provider(self):
         if self.settings.premium_provider == "openai_compatible":

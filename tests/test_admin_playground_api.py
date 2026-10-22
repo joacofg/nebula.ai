@@ -3,7 +3,14 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 
 from nebula.providers.base import CompletionResult
-from tests.support import FakeCacheService, StubProvider, admin_headers, auth_headers, configured_app, usage
+from tests.support import (
+    StubProvider,
+    admin_headers,
+    auth_headers,
+    configured_app,
+    usage,
+    use_fake_cache,
+)
 
 
 CANONICAL_PREMIUM_MODEL = "openai/gpt-4o-mini"
@@ -31,8 +38,7 @@ def _mount_runtime(app) -> None:
         ),
     )
     container.provider_registry.premium_provider = container.premium_provider
-    container.cache_service = FakeCacheService()
-    container.chat_service.cache_service = container.cache_service
+    use_fake_cache(container)
 
 
 def test_admin_playground_completion() -> None:

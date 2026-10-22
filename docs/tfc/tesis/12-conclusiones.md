@@ -53,15 +53,24 @@ español, los jueces rechazaron respuestas que el lector aceptaba siete veces, y
 que el lector rechazaba solo dos. Un instrumento más estricto marca como insuficientes respuestas
 baratas que servían, y eso empuja al router a mandar más pedidos al frontier. Aun medido con esa
 vara, el ahorro supera el umbral; con un criterio tan exigente como el del lector, la dirección del
-sesgo indica que sería mayor. La segunda razón es que el 31 % sale solo del router: el corpus no
-tiene consultas repetidas, así que el caché semántico, que es la otra mitad del gateway, no aporta
-nada a esa cifra, y en tráfico real sí lo haría.
+sesgo indica que sería mayor. La segunda razón es que el 31 % sale solo del router: el corpus casi
+no tiene consultas repetidas, así que el caché semántico, que es la otra mitad del gateway, no
+aporta a esa cifra. Su aporte se midió aparte, sobre una traza en español con repetición, y crece
+con ella: con el umbral de 0.99 que el gateway usa por defecto, el router con caché cuesta un 7.9 %
+menos que el router sin caché con la tasa de duplicados de LMSYS-Chat-1M (12.1 %) [48], y un 26.0 %
+menos con la de MeanCache (31 %) [14], con prácticamente la misma calidad. Esos porcentajes se
+miden contra el router en la misma traza, no sobre el corpus completo, y por eso no se suman al
+31 %; lo que muestran es que, cuando el tráfico se repite, el caché agrega ahorro al del router sin
+un costo apreciable en calidad.
 
 Conviene decir también qué no se verifica. El intervalo de confianza del ahorro va de 28 % a 35 %,
 así que con esta muestra no se puede excluir, al 95 %, un ahorro algo menor que el 30 %; la
-dirección del sesgo del instrumento compensa esa incertidumbre, pero no la elimina. Y el punto de
-operación importa: con el objetivo en 0.90 el ahorro llega al 57 %, pero la calidad cae casi 10
-puntos y la hipótesis no se cumpliría. La hipótesis se verifica en un punto concreto de la frontera,
+dirección del sesgo del instrumento compensa esa incertidumbre, pero no la elimina. Tampoco se
+cumplió el criterio que el pre-registro del caché fijó para su umbral: ningún valor de la grilla
+alcanzó una precisión de 0.95 en los dos conjuntos de prueba, y el gateway usa por defecto 0.99,
+el mejor punto medido, como un valor conservador. Y el punto de operación importa: con el objetivo
+de calidad del router en 0.90 el ahorro llega al 57 %, pero la calidad cae casi 10 puntos y la
+hipótesis no se cumpliría. La hipótesis se verifica en un punto concreto de la frontera,
 que es el que el gateway usa por defecto.
 
 ### Análisis de los resultados
@@ -74,6 +83,13 @@ eligiendo: casi todo le parecía fácil. El router aprendido ahorra menos que la
 ahorro es el que queda después de pagar la calidad. Esa diferencia es el aporte principal del
 trabajo, y no se habría visto si la métrica de calidad hubiera sido la similitud coseno que proponía
 el TP4, que en la validación separó peor que el azar (AUC 0.25).
+
+El caché deja una lección parecida. Su decisión de acierto también es una similitud coseno entre
+embeddings, y la medición mostró que esa similitud dice cuánto se parecen dos consultas, no si
+piden lo mismo: sobre pares adversariales como los de PAWS-X, ningún umbral alcanzó la precisión
+exigida. En el gateway, ese límite se administra con un umbral conservador, que por defecto
+reconoce casi solo repeticiones exactas o casi exactas y que aun así agrega ahorro en cuanto el
+tráfico se repite.
 
 La segunda explicación está en la estructura de precios y de capacidades de los modelos. El ahorro
 sale casi entero del modelo local, que atiende el 27 % de los pedidos en el objetivo 0.95, y muy
@@ -114,9 +130,12 @@ con el tráfico propio de cada organización.
    abierta, aunque su dirección esté indicada. *Superación:* sumar al menos un segundo lector,
    con la misma calibración, y ampliar el hold-out con más negativos.
 2. **El corpus no es tráfico de producción.** Son 1250 prompts de tres datasets públicos y cinco
-   tareas, sin consultas repetidas. *Impacto:* la proporción de pedidos que el local puede atender
-   depende de la mezcla de tareas, y el aporte del caché no se pudo medir. *Superación:* reentrenar y
-   reevaluar con una muestra juzgada del tráfico real de un tenant.
+   tareas, casi sin consultas repetidas. *Impacto:* la proporción de pedidos que el local puede
+   atender depende de la mezcla de tareas, y el aporte del caché solo se pudo estimar sobre trazas
+   sintéticas que recorren tasas de repetición de 0 a 40 %; solo las que se marcan en la sección
+   11.2.3 vienen de la literatura, que las midió sobre otro tráfico. *Superación:* reentrenar y
+   reevaluar con una muestra juzgada del tráfico real de un tenant, que diga también cuánto se
+   repite ese tráfico.
 3. **El modelo local es lento en el hardware de la evaluación.** La mediana es de 21.3 s por
    respuesta, contra 2.5 s del frontier. *Impacto:* el ahorro se paga en tiempo de respuesta, y con
    tráfico concurrente la cola del modelo local crecería. *Superación:* servir el modelo local en
@@ -128,6 +147,12 @@ con el tráfico propio de cada organización.
 5. **Las notas humanas sobre código son de baja confianza.** La terminal de etiquetado reenvolvía el
    código. *Impacto:* el κ incluye diez pares con notas dudosas. *Superación:* re-etiquetar el código
    con un visor que preserve el formato.
+6. **La similitud del embedding no alcanza para decidir un acierto del caché.** Ningún umbral
+   llegó a la precisión pre-registrada. *Impacto:* con el umbral conservador de 0.99, el caché
+   reutiliza sobre todo repeticiones exactas o casi exactas y deja pasar la mayoría de las
+   paráfrasis, así que aprovecha solo una parte del tráfico que se repite. *Superación:* verificar
+   cada acierto antes de servirlo, o usar un embedding entrenado para distinguir paráfrasis, y
+   volver a medir con el mismo pre-registro.
 
 ## 12.3 Sobre el proceso de aprendizaje
 
@@ -159,10 +184,12 @@ tal como fue, con su explicación.
   **aprendizaje en línea**: juzgar automáticamente una muestra de las respuestas que el gateway
   sirve y reentrenar el router con ellas, con el fin de que la frontera siga describiendo el tráfico
   de cada tenant a medida que cambia.
-- Dado que el aporte del caché no se pudo medir, una línea futura sería **evaluar el gateway
-  completo sobre trazas con repetición**, midiendo juntos los aciertos del caché, su calidad y la del
-  router, con el fin de estimar el ahorro total y la interacción entre ambos (por ejemplo, cuántas
-  respuestas locales termina sirviendo el caché).
+- Dado que la similitud del embedding no alcanzó la precisión pre-registrada y que el aporte del
+  caché se estimó sobre trazas sintéticas, una línea futura sería **verificar los aciertos del caché
+  y medirlos sobre tráfico real**: comparar la consulta nueva con la guardada mediante un
+  clasificador de paráfrasis o un juez liviano antes de servir la respuesta, y evaluar el gateway
+  completo sobre trazas reales con repetición, con el fin de bajar el umbral sin perder precisión y
+  de conocer el ahorro total y la interacción entre el router y el caché.
 - Dado que el modelo local es lento y el nivel económico aporta poco, una línea futura sería una
   **cascada local → premium con un juez en línea** para los casos en que el router duda, con el fin de
   aprovechar la respuesta local cuando sale bien sin pagar su latencia en todos los pedidos que

@@ -75,6 +75,12 @@ sitios web indican la fecha y la hora de consulta.
 
 [43] K. Krippendorff, *Content Analysis: An Introduction to Its Methodology*, 4.ª ed. Thousand Oaks, CA, EE. UU.: SAGE, 2018.
 
+[46] Y. Yang, Y. Zhang, C. Tar y J. Baldridge, "PAWS-X: A cross-lingual adversarial dataset for paraphrase identification," en *Proc. 2019 Conf. on Empirical Methods in Natural Language Processing and the 9th Int. Joint Conf. on Natural Language Processing (EMNLP-IJCNLP)*, Hong Kong, China, nov. 2019, pp. 3687–3692, doi: 10.18653/v1/D19-1382.
+
+[47] L. Zheng, W.-L. Chiang, Y. Sheng, T. Li, S. Zhuang, Z. Wu, Y. Zhuang, Z. Li, Z. Lin, E. P. Xing, J. E. Gonzalez, I. Stoica y H. Zhang, "LMSYS-Chat-1M: A large-scale real-world LLM conversation dataset," en *Proc. 12th Int. Conf. on Learning Representations (ICLR)*, 2024. (arXiv:2309.11998)
+
+[48] F. Fatahi Bayat, L. Zhang, S. Munir y L. Wang, "FactBench: A dynamic benchmark for in-the-wild language model factuality evaluation," en *Proc. 63rd Annual Meeting of the Association for Computational Linguistics (ACL)*, Viena, Austria, 2025, pp. 33090–33110, doi: 10.18653/v1/2025.acl-long.1587.
+
 ## 13.2 Sitios, documentación y repositorios
 
 [5] M. Conover, M. Hayes, A. Mathur, J. Xie, J. Wan, S. Shah, A. Ghodsi, P. Wendell, M. Zaharia y R. Xin, "Free Dolly: Introducing the world's first truly open instruction-tuned LLM," *Databricks Blog*, 12 abr. 2023. [En línea]. Disponible: https://www.databricks.com/blog/2023/04/12/dolly-first-open-commercially-viable-instruction-tuned-llm [Consultado: 30-sep-2026, 12:33]. Conjunto de datos: https://huggingface.co/datasets/databricks/databricks-dolly-15k

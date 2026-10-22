@@ -18,7 +18,9 @@ const COPY: Record<string, Copy> = {
   tune_semantic_cache_threshold: {
     title: "Revisar el ajuste de la caché semántica",
     summary: "La caché está activa, pero la tasa de aciertos reciente es baja.",
-    action: "Revisar el umbral de similitud y la antigüedad máxima de las entradas.",
+    action:
+      "Revisar primero la antigüedad máxima de las entradas. Bajar el umbral de similitud da más " +
+      "aciertos, pero con una precisión que la medición encontró por debajo de 0.95.",
   },
   review_premium_routing_pressure: {
     title: "Revisar la presión sobre premium",

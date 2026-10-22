@@ -184,24 +184,33 @@ async def test_policy_enforces_premium_allowlist_and_request_guardrail() -> None
             router_service=router_service,
         )
 
-    with pytest.raises(HTTPException) as guardrail_exc:
-        await service.resolve(
-            prompt="hello",
-            request=_request("openai/gpt-4o-mini", max_tokens=2048),
-            tenant_context=_tenant_context(
-                TenantPolicy(
-                    routing_mode_default="premium_only",
-                    allowed_premium_models=["openai/gpt-4o-mini"],
-                    max_premium_cost_per_request=0.0001,
-                )
-            ),
-            router_service=router_service,
-        )
+    guardrail = await service.resolve(
+        prompt="hello",
+        request=_request("openai/gpt-4o-mini", max_tokens=2048),
+        tenant_context=_tenant_context(
+            TenantPolicy(
+                routing_mode_default="premium_only",
+                allowed_premium_models=["openai/gpt-4o-mini"],
+                max_premium_cost_per_request=0.0001,
+            )
+        ),
+        router_service=router_service,
+    )
 
     assert allowlist_exc.value.status_code == 403
     assert allowlist_exc.value.detail == "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
-    assert guardrail_exc.value.status_code == 403
-    assert guardrail_exc.value.detail == "Request exceeds the tenant premium spend guardrail."
+    # A spend guardrail hands its denial back instead: a cached answer, which costs nothing,
+    # may still serve the request.
+    assert guardrail.spend_denial is not None
+    assert guardrail.spend_denial.detail == "Request exceeds the tenant premium spend guardrail."
+    assert guardrail.spend_denial.route_reason == "explicit_premium_model"
+    assert guardrail.spend_denial.headers["X-Nebula-Route-Tier"] == "denied"
+    assert (
+        "denied=Request exceeds the tenant premium spend guardrail."
+        in guardrail.spend_denial.policy_outcome
+    )
+    # What a request served from the cache records: no denial.
+    assert "denied=" not in guardrail.policy_outcome
 
 
 @pytest.mark.asyncio
@@ -253,25 +262,26 @@ async def test_hard_budget_denies_explicit_premium_requests_when_downgrade_not_a
     service = PolicyService(settings, FakeGovernanceStore(spend_total=12.0), _pricing())
     router_service = RouterService(settings)
 
-    with pytest.raises(HTTPException) as exc_info:
-        await service.resolve(
-            prompt="premium required",
-            request=_request("openai/gpt-4o-mini"),
-            tenant_context=_tenant_context(
-                TenantPolicy(
-                    allowed_premium_models=["openai/gpt-4o-mini"],
-                    hard_budget_limit_usd=10.0,
-                    hard_budget_enforcement="downgrade",
-                )
-            ),
-            router_service=router_service,
-        )
+    resolution = await service.resolve(
+        prompt="premium required",
+        request=_request("openai/gpt-4o-mini"),
+        tenant_context=_tenant_context(
+            TenantPolicy(
+                allowed_premium_models=["openai/gpt-4o-mini"],
+                hard_budget_limit_usd=10.0,
+                hard_budget_enforcement="downgrade",
+            )
+        ),
+        router_service=router_service,
+    )
 
-    assert exc_info.value.status_code == 403
-    assert exc_info.value.detail == (
+    # Denied by the budget alone, so the denial waits for the cache lookup.
+    assert resolution.spend_denial is not None
+    assert resolution.spend_denial.detail == (
         "Tenant hard budget limit reached; premium routing is blocked "
         "(spent_usd=12, limit_usd=10)."
     )
+    assert "hard_budget=exceeded" in resolution.policy_outcome
 
 
 @pytest.mark.asyncio

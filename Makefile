@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data cache-paraphrases cache-label cache-eval
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -65,6 +65,31 @@ metric-judge:
 metric-report:
 	$(PYTHON) -m scripts.metric_validation.analyse --reference-rater $(RATER)
 
+# Cache measurement data (needs Ollama with nomic-embed-text and nomic-embed-text-v2-moe, and the
+# router vectors in artifacts/router-embeddings/none.json): PAWS-X pairs and corpus neighbors.
+cache-data:
+	$(PYTHON) -m scripts.cache_eval.pawsx
+	$(PYTHON) -m scripts.cache_eval.neighbors
+
+# Paraphrase set (c): one local qwen2.5:7b rewrite of 200 corpus prompts (instruction as the system
+# message); the valid ones (0.5-2.0 times the original's length) are embedded with both models, the
+# rest go to dropped.jsonl (needs Ollama with qwen2.5:7b, nomic-embed-text and nomic-embed-text-v2-moe).
+# Replies are cached in artifacts/cache-eval/paraphrases/, so a re-run does not regenerate.
+cache-paraphrases:
+	$(PYTHON) -m scripts.cache_eval.paraphrase
+
+# Blind human labeling: make cache-label SET=neighbors  (or SET=paraphrases). Resumable; q quits.
+cache-label:
+	$(PYTHON) -m scripts.cache_eval.label $(SET)
+
+# The cache measurement: the pre-registered verdict, the PAWS-X and paraphrase-replay curves and the
+# saving over the router, through the gateway's own cache on an in-memory Qdrant, into
+# benchmarks/cache/v1/report.{json,md}. No paid API; needs artifacts/router-embeddings/none.json, and
+# Ollama only for vectors not yet cached under artifacts/cache-eval/vectors/. Human-label sections
+# read "pendiente" until the label files exist.
+cache-eval:
+	$(PYTHON) -m scripts.cache_eval.report
+
 migrate:
 	./.venv/bin/alembic upgrade head
 
@@ -92,7 +117,9 @@ console-test:
 console-e2e:
 	npm --prefix console run e2e
 
-# Thesis: rewrite every <!-- GEN:... --> block from the committed reports (no network).
+# Thesis: rewrite every <!-- GEN:... --> block and the two CP-18 table rows (Table 11.3 and
+# Table A.1) from the committed reports (no network). `python -m scripts.thesis.tables --check`
+# writes nothing and fails if any of them is stale.
 thesis-tables:
 	$(PYTHON) -m scripts.thesis.tables
 

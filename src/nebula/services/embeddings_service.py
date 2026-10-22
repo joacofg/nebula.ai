@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+import asyncio
+import logging
 from dataclasses import dataclass
 
 import httpx
 
 from nebula.core.config import Settings
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
+
+logger = logging.getLogger(__name__)
+
+# How long a chat request waits for its routing/cache embedding before going on without it.
+REQUEST_PATH_EMBED_TIMEOUT_SECONDS = 5.0
 
 
 class EmbeddingsServiceError(Exception):
@@ -44,16 +51,25 @@ class OllamaEmbeddingsService:
             timeout=httpx.Timeout(60.0, connect=5.0),
         )
 
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
+        """The text's embedding, or None when it is blank or Ollama fails.
+
+        `timeout` bounds the whole call in seconds (a slow answer counts as a failure); None
+        keeps the client's own timeouts.
+        """
         if not text.strip():
             return None
 
         try:
-            result = await self.create_embeddings(
-                model=self.settings.embedding_model,
-                input=text,
-            )
+            async with asyncio.timeout(timeout):
+                result = await self.create_embeddings(
+                    model=self.settings.embedding_model,
+                    input=text,
+                )
         except EmbeddingsServiceError:
+            return None
+        except TimeoutError:
+            logger.warning("embedding_timed_out timeout_seconds=%s", timeout)
             return None
 
         return result.data[0].embedding

@@ -69,7 +69,7 @@ no funcionales.
 | RF-01 | El gateway expone `POST /v1/chat/completions` compatible con la API de OpenAI, con y sin streaming, y autentica cada pedido con una clave asociada a un tenant. | OE2 |
 | RF-02 | Para cada pedido, el gateway elige entre tres niveles (modelo local, premium económico, premium frontier) según la probabilidad estimada de que la respuesta del nivel barato sea aceptable. | OE2 |
 | RF-03 | El operador fija, por tenant, un objetivo de calidad; el gateway usa el punto de operación más barato que lo cumple. | OE2 |
-| RF-04 | El caché semántico sirve una respuesta guardada solo si pertenece al mismo tenant, supera el umbral de similitud de su política y no es más vieja que la antigüedad máxima configurada. | OE2 |
+| RF-04 | El caché semántico sirve una respuesta guardada solo si pertenece al mismo tenant y al mismo contexto de conversación, la generó el nivel elegido por el router o uno más capaz (o, para un modelo explícito, ese mismo modelo), alcanza el umbral de similitud de su política y no es más vieja que la antigüedad máxima configurada. | OE2 |
 | RF-05 | Si el modelo local falla y la política lo permite, el pedido se reenvía al proveedor premium. | OE2 |
 | RF-06 | Cada respuesta informa, en cabeceras `X-Nebula-*`, la ruta, el nivel, el motivo de la decisión y si hubo caché o fallback, y cada pedido queda en el ledger con su costo estimado. | OE2 |
 | RF-07 | La consola muestra el ledger, la política de cada tenant, la frontera costo–calidad y un simulador que reproduce las decisiones del router sobre el corpus sin llamar a ningún modelo. | OE2 |

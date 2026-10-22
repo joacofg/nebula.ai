@@ -14,7 +14,7 @@ const tuneCache = {
   category: "cache",
   priority: 2,
   summary: "The cache is enabled but recent hit rate is low for the observed request window.",
-  recommended_action: "Review similarity threshold and entry age.",
+  recommended_action: "Review the maximum entry age first.",
   evidence: [
     { label: "cache_hit_rate", value: "16%" },
     { label: "similarity_threshold", value: "0.90" },
@@ -28,8 +28,20 @@ describe("Recommendations", () => {
     expect(screen.getByRole("heading", { name: "Revisar el ajuste de la caché semántica" })).toBeInTheDocument();
     expect(screen.queryByText(/Review semantic cache tuning/)).not.toBeInTheDocument();
     expect(screen.queryByText(/The cache is enabled/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/Review the maximum entry age/)).not.toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Tasa de aciertos" })).toHaveTextContent("16%");
     expect(screen.getByRole("group", { name: "Umbral de similitud" })).toHaveTextContent("0.90");
+  });
+
+  it("points the low hit rate card to entry age first and gives the cost of a lower threshold", () => {
+    render(<Recommendations bundle={bundle([tuneCache])} />);
+
+    expect(
+      screen.getByText(
+        "Revisar primero la antigüedad máxima de las entradas. Bajar el umbral de similitud da más " +
+          "aciertos, pero con una precisión que la medición encontró por debajo de 0.95.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("falls back to the gateway's text for a code it does not know", () => {

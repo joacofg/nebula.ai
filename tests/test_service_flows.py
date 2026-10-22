@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import perf_counter
 
 import httpx
 import pytest
@@ -36,7 +38,16 @@ from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.recommendation_service import RecommendationService
 from nebula.services.router_service import RouteDecision, RouterService
-from tests.support import FakeCacheService, StubProvider, admin_headers, configured_app, usage
+from nebula.services.semantic_cache_service import TIER_RANK
+from tests.support import (
+    FakeCacheService,
+    FixedVectorEmbeddings,
+    StubProvider,
+    admin_headers,
+    configured_app,
+    usage,
+    use_fake_cache,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -237,6 +248,8 @@ def build_service(
         ),
         governance_store=store,
         policy_service=policy_service or FakePolicyService(active_settings),
+        # As in production: the chat path embeds the prompt, so the cache gets a vector.
+        embeddings_service=FixedVectorEmbeddings(),
     )
     return service, active_cache, active_local, active_premium, store
 
@@ -270,12 +283,7 @@ async def test_create_completion_persists_calibrated_route_evidence_for_real_req
     assert envelope.metadata.route_signals["score_components"]["total_score"] == envelope.metadata.route_score
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
-        (
-            "default",
-            "Please review this architecture tradeoff.",
-            "premium response",
-            service.settings.premium_model,
-        )
+        ("default", "premium response", service.settings.premium_model, TIER_RANK["frontier"])
     ]
     assert store.records[-1].request_id == "req-calibrated-evidence"
     assert store.records[-1].final_route_target == "premium"
@@ -307,12 +315,7 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
     assert response.choices[0].message.content == "premium response"
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
-        (
-            "default",
-            "Please review this architecture tradeoff.",
-            "premium response",
-            service.settings.premium_model,
-        )
+        ("default", "premium response", service.settings.premium_model, TIER_RANK["frontier"])
     ]
     assert store.records[-1].final_route_target == "premium"
 
@@ -350,7 +353,10 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
 
     assert response.model == settings.premium_model
     assert response.choices[0].message.content == "fallback response"
-    assert cache_service.stored_entries == [("default", "hello", "fallback response", settings.premium_model)]
+    # Routed local, served by the frontier fallback: filed under the tier that served it.
+    assert cache_service.stored_entries == [
+        ("default", "fallback response", settings.premium_model, TIER_RANK["frontier"])
+    ]
     assert store.records[-1].fallback_used is True
     assert store.records[-1].terminal_status == "fallback_completed"
 
@@ -417,7 +423,9 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
     assert b"premium " in payload
     assert b"stream" in payload
     assert payload.endswith(b"data: [DONE]\n\n")
-    assert cache_service.stored_entries == [("default", "short", "premium stream", settings.premium_model)]
+    assert cache_service.stored_entries == [
+        ("default", "premium stream", settings.premium_model, TIER_RANK["frontier"])
+    ]
     assert store.records[-1].terminal_status == "fallback_completed"
 
 
@@ -1560,8 +1568,9 @@ async def test_recommendation_service_orders_and_bounds_recommendations_without_
             timestamp=now.replace(microsecond=3),
             final_route_target="premium",
             terminal_status="cache_hit",
-            estimated_cost=0.008,
+            estimated_cost=0.0,
             route_reason="semantic_cache",
+            route_signals={"cache_avoided_cost_usd": 0.008},
         ).model_copy(update={"cache_hit": True}),
         _ledger_record(
             request_id="req-denied",
@@ -1656,6 +1665,98 @@ async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runti
     assert bundle.recommendations[0].evidence[1].value == "0.95"
     assert store.record_usage_calls == []
     assert store.policy_updates == []
+
+
+@pytest.mark.parametrize(
+    ("threshold", "action"),
+    [
+        (
+            0.99,
+            "Review the maximum entry age first. Lowering the similarity threshold below the "
+            "product default (0.99) raises reuse, at a precision the cache measurement found "
+            "below its 0.95 criterion (benchmarks/cache/v1/report.md).",
+        ),
+        (
+            0.90,
+            "Review the maximum entry age first. The similarity threshold is already below the "
+            "product default (0.99); lowering it further raises reuse, at a precision the cache "
+            "measurement found below its 0.95 criterion (benchmarks/cache/v1/report.md).",
+        ),
+    ],
+    ids=["at_the_default", "below_the_default"],
+)
+async def test_low_cache_hit_guidance_never_suggests_a_lower_threshold_without_its_cost(
+    threshold: float, action: str
+) -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(request_id=f"req-{index}", timestamp=now.replace(microsecond=index))
+        for index in range(6)
+    ]
+    recommendation_service = RecommendationService(
+        governance_store=FakeSimulationGovernanceStore(records),
+        semantic_cache_service=FakeCacheService(),
+    )
+
+    bundle = await recommendation_service.build_summary(
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                semantic_cache_enabled=True,
+                semantic_cache_similarity_threshold=threshold,
+                semantic_cache_max_entry_age_hours=24,
+            ),
+        )
+    )
+
+    [card] = [
+        item for item in bundle.recommendations if item.code == "tune_semantic_cache_threshold"
+    ]
+    assert card.recommended_action == action
+    assert [(e.label, e.value) for e in card.evidence] == [
+        ("cache_hit_rate", "0%"),
+        ("similarity_threshold", f"{threshold:.2f}"),
+        ("max_entry_age_hours", "24"),
+    ]
+
+
+@pytest.mark.asyncio
+async def test_recommendation_service_sums_the_cost_each_cache_hit_avoided() -> None:
+    now = datetime.now(UTC)
+
+    def hit(index: int, signals: dict | None) -> UsageLedgerRecord:
+        return _ledger_record(
+            request_id=f"req-hit-{index}",
+            timestamp=now.replace(microsecond=index),
+            final_route_target="cache",
+            terminal_status="cache_hit",
+            route_signals=signals,
+        ).model_copy(update={"cache_hit": True})
+
+    store = FakeSimulationGovernanceStore(
+        [
+            hit(0, {"cache_avoided_cost_usd": 0.008}),
+            hit(1, {"cache_avoided_cost_usd": 0.0012}),
+            hit(2, {"cache_avoided_cost_usd": 0.0}),
+            # Signals suppressed (strict minimization) or never recorded: counts as 0.
+            hit(3, None),
+            # A served request is not an avoided one, whatever its signals say.
+            _ledger_record(
+                request_id="req-served",
+                timestamp=now.replace(microsecond=4),
+                route_signals={"cache_avoided_cost_usd": 5.0},
+            ),
+        ]
+    )
+    recommendation_service = RecommendationService(
+        governance_store=store,
+        semantic_cache_service=FakeCacheService(),
+    )
+
+    bundle = await recommendation_service.build_summary(tenant_context=tenant_context())
+
+    assert bundle.cache_summary.avoided_premium_cost_usd == pytest.approx(0.0092)
 
 
 @pytest.mark.asyncio
@@ -1780,6 +1881,31 @@ async def test_embeddings_service_rejects_empty_upstream_embeddings() -> None:
     assert str(exc_info.value) == "Ollama returned no embeddings."
 
 
+async def test_embed_gives_up_after_its_per_call_timeout() -> None:
+    async def slow_ollama(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)  # a busy Ollama: slow, but it does answer
+        return httpx.Response(200, json={"embeddings": [[0.1, 0.2, 0.3]]})
+
+    service = OllamaEmbeddingsService(Settings())
+    await service.client.aclose()
+    service.client = httpx.AsyncClient(
+        base_url="http://ollama", transport=httpx.MockTransport(slow_ollama)
+    )
+    try:
+        started = perf_counter()
+        bounded = await service.embed("hola", timeout=0.05)
+        bounded_seconds = perf_counter() - started
+        unbounded = await service.embed("hola")
+    finally:
+        await service.close()
+
+    # A request-path caller gives up (as on any embedding failure) instead of waiting it out...
+    assert bounded is None
+    assert bounded_seconds < 0.25
+    # ...while a caller without a timeout keeps the client's own.
+    assert unbounded == [0.1, 0.2, 0.3]
+
+
 async def _create_tenant_b_with_cache_policy(client: httpx.AsyncClient) -> str:
     """Create tenant-b with a distinctive cache policy and return its raw API key."""
     created = await client.post(
@@ -1810,8 +1936,7 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
-            container.cache_service = cache_service
-            container.chat_service.cache_service = cache_service
+            use_fake_cache(container, cache_service)
             container.provider_registry.local_provider = StubProvider(
                 "ollama",
                 completion_result=CompletionResult(
@@ -1829,7 +1954,9 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
                 assert response.status_code == 200
 
     assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
-    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
+    # Filed under the model the route asked for, not the provider's echo of it.
+    local = (container.settings.local_model, TIER_RANK["local"])
+    assert cache_service.stored_entries == [("tenant-b", "ok", *local)]
 
 
 @pytest.mark.asyncio
@@ -1838,8 +1965,7 @@ async def test_streaming_cache_lookup_is_scoped_to_the_authenticated_tenant_and_
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
-            container.cache_service = cache_service
-            container.chat_service.cache_service = cache_service
+            use_fake_cache(container, cache_service)
             container.provider_registry.local_provider = StubProvider(
                 "ollama",
                 stream_chunks=[
@@ -1863,4 +1989,6 @@ async def test_streaming_cache_lookup_is_scoped_to_the_authenticated_tenant_and_
                 assert b"[DONE]" in response.content
 
     assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
-    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
+    # Filed under the model the route asked for, not the provider's echo of it.
+    local = (container.settings.local_model, TIER_RANK["local"])
+    assert cache_service.stored_entries == [("tenant-b", "ok", *local)]

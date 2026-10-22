@@ -9,10 +9,11 @@ está en `00-indice.md`, y las secciones 1, 2, 4 y 5 están juntas en `01-prelim
 
 ## Cómo se regenera
 
-- `make thesis-tables` reescribe todos los bloques `<!-- GEN:nombre -->…<!-- /GEN:nombre -->`
-  desde los reportes versionados en `benchmarks/` (no usa la red ni reentrena nada).
-  `python -m scripts.thesis.tables --check` falla si algún bloque quedó desactualizado, y la
-  suite de tests lo corre. Los bloques GEN no se editan a mano.
+- `make thesis-tables` reescribe todos los bloques `<!-- GEN:nombre -->…<!-- /GEN:nombre -->` y
+  las dos filas CP-18 (Tabla 11.3 y Tabla A.1) desde los reportes versionados en `benchmarks/`
+  (no usa la red ni reentrena nada). `python -m scripts.thesis.tables --check` falla si algún
+  bloque o alguna de esas dos filas quedó desactualizado, y la suite de tests lo corre. Ni los
+  bloques GEN ni las filas CP-18 se editan a mano.
 - `make thesis-figures` dibuja la frontera desde el reporte del router (matplotlib) y exporta las
   fuentes Mermaid de `figuras/` a PNG.
 

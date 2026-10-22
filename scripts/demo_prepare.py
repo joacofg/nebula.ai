@@ -3,7 +3,9 @@
 Usage: python -m scripts.demo_prepare  (gateway must be running on :8000; `make demo` runs it)
 Idempotent: creates acme-demo and its key if missing (a revoked key only warns), sets the
 policy the three Playground examples are tuned for (local / economy / frontier at objective
-0.90), and warms Ollama so the first local answer does not pay the model's cold load.
+0.90, semantic cache on at the product's default similarity threshold, which a demo tenant
+created before that default changed would otherwise keep stale), and warms Ollama so the first
+local answer does not pay the model's cold load.
 """
 from __future__ import annotations
 
@@ -13,9 +15,13 @@ from typing import Any
 
 import httpx
 
+from nebula.models.governance import TenantPolicy
 from scripts.seed_demo_data import ADMIN_HEADERS, BASE, DEMO_TENANT_ID, ensure_governance
 
 DEMO_QUALITY_TARGET = 0.90
+# The product default, read from the policy model so the demo never carries its own copy. The
+# demo's cache example repeats an identical prompt (cosine 1.0), so it hits at any threshold.
+DEMO_CACHE_THRESHOLD = TenantPolicy().semantic_cache_similarity_threshold
 PREMIUM_MODELS = ("openai/gpt-4.1", "anthropic/claude-haiku-4.5")
 OLLAMA = os.environ.get("NEBULA_OLLAMA_BASE_URL", "http://localhost:11434")
 LOCAL_MODEL = os.environ.get("NEBULA_LOCAL_MODEL", "qwen2.5:7b")
@@ -34,6 +40,7 @@ def demo_policy(policy: dict[str, Any]) -> dict[str, Any]:
     updated["hard_budget_limit_usd"] = None
     updated["hard_budget_enforcement"] = None
     updated["semantic_cache_enabled"] = True
+    updated["semantic_cache_similarity_threshold"] = DEMO_CACHE_THRESHOLD
     return updated
 
 
@@ -42,7 +49,10 @@ def apply_policy(client: httpx.Client) -> None:
     current = client.get(url, headers=ADMIN_HEADERS)
     current.raise_for_status()
     client.put(url, headers=ADMIN_HEADERS, json=demo_policy(current.json())).raise_for_status()
-    print(f"política de {DEMO_TENANT_ID}: objetivo {DEMO_QUALITY_TARGET:.2f}, caché activa")
+    print(
+        f"política de {DEMO_TENANT_ID}: objetivo {DEMO_QUALITY_TARGET:.2f}, "
+        f"caché activa con umbral {DEMO_CACHE_THRESHOLD:.2f}"
+    )
 
 
 def warm_ollama(client: httpx.Client) -> None:

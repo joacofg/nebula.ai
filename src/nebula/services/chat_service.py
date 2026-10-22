@@ -23,6 +23,7 @@ from nebula.models.openai import (
     ChatCompletionUsage,
 )
 from nebula.observability.metrics import (
+    CACHE_LOOKUPS,
     COMPLETION_COUNT,
     FALLBACK_COUNT,
     PROVIDER_LATENCY,
@@ -30,14 +31,47 @@ from nebula.observability.metrics import (
 )
 from nebula.providers.base import CompletionProvider, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
-from nebula.services.embeddings_service import OllamaEmbeddingsService
+from nebula.services.embeddings_service import (
+    REQUEST_PATH_EMBED_TIMEOUT_SECONDS,
+    OllamaEmbeddingsService,
+)
 from nebula.services.governance_store import GovernanceStore
-from nebula.services.policy_service import PolicyResolution, PolicyService
+from nebula.services.policy_service import PolicyResolution, PolicyService, SpendDenial
 from nebula.services.provider_registry import ProviderRegistry
-from nebula.services.router_service import RouteTarget, RouterService
-from nebula.services.semantic_cache_service import CacheHit, SemanticCacheService
+from nebula.services.router_service import RouteDecision, RouteTarget, RouterService
+from nebula.services.semantic_cache_service import (
+    TIER_RANK,
+    UNTIERED_RANK,
+    CacheHit,
+    SemanticCacheService,
+    context_hash,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True, frozen=True)
+class _CacheKey:
+    """A request's cache identity, computed once and shared by its lookup and its store."""
+
+    tenant_id: str
+    context_hash: str
+    # None when the cache is disabled (it answers nothing), or when this service has no
+    # embeddings service (the cache then embeds its lookups itself and cannot store).
+    vector: list[float] | None
+    # Exactly one is set: an auto request takes answers from its chosen tier up, an
+    # explicit-model request only that model's answers.
+    min_tier_rank: int | None
+    model: str | None
+
+
+@dataclass(slots=True, frozen=True)
+class _CacheWrite:
+    """Where a served answer is cached: the request's key, and the tier and model that served it."""
+
+    key: _CacheKey
+    tier_rank: int
+    model: str
 
 
 @dataclass(slots=True)
@@ -96,7 +130,6 @@ class ChatService:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
         routing_embedding = await self._embed_for_routing(latest_user_prompt)
-        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
@@ -105,13 +138,21 @@ class ChatService:
             prompt_embedding=routing_embedding,
         )
 
-        cache_hit = await self._lookup_cache(
+        cache_key = await self._cache_key(
+            request=request,
             prompt=latest_user_prompt,
             tenant_id=tenant_context.tenant.id,
+            routing_embedding=routing_embedding,
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=False,
-            vector=cache_vector,
+        )
+        cache_hit = await self._lookup_cache(
+            key=cache_key,
+            prompt=latest_user_prompt,
+            policy_resolution=policy_resolution,
+            request_id=request_id,
+            stream=False,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
@@ -124,6 +165,7 @@ class ChatService:
                 cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
+                avoided_cost_usd=self._cache_avoided_cost(request, policy_resolution, usage),
             )
             response = self._build_response(content=cached_response, model="nebula-cache", usage=usage)
             await self._record_usage(
@@ -138,6 +180,14 @@ class ChatService:
             )
             COMPLETION_COUNT.labels("cache", "ok", "false").inc()
             return CompletionResponseEnvelope(response=response, metadata=metadata)
+        if policy_resolution.spend_denial is not None:
+            # A cached answer would have cost nothing; with none, the guardrail denies.
+            self._deny_spend(
+                request=request,
+                tenant_id=tenant_context.tenant.id,
+                request_id=request_id,
+                denial=policy_resolution.spend_denial,
+            )
 
         route_decision = policy_resolution.route_decision
         ROUTE_DECISION_COUNT.labels(route_decision.target, route_decision.reason, "false").inc()
@@ -167,6 +217,7 @@ class ChatService:
                 fallback_used=False,
                 policy_resolution=policy_resolution,
             )
+            served_model = self._served_model(request, route_decision)
             terminal_status = "completed"
         except ProviderError as exc:
             logger.warning(
@@ -223,17 +274,11 @@ class ChatService:
                 fallback_used=True,
                 policy_resolution=policy_resolution,
             )
+            served_model = fallback_model
             terminal_status = "fallback_completed"
 
         usage = self._resolved_usage(request, result.content, result.usage)
-        if policy_resolution.cache_enabled:
-            await self.cache_service.store(
-                latest_user_prompt,
-                result.content,
-                result.model,
-                tenant_id=tenant_context.tenant.id,
-                vector=cache_vector,
-            )
+        await self._store_in_cache(self._cache_write(cache_key, served_model), result.content)
         response = self._build_response(content=result.content, model=result.model, usage=usage)
         await self._record_usage(
             request_id=request_id,
@@ -256,7 +301,6 @@ class ChatService:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
         routing_embedding = await self._embed_for_routing(latest_user_prompt)
-        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
@@ -267,16 +311,25 @@ class ChatService:
         response_id = f"chatcmpl-{uuid4().hex}"
         created = int(time())
 
-        cache_hit = await self._lookup_cache(
+        cache_key = await self._cache_key(
+            request=request,
             prompt=latest_user_prompt,
             tenant_id=tenant_context.tenant.id,
+            routing_embedding=routing_embedding,
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=True,
-            vector=cache_vector,
+        )
+        cache_hit = await self._lookup_cache(
+            key=cache_key,
+            prompt=latest_user_prompt,
+            policy_resolution=policy_resolution,
+            request_id=request_id,
+            stream=True,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
+            usage = self.policy_service.estimate_usage(request, cached_response)
             COMPLETION_COUNT.labels("cache", "ok", "true").inc()
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
@@ -286,6 +339,7 @@ class ChatService:
                 cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
+                avoided_cost_usd=self._cache_avoided_cost(request, policy_resolution, usage),
             )
             wrapped_stream = self._wrap_stream_with_ledger(
                 stream=self._stream_text(cached_response, response_id, created, "nebula-cache"),
@@ -295,6 +349,13 @@ class ChatService:
                 started_at=started_at,
             )
             return StreamingCompletionEnvelope(stream=wrapped_stream, metadata=metadata)
+        if policy_resolution.spend_denial is not None:
+            self._deny_spend(
+                request=request,
+                tenant_id=tenant_context.tenant.id,
+                request_id=request_id,
+                denial=policy_resolution.spend_denial,
+            )
 
         route_decision = policy_resolution.route_decision
         ROUTE_DECISION_COUNT.labels(route_decision.target, route_decision.reason, "true").inc()
@@ -310,15 +371,13 @@ class ChatService:
         stream, metadata = await self._prepare_stream_provider(
             provider=provider,
             request=request,
-            prompt=latest_user_prompt,
             response_id=response_id,
             created=created,
             request_id=request_id,
             tenant_id=tenant_context.tenant.id,
             policy_resolution=policy_resolution,
-            cache_enabled=policy_resolution.cache_enabled,
             started_at=started_at,
-            cache_vector=cache_vector,
+            cache_key=cache_key,
         )
 
         wrapped_stream = self._wrap_stream_with_ledger(
@@ -364,26 +423,120 @@ class ChatService:
             ),
         )
 
-    async def _lookup_cache(
+    async def _cache_key(
         self,
         *,
+        request: ChatCompletionRequest,
         prompt: str,
         tenant_id: str,
+        routing_embedding: list[float] | None,
         policy_resolution: PolicyResolution,
         request_id: str | None,
         stream: bool,
-        vector: list[float] | None = None,
-    ) -> CacheHit | None:
+    ) -> _CacheKey | None:
+        """This request's cache identity, or None when the request skips the cache altogether."""
         if not policy_resolution.cache_enabled:
             logger.info("cache_bypassed request_id=%s stream=%s reason=policy_disabled", request_id, stream)
             return None
-        hit = await self.cache_service.lookup(
-            prompt,
+        vector: list[float] | None = None
+        # A disabled cache answers nothing, so it needs no vector.
+        if self.embeddings_service is not None and self.cache_service.enabled:
+            learned = self.router_service.learned
+            if learned is not None and learned.prefix == "none":
+                # Routing already embedded the bare prompt; if that failed, a retry would too.
+                vector = routing_embedding
+            else:
+                vector = await self._embed(prompt, purpose="cache")
+            if vector is None:
+                # Asking the cache anyway would only make it embed the prompt again.
+                CACHE_LOOKUPS.labels("embedding_unavailable").inc()
+                logger.info(
+                    "cache_bypassed request_id=%s stream=%s reason=embedding_unavailable",
+                    request_id,
+                    stream,
+                )
+                return None
+        route_decision = policy_resolution.route_decision
+        if request.model != self.settings.default_model:
+            # An explicit model (routed `explicit_local_model` / `explicit_premium_model`) asks
+            # for that model's answer, not for a tier's.
+            min_tier_rank, model = None, self._served_model(request, route_decision)
+        else:
+            chosen_tier = self._route_tier(
+                route_target=route_decision.target,
+                fallback_used=False,
+                signals=route_decision.signals,
+                policy_resolution=policy_resolution,
+            )
+            min_tier_rank, model = TIER_RANK[chosen_tier], None
+        return _CacheKey(
             tenant_id=tenant_id,
-            similarity_threshold=policy_resolution.cache_similarity_threshold,
-            max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
+            context_hash=context_hash(request.messages),
             vector=vector,
+            min_tier_rank=min_tier_rank,
+            model=model,
         )
+
+    def _cache_write(self, key: _CacheKey | None, served_model: str) -> _CacheWrite | None:
+        if key is None:
+            return None
+        # Ranked by the model that actually served, so a fallback answer is filed under the
+        # fallback model's tier.
+        return _CacheWrite(key=key, tier_rank=self._tier_rank_of(served_model), model=served_model)
+
+    def _tier_rank_of(self, model: str) -> int:
+        """The tier a model's answers can serve: only the configured tier models have one."""
+        ranks = {self.settings.local_model: TIER_RANK["local"]}
+        if self.settings.economy_model:
+            ranks[self.settings.economy_model] = TIER_RANK["economy"]
+        # Last, so a frontier model also configured as the economy model keeps frontier rank.
+        ranks[self.settings.premium_model] = TIER_RANK["frontier"]
+        return ranks.get(model, UNTIERED_RANK)
+
+    async def _store_in_cache(self, write: _CacheWrite | None, response: str) -> None:
+        if write is None:
+            return
+        await self.cache_service.store(
+            response,
+            tenant_id=write.key.tenant_id,
+            vector=write.key.vector,
+            context_hash=write.key.context_hash,
+            tier_rank=write.tier_rank,
+            model=write.model,
+        )
+
+    async def _lookup_cache(
+        self,
+        *,
+        key: _CacheKey | None,
+        prompt: str,
+        policy_resolution: PolicyResolution,
+        request_id: str | None,
+        stream: bool,
+    ) -> CacheHit | None:
+        if key is None:
+            return None
+        try:
+            hit = await self.cache_service.lookup(
+                prompt,
+                tenant_id=key.tenant_id,
+                similarity_threshold=policy_resolution.cache_similarity_threshold,
+                max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
+                context_hash=key.context_hash,
+                min_tier_rank=key.min_tier_rank,
+                model=key.model,
+                vector=key.vector,
+            )
+        except Exception as exc:  # noqa: BLE001 - the cache is optional: a failure is a miss
+            # Never a 500: the request is served (or spend-denied with its usual 403) without it.
+            CACHE_LOOKUPS.labels("error").inc()
+            logger.warning(
+                "cache_lookup_failed request_id=%s stream=%s error=%s",
+                request_id,
+                str(stream).lower(),
+                exc,
+            )
+            return None
         if hit is not None:
             logger.info(
                 "cache_hit request_id=%s stream=%s prompt_chars=%s score=%.4f age_seconds=%s",
@@ -406,13 +559,11 @@ class ChatService:
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
-        cache_enabled: bool,
-        cache_vector: list[float] | None = None,
+        cache_write: _CacheWrite | None,
     ):
         content_parts: list[str] = []
         started_at = perf_counter()
@@ -436,14 +587,7 @@ class ChatService:
                     )
 
                 if chunk.finish_reason:
-                    if cache_enabled:
-                        await self.cache_service.store(
-                            prompt,
-                            "".join(content_parts),
-                            chunk.model,
-                            tenant_id=tenant_id,
-                            vector=cache_vector,
-                        )
+                    await self._store_in_cache(cache_write, "".join(content_parts))
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
                         perf_counter() - started_at
@@ -518,41 +662,37 @@ class ChatService:
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
         policy_resolution: PolicyResolution,
-        cache_enabled: bool,
         started_at: float,
-        cache_vector: list[float] | None = None,
+        cache_key: _CacheKey | None,
     ) -> tuple[AsyncIterator[bytes], CompletionMetadata]:
         route_decision = policy_resolution.route_decision
+        metadata = self._metadata(
+            tenant_id=tenant_id,
+            route_target=route_decision.target,
+            route_reason=route_decision.reason,
+            provider=provider.name,
+            cache_hit=False,
+            fallback_used=False,
+            policy_resolution=policy_resolution,
+        )
         try:
             stream = await self._prefetched_stream(
                 provider=provider,
                 request=self._provider_request(request, route_decision.model),
-                prompt=prompt,
                 response_id=response_id,
                 created=created,
                 request_id=request_id,
                 tenant_id=tenant_id,
-                cache_enabled=cache_enabled,
-                cache_vector=cache_vector,
-            )
-            return (
-                stream,
-                self._metadata(
-                    tenant_id=tenant_id,
-                    route_target=route_decision.target,
-                    route_reason=route_decision.reason,
-                    provider=provider.name,
-                    cache_hit=False,
-                    fallback_used=False,
-                    policy_resolution=policy_resolution,
+                cache_write=self._cache_write(
+                    cache_key, self._served_model(request, route_decision)
                 ),
             )
+            return stream, metadata
         except ProviderError as exc:
             fallback_model = await self._fallback_model_or_fail(
                 request=request,
@@ -574,17 +714,24 @@ class ChatService:
                 tenant_id,
                 fallback_provider.name,
             )
+            fallback_metadata = self._metadata(
+                tenant_id=tenant_id,
+                route_target="premium",
+                route_reason="local_provider_error_fallback",
+                provider=fallback_provider.name,
+                cache_hit=False,
+                fallback_used=True,
+                policy_resolution=policy_resolution,
+            )
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,
                     request=self._provider_request(request, fallback_model),
-                    prompt=prompt,
                     response_id=response_id,
                     created=created,
                     request_id=request_id,
                     tenant_id=tenant_id,
-                    cache_enabled=cache_enabled,
-                    cache_vector=cache_vector,
+                    cache_write=self._cache_write(cache_key, fallback_model),
                 )
             except ProviderError as fallback_exc:
                 await self._fail_fallback(
@@ -598,41 +745,26 @@ class ChatService:
                     stream=True,
                 )
 
-            return (
-                fallback_stream,
-                self._metadata(
-                    tenant_id=tenant_id,
-                    route_target="premium",
-                    route_reason="local_provider_error_fallback",
-                    provider=fallback_provider.name,
-                    cache_hit=False,
-                    fallback_used=True,
-                    policy_resolution=policy_resolution,
-                ),
-            )
+            return fallback_stream, fallback_metadata
 
     async def _prefetched_stream(
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
-        cache_enabled: bool,
-        cache_vector: list[float] | None = None,
+        cache_write: _CacheWrite | None,
     ) -> AsyncIterator[bytes]:
         provider_stream = self._stream_provider(
             provider=provider,
             request=request,
-            prompt=prompt,
             response_id=response_id,
             created=created,
             request_id=request_id,
             tenant_id=tenant_id,
-            cache_enabled=cache_enabled,
-            cache_vector=cache_vector,
+            cache_write=cache_write,
         )
 
         try:
@@ -765,26 +897,65 @@ class ChatService:
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
                 headers = exc.headers or {}
-                self.governance_store.record_usage(
-                    UsageLedgerRecord(
-                        request_id=request_id or f"req-{uuid4().hex}",
-                        tenant_id=tenant_context.tenant.id,
-                        requested_model=request.model,
-                        final_route_target="denied",
-                        final_provider=None,
-                        fallback_used=False,
-                        cache_hit=False,
-                        response_model=None,
-                        estimated_cost=None,
-                        latency_ms=None,
-                        timestamp=datetime.now(UTC),
-                        terminal_status="policy_denied",
-                        route_reason=headers.get("X-Nebula-Route-Reason"),
-                        policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
-                        route_signals=None,
-                    )
+                self._record_policy_denial(
+                    request=request,
+                    tenant_id=tenant_context.tenant.id,
+                    request_id=request_id,
+                    route_reason=headers.get("X-Nebula-Route-Reason"),
+                    policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
                 )
             raise
+
+    def _deny_spend(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        tenant_id: str,
+        request_id: str | None,
+        denial: SpendDenial,
+    ) -> NoReturn:
+        """After a cache miss, the 403 the spend guardrail held back and its policy_denied row."""
+        self._record_policy_denial(
+            request=request,
+            tenant_id=tenant_id,
+            request_id=request_id,
+            route_reason=denial.route_reason,
+            policy_outcome=denial.policy_outcome,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=denial.detail,
+            headers=denial.headers,
+        )
+
+    def _record_policy_denial(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        tenant_id: str,
+        request_id: str | None,
+        route_reason: str | None,
+        policy_outcome: str | None,
+    ) -> None:
+        self.governance_store.record_usage(
+            UsageLedgerRecord(
+                request_id=request_id or f"req-{uuid4().hex}",
+                tenant_id=tenant_id,
+                requested_model=request.model,
+                final_route_target="denied",
+                final_provider=None,
+                fallback_used=False,
+                cache_hit=False,
+                response_model=None,
+                estimated_cost=None,
+                latency_ms=None,
+                timestamp=datetime.now(UTC),
+                terminal_status="policy_denied",
+                route_reason=route_reason,
+                policy_outcome=policy_outcome,
+                route_signals=None,
+            )
+        )
 
     async def _embed_for_routing(self, prompt: str) -> list[float] | None:
         """Embed the prompt once for the learned router; None when it is off or embedding fails."""
@@ -792,18 +963,30 @@ class ChatService:
         if learned is None or self.embeddings_service is None:
             return None
         text = prompt if learned.prefix == "none" else f"{learned.prefix}: {prompt}"
+        return await self._embed(text, purpose="routing")
+
+    async def _embed(
+        self, text: str, *, purpose: Literal["routing", "cache"]
+    ) -> list[float] | None:
+        assert self.embeddings_service is not None
         try:
-            return await self.embeddings_service.embed(text)
-        except Exception as exc:  # noqa: BLE001 - routing degrades to the heuristic
-            logger.warning("routing_embedding_failed error=%s", exc)
+            # A slow Ollama must not hold the request: past the timeout it goes on without.
+            return await self.embeddings_service.embed(
+                text, timeout=REQUEST_PATH_EMBED_TIMEOUT_SECONDS
+            )
+        except Exception as exc:  # noqa: BLE001 - heuristic routing, no cache: both degrade
+            logger.warning("%s_embedding_failed error=%s", purpose, exc)
             return None
 
-    def _cache_vector(self, routing_embedding: list[float] | None) -> list[float] | None:
-        # The cache indexes the bare prompt; a prefixed routing embedding is a different vector.
-        learned = self.router_service.learned
-        if routing_embedding is None or learned is None or learned.prefix != "none":
-            return None
-        return routing_embedding
+    def _served_model(self, request: ChatCompletionRequest, route_decision: RouteDecision) -> str:
+        """The model the routed provider is asked for (what `_provider_request` sends it)."""
+        model = self._provider_request(request, route_decision.model).model
+        if model != self.settings.default_model:
+            return model
+        # The auto alias: each provider serves its configured model.
+        if route_decision.target == "local":
+            return self.settings.local_model
+        return self.settings.premium_model
 
     def _provider_request(
         self, request: ChatCompletionRequest, decision_model: str | None
@@ -843,6 +1026,25 @@ class ChatService:
             return tier
         model = policy_resolution.route_decision.model
         return "economy" if model and model == self.settings.economy_model else "frontier"
+
+    def _cache_avoided_cost(
+        self,
+        request: ChatCompletionRequest,
+        policy_resolution: PolicyResolution,
+        usage: CompletionUsage,
+    ) -> float:
+        """What the request would have cost on its chosen route, had the cache not answered it.
+
+        Recorded as a route signal on the hit row; the row's `estimated_cost` stays 0, so spend
+        and the hard budget are untouched. Under `metadata_minimization_level=strict` the store
+        drops route signals, and such a hit counts as 0 avoided in the recommendations.
+        """
+        route_decision = policy_resolution.route_decision
+        if route_decision.target == "local":
+            return 0.0
+        # None: the model has no price in the catalog, and a guess would invent savings.
+        cost = self.policy_service.estimate_cost(self._served_model(request, route_decision), usage)
+        return cost or 0.0
 
     def _resolved_usage(
         self,
@@ -905,12 +1107,18 @@ class ChatService:
         cache_hit: bool | CacheHit,
         fallback_used: bool,
         policy_resolution: PolicyResolution,
+        avoided_cost_usd: float | None = None,
     ) -> CompletionMetadata:
         signals: dict[str, Any] = dict(policy_resolution.route_decision.signals or {})
         if isinstance(cache_hit, CacheHit):
             signals["cache_similarity_score"] = round(cache_hit.score, 4)
             signals["cache_entry_age_seconds"] = cache_hit.age_seconds
             signals["cache_entry_model"] = cache_hit.model
+            if policy_resolution.spend_denial is not None:
+                # Served past a spend guardrail: savings that only the cache made possible.
+                signals["spend_guardrail"] = policy_resolution.spend_denial.guardrail
+        if avoided_cost_usd is not None:
+            signals["cache_avoided_cost_usd"] = avoided_cost_usd
         return CompletionMetadata(
             tenant_id=tenant_id,
             route_target=route_target,
