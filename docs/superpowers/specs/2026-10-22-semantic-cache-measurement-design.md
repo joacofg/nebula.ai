@@ -170,9 +170,11 @@ that file):
 - **(c) Paraphrases**: 200 corpus prompts stratified by task (40 per task, seed `20261022`),
   each rewritten once by local `qwen2.5:7b` (temperature 0, fixed seed) with the instruction
   "Reescribe la siguiente consulta con otras palabras, sin cambiar lo que pide ni agregar
-  información. Devuelve solo la consulta reescrita." Committed as `paraphrases/paraphrases.jsonl`.
-  A blind random sample of 40 goes to Joaquín ("¿B pide lo mismo que A?") in
-  `paraphrases/sample.jsonl`; labels to `paraphrases/labels/human-es-1.jsonl`. The sample
+  información. Devuelve solo la consulta reescrita." Only valid rewrites are kept (length 0.5 to
+  2.0 times the original's, per the paraphrase-validity amendment above), so (c) has the valid
+  count, not 200 (173 valid): committed as `paraphrases/paraphrases.jsonl`, the dropped ones with
+  their reason as `paraphrases/dropped.jsonl`. A blind random sample of 40 valid ones goes to
+  Joaquín ("¿B pide lo mismo que A?") in `paraphrases/sample.jsonl`; labels to `paraphrases/labels/human-es-1.jsonl`. The sample
   validates the assumption "paraphrase ⇒ the cached answer serves".
 - A labeling CLI (`python -m scripts.cache_eval.label {neighbors|paraphrases}`, `make cache-label`)
   shows one pair at a time, blind (no cosine, no tier), resumable, writing one JSONL row per answer
@@ -183,9 +185,10 @@ that file):
 - **PAWS-X curve:** precision, recall and F0.5 of "cosine ≥ t" vs the human label, t = 0.80…0.99.
 - **Paraphrase replay:** the real `SemanticCacheService` over an in-memory Qdrant holds the 1000
   Spanish originals (each with its router tier at target 0.95 and its answer at that tier). Queries:
-  the 200 paraphrases (a correct hit is the paraphrase's own original) and the 1000 originals
-  leave-one-out (any hit is a false hit). Precision = correct hits / hits; recall = correct
-  paraphrase hits / 200. The verdict-precision pass runs with the tier rule off (similarity only);
+  the valid paraphrases (173 of 200, per the paraphrase-validity amendment above; a correct hit is
+  the paraphrase's own original) and the 1000 originals leave-one-out (any hit is a false hit).
+  Precision = correct hits / hits; recall = correct paraphrase hits / valid paraphrases. The
+  verdict-precision pass runs with the tier rule off (similarity only);
   the savings replay runs with the tier rule on and counts tier-aware blocks.
 - **Savings vs repetition rate:** a deterministic trace of 1000 requests per repetition rate
   r ∈ {0, 0.05, …, 0.40}, where each request is a repeat with probability r (half exact repeats,

@@ -59,5 +59,6 @@ The first generation of the paraphrases put the instruction and the prompt in on
 - (c) uses only valid paraphrases: recall = correct hits / valid paraphrases. Wherever the definitions above say 200 paraphrases for (c), the count is the number of valid paraphrases. The 1000 originals leave-one-out are unchanged.
 - The 40-item human sample is drawn from valid paraphrases.
 - If fewer than 150 paraphrases are valid, the report says so.
+- Disclosure: the first generation's cosines (both models) were computed and committed with its data in `23b2f7f` but not inspected; while diagnosing the problem, the text of two first-generation replies was read.
 
 None of this touches the criterion (precision >= 0.95 on both (a) and (c)), the threshold (t = 0.90), the grid (0.80-0.99, step 0.01), the eligibility rule (>= 20 hits in each of (a) and (c)) or the verdict rule.
