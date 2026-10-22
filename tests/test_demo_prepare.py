@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 
 from scripts import seed_demo_data
@@ -5,6 +8,7 @@ from scripts.demo_prepare import DEMO_QUALITY_TARGET, PREMIUM_MODELS, demo_polic
 from scripts.seed_demo_data import DemoKeyRevokedError, demo_key_state, ensure_governance
 
 REVOKED_AT = "2026-10-21T10:00:00Z"
+CACHE_REPORT = Path(__file__).resolve().parents[1] / "benchmarks" / "cache" / "v1" / "report.json"
 KEY_REVOKED_MESSAGE = (
     "La clave de demo fue revocada y su secreto no se puede reutilizar. "
     "Borrar .nebula/nebula.db, correr make migrate y volver a correr make demo."
@@ -147,3 +151,17 @@ def test_turns_the_semantic_cache_back_on_and_keeps_other_fields():
     )
     assert policy["semantic_cache_enabled"] is True
     assert policy["rate_limit_requests_per_minute"] == 60
+
+
+def test_sets_the_cache_threshold_the_measurement_registered_over_a_stale_stored_one():
+    registered = json.loads(CACHE_REPORT.read_text(encoding="utf-8"))["preregistration"]["product_default_t"]
+
+    policy = demo_policy(
+        {
+            "routing_quality_target": 0.9,
+            "allowed_premium_models": [],
+            "semantic_cache_similarity_threshold": 0.9,
+        }
+    )
+
+    assert policy["semantic_cache_similarity_threshold"] == registered

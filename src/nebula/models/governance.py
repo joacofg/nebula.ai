@@ -37,7 +37,9 @@ class TenantPolicy(BaseModel):
     rate_limit_requests_per_minute: int | None = Field(default=None, ge=1, le=100_000)
     allowed_premium_models: list[str] = Field(default_factory=list)
     semantic_cache_enabled: bool = True
-    semantic_cache_similarity_threshold: float = Field(default=0.9, ge=0, le=1)
+    # The value the pre-registered cache measurement chose (benchmarks/cache/v1/report.md); it
+    # does not meet that measurement's 0.95 precision criterion, see docs/self-hosting.md.
+    semantic_cache_similarity_threshold: float = Field(default=0.99, ge=0, le=1)
     semantic_cache_max_entry_age_hours: int = Field(default=168, ge=1, le=720)
     fallback_enabled: bool = True
     max_premium_cost_per_request: float | None = Field(default=None, ge=0)

@@ -129,6 +129,10 @@ A tenant's soft and hard budgets (`soft_budget_usd`, `hard_budget_limit_usd`) ar
 
 A cached answer costs nothing, so when the only reason to deny a request is a spend guardrail (the hard budget, when it denies instead of downgrading to local, or `max_premium_cost_per_request`), the gateway first looks the request up in the semantic cache. A hit is served as an ordinary cache hit, with estimated cost 0; its `policy_outcome` still shows `hard_budget=exceeded(...)` when the budget is spent, without a `denied=` part, and its route signals carry `spend_guardrail` (`hard_budget` or `per_request_cap`), so those savings can be told apart. A miss gets the same `403`, headers and `policy_denied` ledger row as without the cache. Because the lookup comes first, that `403` also waits for the embedding the lookup needs (at most 5 s). Routing-mode, explicit-model and model-allowlist denials happen before the cache is consulted.
 
+## Semantic cache threshold
+
+A new tenant's `semantic_cache_similarity_threshold` defaults to `0.99`, the value the pre-registered rule of the cache measurement picked. It does not meet that measurement's 0.95 precision criterion: at 0.99 the precision is 0.620408 on the PAWS-X (a) set and 0.92 on the paraphrase replay (c), with a paraphrase recall of 0.132948. No threshold met the criterion, so a cache hit can still be a wrong answer; lower the threshold only with that in mind. The measurement is in [`benchmarks/cache/v1/report.md`](../benchmarks/cache/v1/report.md). The default applies to tenants created after the change: an existing tenant keeps the value stored in its policy, and an operator can change it per tenant in the console's policy page.
+
 ## Related docs
 
 - [README](../README.md)
