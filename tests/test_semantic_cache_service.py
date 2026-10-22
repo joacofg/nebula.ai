@@ -6,6 +6,7 @@ from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
+from fastapi.testclient import TestClient
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qdrant_models
 
@@ -18,7 +19,7 @@ from nebula.services.semantic_cache_service import (
     SemanticCacheService,
     context_hash,
 )
-from tests.support import FakeClock, LateQdrant, cache_lookups
+from tests.support import FakeClock, LateQdrant, LookupCounts, configured_app
 
 # Payload indexes are a no-op in local Qdrant, and the client says so on every index.
 pytestmark = pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
@@ -222,6 +223,11 @@ async def test_the_gateway_cache_bounds_its_own_embedding() -> None:
     assert embeddings.timeouts == [5.0]
 
 
+def test_the_gateway_builds_its_cache_with_the_request_path_embedding_timeout() -> None:
+    with configured_app() as app, TestClient(app):
+        assert app.state.container.cache_service.embed_timeout == 5.0
+
+
 # --- Entry identity, against a real (in-memory) Qdrant -------------------------------------
 
 ANY_VECTOR = [1.0, 0.0, 0.0]
@@ -339,34 +345,21 @@ async def _lookup(
     )
 
 
-class _LookupCounts:
-    """How many lookups ended in each result since this was created."""
-
-    RESULTS = ("hit", "no_candidate", "below_threshold", "disabled", "embedding_unavailable", "error")
-
-    def __init__(self) -> None:
-        self._before = {result: cache_lookups(result) for result in self.RESULTS}
-
-    def since(self) -> dict[str, float]:
-        counts = {result: cache_lookups(result) - self._before[result] for result in self.RESULTS}
-        return {result: count for result, count in counts.items() if count}
-
-
 async def test_lookup_tells_no_candidate_from_a_candidate_below_the_threshold() -> None:
     service = await _in_memory_service()
     await _store(service, "frontier answer", tier="frontier")  # filed under [1, 0, 0]
 
-    counts = _LookupCounts()
+    counts = LookupCounts()
     # Another conversation: nothing passes the filters at all.
     assert await _lookup(service, context="other context", min_tier_rank=0) is None
     assert counts.since() == {"no_candidate": 1}
 
-    counts = _LookupCounts()
+    counts = LookupCounts()
     # The same conversation, but the closest answer is only 0.6 similar (threshold 0.9).
     assert await _lookup(service, min_tier_rank=0, vector=[0.6, 0.8, 0.0]) is None
     assert counts.since() == {"below_threshold": 1}
 
-    counts = _LookupCounts()
+    counts = LookupCounts()
     hit = await _lookup(service, min_tier_rank=0)
     assert hit is not None and hit.response == "frontier answer"
     assert counts.since() == {"hit": 1}
@@ -512,14 +505,14 @@ async def test_a_lookup_retries_initialization_once_30_seconds_have_passed() -> 
     qdrant.up = True
 
     clock.now += 29.0
-    counts = _LookupCounts()
+    counts = LookupCounts()
     assert await _lookup(service, min_tier_rank=0) is None
     # Too soon to retry: still disabled, without asking Qdrant.
     assert counts.since() == {"disabled": 1}
     assert qdrant.initializations == 1
 
     clock.now += 1.0
-    counts = _LookupCounts()
+    counts = LookupCounts()
     assert await _lookup(service, min_tier_rank=0) is None
     # Retried, recovered, and the lookup itself ran against the empty collection.
     assert service.enabled

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from contextlib import contextmanager
 from pathlib import Path
@@ -224,6 +225,34 @@ class FakeClock:
 def cache_lookups(result: str) -> float:
     """The process-wide count of `nebula_cache_lookups_total{result=...}` so far."""
     return REGISTRY.get_sample_value("nebula_cache_lookups_total", {"result": result}) or 0.0
+
+
+class LookupCounts:
+    """How many cache lookups ended in each result since this was created."""
+
+    RESULTS = (
+        "hit", "no_candidate", "below_threshold", "disabled", "embedding_unavailable", "error"
+    )
+
+    def __init__(self) -> None:
+        self._before = {result: cache_lookups(result) for result in self.RESULTS}
+
+    def since(self) -> dict[str, float]:
+        """The count of each result that moved; a result left out stayed at zero."""
+        counts = {result: cache_lookups(result) - self._before[result] for result in self.RESULTS}
+        return {result: count for result, count in counts.items() if count}
+
+
+CACHE_REPORT = Path(__file__).resolve().parents[1] / "benchmarks" / "cache" / "v1" / "report.json"
+
+
+def registered_cache_threshold() -> float:
+    """The threshold the cache measurement registered as the product default.
+
+    `preregistration.product_default_t` of the committed benchmarks/cache/v1/report.json.
+    """
+    report = json.loads(CACHE_REPORT.read_text(encoding="utf-8"))
+    return report["preregistration"]["product_default_t"]
 
 
 def use_fake_cache(

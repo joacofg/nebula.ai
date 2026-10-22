@@ -15,6 +15,7 @@ from tests.support import (
     FakeClock,
     FixedVectorEmbeddings,
     LateQdrant,
+    LookupCounts,
     StubProvider,
     auth_headers,
     cache_lookups,
@@ -338,8 +339,7 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         async def cache_health() -> dict[str, object]:
             return (await client.get("/health/dependencies")).json()["dependencies"]["semantic_cache"]
 
-        results = ("disabled", "no_candidate", "below_threshold", "hit")
-        before = {result: cache_lookups(result) for result in results}
+        counts = LookupCounts()
         while_down = await chat()
         health_while_down = await cache_health()
         qdrant.up = True
@@ -348,7 +348,7 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         storing = await chat()
         hit = await chat()
         health_after = await cache_health()
-        counted = {result: cache_lookups(result) - before[result] for result in results}
+        counted = counts.since()
 
     assert health_while_down["status"] == "degraded"
     assert health_after["status"] == "ready"
@@ -358,7 +358,7 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         "false",
     ]
     assert hit.headers["X-Nebula-Cache-Hit"] == "true"
-    assert counted == {"disabled": 1, "no_candidate": 2, "below_threshold": 0, "hit": 1}
+    assert counted == {"disabled": 1, "no_candidate": 2, "hit": 1}
     # A disabled cache costs no embedding. The lookup that re-enables it embeds on its own and
     # has no vector to store its answer under; the next request embeds once and stores it.
     assert embeddings.calls == ["hola", "hola", "hola"]
