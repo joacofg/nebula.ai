@@ -36,7 +36,15 @@ from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.recommendation_service import RecommendationService
 from nebula.services.router_service import RouteDecision, RouterService
-from tests.support import FakeCacheService, StubProvider, admin_headers, configured_app, usage
+from nebula.services.semantic_cache_service import TIER_RANK
+from tests.support import (
+    FakeCacheService,
+    StubProvider,
+    admin_headers,
+    configured_app,
+    usage,
+    use_fake_cache,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -270,12 +278,7 @@ async def test_create_completion_persists_calibrated_route_evidence_for_real_req
     assert envelope.metadata.route_signals["score_components"]["total_score"] == envelope.metadata.route_score
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
-        (
-            "default",
-            "Please review this architecture tradeoff.",
-            "premium response",
-            service.settings.premium_model,
-        )
+        ("default", "premium response", service.settings.premium_model, TIER_RANK["frontier"])
     ]
     assert store.records[-1].request_id == "req-calibrated-evidence"
     assert store.records[-1].final_route_target == "premium"
@@ -307,12 +310,7 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
     assert response.choices[0].message.content == "premium response"
     assert premium_provider.completion_result is not None
     assert cache_service.stored_entries == [
-        (
-            "default",
-            "Please review this architecture tradeoff.",
-            "premium response",
-            service.settings.premium_model,
-        )
+        ("default", "premium response", service.settings.premium_model, TIER_RANK["frontier"])
     ]
     assert store.records[-1].final_route_target == "premium"
 
@@ -350,7 +348,10 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
 
     assert response.model == settings.premium_model
     assert response.choices[0].message.content == "fallback response"
-    assert cache_service.stored_entries == [("default", "hello", "fallback response", settings.premium_model)]
+    # Routed local, served by the frontier fallback: filed under the tier that served it.
+    assert cache_service.stored_entries == [
+        ("default", "fallback response", settings.premium_model, TIER_RANK["frontier"])
+    ]
     assert store.records[-1].fallback_used is True
     assert store.records[-1].terminal_status == "fallback_completed"
 
@@ -417,7 +418,9 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
     assert b"premium " in payload
     assert b"stream" in payload
     assert payload.endswith(b"data: [DONE]\n\n")
-    assert cache_service.stored_entries == [("default", "short", "premium stream", settings.premium_model)]
+    assert cache_service.stored_entries == [
+        ("default", "premium stream", settings.premium_model, TIER_RANK["frontier"])
+    ]
     assert store.records[-1].terminal_status == "fallback_completed"
 
 
@@ -1810,8 +1813,7 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
-            container.cache_service = cache_service
-            container.chat_service.cache_service = cache_service
+            use_fake_cache(container, cache_service)
             container.provider_registry.local_provider = StubProvider(
                 "ollama",
                 completion_result=CompletionResult(
@@ -1829,7 +1831,9 @@ async def test_cache_lookup_is_scoped_to_the_authenticated_tenant_and_its_policy
                 assert response.status_code == 200
 
     assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
-    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
+    # Filed under the model the route asked for, not the provider's echo of it.
+    local = (container.settings.local_model, TIER_RANK["local"])
+    assert cache_service.stored_entries == [("tenant-b", "ok", *local)]
 
 
 @pytest.mark.asyncio
@@ -1838,8 +1842,7 @@ async def test_streaming_cache_lookup_is_scoped_to_the_authenticated_tenant_and_
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
-            container.cache_service = cache_service
-            container.chat_service.cache_service = cache_service
+            use_fake_cache(container, cache_service)
             container.provider_registry.local_provider = StubProvider(
                 "ollama",
                 stream_chunks=[
@@ -1863,4 +1866,6 @@ async def test_streaming_cache_lookup_is_scoped_to_the_authenticated_tenant_and_
                 assert b"[DONE]" in response.content
 
     assert cache_service.lookup_calls == [("tenant-b", "hi", 0.95, 12)]
-    assert cache_service.stored_entries == [("tenant-b", "hi", "ok", "llama")]
+    # Filed under the model the route asked for, not the provider's echo of it.
+    local = (container.settings.local_model, TIER_RANK["local"])
+    assert cache_service.stored_entries == [("tenant-b", "ok", *local)]

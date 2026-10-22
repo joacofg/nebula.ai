@@ -451,20 +451,13 @@ class _VectorRecordingCache(FakeCacheService):
         self.lookup_vectors: list[list[float] | None] = []
         self.store_vectors: list[list[float] | None] = []
 
-    async def lookup(
-        self, prompt, *, tenant_id, similarity_threshold, max_entry_age_hours, vector=None
-    ):
-        self.lookup_vectors.append(vector)
-        return await super().lookup(
-            prompt,
-            tenant_id=tenant_id,
-            similarity_threshold=similarity_threshold,
-            max_entry_age_hours=max_entry_age_hours,
-        )
+    async def lookup(self, prompt, **kwargs):
+        self.lookup_vectors.append(kwargs.get("vector"))
+        return await super().lookup(prompt, **kwargs)
 
-    async def store(self, prompt, response, model, *, tenant_id, vector=None):
-        self.store_vectors.append(vector)
-        await super().store(prompt, response, model, tenant_id=tenant_id)
+    async def store(self, response, **kwargs):
+        self.store_vectors.append(kwargs["vector"])
+        await super().store(response, **kwargs)
 
 
 def _learned_env(tmp_path: Path, **overrides: str) -> dict[str, str]:
@@ -565,7 +558,7 @@ def test_local_decision_goes_to_the_local_provider(tmp_path: Path) -> None:
 def test_embedding_failure_falls_back_to_the_heuristic(tmp_path: Path) -> None:
     with configured_app(**_learned_env(tmp_path)) as app:
         with TestClient(app) as client:
-            _, premium, cache, _ = _mount(app)
+            _, premium, cache, embeddings = _mount(app)
             short = _chat(client, "hello there")
             keyword = _chat(client, "please debug this")
             row = _ledger_row(client, keyword)
@@ -577,9 +570,11 @@ def test_embedding_failure_falls_back_to_the_heuristic(tmp_path: Path) -> None:
     assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
     assert premium.requested_models == ["nebula-auto"]
     assert row["route_signals"]["learned_router"] == "embedding_unavailable"
-    # The cache still works as before: with no routing vector it embeds for itself.
-    assert cache.lookup_vectors == [None, None]
-    assert len(cache.lookup_calls) == 2
+    # The routing embedding was the cache's too: one failed attempt per request, not retried,
+    # and the requests are served without the cache.
+    assert embeddings.calls == ["hello there", "please debug this"]
+    assert cache.lookup_vectors == []
+    assert cache.stored_entries == []
 
 
 def test_cache_reuses_the_routing_embedding(tmp_path: Path) -> None:
@@ -600,15 +595,19 @@ def test_a_prefixed_router_embedding_is_not_reused_by_the_cache(tmp_path: Path) 
     with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
         with TestClient(app) as client:
             _, premium, cache, embeddings = _mount(app)
-            embeddings.VECTORS = {"classification: economy prompt": ECONOMY_VECTOR}
+            bare_vector = [1.0, 1.0]
+            embeddings.VECTORS = {
+                "classification: economy prompt": ECONOMY_VECTOR,
+                "economy prompt": bare_vector,
+            }
             response = _chat(client, "economy prompt")
 
     assert response.headers["X-Nebula-Route-Tier"] == "economy"
     assert premium.requested_models == [ECONOMY_MODEL]
-    assert embeddings.calls == ["classification: economy prompt"]
-    # The cache indexes the bare prompt, so it embeds on its own.
-    assert cache.lookup_vectors == [None]
-    assert cache.store_vectors == [None]
+    # The cache indexes the bare prompt: one more embedding, shared by its lookup and store.
+    assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
+    assert cache.lookup_vectors == [bare_vector]
+    assert cache.store_vectors == [bare_vector]
 
 
 def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:
@@ -695,8 +694,8 @@ def test_route_tier_header_without_the_learned_router() -> None:
 
     assert short.headers["X-Nebula-Route-Tier"] == "local"
     assert keyword.headers["X-Nebula-Route-Tier"] == "frontier"
-    # Disabled router: the chat path never embeds for routing.
-    assert embeddings.calls == []
+    # Disabled router: the chat path never embeds for routing, only once per request for the cache.
+    assert embeddings.calls == ["hello there", "please debug this"]
 
 
 def test_fallback_uses_frontier_when_the_tenant_does_not_allow_economy(tmp_path: Path) -> None:

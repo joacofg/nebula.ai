@@ -23,6 +23,7 @@ from nebula.models.openai import (
     ChatCompletionUsage,
 )
 from nebula.observability.metrics import (
+    CACHE_LOOKUPS,
     COMPLETION_COUNT,
     FALLBACK_COUNT,
     PROVIDER_LATENCY,
@@ -34,10 +35,39 @@ from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService
 from nebula.services.provider_registry import ProviderRegistry
-from nebula.services.router_service import RouteTarget, RouterService
-from nebula.services.semantic_cache_service import CacheHit, SemanticCacheService
+from nebula.services.router_service import RouteDecision, RouteTarget, RouterService
+from nebula.services.semantic_cache_service import (
+    TIER_RANK,
+    CacheHit,
+    SemanticCacheService,
+    context_hash,
+)
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass(slots=True, frozen=True)
+class _CacheKey:
+    """A request's cache identity, computed once and shared by its lookup and its store."""
+
+    tenant_id: str
+    context_hash: str
+    # None when the cache is disabled (it answers nothing), or when this service has no
+    # embeddings service (the cache then embeds its lookups itself and cannot store).
+    vector: list[float] | None
+    # Exactly one is set: an auto request takes answers from its chosen tier up, an
+    # explicit-model request only that model's answers.
+    min_tier_rank: int | None
+    model: str | None
+
+
+@dataclass(slots=True, frozen=True)
+class _CacheWrite:
+    """Where a served answer is cached: the request's key, and the tier and model that served it."""
+
+    key: _CacheKey
+    tier_rank: int
+    model: str
 
 
 @dataclass(slots=True)
@@ -96,7 +126,6 @@ class ChatService:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
         routing_embedding = await self._embed_for_routing(latest_user_prompt)
-        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
@@ -105,13 +134,21 @@ class ChatService:
             prompt_embedding=routing_embedding,
         )
 
-        cache_hit = await self._lookup_cache(
+        cache_key = await self._cache_key(
+            request=request,
             prompt=latest_user_prompt,
             tenant_id=tenant_context.tenant.id,
+            routing_embedding=routing_embedding,
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=False,
-            vector=cache_vector,
+        )
+        cache_hit = await self._lookup_cache(
+            key=cache_key,
+            prompt=latest_user_prompt,
+            policy_resolution=policy_resolution,
+            request_id=request_id,
+            stream=False,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
@@ -167,6 +204,7 @@ class ChatService:
                 fallback_used=False,
                 policy_resolution=policy_resolution,
             )
+            served_model = self._served_model(request, route_decision)
             terminal_status = "completed"
         except ProviderError as exc:
             logger.warning(
@@ -223,17 +261,13 @@ class ChatService:
                 fallback_used=True,
                 policy_resolution=policy_resolution,
             )
+            served_model = fallback_model
             terminal_status = "fallback_completed"
 
         usage = self._resolved_usage(request, result.content, result.usage)
-        if policy_resolution.cache_enabled:
-            await self.cache_service.store(
-                latest_user_prompt,
-                result.content,
-                result.model,
-                tenant_id=tenant_context.tenant.id,
-                vector=cache_vector,
-            )
+        await self._store_in_cache(
+            self._cache_write(cache_key, metadata, served_model), result.content
+        )
         response = self._build_response(content=result.content, model=result.model, usage=usage)
         await self._record_usage(
             request_id=request_id,
@@ -256,7 +290,6 @@ class ChatService:
         started_at = perf_counter()
         latest_user_prompt = self._extract_latest_user_prompt(request)
         routing_embedding = await self._embed_for_routing(latest_user_prompt)
-        cache_vector = self._cache_vector(routing_embedding)
         policy_resolution = await self._resolve_policy(
             request=request,
             prompt=latest_user_prompt,
@@ -267,13 +300,21 @@ class ChatService:
         response_id = f"chatcmpl-{uuid4().hex}"
         created = int(time())
 
-        cache_hit = await self._lookup_cache(
+        cache_key = await self._cache_key(
+            request=request,
             prompt=latest_user_prompt,
             tenant_id=tenant_context.tenant.id,
+            routing_embedding=routing_embedding,
             policy_resolution=policy_resolution,
             request_id=request_id,
             stream=True,
-            vector=cache_vector,
+        )
+        cache_hit = await self._lookup_cache(
+            key=cache_key,
+            prompt=latest_user_prompt,
+            policy_resolution=policy_resolution,
+            request_id=request_id,
+            stream=True,
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
@@ -310,15 +351,13 @@ class ChatService:
         stream, metadata = await self._prepare_stream_provider(
             provider=provider,
             request=request,
-            prompt=latest_user_prompt,
             response_id=response_id,
             created=created,
             request_id=request_id,
             tenant_id=tenant_context.tenant.id,
             policy_resolution=policy_resolution,
-            cache_enabled=policy_resolution.cache_enabled,
             started_at=started_at,
-            cache_vector=cache_vector,
+            cache_key=cache_key,
         )
 
         wrapped_stream = self._wrap_stream_with_ledger(
@@ -364,25 +403,100 @@ class ChatService:
             ),
         )
 
-    async def _lookup_cache(
+    async def _cache_key(
         self,
         *,
+        request: ChatCompletionRequest,
         prompt: str,
         tenant_id: str,
+        routing_embedding: list[float] | None,
         policy_resolution: PolicyResolution,
         request_id: str | None,
         stream: bool,
-        vector: list[float] | None = None,
-    ) -> CacheHit | None:
+    ) -> _CacheKey | None:
+        """This request's cache identity, or None when the request skips the cache altogether."""
         if not policy_resolution.cache_enabled:
             logger.info("cache_bypassed request_id=%s stream=%s reason=policy_disabled", request_id, stream)
             return None
+        vector: list[float] | None = None
+        # A disabled cache answers nothing, so it needs no vector.
+        if self.embeddings_service is not None and self.cache_service.enabled:
+            learned = self.router_service.learned
+            if learned is not None and learned.prefix == "none":
+                # Routing already embedded the bare prompt; if that failed, a retry would too.
+                vector = routing_embedding
+            else:
+                vector = await self._embed(prompt, purpose="cache")
+            if vector is None:
+                # Asking the cache anyway would only make it embed the prompt again.
+                CACHE_LOOKUPS.labels("embedding_unavailable").inc()
+                logger.info(
+                    "cache_bypassed request_id=%s stream=%s reason=embedding_unavailable",
+                    request_id,
+                    stream,
+                )
+                return None
+        route_decision = policy_resolution.route_decision
+        if request.model != self.settings.default_model:
+            # An explicit model (routed `explicit_local_model` / `explicit_premium_model`) asks
+            # for that model's answer, not for a tier's.
+            min_tier_rank, model = None, self._served_model(request, route_decision)
+        else:
+            chosen_tier = self._route_tier(
+                route_target=route_decision.target,
+                fallback_used=False,
+                signals=route_decision.signals,
+                policy_resolution=policy_resolution,
+            )
+            min_tier_rank, model = TIER_RANK[chosen_tier], None
+        return _CacheKey(
+            tenant_id=tenant_id,
+            context_hash=context_hash(request.messages),
+            vector=vector,
+            min_tier_rank=min_tier_rank,
+            model=model,
+        )
+
+    def _cache_write(
+        self, key: _CacheKey | None, metadata: CompletionMetadata, served_model: str
+    ) -> _CacheWrite | None:
+        if key is None:
+            return None
+        # The tier that actually served, so a fallback answer is filed under the fallback's tier.
+        return _CacheWrite(key=key, tier_rank=TIER_RANK[metadata.route_tier], model=served_model)
+
+    async def _store_in_cache(self, write: _CacheWrite | None, response: str) -> None:
+        if write is None:
+            return
+        await self.cache_service.store(
+            response,
+            tenant_id=write.key.tenant_id,
+            vector=write.key.vector,
+            context_hash=write.key.context_hash,
+            tier_rank=write.tier_rank,
+            model=write.model,
+        )
+
+    async def _lookup_cache(
+        self,
+        *,
+        key: _CacheKey | None,
+        prompt: str,
+        policy_resolution: PolicyResolution,
+        request_id: str | None,
+        stream: bool,
+    ) -> CacheHit | None:
+        if key is None:
+            return None
         hit = await self.cache_service.lookup(
             prompt,
-            tenant_id=tenant_id,
+            tenant_id=key.tenant_id,
             similarity_threshold=policy_resolution.cache_similarity_threshold,
             max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
-            vector=vector,
+            context_hash=key.context_hash,
+            min_tier_rank=key.min_tier_rank,
+            model=key.model,
+            vector=key.vector,
         )
         if hit is not None:
             logger.info(
@@ -406,13 +520,11 @@ class ChatService:
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
-        cache_enabled: bool,
-        cache_vector: list[float] | None = None,
+        cache_write: _CacheWrite | None,
     ):
         content_parts: list[str] = []
         started_at = perf_counter()
@@ -436,14 +548,7 @@ class ChatService:
                     )
 
                 if chunk.finish_reason:
-                    if cache_enabled:
-                        await self.cache_service.store(
-                            prompt,
-                            "".join(content_parts),
-                            chunk.model,
-                            tenant_id=tenant_id,
-                            vector=cache_vector,
-                        )
+                    await self._store_in_cache(cache_write, "".join(content_parts))
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
                         perf_counter() - started_at
@@ -518,41 +623,37 @@ class ChatService:
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
         policy_resolution: PolicyResolution,
-        cache_enabled: bool,
         started_at: float,
-        cache_vector: list[float] | None = None,
+        cache_key: _CacheKey | None,
     ) -> tuple[AsyncIterator[bytes], CompletionMetadata]:
         route_decision = policy_resolution.route_decision
+        metadata = self._metadata(
+            tenant_id=tenant_id,
+            route_target=route_decision.target,
+            route_reason=route_decision.reason,
+            provider=provider.name,
+            cache_hit=False,
+            fallback_used=False,
+            policy_resolution=policy_resolution,
+        )
         try:
             stream = await self._prefetched_stream(
                 provider=provider,
                 request=self._provider_request(request, route_decision.model),
-                prompt=prompt,
                 response_id=response_id,
                 created=created,
                 request_id=request_id,
                 tenant_id=tenant_id,
-                cache_enabled=cache_enabled,
-                cache_vector=cache_vector,
-            )
-            return (
-                stream,
-                self._metadata(
-                    tenant_id=tenant_id,
-                    route_target=route_decision.target,
-                    route_reason=route_decision.reason,
-                    provider=provider.name,
-                    cache_hit=False,
-                    fallback_used=False,
-                    policy_resolution=policy_resolution,
+                cache_write=self._cache_write(
+                    cache_key, metadata, self._served_model(request, route_decision)
                 ),
             )
+            return stream, metadata
         except ProviderError as exc:
             fallback_model = await self._fallback_model_or_fail(
                 request=request,
@@ -574,17 +675,24 @@ class ChatService:
                 tenant_id,
                 fallback_provider.name,
             )
+            fallback_metadata = self._metadata(
+                tenant_id=tenant_id,
+                route_target="premium",
+                route_reason="local_provider_error_fallback",
+                provider=fallback_provider.name,
+                cache_hit=False,
+                fallback_used=True,
+                policy_resolution=policy_resolution,
+            )
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,
                     request=self._provider_request(request, fallback_model),
-                    prompt=prompt,
                     response_id=response_id,
                     created=created,
                     request_id=request_id,
                     tenant_id=tenant_id,
-                    cache_enabled=cache_enabled,
-                    cache_vector=cache_vector,
+                    cache_write=self._cache_write(cache_key, fallback_metadata, fallback_model),
                 )
             except ProviderError as fallback_exc:
                 await self._fail_fallback(
@@ -598,41 +706,26 @@ class ChatService:
                     stream=True,
                 )
 
-            return (
-                fallback_stream,
-                self._metadata(
-                    tenant_id=tenant_id,
-                    route_target="premium",
-                    route_reason="local_provider_error_fallback",
-                    provider=fallback_provider.name,
-                    cache_hit=False,
-                    fallback_used=True,
-                    policy_resolution=policy_resolution,
-                ),
-            )
+            return fallback_stream, fallback_metadata
 
     async def _prefetched_stream(
         self,
         provider: CompletionProvider,
         request: ChatCompletionRequest,
-        prompt: str,
         response_id: str,
         created: int,
         request_id: str | None,
         tenant_id: str,
-        cache_enabled: bool,
-        cache_vector: list[float] | None = None,
+        cache_write: _CacheWrite | None,
     ) -> AsyncIterator[bytes]:
         provider_stream = self._stream_provider(
             provider=provider,
             request=request,
-            prompt=prompt,
             response_id=response_id,
             created=created,
             request_id=request_id,
             tenant_id=tenant_id,
-            cache_enabled=cache_enabled,
-            cache_vector=cache_vector,
+            cache_write=cache_write,
         )
 
         try:
@@ -792,18 +885,27 @@ class ChatService:
         if learned is None or self.embeddings_service is None:
             return None
         text = prompt if learned.prefix == "none" else f"{learned.prefix}: {prompt}"
+        return await self._embed(text, purpose="routing")
+
+    async def _embed(
+        self, text: str, *, purpose: Literal["routing", "cache"]
+    ) -> list[float] | None:
+        assert self.embeddings_service is not None
         try:
             return await self.embeddings_service.embed(text)
-        except Exception as exc:  # noqa: BLE001 - routing degrades to the heuristic
-            logger.warning("routing_embedding_failed error=%s", exc)
+        except Exception as exc:  # noqa: BLE001 - heuristic routing, no cache: both degrade
+            logger.warning("%s_embedding_failed error=%s", purpose, exc)
             return None
 
-    def _cache_vector(self, routing_embedding: list[float] | None) -> list[float] | None:
-        # The cache indexes the bare prompt; a prefixed routing embedding is a different vector.
-        learned = self.router_service.learned
-        if routing_embedding is None or learned is None or learned.prefix != "none":
-            return None
-        return routing_embedding
+    def _served_model(self, request: ChatCompletionRequest, route_decision: RouteDecision) -> str:
+        """The model the routed provider is asked for (what `_provider_request` sends it)."""
+        model = self._provider_request(request, route_decision.model).model
+        if model != self.settings.default_model:
+            return model
+        # The auto alias: each provider serves its configured model.
+        if route_decision.target == "local":
+            return self.settings.local_model
+        return self.settings.premium_model
 
     def _provider_request(
         self, request: ChatCompletionRequest, decision_model: str | None

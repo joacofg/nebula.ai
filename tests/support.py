@@ -104,8 +104,10 @@ class FakeCacheService:
         store_error: Exception | None = None,
     ) -> None:
         self.cached_response = cached_response
+        # (tenant_id, prompt, similarity_threshold, max_entry_age_hours); identity filters ignored.
         self.lookup_calls: list[tuple[str, str, float, int]] = []
-        self.stored_entries: list[tuple[str, str, str, str]] = []
+        # (tenant_id, response, model, tier_rank)
+        self.stored_entries: list[tuple[str, str, str, int]] = []
         self.enabled = True
         self.lookup_error = lookup_error
         self.store_error = store_error
@@ -129,6 +131,9 @@ class FakeCacheService:
         tenant_id: str,
         similarity_threshold: float,
         max_entry_age_hours: int,
+        context_hash: str,
+        min_tier_rank: int | None,
+        model: str | None,
         vector: list[float] | None = None,
     ) -> CacheHit | None:
         self.lookup_calls.append((tenant_id, prompt, similarity_threshold, max_entry_age_hours))
@@ -140,22 +145,53 @@ class FakeCacheService:
 
     async def store(
         self,
-        prompt: str,
         response: str,
-        model: str,
         *,
         tenant_id: str,
-        vector: list[float] | None = None,
+        vector: list[float] | None,
+        context_hash: str,
+        tier_rank: int,
+        model: str,
     ) -> None:
         if self.store_error is not None:
             raise self.store_error
-        self.stored_entries.append((tenant_id, prompt, response, model))
+        self.stored_entries.append((tenant_id, response, model, tier_rank))
 
     async def close(self) -> None:
         return None
 
     async def health_status(self) -> dict[str, object]:
         return self.health_status_payload
+
+
+class FixedVectorEmbeddings:
+    """Embeds every text to the same vector, recording each call; never leaves the process."""
+
+    def __init__(self, vector: list[float] | None = None) -> None:
+        self.vector = vector or [1.0, 0.0, 0.0]
+        self.calls: list[str] = []
+
+    async def embed(self, text: str) -> list[float] | None:
+        self.calls.append(text)
+        return list(self.vector)
+
+    async def close(self) -> None:
+        return None
+
+
+def use_fake_cache(
+    container: ServiceContainer, cache: FakeCacheService | None = None
+) -> FakeCacheService:
+    """Serve the chat path from a fake cache, with embeddings that never reach Ollama.
+
+    The chat path embeds each cache-enabled request itself (once, for lookup and store), so
+    swapping in a fake cache alone would still send every prompt to the real embeddings service.
+    """
+    cache = cache if cache is not None else FakeCacheService()
+    container.cache_service = cache
+    container.chat_service.cache_service = cache
+    container.chat_service.embeddings_service = FixedVectorEmbeddings()
+    return cache
 
 
 class StubProvider:
@@ -267,8 +303,7 @@ def fallback_client(
             container.provider_registry.local_provider = local
             container.premium_provider = premium
             container.provider_registry.premium_provider = premium
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
             if policy_updates:
                 store = container.governance_store
                 store.upsert_policy(

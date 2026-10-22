@@ -2,13 +2,13 @@ from fastapi.testclient import TestClient
 
 from nebula.providers.base import CompletionResult
 from tests.support import (
-    FakeCacheService,
     StubProvider,
     admin_headers,
     auth_headers,
     configured_app,
     provider_error,
     usage,
+    use_fake_cache,
 )
 
 
@@ -38,8 +38,7 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
             container.provider_registry.local_provider = local_provider
             container.premium_provider = premium_provider
             container.provider_registry.premium_provider = premium_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             local_response = client.post(
                 "/v1/chat/completions",
@@ -163,8 +162,7 @@ def test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_p
             container.provider_registry.local_provider = local_provider
             container.premium_provider = premium_provider
             container.provider_registry.premium_provider = premium_provider
-            container.cache_service = FakeCacheService()
-            container.chat_service.cache_service = container.cache_service
+            use_fake_cache(container)
 
             for index in range(5):
                 seeded = client.post(

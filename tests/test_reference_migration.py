@@ -9,6 +9,7 @@ from tests.support import (
     admin_headers,
     configured_app,
     usage,
+    use_fake_cache,
 )
 
 
@@ -21,8 +22,7 @@ def _mount_runtime(app, *, local_provider=None, premium_provider=None, cache_ser
         container.premium_provider = premium_provider
         container.provider_registry.premium_provider = premium_provider
     if cache_service is not None:
-        container.cache_service = cache_service
-        container.chat_service.cache_service = cache_service
+        use_fake_cache(container, cache_service)
 
 
 MIGRATED_CHAT_COMPLETIONS_REQUEST = {

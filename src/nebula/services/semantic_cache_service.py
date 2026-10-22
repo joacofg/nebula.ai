@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 from dataclasses import dataclass
 from time import time
@@ -9,11 +11,42 @@ from qdrant_client import AsyncQdrantClient
 from qdrant_client.http import models as qdrant_models
 
 from nebula.core.config import Settings
+from nebula.models.openai import ChatMessage
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 from nebula.observability.metrics import CACHE_LOOKUPS
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 
 logger = logging.getLogger(__name__)
+
+# An answer can serve any request routed to its own tier or a lower one, never a higher one.
+TIER_RANK: dict[str, int] = {"local": 0, "economy": 1, "frontier": 2}
+
+# Every payload field a lookup filters on.
+_INDEXED_FIELDS: dict[str, qdrant_models.PayloadSchemaType] = {
+    "tenant_id": qdrant_models.PayloadSchemaType.KEYWORD,
+    "created_at": qdrant_models.PayloadSchemaType.INTEGER,
+    "context_hash": qdrant_models.PayloadSchemaType.KEYWORD,
+    "tier_rank": qdrant_models.PayloadSchemaType.INTEGER,
+    "model": qdrant_models.PayloadSchemaType.KEYWORD,
+}
+
+
+def context_hash(messages: list[ChatMessage]) -> str:
+    """SHA-256 of every message except the latest user one: the conversation an answer belongs to.
+
+    Roles and contents only, in order. A single user message (no system prompt, no history)
+    hashes the empty list.
+    """
+    latest_user = max(
+        (index for index, message in enumerate(messages) if message.role == "user"), default=None
+    )
+    context = [
+        {"role": message.role, "content": message.content}
+        for index, message in enumerate(messages)
+        if index != latest_user
+    ]
+    canonical = json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 @dataclass(slots=True, frozen=True)
@@ -29,10 +62,12 @@ class SemanticCacheService:
         self,
         settings: Settings,
         embeddings_service: OllamaEmbeddingsService,
+        client: AsyncQdrantClient | None = None,
     ) -> None:
         self.settings = settings
         self.embeddings_service = embeddings_service
-        self.client = AsyncQdrantClient(
+        # Tests and the offline replay pass an in-memory client; the gateway talks to the server.
+        self.client = client or AsyncQdrantClient(
             url=self.settings.qdrant_url,
             check_compatibility=False,
         )
@@ -51,17 +86,26 @@ class SemanticCacheService:
                         distance=qdrant_models.Distance.COSINE,
                     ),
                 )
-            # Payload indexes make the tenant/freshness filter cheap. Both calls
-            # are idempotent on the Qdrant side.
-            await self.client.create_payload_index(
+            # Payload indexes make every lookup filter cheap; creating one is idempotent.
+            for field_name, schema in _INDEXED_FIELDS.items():
+                await self.client.create_payload_index(
+                    collection_name=collection,
+                    field_name=field_name,
+                    field_schema=schema,
+                )
+            # Points written before entries carried a tier (and a context) can never match a
+            # lookup again, so they only take space.
+            await self.client.delete(
                 collection_name=collection,
-                field_name="tenant_id",
-                field_schema=qdrant_models.PayloadSchemaType.KEYWORD,
-            )
-            await self.client.create_payload_index(
-                collection_name=collection,
-                field_name="created_at",
-                field_schema=qdrant_models.PayloadSchemaType.INTEGER,
+                points_selector=qdrant_models.FilterSelector(
+                    filter=qdrant_models.Filter(
+                        must=[
+                            qdrant_models.IsEmptyCondition(
+                                is_empty=qdrant_models.PayloadField(key="tier_rank")
+                            )
+                        ]
+                    )
+                ),
             )
             self.enabled = True
             self.degraded_reason = None
@@ -77,8 +121,18 @@ class SemanticCacheService:
         tenant_id: str,
         similarity_threshold: float,
         max_entry_age_hours: int,
+        context_hash: str,
+        min_tier_rank: int | None,
+        model: str | None,
         vector: list[float] | None = None,
     ) -> CacheHit | None:
+        """The closest fresh answer of this tenant and conversation that can serve the request.
+
+        Exactly one of `min_tier_rank` (an auto request: answers from that tier up) or `model`
+        (an explicit-model request: that model's answers only) is set.
+        """
+        if (min_tier_rank is None) == (model is None):
+            raise ValueError("Set exactly one of min_tier_rank or model.")
         if not self.enabled:
             CACHE_LOOKUPS.labels("disabled").inc()
             return None
@@ -92,6 +146,18 @@ class SemanticCacheService:
 
         now = int(time())
         freshness_cutoff = now - max_entry_age_hours * 3600
+        if model is not None:
+            # An explicit-model request wants that model's answer, whatever its tier.
+            serves_request = qdrant_models.FieldCondition(
+                key="model",
+                match=qdrant_models.MatchValue(value=model),
+            )
+        else:
+            # An auto request accepts answers from its chosen tier or a higher one.
+            serves_request = qdrant_models.FieldCondition(
+                key="tier_rank",
+                range=qdrant_models.Range(gte=min_tier_rank),
+            )
         query_filter = qdrant_models.Filter(
             must=[
                 qdrant_models.FieldCondition(
@@ -102,6 +168,11 @@ class SemanticCacheService:
                     key="created_at",
                     range=qdrant_models.Range(gte=freshness_cutoff),
                 ),
+                qdrant_models.FieldCondition(
+                    key="context_hash",
+                    match=qdrant_models.MatchValue(value=context_hash),
+                ),
+                serves_request,
             ]
         )
         try:
@@ -142,19 +213,16 @@ class SemanticCacheService:
 
     async def store(
         self,
-        prompt: str,
         response: str,
-        model: str,
         *,
         tenant_id: str,
-        vector: list[float] | None = None,
+        vector: list[float] | None,
+        context_hash: str,
+        tier_rank: int,
+        model: str,
     ) -> None:
-        if not self.enabled:
-            return
-
-        if vector is None:
-            vector = await self.embeddings_service.embed(prompt)
-        if vector is None:
+        """Cache an answer under the request's embedding; the raw prompt is never stored."""
+        if not self.enabled or vector is None:
             return
 
         try:
@@ -167,9 +235,10 @@ class SemanticCacheService:
                         vector=vector,
                         payload={
                             "tenant_id": tenant_id,
-                            "prompt": prompt,
-                            "response": response,
+                            "context_hash": context_hash,
+                            "tier_rank": tier_rank,
                             "model": model,
+                            "response": response,
                             "created_at": int(time()),
                         },
                     )

@@ -15,6 +15,7 @@ from tests.support import (
     auth_headers,
     configured_app,
     usage,
+    use_fake_cache,
 )
 
 
@@ -44,8 +45,7 @@ def _install_serving_stubs(app: FastAPI) -> None:
         ),
     )
     container.provider_registry.local_provider = container.local_provider
-    container.cache_service = FakeCacheService()
-    container.chat_service.cache_service = container.cache_service
+    use_fake_cache(container)
 
 
 def _semantic_cache_outage_payload(detail: str = "Qdrant unavailable: injected semantic cache outage") -> dict[str, object]:
@@ -240,8 +240,7 @@ async def test_semantic_cache_outage_keeps_chat_completion_serving_and_health_de
     async with configured_outage_client() as (app, client):
         failing_cache = StatefulSemanticCacheService()
         failing_cache.set_outage()
-        app.state.container.cache_service = failing_cache
-        app.state.container.chat_service.cache_service = failing_cache
+        use_fake_cache(app.state.container, failing_cache)
         app.state.container.runtime_health_service.semantic_cache = failing_cache
 
         response = await client.post(
@@ -518,8 +517,7 @@ async def test_semantic_cache_recovery_moves_from_degraded_to_recovering_to_read
     async with configured_outage_client() as (app, client):
         cache_service = StatefulSemanticCacheService()
         cache_service.set_outage()
-        app.state.container.cache_service = cache_service
-        app.state.container.chat_service.cache_service = cache_service
+        use_fake_cache(app.state.container, cache_service)
         app.state.container.runtime_health_service.semantic_cache = cache_service
         app.state.container.runtime_health_service.embeddings_service = (
             ReachableLocalOllamaHealth()
