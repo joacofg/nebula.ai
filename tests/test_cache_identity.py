@@ -91,8 +91,12 @@ class _UnavailableEmbeddings(FixedVectorEmbeddings):
 
 
 @asynccontextmanager
-async def _gateway(embeddings: FixedVectorEmbeddings | None = None) -> AsyncIterator[_Gateway]:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EMBEDDING_DIMENSIONS="3") as app:
+async def _gateway(
+    embeddings: FixedVectorEmbeddings | None = None, **env: str
+) -> AsyncIterator[_Gateway]:
+    with configured_app(
+        NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EMBEDDING_DIMENSIONS="3", **env
+    ) as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
             settings = container.settings
@@ -272,12 +276,15 @@ async def test_a_frontier_hit_records_the_cost_it_avoided_without_spending_it(st
     assert row.route_signals["cache_avoided_cost_usd"] == pytest.approx(1 * 0.15e-6 + 4 * 0.6e-6)
     # The hit itself costs nothing: spend and the hard budget see no change.
     assert row.estimated_cost == 0.0
+    assert spend_before_hit > 0
     assert spend_after_hit == spend_before_hit
 
 
 @pytest.mark.parametrize("stream", [False, True])
 async def test_a_local_hit_avoids_no_cost(stream: bool) -> None:
-    async with _gateway() as gateway:
+    # A local model with a catalog price: pricing it would avoid more than 0, so only the
+    # local route itself keeps the avoided cost at 0.
+    async with _gateway(NEBULA_LOCAL_MODEL="openai/gpt-4o") as gateway:
         await gateway.chat(HOLA, stream=stream)  # a short prompt routes local
         hit = await gateway.chat(HOLA, stream=stream)
         (row,) = _hit_rows(gateway)
@@ -294,11 +301,11 @@ async def test_the_avoided_cost_is_priced_at_the_model_the_request_would_have_us
         await gateway.chat(HOLA, model="openai/gpt-4o")
         await gateway.chat(HOLA, model="other/model")
         await gateway.chat(HOLA, model="other/model")
-        unknown_price_row, priced_row = _hit_rows(gateway)
+        hits = {row.requested_model: row for row in _hit_rows(gateway)}
 
     # An explicit model is priced as itself, not as the configured frontier model.
-    assert priced_row.route_signals["cache_avoided_cost_usd"] == pytest.approx(
+    assert hits["openai/gpt-4o"].route_signals["cache_avoided_cost_usd"] == pytest.approx(
         1 * 2.5e-6 + 4 * 10.0e-6
     )
     # A model with no price in the catalog avoids 0, never an error or a guess.
-    assert unknown_price_row.route_signals["cache_avoided_cost_usd"] == 0.0
+    assert hits["other/model"].route_signals["cache_avoided_cost_usd"] == 0.0

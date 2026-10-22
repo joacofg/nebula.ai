@@ -649,6 +649,37 @@ def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:
     assert response.headers["X-Nebula-Route-Tier"] == "cache"
 
 
+def test_an_economy_routed_hit_avoids_the_economy_models_price(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app, cached_response="cached answer")
+            response = _chat(client, "economy prompt")
+            row = _ledger_row(client, response)
+
+    assert response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert row["route_signals"]["tier"] == "economy"
+    # "economy prompt" estimates to 4 prompt tokens and "cached answer" to 4 completion
+    # tokens, at claude-haiku-4.5's USD 1 / 5 per million: the economy price, not frontier's.
+    assert row["route_signals"]["cache_avoided_cost_usd"] == pytest.approx(4 * 1e-6 + 4 * 5e-6)
+    assert row["estimated_cost"] == 0.0
+
+
+def test_an_escalated_economy_hit_avoids_the_frontier_models_price(tmp_path: Path) -> None:
+    with configured_app(**_learned_env(tmp_path)) as app:
+        with TestClient(app) as client:
+            _mount(app, cached_response="cached answer")
+            store = app.state.container.governance_store
+            store.upsert_policy("default", TenantPolicy(allowed_premium_models=[FRONTIER_MODEL]))
+            response = _chat(client, "economy prompt")
+            row = _ledger_row(client, response)
+
+    assert response.headers["X-Nebula-Cache-Hit"] == "true"
+    assert row["route_signals"]["tier_escalated"] == "economy_not_allowed"
+    # The same 4 + 4 tokens at gpt-4.1's USD 2 / 8 per million: escalated, the tenant would
+    # have paid the frontier price.
+    assert row["route_signals"]["cache_avoided_cost_usd"] == pytest.approx(4 * 2e-6 + 4 * 8e-6)
+
+
 def test_local_failure_falls_back_to_the_economy_model(tmp_path: Path) -> None:
     with configured_app(**_learned_env(tmp_path)) as app:
         with TestClient(app) as client:
