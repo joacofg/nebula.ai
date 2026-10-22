@@ -1,9 +1,9 @@
-"""Regenerate every generated block of the thesis from the committed reports.
+"""Regenerate every generated block and table row of the thesis from the committed reports.
 
     python -m scripts.thesis.tables [--check]
 
 Reads only what is versioned under ``benchmarks/``: no network, no training.
-``--check`` writes nothing and exits 1 when a block is stale.
+``--check`` writes nothing and exits 1 when a block or a generated row is stale.
 """
 
 from __future__ import annotations
@@ -52,6 +52,7 @@ CITED_RATES = {"factbench_lmsys_duplicates": "duplicados de LMSYS-Chat-1M", "mea
 DROP_REASONS = {"too_short": "por cortas", "too_long": "por largas",
                 "empty_or_identical": "por vacías o idénticas al original"}
 PENDING = "pendiente"
+CACHE_VERDICTS = ("pass", "fail", "no_safe_threshold", "not_measurable")
 
 
 def _json(path: Path) -> dict:
@@ -215,9 +216,15 @@ def _cache_models(report: dict) -> list[dict]:
     return [report["models"]["production"], *report["models"]["sensitivity"]]
 
 
+def _known_verdict(verdict: str) -> str:
+    if verdict not in CACHE_VERDICTS:
+        raise ValueError(f"unknown cache verdict {verdict!r}")
+    return verdict
+
+
 def _cache_verdict_sentence(pre: dict) -> str:
-    d, r = pre["at_default"], pre["at_recommended"]
-    default, product, verdict = _t(pre["default_t"]), _t(pre["product_default_t"]), pre["verdict"]
+    d, r, verdict = pre["at_default"], pre["at_recommended"], _known_verdict(pre["verdict"])
+    default, product = _t(pre["default_t"]), _t(pre["product_default_t"])
     if verdict == "not_measurable":
         return (f"ningún umbral de la grilla tiene al menos {pre['min_hits']} aciertos en los dos conjuntos, "
                 f"así que el resultado es «no medible con estos datos». El valor por defecto del producto "
@@ -233,16 +240,15 @@ def _cache_verdict_sentence(pre: dict) -> str:
         return (f"el umbral pre-registrado, {default}, no es seguro: la precisión fue {at_default}. El menor "
                 f"umbral seguro de la grilla es {_t(r['t'])}, con precisión {at_rec}; {recall}. El valor por "
                 f"defecto para los tenants nuevos pasa a {product}.")
-    if verdict == "no_safe_threshold":
-        return (f"ningún umbral de la grilla es seguro. En el umbral pre-registrado, {default}, la precisión "
-                f"fue {at_default}. El umbral recomendado es {_t(r['t'])}, el de mayor precisión mínima entre "
-                f"los dos conjuntos ({at_rec}), que no llega a {_t(pre['criterion'])}; {recall}. El valor por "
-                f"defecto para los tenants nuevos pasa a {product}.")
-    raise ValueError(f"unknown cache verdict {verdict!r}")
+    return (f"ningún umbral de la grilla es seguro. En el umbral pre-registrado, {default}, la precisión "
+            f"fue {at_default}. El umbral recomendado es {_t(r['t'])}, el de mayor precisión mínima entre "
+            f"los dos conjuntos ({at_rec}), que no llega a {_t(pre['criterion'])}; {recall}. El valor por "
+            f"defecto para los tenants nuevos pasa a {product}.")
 
 
 def _cache_sensitivity_sentence(model: dict) -> str:
     v, d, r = model["verdict"], model["at_default"], model["at_recommended"]
+    _known_verdict(v["verdict"])
     if v["verdict"] == "pass":
         outcome = f"daría un umbral seguro en {_t(v['default_t'])}"
     elif v["verdict"] == "fail":
@@ -250,10 +256,8 @@ def _cache_sensitivity_sentence(model: dict) -> str:
     elif v["verdict"] == "no_safe_threshold":
         outcome = (f"no daría ningún umbral seguro (recomendaría {_t(r['t'])}, con precisión "
                    f"{_n3(r['precision_a'])} en PAWS-X y {_n3(r['precision_c'])} en el replay)")
-    elif v["verdict"] == "not_measurable":
-        outcome = "no podría medirse con estos datos"
     else:
-        raise ValueError(f"unknown cache verdict {v['verdict']!r}")
+        outcome = "no podría medirse con estos datos"
     return (f"Con `{model['name']}`, medido solo como sensibilidad, la precisión en "
             f"{_t(v['default_t'])} es {_n3(d['precision_a'])} en PAWS-X y {_n3(d['precision_c'])} en "
             f"el replay, y la misma regla {outcome}; no cambia nada en el producto.")
@@ -272,7 +276,7 @@ def cache_verdict(report: dict) -> str:
 def cache_test_case(report: dict) -> tuple[str, str]:
     """The obtained result and the P/F status of test case CP-18 (the pre-registered criterion)."""
     pre = report["preregistration"]
-    d, r, verdict = pre["at_default"], pre["at_recommended"], pre["verdict"]
+    d, r, verdict = pre["at_default"], pre["at_recommended"], _known_verdict(pre["verdict"])
     status = "P" if verdict == "pass" else "F"
     if verdict == "not_measurable":
         return "no medible: ningún umbral tiene aciertos suficientes", status
@@ -282,9 +286,33 @@ def cache_test_case(report: dict) -> tuple[str, str]:
     at_rec = f"{_t(r['t'])}, {_n3(r['precision_a'])} y {_n3(r['precision_c'])}"
     if verdict == "fail":
         return f"{at_default}; la alcanza desde {at_rec}", status
-    if verdict == "no_safe_threshold":
-        return f"ningún umbral la alcanza; {at_default}; en el mejor, {at_rec}", status
-    raise ValueError(f"unknown cache verdict {verdict!r}")
+    return f"ningún umbral la alcanza; {at_default}; en el mejor, {at_rec}", status
+
+
+CP18_DESCRIPTION = "Precisión del caché semántico (criterio pre-registrado)"
+CP18_EVIDENCE = (
+    "`benchmarks/cache/v1/report.json` → `preregistration`; "
+    "`tests/test_cache_eval.py::test_the_committed_verdict_follows_from_its_own_grid`, "
+    "`tests/test_cache_default_threshold.py::test_a_policy_built_without_the_field_uses_the_registered_default`, "
+    "`tests/test_thesis_tables.py::test_the_cache_test_case_follows_the_registered_verdict`"
+)
+
+
+def cache_test_case_rows(report: dict) -> dict[str, dict[str, str]]:
+    """Row CP-18 of Table 11.3 and of Tabla A.1, built from the report."""
+    pre = report["preregistration"]
+    obtained, status = cache_test_case(report)
+    criterion, default = _t(pre["criterion"]), _t(pre["default_t"])
+    grid = [p["t"] for p in pre["grid"]]
+    pairs = report["pawsx"][report["models"]["production"]["key"]]["pairs"]
+    main = (f"| CP-18 | {CP18_DESCRIPTION} | ≥ {criterion} en PAWS-X y en el replay de paráfrasis, en "
+            f"{default} | {obtained} | {status} |")
+    entry = (f"{pairs} pares de PAWS-X en español; replay con {pre['valid_paraphrases']} paráfrasis válidas "
+             f"y los {pre['leave_one_out_originals']} originales; umbrales de {_t(min(grid))} a "
+             f"{_t(max(grid))}")
+    annex = (f"| CP-18 | {CP18_DESCRIPTION} | {entry} | precisión ≥ {criterion} en los dos conjuntos en "
+             f"{default} | {obtained} | {status} | {CP18_EVIDENCE} |")
+    return {"11-implantacion.md": {"CP-18": main}, "14-anexos.md": {"CP-18": annex}}
 
 
 def cache_grid(report: dict) -> str:
@@ -426,13 +454,18 @@ def cache_savings(report: dict) -> str:
     if abs(c["r0_router_only_cost_per_1000"] - c["spanish_cost_per_1000"]) > 1e-9:
         raise ValueError("the trace's router-only cost at r = 0 is not the router's cost on the Spanish prompts")
     false_hits = _join([f"{c['r0_false_hits'][t]} en {t}" for t in thresholds])
+    top = by_rate[0][max(by_rate[0])]
+    repeats = top["repeats_exact"] + top["repeats_paraphrase"]
     note = (f"La traza usa solo los {c['spanish_prompts']} prompts en español. Sobre el corpus completo "
-            f"({c['corpus_prompts']} prompts), el router del gateway cuesta USD {c['corpus_cost_per_1000']:.3f} "
-            f"cada mil (la tesis cita la estimación anidada, USD {c['cited_cost_per_1000']:.2f}); sobre los "
-            f"prompts en español, que son más caros de rutear, cuesta USD {c['spanish_cost_per_1000']:.3f}, que "
-            f"es el costo del router solo en la traza sin repetición. Sin repetición, el caché igual sirve "
-            f"algunos pedidos: prompts distintos lo bastante parecidos a uno anterior, que cuentan como falsos "
-            f"aciertos ({false_hits}).")
+            f"({c['corpus_prompts']} prompts), el router del gateway cuesta USD "
+            f"{c['corpus_cost_per_1000']:.3f} cada mil (este trabajo cita la estimación anidada, USD "
+            f"{c['cited_cost_per_1000']:.2f}); sobre los prompts en español, que son más caros de rutear, "
+            f"cuesta USD {c['spanish_cost_per_1000']:.3f}, que es el costo del router solo en la traza sin "
+            f"repetición. Con repetición, el costo del router solo cambia porque cada traza tiene otra "
+            f"composición: en r = {_rate(top['r'])}, {top['fresh']} pedidos son prompts nuevos y los otros "
+            f"{repeats} repiten prompts ya pedidos, así que el costo medio depende de qué prompts entran y "
+            f"cuáles se repiten. Sin repetición, el caché igual sirve algunos pedidos: prompts distintos lo "
+            f"bastante parecidos a uno anterior, que cuentan como falsos aciertos ({false_hits}).")
     return "\n".join(rows) + "\n\n" + note
 
 
@@ -480,17 +513,25 @@ def render_all() -> dict[str, str]:
     return {name: _render(name, source, build) for name, source, build in blocks_spec}
 
 
+def render_rows() -> dict[str, dict[str, str]]:
+    """Generated table rows, ``{file name: {row id: row}}`` (a Markdown table cannot hold a block)."""
+    cache_path = CACHE / "report.json"
+    cache = _json(cache_path)
+    return _render("cp-18", cache_path, lambda: cache_test_case_rows(cache))
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--check", action="store_true", help="write nothing; exit 1 if stale")
     args = parser.parse_args(argv)
     try:
         stale = blocks.apply(render_all(), THESIS_DIR, write=not args.check)
+        stale += blocks.apply_rows(render_rows(), THESIS_DIR, write=not args.check)
     except (FileNotFoundError, ValueError, KeyError) as exc:
         print(f"thesis-tables: {exc}", file=sys.stderr)
         return 2
     if args.check and stale:
-        print("stale GEN blocks: " + ", ".join(stale), file=sys.stderr)
+        print("stale GEN blocks or rows: " + ", ".join(stale), file=sys.stderr)
         return 1
     print(("updated: " + ", ".join(stale)) if stale else "thesis tables up to date")
     return 0

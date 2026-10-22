@@ -21,10 +21,12 @@ ledger) se mantuvo y se adaptó.
 proveedores externos.
 
 El pedido entra autenticado por su clave, pasa por el limitador del tenant y se calcula un único
-embedding del último mensaje del usuario. Con ese vector se resuelve la política y el router
-propone un nivel; después se consulta el caché, que si encuentra una respuesta equivalente evita la
-llamada al modelo. Si no hay acierto, el pedido va al proveedor del nivel elegido, y la respuesta
-se guarda en el caché y en el ledger.
+embedding del último mensaje del usuario, que comparten el router y el caché. Con ese vector se
+resuelve la política y el router propone un nivel; después se consulta el caché, que solo puede
+devolver una respuesta del mismo tenant y del mismo contexto de conversación, generada por el nivel
+elegido o por uno más capaz, y que evita la llamada al modelo si encuentra una lo bastante
+parecida. Si no hay acierto, el pedido va al proveedor del nivel elegido, y la respuesta se guarda
+en el caché y en el ledger.
 
 ### Tipos de solución considerados
 
@@ -59,7 +61,7 @@ al marco teórico, una alternativa descartada y su relación con los límites de
 | D1. Cómo decidir la ruta | reglas fijas; cascada; router aprendido | router aprendido de tres niveles | Una sola generación por pedido, compatible con la latencia del modelo local; la frontera sale del entrenamiento [9], [10]. |
 | D2. Qué clasificador usar | kNN sobre embeddings; red neuronal; regresión logística | dos regresiones logísticas L2 | Con el mismo corpus, la logística es más barata que kNN en todos los niveles de calidad (USD 1.70 contra 1.76 cada mil prompts a calidad 0.95; Tabla 11.6) y se sirve con un producto escalar, sin dependencias en el gateway. Con 1250 ejemplos una red no tiene datos para superarla. |
 | D3. Cómo medir la calidad | similitud coseno; un juez LLM; ensamble de jueces validado | dos jueces de otra familia, en las dos posiciones, con reglas pre-registradas y validación humana | El coseno no separa calidad (AUC 0.25, sección 9.1); un juez solo tiene sesgos de posición y de autopreferencia [39], [40]. |
-| D4. Cómo aislar el caché | caché global; caché por usuario; caché por tenant | por tenant, con umbral y antigüedad de la política | Un caché global puede servirle a un cliente la respuesta generada para otro. Aislar por usuario, como MeanCache [14], reduce mucho los aciertos. El tenant es la unidad de política del gateway. |
+| D4. Cómo aislar el caché | caché global; caché por usuario; caché por tenant | por tenant y por contexto de la conversación, con umbral y antigüedad de la política, y sin servir respuestas de un nivel menos capaz que el elegido | Un caché global puede servirle a un cliente la respuesta generada para otro. Aislar por usuario, como MeanCache [14], reduce mucho los aciertos. El tenant es la unidad de política del gateway; el contexto y el nivel evitan que una respuesta guardada contradiga la conversación o la decisión del router. |
 | D5. Cómo acceder a los modelos premium | API directa de cada proveedor; LiteLLM como dependencia; OpenRouter | OpenRouter, con fallback local→premium | Una sola integración para los dos niveles premium, que además informa el costo real de cada llamada, que es el que usa la evaluación. El gateway sigue siendo self-hosted: lo externo son los modelos, no el plano de control. |
 
 Dos decisiones menores se desprenden de estas. La primera es que el router usa **el mismo
@@ -127,9 +129,12 @@ claves y ledger) y Qdrant guarda los vectores del caché.
 - **usage_ledger** tiene una fila por pedido, con la ruta final, el proveedor, si hubo caché o
   fallback, los tokens, el costo estimado, la latencia, el estado terminal, el motivo de la
   decisión y las señales del router (probabilidades, umbrales, nivel).
-- Cada **punto del caché** en Qdrant lleva el embedding del prompt y, en el payload, el tenant, el
-  prompt, la respuesta, el modelo que la generó y la fecha. La búsqueda filtra por tenant y por
-  fecha antes de comparar vectores, así que un tenant nunca puede recibir la respuesta de otro.
+- Cada **punto del caché** en Qdrant es el embedding del último mensaje del usuario y lleva, en el
+  payload, el tenant, un hash del resto de la conversación (`context_hash`), el modelo que sirvió
+  la respuesta y el rango de su nivel (`tier_rank`), la respuesta y la fecha; nunca guarda el
+  prompt. La búsqueda filtra por tenant, por fecha y por el mismo `context_hash` antes de comparar
+  vectores, así que un tenant nunca puede recibir la respuesta de otro, ni una conversación la de
+  otra.
 
 El router tiene su propio artefacto, versionado en el repositorio
 (`src/nebula/data/learned_router_v1.json`): el modelo de embedding y el prefijo con que se
@@ -153,10 +158,20 @@ Hay dos procesos que conviene distinguir: el que atiende un pedido en línea y e
 línea, produce las etiquetas y entrena el router.
 
 **Atención de un pedido.** La Figura 10.4 muestra la secuencia de un pedido de chat. El orden
-tiene dos consecuencias de diseño. La primera es que el embedding se calcula una sola vez y sirve
-para el router y para el caché. La segunda es que el router decide antes de consultar el caché:
-si hay acierto, la decisión no se usa, pero queda en las señales del ledger, lo que permite
-auditar qué nivel habría atendido ese pedido.
+tiene tres consecuencias de diseño. La primera es que el embedding se calcula una sola vez y sirve
+para el router y para el caché. La segunda es que el router decide antes de consultar el caché, y
+el caché usa esa decisión: un pedido en modo automático solo reutiliza respuestas del nivel elegido
+o de uno más capaz, así que uno que el router manda al frontier nunca recibe una respuesta local, y
+un pedido a un modelo explícito solo reutiliza respuestas de ese modelo. De los candidatos que
+pasan esos filtros, Qdrant devuelve el más cercano, y el gateway lo sirve solo si su similitud
+coseno llega al umbral de la política; para los tenants nuevos ese umbral es 0.99, el valor que
+eligió la medición de la sección 11.2.3. Cuando hay acierto, la decisión del router queda en las
+señales del ledger junto con una estimación del costo que el acierto evitó, lo que permite auditar
+qué nivel habría atendido ese pedido. La tercera es que, cuando lo único que frena un pedido es un
+límite de gasto (el presupuesto duro o el tope de costo premium por pedido), el gateway consulta
+el caché antes de negarlo: una respuesta guardada no cuesta nada y se sirve igual, y si no hay
+acierto el pedido recibe el mismo 403 que antes. Las demás negativas, como la de un modelo que la
+política no permite, se deciden antes y no consultan el caché.
 
 ![Figura 10.4](figuras/secuencia-request.png)
 

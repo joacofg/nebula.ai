@@ -351,7 +351,8 @@ router más el caché, en el umbral que el producto usa por defecto y en el pre-
 
 **Tabla 11.11.** Costo (USD cada mil pedidos) y calidad de la traza en español según la tasa de
 repetición: router solo y router con caché. El ahorro adicional se mide contra el router solo en
-la misma traza.
+la misma traza. La calidad del router solo es optimista, porque el router se entrenó sobre estos
+mismos prompts (amenaza 13): se lee como base para la diferencia, no como valor absoluto.
 
 <!-- GEN:cache-savings -->
 | Repetición | Router solo: costo | Router solo: calidad | Caché en 0.99: costo | Caché en 0.99: ahorro adicional | Caché en 0.99: calidad | Caché en 0.90: ahorro adicional | Caché en 0.90: calidad |
@@ -368,7 +369,7 @@ la misma traza.
 | 35 % | 1.929 | 0.993 | 1.316 | 31.8 % | 0.991 | 36.3 % | 0.986 |
 | 40 % | 1.861 | 0.992 | 1.222 | 34.3 % | 0.991 | 38.0 % | 0.985 |
 
-La traza usa solo los 1000 prompts en español. Sobre el corpus completo (1250 prompts), el router del gateway cuesta USD 1.706 cada mil (la tesis cita la estimación anidada, USD 1.70); sobre los prompts en español, que son más caros de rutear, cuesta USD 1.848, que es el costo del router solo en la traza sin repetición. Sin repetición, el caché igual sirve algunos pedidos: prompts distintos lo bastante parecidos a uno anterior, que cuentan como falsos aciertos (1 en 0.99 y 17 en 0.90).
+La traza usa solo los 1000 prompts en español. Sobre el corpus completo (1250 prompts), el router del gateway cuesta USD 1.706 cada mil (este trabajo cita la estimación anidada, USD 1.70); sobre los prompts en español, que son más caros de rutear, cuesta USD 1.848, que es el costo del router solo en la traza sin repetición. Con repetición, el costo del router solo cambia porque cada traza tiene otra composición: en r = 40 %, 600 pedidos son prompts nuevos y los otros 400 repiten prompts ya pedidos, así que el costo medio depende de qué prompts entran y cuáles se repiten. Sin repetición, el caché igual sirve algunos pedidos: prompts distintos lo bastante parecidos a uno anterior, que cuentan como falsos aciertos (1 en 0.99 y 17 en 0.90).
 <!-- /GEN:cache-savings -->
 
 ### 11.2.4 Análisis de resultados
@@ -421,16 +422,17 @@ condiciones. Su resultado tiene dos caras.
 
 La primera es negativa, y responde al criterio pre-registrado: con el embedding de producción,
 ningún umbral de la grilla alcanza una precisión de 0.95 en los dos conjuntos, y el caso CP-18 se
-reporta como fallado. En PAWS-X la precisión queda cerca de la proporción de paráfrasis del
-conjunto en casi toda la grilla, y en el replay se estanca alrededor de 0.92. Los dos conjuntos
-muestran lo mismo: la similitud del embedding mide cuánto se parecen dos textos, no si piden lo
-mismo. Entre los seis pares de prompts distintos del corpus con coseno de 0.95 o más hay dos
-preguntas sobre el episodio de Game of Thrones que dirigió Alik Sakharov que solo cambian el número
-de temporada, y para el embedding están más cerca entre sí que muchas paráfrasis de su propio
-original. Es lo que anticipaba la sección 8.2.4: el umbral depende del modelo de embeddings y del
-tipo de consulta. Además, el riesgo era conocido. Los pares vecinos más cercanos del corpus se
-habían visto antes de fijar el criterio, y el pre-registro advirtió que hacían probable que el
-replay fallara en 0.90. El criterio se mantuvo igual, porque un caché que sirve la respuesta de
+reporta como fallado. PAWS-X es el conjunto que queda más lejos del criterio. Sus pares comparten
+casi todas las palabras y una etiqueta humana dice cuáles son paráfrasis, y la precisión queda
+cerca de la proporción de paráfrasis del conjunto en casi toda la grilla: el embedding casi no
+separa los pares que piden lo mismo de los que no, porque mide cuánto se parecen dos textos y no si
+significan lo mismo. En el replay la precisión se estanca alrededor de 0.92 por una razón que fija
+la regla del pre-registro: todo acierto de un original sobre otro prompt del corpus cuenta como
+falso, y algunos prompts distintos del corpus tienen entre sí un coseno tan alto que, en esos
+umbrales, el caché serviría la respuesta de uno para el otro. Es lo que anticipaba la sección
+8.2.4: el umbral depende del modelo de embeddings y del tipo de consulta. Además, el riesgo era
+conocido. Los pares vecinos más cercanos del corpus se habían visto antes de fijar el criterio, y
+el pre-registro advirtió que hacían probable que el replay fallara en 0.90. El criterio se mantuvo igual, porque un caché que sirve la respuesta de
 otra pregunta es justamente lo que tiene que rechazar.
 
 La consecuencia está en el producto. Como fija la regla pre-registrada, el umbral por defecto para
@@ -445,10 +447,10 @@ calidad de forma apreciable. En la traza en español, con la tasa de duplicados 
 (12.1 %) el costo baja un 7.9 % respecto del router solo, y con la de MeanCache (31 %), un 26.0 %,
 con una calidad de 0.990 contra 0.991 del router solo en los dos casos (Tabla 11.11). Con el umbral
 pre-registrado, 0.90, el ahorro adicional sería mayor (11.4 % con la tasa de LMSYS-Chat-1M), pero
-la calidad bajaría a 0.980, porque cada falso acierto sirve la respuesta de otra pregunta: es el
-costo que el criterio buscaba evitar. Estos porcentajes no se suman al 31 %, porque se miden contra
-el router en la misma traza, que solo tiene prompts en español y es más cara de rutear que el
-corpus completo. Lo que sí se puede afirmar es que el caché agrega ahorro al del router, y que
+la calidad bajaría a 0.980, porque cada falso acierto sirve la respuesta de otro prompt, y por la
+regla vale cero: es el costo que el criterio buscaba evitar. Estos porcentajes no se suman al
+31 %, porque se miden contra el router en la misma traza, que solo tiene prompts en español y es
+más cara de rutear que el corpus completo. Lo que sí se puede afirmar es que el caché agrega ahorro al del router, y que
 cuánto agrega depende de cuánto se repite el tráfico.
 
 Con el objetivo en 0.90 el router ahorra bastante más (57 %, USD 1.06), pero la calidad cae a
@@ -545,9 +547,9 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
     corruptos y 2 de código que cambian el nombre del identificador que verifica la prueba.
     *Mitigación:* la regla se fijó antes de regenerar las paráfrasis, cuando una primera
     generación respondía en algunos casos en lugar de reescribir, y no se cambió después de ver el
-    resultado; la
-    muestra de 40 pares sorteada a ciegas mide, con una revisión humana, qué tan fiel es el
-    conjunto.
+    resultado. Para medir qué tan fiel es el conjunto se sorteó a ciegas una muestra de 40 pares
+    para una revisión humana; su resultado aparece en 11.2.3 una vez etiquetada, y no modifica el
+    veredicto.
 13. **La traza de ahorro es sintética.** La repetición del tráfico real no se midió: las tasas de
     la Tabla 11.11 vienen de otros contextos (prompts en inglés de LMSYS-Chat-1M, usuarios de un
     ámbito académico en MeanCache), y la mezcla de mitad repeticiones exactas y mitad paráfrasis es

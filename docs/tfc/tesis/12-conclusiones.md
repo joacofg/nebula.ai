@@ -56,12 +56,12 @@ vara, el ahorro supera el umbral; con un criterio tan exigente como el del lecto
 sesgo indica que sería mayor. La segunda razón es que el 31 % sale solo del router: el corpus casi
 no tiene consultas repetidas, así que el caché semántico, que es la otra mitad del gateway, no
 aporta a esa cifra. Su aporte se midió aparte, sobre una traza en español con repetición, y crece
-con ella: con el umbral de 0.99 que el gateway usa por defecto, el caché baja el costo del router
-solo un 7.9 % con la tasa de duplicados de LMSYS-Chat-1M (12.1 %) [48] y un 26.0 % con la de
-MeanCache (31 %) [14], con prácticamente la misma calidad. Esos porcentajes se miden contra el
-router en la misma traza, no sobre el corpus completo, y por eso no se suman al 31 %; lo que
-muestran es que, cuando el tráfico se repite, el caché agrega ahorro al del router sin un costo
-apreciable en calidad.
+con ella: con el umbral de 0.99 que el gateway usa por defecto, el router con caché cuesta un 7.9 %
+menos que el router sin caché con la tasa de duplicados de LMSYS-Chat-1M (12.1 %) [48], y un 26.0 %
+menos con la de MeanCache (31 %) [14], con prácticamente la misma calidad. Esos porcentajes se
+miden contra el router en la misma traza, no sobre el corpus completo, y por eso no se suman al
+31 %; lo que muestran es que, cuando el tráfico se repite, el caché agrega ahorro al del router sin
+un costo apreciable en calidad.
 
 Conviene decir también qué no se verifica. El intervalo de confianza del ahorro va de 28 % a 35 %,
 así que con esta muestra no se puede excluir, al 95 %, un ahorro algo menor que el 30 %; la

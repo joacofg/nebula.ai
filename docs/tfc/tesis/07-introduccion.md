@@ -156,8 +156,8 @@ evaluación versionado en el repositorio:
 - **Límite de validación de la evidencia.** El costo de cada política se calcula con el costo que
   el proveedor informó al generar cada respuesta del corpus, no con una operación en paralelo en
   producción. El ahorro del caché no entra en esa cifra, porque el corpus casi no tiene consultas
-  repetidas; se estima aparte, sobre trazas sintéticas con tasas de repetición tomadas de la
-  literatura (sección 11.2.3).
+  repetidas; se estima aparte, sobre trazas sintéticas con tasas de repetición de 0 a 40 %, entre
+  las que se marcan las que publica la literatura (sección 11.2.3).
 - **Límite del instrumento de calidad.** La aceptabilidad la juzgan jueces LLM validados contra un
   único lector humano, no un panel de personas sobre todo el corpus, porque una evaluación humana
   sistemática no es factible en el cronograma del trabajo.
