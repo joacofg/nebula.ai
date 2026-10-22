@@ -12,6 +12,7 @@ from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
 from prometheus_client import REGISTRY
+from qdrant_client import AsyncQdrantClient
 
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
@@ -177,12 +178,45 @@ class FixedVectorEmbeddings:
         self.vector = vector or [1.0, 0.0, 0.0]
         self.calls: list[str] = []
 
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
         self.calls.append(text)
         return list(self.vector)
 
     async def close(self) -> None:
         return None
+
+
+class LateQdrant:
+    """An in-memory Qdrant that refuses every call until `up` is set: Qdrant starting late."""
+
+    def __init__(self) -> None:
+        self._client = AsyncQdrantClient(location=":memory:")
+        self.up = False
+        # Every SemanticCacheService initialization starts by asking for the collection (so
+        # does its health check: count only where nothing asks for health).
+        self.initializations = 0
+
+    def __getattr__(self, name: str):
+        method = getattr(self._client, name)
+
+        async def call(*args, **kwargs):
+            if name == "collection_exists":
+                self.initializations += 1
+            if not self.up:
+                raise ConnectionError("Qdrant is not up yet")
+            return await method(*args, **kwargs)
+
+        return call
+
+
+class FakeClock:
+    """A monotonic clock that only moves when a test moves `now`."""
+
+    def __init__(self) -> None:
+        self.now = 1000.0
+
+    def __call__(self) -> float:
+        return self.now
 
 
 def cache_lookups(result: str) -> float:

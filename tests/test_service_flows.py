@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from time import perf_counter
 
 import httpx
 import pytest
@@ -1823,6 +1825,31 @@ async def test_embeddings_service_rejects_empty_upstream_embeddings() -> None:
         await service.create_embeddings(model="batch-model", input="hello")
 
     assert str(exc_info.value) == "Ollama returned no embeddings."
+
+
+async def test_embed_gives_up_after_its_per_call_timeout() -> None:
+    async def slow_ollama(request: httpx.Request) -> httpx.Response:
+        await asyncio.sleep(0.3)  # a busy Ollama: slow, but it does answer
+        return httpx.Response(200, json={"embeddings": [[0.1, 0.2, 0.3]]})
+
+    service = OllamaEmbeddingsService(Settings())
+    await service.client.aclose()
+    service.client = httpx.AsyncClient(
+        base_url="http://ollama", transport=httpx.MockTransport(slow_ollama)
+    )
+    try:
+        started = perf_counter()
+        bounded = await service.embed("hola", timeout=0.05)
+        bounded_seconds = perf_counter() - started
+        unbounded = await service.embed("hola")
+    finally:
+        await service.close()
+
+    # A request-path caller gives up (as on any embedding failure) instead of waiting it out...
+    assert bounded is None
+    assert bounded_seconds < 0.25
+    # ...while a caller without a timeout keeps the client's own.
+    assert unbounded == [0.1, 0.2, 0.3]
 
 
 async def _create_tenant_b_with_cache_policy(client: httpx.AsyncClient) -> str:

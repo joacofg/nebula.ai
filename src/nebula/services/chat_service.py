@@ -31,7 +31,10 @@ from nebula.observability.metrics import (
 )
 from nebula.providers.base import CompletionProvider, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
-from nebula.services.embeddings_service import OllamaEmbeddingsService
+from nebula.services.embeddings_service import (
+    REQUEST_PATH_EMBED_TIMEOUT_SECONDS,
+    OllamaEmbeddingsService,
+)
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.policy_service import PolicyResolution, PolicyService, SpendDenial
 from nebula.services.provider_registry import ProviderRegistry
@@ -513,16 +516,27 @@ class ChatService:
     ) -> CacheHit | None:
         if key is None:
             return None
-        hit = await self.cache_service.lookup(
-            prompt,
-            tenant_id=key.tenant_id,
-            similarity_threshold=policy_resolution.cache_similarity_threshold,
-            max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
-            context_hash=key.context_hash,
-            min_tier_rank=key.min_tier_rank,
-            model=key.model,
-            vector=key.vector,
-        )
+        try:
+            hit = await self.cache_service.lookup(
+                prompt,
+                tenant_id=key.tenant_id,
+                similarity_threshold=policy_resolution.cache_similarity_threshold,
+                max_entry_age_hours=policy_resolution.cache_max_entry_age_hours,
+                context_hash=key.context_hash,
+                min_tier_rank=key.min_tier_rank,
+                model=key.model,
+                vector=key.vector,
+            )
+        except Exception as exc:  # noqa: BLE001 - the cache is optional: a failure is a miss
+            # Never a 500: the request is served (or spend-denied with its usual 403) without it.
+            CACHE_LOOKUPS.labels("error").inc()
+            logger.warning(
+                "cache_lookup_failed request_id=%s stream=%s error=%s",
+                request_id,
+                str(stream).lower(),
+                exc,
+            )
+            return None
         if hit is not None:
             logger.info(
                 "cache_hit request_id=%s stream=%s prompt_chars=%s score=%.4f age_seconds=%s",
@@ -956,7 +970,10 @@ class ChatService:
     ) -> list[float] | None:
         assert self.embeddings_service is not None
         try:
-            return await self.embeddings_service.embed(text)
+            # A slow Ollama must not hold the request: past the timeout it goes on without.
+            return await self.embeddings_service.embed(
+                text, timeout=REQUEST_PATH_EMBED_TIMEOUT_SECONDS
+            )
         except Exception as exc:  # noqa: BLE001 - heuristic routing, no cache: both degrade
             logger.warning("%s_embedding_failed error=%s", purpose, exc)
             return None
@@ -1097,6 +1114,9 @@ class ChatService:
             signals["cache_similarity_score"] = round(cache_hit.score, 4)
             signals["cache_entry_age_seconds"] = cache_hit.age_seconds
             signals["cache_entry_model"] = cache_hit.model
+            if policy_resolution.spend_denial is not None:
+                # Served past a spend guardrail: savings that only the cache made possible.
+                signals["spend_guardrail"] = policy_resolution.spend_denial.guardrail
         if avoided_cost_usd is not None:
             signals["cache_avoided_cost_usd"] = avoided_cost_usd
         return CompletionMetadata(

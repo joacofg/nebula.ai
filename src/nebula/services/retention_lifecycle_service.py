@@ -8,6 +8,7 @@ from typing import Any
 
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health, iso_or_none
 from nebula.services.governance_store import GovernanceStore
+from nebula.services.semantic_cache_service import SemanticCacheService
 
 logger = logging.getLogger(__name__)
 
@@ -89,10 +90,12 @@ class RetentionLifecycleService:
         enabled: bool,
         interval_seconds: int,
         governance_store: GovernanceStore,
+        semantic_cache: SemanticCacheService | None = None,
     ) -> None:
         self._enabled = enabled
         self._interval_seconds = interval_seconds
         self._governance_store = governance_store
+        self._semantic_cache = semantic_cache
         self._task: asyncio.Task | None = None
         self._snapshot = RetentionLifecycleSnapshot(
             enabled=enabled,
@@ -138,6 +141,8 @@ class RetentionLifecycleService:
         self._snapshot.last_status = "running"
         self._snapshot.last_error = None
 
+        # Independent of the ledger cleanup below, and it never raises.
+        await self._delete_expired_cache_entries(attempt_time)
         try:
             result = self._governance_store.delete_expired_usage_records(now=attempt_time)
         except Exception as exc:  # noqa: BLE001
@@ -159,6 +164,22 @@ class RetentionLifecycleService:
             "ran_at": self._snapshot.last_run_at,
             "status": self._snapshot.last_status,
         }
+
+    async def _delete_expired_cache_entries(self, now: datetime) -> None:
+        """Delete each tenant's cache entries older than its `semantic_cache_max_entry_age_hours`.
+
+        Lookups never serve them anyway, so a failure only delays reclaiming the space: it is
+        logged, and the next run tries again.
+        """
+        if self._semantic_cache is None:
+            return
+        try:
+            for tenant in self._governance_store.list_tenants():
+                policy = self._governance_store.get_policy(tenant.id)
+                cutoff = int(now.timestamp()) - policy.semantic_cache_max_entry_age_hours * 3600
+                await self._semantic_cache.delete_expired(tenant_id=tenant.id, created_before=cutoff)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Semantic cache retention cleanup failed: %s", exc)
 
     @staticmethod
     def _normalize(value: datetime) -> datetime:

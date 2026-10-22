@@ -3,6 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from math import ceil
+from typing import Literal
 
 from fastapi import HTTPException, status
 
@@ -14,6 +15,9 @@ from nebula.providers.base import CompletionUsage
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.governance_store import GovernanceStore
 from nebula.services.router_service import ReplayRouteContext, RouteDecision, RouterService
+
+# The spend guardrails a cached answer (which costs nothing) may be served past.
+SpendGuardrail = Literal["hard_budget", "per_request_cap"]
 
 
 @dataclass(slots=True, frozen=True)
@@ -35,8 +39,8 @@ class PolicyEvaluation:
     evidence_summary: CalibrationEvidenceSummary | None = None
     denied: bool = False
     denial_detail: str | None = None
-    # The only objection is a spend guardrail: the hard budget or the per-request cap.
-    denied_by_spend_guardrail: bool = False
+    # Set when the only objection is a spend guardrail: which one denies the request.
+    spend_guardrail: SpendGuardrail | None = None
 
 
 @dataclass(slots=True, frozen=True)
@@ -52,6 +56,7 @@ class SpendDenial:
     # The denied row's outcome, `denied=` part included.
     policy_outcome: str
     route_reason: str
+    guardrail: SpendGuardrail
 
 
 @dataclass(slots=True, frozen=True)
@@ -109,7 +114,7 @@ class PolicyService:
                 policy_mode=evaluation.policy_mode,
                 policy_outcome=evaluation.policy_outcome,
             )
-            if not evaluation.denied_by_spend_guardrail:
+            if evaluation.spend_guardrail is None:
                 raise HTTPException(
                     status_code=status.HTTP_403_FORBIDDEN,
                     detail=evaluation.denial_detail,
@@ -120,6 +125,7 @@ class PolicyService:
                 headers=headers,
                 policy_outcome=evaluation.policy_outcome,
                 route_reason=evaluation.route_decision.reason,
+                guardrail=evaluation.spend_guardrail,
             )
 
         return PolicyResolution(
@@ -129,8 +135,9 @@ class PolicyService:
             cache_similarity_threshold=evaluation.cache_similarity_threshold,
             cache_max_entry_age_hours=evaluation.cache_max_entry_age_hours,
             fallback_enabled=evaluation.fallback_enabled,
-            # Only a spend denial gets this far, and the request may still be served from the
-            # cache: what it records then carries no `denied=` part.
+            # The only denial that gets this far is a spend denial (`spend_denial`), and the
+            # request may still be served from the cache: what a served request records carries
+            # no `denied=` part. A cache miss raises with the full outcome kept in spend_denial.
             policy_outcome=evaluation.served_policy_outcome,
             soft_budget_exceeded=evaluation.soft_budget_exceeded,
             projected_premium_cost=evaluation.projected_premium_cost,
@@ -201,7 +208,7 @@ class PolicyService:
             soft_budget_exceeded = tenant_spend_total >= policy.soft_budget_usd
 
         projected_premium_cost: float | None = None
-        denied_by_spend_guardrail = False
+        spend_guardrail: SpendGuardrail | None = None
         if denial_detail is None and route_decision.target == "premium":
             # The decision's model (economy or frontier tier) is what the provider will serve.
             route_decision = self._escalate_disallowed_economy(route_decision, policy)
@@ -216,7 +223,7 @@ class PolicyService:
                     and projected_premium_cost > policy.max_premium_cost_per_request
                 ):
                     denial_detail = "Request exceeds the tenant premium spend guardrail."
-                    denied_by_spend_guardrail = True
+                    spend_guardrail = "per_request_cap"
 
         hard_budget_exceeded = self._hard_budget_exceeded(
             tenant_spend_total=tenant_spend_total,
@@ -232,7 +239,8 @@ class PolicyService:
             )
             # Denied (by `deny`, or a downgrade this request cannot take), or downgraded to
             # local, which denies nothing.
-            denied_by_spend_guardrail = denial_detail is not None
+            if denial_detail is not None:
+                spend_guardrail = "hard_budget"
             if route_decision.target != "premium":
                 projected_premium_cost = None
 
@@ -285,7 +293,7 @@ class PolicyService:
             evidence_summary=evidence_summary,
             denied=denial_detail is not None,
             denial_detail=denial_detail,
-            denied_by_spend_guardrail=denied_by_spend_guardrail,
+            spend_guardrail=spend_guardrail,
         )
 
     def premium_fallback_block_reason(

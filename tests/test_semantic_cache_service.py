@@ -17,13 +17,14 @@ from nebula.services.semantic_cache_service import (
     SemanticCacheService,
     context_hash,
 )
+from tests.support import FakeClock, LateQdrant, cache_lookups
 
 # Payload indexes are a no-op in local Qdrant, and the client says so on every index.
 pytestmark = pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
 
 
 class FakeEmbeddings:
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
         return [0.1, 0.2, 0.3]
 
 
@@ -36,6 +37,12 @@ class RecordingQdrant:
 
     async def collection_exists(self, name: str) -> bool:
         return True
+
+    async def get_collection(self, name: str):
+        vectors = qdrant_models.VectorParams(
+            size=Settings().embedding_dimensions, distance=qdrant_models.Distance.COSINE
+        )
+        return SimpleNamespace(config=SimpleNamespace(params=SimpleNamespace(vectors=vectors)))
 
     async def create_payload_index(self, **kwargs) -> None:
         self.indexed_fields.append(kwargs["field_name"])
@@ -75,7 +82,7 @@ def _must_conditions(kwargs: dict) -> dict[str, qdrant_models.FieldCondition]:
 
 
 @pytest.mark.asyncio
-async def test_lookup_filters_by_tenant_and_freshness_and_uses_tenant_threshold() -> None:
+async def test_lookup_filters_by_tenant_and_freshness() -> None:
     client = RecordingQdrant()
     service = _service(client)
 
@@ -85,12 +92,26 @@ async def test_lookup_filters_by_tenant_and_freshness_and_uses_tenant_threshold(
     )
 
     assert result is None
-    kwargs = client.query_kwargs[0]
-    assert kwargs["score_threshold"] == 0.93
-    conditions = _must_conditions(kwargs)
+    conditions = _must_conditions(client.query_kwargs[0])
     assert conditions["tenant_id"].match.value == "acme"
     cutoff = conditions["created_at"].range.gte
     assert before - 2 * 3600 - 2 <= cutoff <= before - 2 * 3600 + 2
+
+
+@pytest.mark.parametrize(("score", "is_hit"), [(0.9299, False), (0.93, True), (0.97, True)])
+async def test_the_tenant_threshold_applies_to_the_best_candidate(score: float, is_hit: bool) -> None:
+    point = SimpleNamespace(
+        score=score,
+        payload={"response": "cached", "model": "m", "created_at": int(time()), "tenant_id": "acme"},
+    )
+    service = _service(RecordingQdrant(points=[point]))
+
+    hit = await service.lookup(
+        "hello", tenant_id="acme", similarity_threshold=0.93, max_entry_age_hours=2, **AUTO_REQUEST
+    )
+
+    # A hit at threshold t: the best candidate's cosine is at least t.
+    assert (hit is not None) is is_hit
 
 
 @pytest.mark.asyncio
@@ -133,9 +154,11 @@ async def test_lookup_computes_age_for_a_float_created_at() -> None:
 class CountingEmbeddings(FakeEmbeddings):
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.timeouts: list[float | None] = []
 
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
         self.calls.append(text)
+        self.timeouts.append(timeout)
         return await super().embed(text)
 
 
@@ -179,6 +202,23 @@ async def test_lookup_without_a_vector_still_embeds() -> None:
 
     assert embeddings.calls == ["hello"]
     assert client.query_kwargs[0]["query"] == [0.1, 0.2, 0.3]
+    # Offline callers (the replay) keep the embeddings client's own timeout.
+    assert embeddings.timeouts == [None]
+
+
+async def test_the_gateway_cache_bounds_its_own_embedding() -> None:
+    # The gateway's chat path brings no vector to the first lookup after a recovery.
+    embeddings = CountingEmbeddings()
+    service = SemanticCacheService(
+        settings=Settings(), embeddings_service=embeddings, client=RecordingQdrant(), embed_timeout=5.0
+    )
+    service.enabled = True
+
+    await service.lookup(
+        "hello", tenant_id="acme", similarity_threshold=0.9, max_entry_age_hours=24, **AUTO_REQUEST
+    )
+
+    assert embeddings.timeouts == [5.0]
 
 
 # --- Entry identity, against a real (in-memory) Qdrant -------------------------------------
@@ -284,6 +324,7 @@ async def _lookup(
     context: str = EMPTY_CONTEXT,
     min_tier_rank: int | None = None,
     model: str | None = None,
+    vector: list[float] | None = ANY_VECTOR,
 ) -> CacheHit | None:
     return await service.lookup(
         "hola",
@@ -293,8 +334,41 @@ async def _lookup(
         context_hash=context,
         min_tier_rank=min_tier_rank,
         model=model,
-        vector=ANY_VECTOR,
+        vector=vector,
     )
+
+
+class _LookupCounts:
+    """How many lookups ended in each result since this was created."""
+
+    RESULTS = ("hit", "no_candidate", "below_threshold", "disabled", "embedding_unavailable", "error")
+
+    def __init__(self) -> None:
+        self._before = {result: cache_lookups(result) for result in self.RESULTS}
+
+    def since(self) -> dict[str, float]:
+        counts = {result: cache_lookups(result) - self._before[result] for result in self.RESULTS}
+        return {result: count for result, count in counts.items() if count}
+
+
+async def test_lookup_tells_no_candidate_from_a_candidate_below_the_threshold() -> None:
+    service = await _in_memory_service()
+    await _store(service, "frontier answer", tier="frontier")  # filed under [1, 0, 0]
+
+    counts = _LookupCounts()
+    # Another conversation: nothing passes the filters at all.
+    assert await _lookup(service, context="other context", min_tier_rank=0) is None
+    assert counts.since() == {"no_candidate": 1}
+
+    counts = _LookupCounts()
+    # The same conversation, but the closest answer is only 0.6 similar (threshold 0.9).
+    assert await _lookup(service, min_tier_rank=0, vector=[0.6, 0.8, 0.0]) is None
+    assert counts.since() == {"below_threshold": 1}
+
+    counts = _LookupCounts()
+    hit = await _lookup(service, min_tier_rank=0)
+    assert hit is not None and hit.response == "frontier answer"
+    assert counts.since() == {"hit": 1}
 
 
 async def test_lookup_requires_same_context_hash() -> None:
@@ -379,6 +453,106 @@ async def test_initialize_purges_points_without_tier_rank() -> None:
     assert service.enabled
     remaining = [payload["response"] for payload in await _stored_payloads(service)]
     assert sorted(remaining) == ["current answer", "other model answer"]
+
+
+async def _cache_over_a_3_dim_collection(**settings: object) -> SemanticCacheService:
+    """A cache whose existing collection holds 3-dim vectors (as `_in_memory_service` makes)."""
+    existing = await _in_memory_service()
+    return SemanticCacheService(
+        settings=Settings(**settings),
+        embeddings_service=FakeEmbeddings(),
+        client=existing.client,
+    )
+
+
+async def test_a_collection_of_another_vector_size_leaves_the_cache_disabled() -> None:
+    # The default embedding_dimensions is 768: an embedding model swap left the old collection.
+    service = await _cache_over_a_3_dim_collection()
+
+    await service.initialize()
+
+    assert not service.enabled
+    assert service.degraded_reason == (
+        "Qdrant collection vector size 3 does not match embedding_dimensions 768."
+    )
+
+
+async def test_health_is_degraded_while_disabled_even_if_the_collection_exists() -> None:
+    service = await _cache_over_a_3_dim_collection()
+    await service.initialize()
+
+    health = await service.health_status()
+
+    assert health["status"] == "degraded"
+    assert health["enabled"] is False
+    assert health["detail"] == (
+        "Qdrant collection vector size 3 does not match embedding_dimensions 768."
+    )
+
+
+# --- A late Qdrant: the gateway started first ----------------------------------------------
+
+
+async def _cache_started_before_qdrant() -> tuple[SemanticCacheService, LateQdrant, FakeClock]:
+    qdrant, clock = LateQdrant(), FakeClock()
+    service = SemanticCacheService(
+        settings=Settings(NEBULA_EMBEDDING_DIMENSIONS=3),
+        embeddings_service=FakeEmbeddings(),
+        client=qdrant,
+        clock=clock,
+    )
+    await service.initialize()  # at gateway startup
+    assert not service.enabled
+    return service, qdrant, clock
+
+
+async def test_a_lookup_retries_initialization_once_30_seconds_have_passed() -> None:
+    service, qdrant, clock = await _cache_started_before_qdrant()
+    qdrant.up = True
+
+    clock.now += 29.0
+    counts = _LookupCounts()
+    assert await _lookup(service, min_tier_rank=0) is None
+    # Too soon to retry: still disabled, without asking Qdrant.
+    assert counts.since() == {"disabled": 1}
+    assert qdrant.initializations == 1
+
+    clock.now += 1.0
+    counts = _LookupCounts()
+    assert await _lookup(service, min_tier_rank=0) is None
+    # Retried, recovered, and the lookup itself ran against the empty collection.
+    assert service.enabled
+    assert service.degraded_reason is None
+    assert counts.since() == {"no_candidate": 1}
+    assert qdrant.initializations == 2
+
+
+async def test_a_store_retries_initialization_too() -> None:
+    service, qdrant, clock = await _cache_started_before_qdrant()
+    qdrant.up = True
+    clock.now += 30.0
+
+    await _store(service, "answer", tier="local")
+
+    hit = await _lookup(service, min_tier_rank=0)
+    assert hit is not None and hit.response == "answer"
+
+
+async def test_failed_retries_are_at_least_30_seconds_apart() -> None:
+    service, qdrant, clock = await _cache_started_before_qdrant()
+
+    clock.now += 30.0
+    await _lookup(service, min_tier_rank=0)  # retries; Qdrant is still down
+    clock.now += 15.0
+    await _lookup(service, min_tier_rank=0)
+    await _store(service, "answer", tier="local")
+    assert qdrant.initializations == 2
+
+    clock.now += 15.0
+    await _store(service, "answer", tier="local")
+    assert qdrant.initializations == 3
+    assert not service.enabled
+    assert service.degraded_reason == "Qdrant is not up yet"
 
 
 async def test_initialize_indexes_every_field_a_lookup_filters_on() -> None:

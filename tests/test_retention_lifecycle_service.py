@@ -4,8 +4,10 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
+from qdrant_client import AsyncQdrantClient
 
 from nebula.db.models import UsageLedgerModel
+from nebula.services.semantic_cache_service import TIER_RANK, SemanticCacheService
 from tests.support import configured_app
 
 
@@ -92,6 +94,109 @@ async def test_run_cleanup_once_deletes_only_rows_with_expired_evidence_markers(
     assert health["last_error"] is None
     assert health["last_run_at"] is not None
     assert health["last_attempted_run_at"] is not None
+
+
+ANY_VECTOR = [1.0, 0.0, 0.0]
+
+
+async def _cache_with_an_answer_per_tenant(app, tenants: list[str]) -> SemanticCacheService:
+    """The gateway's own cache, over an in-memory Qdrant, with one answer per tenant."""
+    cache = app.state.container.cache_service
+    await cache.client.close()
+    cache.client = AsyncQdrantClient(location=":memory:")
+    await cache.initialize()
+    assert cache.enabled
+    for tenant_id in tenants:
+        await cache.store(
+            f"{tenant_id} answer",
+            tenant_id=tenant_id,
+            vector=ANY_VECTOR,
+            context_hash="ctx",
+            tier_rank=TIER_RANK["local"],
+            model="local-model",
+        )
+    return cache
+
+
+async def _cached_answer(cache: SemanticCacheService, tenant_id: str) -> str | None:
+    hit = await cache.lookup(
+        "hola",
+        tenant_id=tenant_id,
+        similarity_threshold=0.9,
+        max_entry_age_hours=720,
+        context_hash="ctx",
+        min_tier_rank=0,
+        model=None,
+        vector=ANY_VECTOR,
+    )
+    return hit.response if hit else None
+
+
+@pytest.mark.asyncio
+@pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
+async def test_cleanup_deletes_cache_entries_older_than_their_tenants_max_age() -> None:
+    with configured_app(NEBULA_EMBEDDING_DIMENSIONS="3") as app:
+        async with app.router.lifespan_context(app):
+            store = app.state.container.governance_store
+            store.create_tenant(
+                tenant_id="short-lived",
+                name="Short-lived",
+                description=None,
+                metadata={},
+                active=True,
+                policy=store.default_policy().model_copy(
+                    update={"semantic_cache_max_entry_age_hours": 1}
+                ),
+            )
+            cache = await _cache_with_an_answer_per_tenant(app, ["default", "short-lived"])
+
+            # Two hours on, the 1 h tenant's answer has expired; the default (168 h) one has not.
+            result = await app.state.container.retention_lifecycle_service.run_cleanup_once(
+                now=datetime.now(UTC) + timedelta(hours=2)
+            )
+            answers = {
+                tenant_id: await _cached_answer(cache, tenant_id)
+                for tenant_id in ("default", "short-lived")
+            }
+
+    assert result["status"] == "ok"
+    assert answers == {"default": "default answer", "short-lived": None}
+
+
+class _QdrantThatCannotDelete:
+    def __init__(self, cache: SemanticCacheService) -> None:
+        self._client = cache.client
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+    async def delete(self, **kwargs) -> None:
+        raise ConnectionError("Qdrant went away")
+
+
+@pytest.mark.asyncio
+@pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
+async def test_a_failed_cache_sweep_is_logged_and_leaves_the_ledger_cleanup_ok(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with configured_app(NEBULA_EMBEDDING_DIMENSIONS="3") as app:
+        async with app.router.lifespan_context(app):
+            cache = await _cache_with_an_answer_per_tenant(app, ["default"])
+            cache.client = _QdrantThatCannotDelete(cache)
+            now = datetime.now(UTC)
+            _insert_usage_row(
+                app,
+                request_id="expired-row",
+                timestamp=now - timedelta(days=2),
+                evidence_expires_at=now - timedelta(minutes=5),
+            )
+
+            retention = app.state.container.retention_lifecycle_service
+            result = await retention.run_cleanup_once(now=now + timedelta(days=30))
+
+    assert result["status"] == "ok"
+    assert result["deleted_count"] == 1
+    assert "Qdrant went away" in caplog.text
 
 
 @pytest.mark.asyncio

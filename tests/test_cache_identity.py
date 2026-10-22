@@ -96,7 +96,7 @@ class _Gateway:
 
 
 class _UnavailableEmbeddings(FixedVectorEmbeddings):
-    async def embed(self, text: str) -> list[float] | None:
+    async def embed(self, text: str, *, timeout: float | None = None) -> list[float] | None:
         self.calls.append(text)
         return None  # what OllamaEmbeddingsService.embed returns when Ollama fails
 
@@ -289,6 +289,8 @@ async def test_a_frontier_hit_records_the_cost_it_avoided_without_spending_it(st
     assert row.estimated_cost == 0.0
     assert spend_before_hit > 0
     assert spend_after_hit == spend_before_hit
+    # No guardrail stood in its way.
+    assert "spend_guardrail" not in row.route_signals
 
 
 @pytest.mark.parametrize("stream", [False, True])
@@ -360,6 +362,8 @@ async def test_a_tenant_over_its_hard_budget_still_gets_its_cached_answer(
     assert row.terminal_status == "cache_hit"
     assert row.estimated_cost == 0.0
     assert spend_after_hit == spent
+    # Savings served past a guardrail can be told apart from ordinary ones.
+    assert row.route_signals["spend_guardrail"] == "hard_budget"
     # Operators still see the budget the answer was served over, and no denial.
     outcome = hit.headers["X-Nebula-Policy-Outcome"]
     assert "hard_budget=exceeded(limit_usd=" in outcome
@@ -457,6 +461,7 @@ async def test_a_request_over_the_per_request_cap_still_gets_its_cached_answer(
     assert "premium answer 1" in _answer(hit)
     assert hit_row.terminal_status == "cache_hit"
     assert "denied=" not in hit_row.policy_outcome
+    assert hit_row.route_signals["spend_guardrail"] == "per_request_cap"
     # With nothing cached the cap denies, as before.
     assert miss.status_code == 403
     assert miss.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
@@ -495,3 +500,63 @@ async def test_denials_other_than_spend_happen_before_the_cache(
     assert row.terminal_status == "policy_denied"
     # A cache that would have answered is never asked.
     assert cache.lookup_calls == []
+
+
+def _turn_the_tenant_cache_off(gateway: _Gateway) -> None:
+    gateway.set_policy(semantic_cache_enabled=False)
+
+
+def _take_embeddings_down(gateway: _Gateway) -> None:
+    gateway.container.chat_service.embeddings_service = _UnavailableEmbeddings()
+
+
+def _make_the_cache_lookup_raise(gateway: _Gateway) -> None:
+    use_fake_cache(
+        gateway.container, FakeCacheService("cached", lookup_error=RuntimeError("qdrant exploded"))
+    )
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize(
+    "cache_cannot_answer",
+    [_turn_the_tenant_cache_off, _take_embeddings_down, _make_the_cache_lookup_raise],
+    ids=["tenant_cache_off", "embeddings_down", "lookup_raises"],
+)
+async def test_a_spend_denial_the_cache_cannot_answer_is_the_usual_403(
+    stream: bool, cache_cannot_answer
+) -> None:
+    async with _gateway() as gateway:
+        await _cache_a_frontier_answer_then_exhaust_the_budget(gateway, stream=stream)
+        cache_cannot_answer(gateway)
+        # HOLA's answer is cached, but this time the cache cannot hand it out.
+        denied = await gateway.post(HOLA, stream=stream)
+        (row,) = gateway.rows_of(denied)
+
+    assert denied.status_code == 403
+    assert denied.json()["detail"].startswith(
+        "Tenant hard budget limit reached; premium routing is blocked"
+    )
+    assert denied.headers["X-Nebula-Route-Reason"] == "policy_premium_only"
+    assert denied.headers["X-Nebula-Route-Tier"] == "denied"
+    assert "denied=Tenant hard budget limit reached" in denied.headers["X-Nebula-Policy-Outcome"]
+    assert (row.terminal_status, row.final_route_target, row.route_signals) == (
+        "policy_denied",
+        "denied",
+        None,
+    )
+    assert row.policy_outcome == denied.headers["X-Nebula-Policy-Outcome"]
+    assert len(gateway.premium.requests) == 1
+
+
+async def test_a_deferred_spend_403_carries_the_rate_limit_headers() -> None:
+    async with _gateway() as gateway:
+        await _cache_a_frontier_answer_then_exhaust_the_budget(gateway, stream=False)
+        gateway.set_policy(rate_limit_requests_per_minute=60)
+        denied = await gateway.post(UNCACHED)
+
+    # Raised after the cache lookup, from inside the handler, it still reports the tenant's
+    # remaining requests like any other response.
+    assert denied.status_code == 403
+    assert denied.headers["X-RateLimit-Limit"] == "60"
+    assert denied.headers["X-RateLimit-Remaining"] == "59"
+    assert "X-RateLimit-Reset" in denied.headers
