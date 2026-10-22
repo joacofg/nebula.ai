@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -64,6 +64,12 @@ metric-judge:
 
 metric-report:
 	$(PYTHON) -m scripts.metric_validation.analyse --reference-rater $(RATER)
+
+# Cache measurement data (needs Ollama with nomic-embed-text and nomic-embed-text-v2-moe, and the
+# router vectors in artifacts/router-embeddings/none.json): PAWS-X pairs and corpus neighbors.
+cache-data:
+	$(PYTHON) -m scripts.cache_eval.pawsx
+	$(PYTHON) -m scripts.cache_eval.neighbors
 
 migrate:
 	./.venv/bin/alembic upgrade head
