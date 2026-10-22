@@ -1,6 +1,6 @@
 # Tier-aware semantic cache keyed by conversation context
 
-A cached answer is reused only for the same conversation context (`context_hash`: SHA-256 of every message except the latest user message) and only by a request whose routed tier it satisfies (the entry's `tier_rank` >= the rank of the chosen tier, with local = 0, economy = 1, frontier = 2). We chose quality over hit rate: a frontier-routed request must never receive an answer produced by a weaker tier, and the same last user message under a different system prompt or history is a different question.
+The cache used to match on the embedding of the latest user message alone, so it could serve an answer written for another conversation, or one produced by a weaker tier than the request was routed to. A cached answer is now reused only for the same conversation context (`context_hash`: SHA-256 of every message except the latest user message), and the tier rule applies to `auto` requests: the entry's `tier_rank` must be at least the rank of the chosen tier (local = 0, economy = 1, frontier = 2), while explicit-model requests skip it and match on `model` equal to the served model. We chose quality over hit rate: a frontier-routed request must never receive an answer produced by a weaker tier, and the same last user message under a different system prompt or history is a different question.
 
 ## Considered Options
 
