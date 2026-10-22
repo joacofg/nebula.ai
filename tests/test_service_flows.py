@@ -1667,6 +1667,60 @@ async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runti
     assert store.policy_updates == []
 
 
+@pytest.mark.parametrize(
+    ("threshold", "action"),
+    [
+        (
+            0.99,
+            "Review the maximum entry age first. Lowering the similarity threshold below the "
+            "product default (0.99) raises reuse, at a precision the cache measurement found "
+            "below its 0.95 criterion (benchmarks/cache/v1/report.md).",
+        ),
+        (
+            0.90,
+            "Review the maximum entry age first. The similarity threshold is already below the "
+            "product default (0.99); lowering it further raises reuse, at a precision the cache "
+            "measurement found below its 0.95 criterion (benchmarks/cache/v1/report.md).",
+        ),
+    ],
+    ids=["at_the_default", "below_the_default"],
+)
+async def test_low_cache_hit_guidance_never_suggests_a_lower_threshold_without_its_cost(
+    threshold: float, action: str
+) -> None:
+    now = datetime.now(UTC)
+    records = [
+        _ledger_record(request_id=f"req-{index}", timestamp=now.replace(microsecond=index))
+        for index in range(6)
+    ]
+    recommendation_service = RecommendationService(
+        governance_store=FakeSimulationGovernanceStore(records),
+        semantic_cache_service=FakeCacheService(),
+    )
+
+    bundle = await recommendation_service.build_summary(
+        tenant_context=AuthenticatedTenantContext(
+            tenant=tenant_context().tenant,
+            api_key=tenant_context().api_key,
+            policy=TenantPolicy(
+                semantic_cache_enabled=True,
+                semantic_cache_similarity_threshold=threshold,
+                semantic_cache_max_entry_age_hours=24,
+            ),
+        )
+    )
+
+    [card] = [
+        item for item in bundle.recommendations if item.code == "tune_semantic_cache_threshold"
+    ]
+    assert card.recommended_action == action
+    assert [(e.label, e.value) for e in card.evidence] == [
+        ("cache_hit_rate", "0%"),
+        ("similarity_threshold", f"{threshold:.2f}"),
+        ("max_entry_age_hours", "24"),
+    ]
+
+
 @pytest.mark.asyncio
 async def test_recommendation_service_sums_the_cost_each_cache_hit_avoided() -> None:
     now = datetime.now(UTC)

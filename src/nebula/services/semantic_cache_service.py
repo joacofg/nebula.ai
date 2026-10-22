@@ -110,13 +110,10 @@ class SemanticCacheService:
                 size = getattr(info.config.params.vectors, "size", None)
                 if size != expected_size:
                     # Vectors of another embedding model: every lookup and store would fail.
-                    reason = (
+                    self._disable(
                         f"Qdrant collection vector size {size} does not match "
                         f"embedding_dimensions {expected_size}."
                     )
-                    logger.warning("semantic_cache_disabled: %s", reason)
-                    self.enabled = False
-                    self.degraded_reason = reason
                     return
             else:
                 await self.client.create_collection(
@@ -150,9 +147,15 @@ class SemanticCacheService:
             self.enabled = True
             self.degraded_reason = None
         except Exception as exc:
-            logger.warning("semantic_cache_disabled: %s", exc)
-            self.enabled = False
-            self.degraded_reason = str(exc)
+            self._disable(str(exc))
+
+    def _disable(self, reason: str) -> None:
+        # A retry every 30 s while Qdrant stays down would repeat the same warning all day: only
+        # the first failure and a change of reason are news.
+        level = logging.DEBUG if reason == self.degraded_reason else logging.WARNING
+        logger.log(level, "semantic_cache_disabled: %s", reason)
+        self.enabled = False
+        self.degraded_reason = reason
 
     async def lookup(
         self,
@@ -331,6 +334,10 @@ class SemanticCacheService:
         await self.client.close()
 
     async def health_status(self) -> dict[str, object]:
+        if not self.enabled:
+            # Health can be the only traffic while Qdrant comes back: it retries too (on the same
+            # 30 s throttle), so it reports what a request would find, not the last attempt's error.
+            await self._retry_initialize()
         try:
             exists = await self.client.collection_exists(self.settings.semantic_cache_collection)
         except Exception as exc:

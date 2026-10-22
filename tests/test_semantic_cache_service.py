@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from time import time
 from types import SimpleNamespace
 from uuid import uuid4
@@ -553,6 +554,65 @@ async def test_failed_retries_are_at_least_30_seconds_apart() -> None:
     assert qdrant.initializations == 3
     assert not service.enabled
     assert service.degraded_reason == "Qdrant is not up yet"
+
+
+async def test_health_picks_up_a_late_qdrant_without_any_lookup() -> None:
+    service, qdrant, clock = await _cache_started_before_qdrant()
+    assert (await service.health_status())["status"] == "degraded"
+
+    qdrant.up = True
+    clock.now += 30.0
+    health = await service.health_status()
+
+    # Health retried on its own: no request had to come first.
+    assert health["status"] == "ready"
+    assert health["enabled"] is True
+    assert service.enabled
+
+
+async def test_health_retries_at_most_every_30_seconds() -> None:
+    service, qdrant, clock = await _cache_started_before_qdrant()
+    clock.now += 30.0
+    assert (await service.health_status())["status"] == "degraded"  # retried; still down
+
+    qdrant.up = True
+    clock.now += 29.0
+    health = await service.health_status()
+    # Qdrant answers, but the last attempt was 29 s ago: the cache stays disabled until 30 s.
+    assert health["status"] == "degraded"
+    assert health["enabled"] is False
+
+    clock.now += 1.0
+    assert (await service.health_status())["status"] == "ready"
+
+
+async def test_a_cache_that_stays_down_warns_once_per_reason(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    caplog.set_level(logging.DEBUG, logger="nebula.services.semantic_cache_service")
+    service, qdrant, clock = await _cache_started_before_qdrant()
+    for _ in range(2):
+        clock.now += 30.0
+        await _lookup(service, min_tier_rank=0)  # retries, and fails the same way
+    qdrant.down_reason = "Connection refused"
+    clock.now += 30.0
+    await _lookup(service, min_tier_rank=0)
+    qdrant.up = True
+    clock.now += 30.0
+    await _lookup(service, min_tier_rank=0)
+
+    logged = [
+        (record.levelname, record.getMessage())
+        for record in caplog.records
+        if record.name == "nebula.services.semantic_cache_service"
+    ]
+    assert logged == [
+        ("WARNING", "semantic_cache_disabled: Qdrant is not up yet"),
+        ("DEBUG", "semantic_cache_disabled: Qdrant is not up yet"),
+        ("DEBUG", "semantic_cache_disabled: Qdrant is not up yet"),
+        ("WARNING", "semantic_cache_disabled: Connection refused"),
+        ("INFO", "semantic_cache_recovered"),
+    ]
 
 
 async def test_initialize_indexes_every_field_a_lookup_filters_on() -> None:

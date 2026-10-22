@@ -192,6 +192,8 @@ class LateQdrant:
     def __init__(self) -> None:
         self._client = AsyncQdrantClient(location=":memory:")
         self.up = False
+        # What every call raises while Qdrant is down.
+        self.down_reason = "Qdrant is not up yet"
         # Every SemanticCacheService initialization starts by asking for the collection (so
         # does its health check: count only where nothing asks for health).
         self.initializations = 0
@@ -203,7 +205,7 @@ class LateQdrant:
             if name == "collection_exists":
                 self.initializations += 1
             if not self.up:
-                raise ConnectionError("Qdrant is not up yet")
+                raise ConnectionError(self.down_reason)
             return await method(*args, **kwargs)
 
         return call

@@ -21,6 +21,28 @@ _LEDGER_WINDOW_LIMIT = 200
 _CACHE_HIT_RECOMMENDATION_THRESHOLD = 0.20
 _PREMIUM_COST_RECOMMENDATION_THRESHOLD_USD = 0.01
 _PREMIUM_SHARE_RECOMMENDATION_THRESHOLD = 0.50
+# The similarity threshold a new tenant starts from, the value the cache measurement registered.
+_PRODUCT_DEFAULT_SIMILARITY_THRESHOLD: float = TenantPolicy.model_fields[
+    "semantic_cache_similarity_threshold"
+].default
+
+
+def _cache_tuning_action(similarity_threshold: float) -> str:
+    """Entry age first: the cache measurement found no threshold that meets its 0.95 precision
+    criterion, so a lower threshold buys reuse with wrong answers (benchmarks/cache/v1/report.md).
+    """
+    default = f"{_PRODUCT_DEFAULT_SIMILARITY_THRESHOLD:.2f}"
+    if similarity_threshold >= _PRODUCT_DEFAULT_SIMILARITY_THRESHOLD:
+        return (
+            "Review the maximum entry age first. Lowering the similarity threshold below the "
+            f"product default ({default}) raises reuse, at a precision the cache measurement found "
+            "below its 0.95 criterion (benchmarks/cache/v1/report.md)."
+        )
+    return (
+        "Review the maximum entry age first. The similarity threshold is already below the "
+        f"product default ({default}); lowering it further raises reuse, at a precision the cache "
+        "measurement found below its 0.95 criterion (benchmarks/cache/v1/report.md)."
+    )
 
 
 @dataclass(slots=True, frozen=True)
@@ -240,8 +262,8 @@ class RecommendationService:
                     priority=2,
                     category="cache",
                     summary="The cache is enabled but recent hit rate is low for the observed request window.",
-                    recommended_action=(
-                        "Review similarity threshold and entry age to improve reuse without widening scope beyond operator controls."
+                    recommended_action=_cache_tuning_action(
+                        policy.semantic_cache_similarity_threshold
                     ),
                     evidence=[
                         RecommendationEvidence(label="cache_hit_rate", value=f"{metrics.cache_hit_rate:.0%}"),
