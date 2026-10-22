@@ -167,9 +167,9 @@
 - `report.pawsx_curve(pairs, *, model_key, grid) -> list[{t, precision, recall, f05, hits}]`
 - `replay.paraphrase_replay(cache, paraphrases, originals, *, t) -> {precision, recall, correct_hits, false_hits, tier_blocked}`
 - `replay.savings_curve(..., rates, t, seed=20261022) -> list[{r, cost_per_1000, saving_vs_frontier, extra_saving_vs_router, quality, hit_rate, false_hit_rate}]` with costs from `router_replay_v1.json` and quality from `benchmarks/ground-truth/v1/tiers.jsonl`.
-- `report.json` keys: `preregistration` (verdict at 0.90, recommended t, both precisions), `pawsx`, `paraphrases`, `neighbors` (counts by cosine band; human-label agreement or `"pendiente"`), `paraphrase_validation` (faithful rate or `"pendiente"`), `savings` (curve + the three cited rates), `models` (production + sensitivity), `provenance` (git sha, file sha256s).
+- `report.json` keys: `preregistration` (`verdict`, one of `pass` / `fail` / `no_safe_threshold` / `not_measurable`; `recommended_t`; both precisions and both recalls at 0.90 and at the recommended t; hit counts per set), `pawsx`, `paraphrases`, `neighbors` (counts by cosine band; human-label agreement or `"pendiente"`), `paraphrase_validation` (faithful rate or `"pendiente"`), `savings` (curve + the three cited rates), `models` (production + sensitivity), `provenance` (git sha, file sha256s).
 
-- [ ] **Step 1: Failing tests:** precision/recall on a hand-made 6-pair fixture; the replay imports and uses `SemanticCacheService` (assert type); savings at r=0 equal the router-only cost per 1000 from `router_replay_v1.json` (1.70 ± 0.01 at target 0.95); missing label files yield `"pendiente"`.
+- [ ] **Step 1: Failing tests:** precision/recall on a hand-made 6-pair fixture; the replay imports and uses `SemanticCacheService` (assert type); savings at r=0 equal the router-only cost per 1000 from `router_replay_v1.json` (1.70 ± 0.01 at target 0.95); missing label files yield `"pendiente"`; the verdict function returns each of `pass` / `fail` / `no_safe_threshold` / `not_measurable` on hand-made grids (eligibility needs >= 20 hits in both sets, ties go to the smallest t, comparisons use unrounded values).
 - [ ] **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS.
 - [ ] **Step 5:** `darwin-throttle make cache-eval`; commit the reports.
 - [ ] **Step 6: Commit** `feat(cache-eval): measure cache precision and its saving over the router`.
@@ -178,7 +178,11 @@
 
 **Files:** `src/nebula/models/governance.py` (`semantic_cache_similarity_threshold` default), `scripts/demo_prepare.py`, `docs/self-hosting.md`, tests asserting the default.
 
-- [ ] **Step 1:** Read `report.json` `preregistration`. If the verdict at 0.90 passes → no change; record that in the commit-less ledger note and skip. If it fails → write a failing test asserting the new default equals the recommended t, then change the default, the demo tenant policy and the doc line.
+- [ ] **Step 1:** Read `report.json` `preregistration.verdict` and act on its four outcomes:
+  - `pass` → no change; record that in the commit-less ledger note and skip.
+  - `not_measurable` → no change; record that in the commit-less ledger note and skip.
+  - `fail` (a recommended t exists) → write a failing test asserting the new default equals `recommended_t`, then change the default, the demo tenant policy and the doc line.
+  - `no_safe_threshold` → same as `fail` (the default becomes `recommended_t`), and the doc line says the new default does not meet the 0.95 precision criterion.
 - [ ] **Step 2:** Run the touched tests — PASS. **Step 3: Commit** `fix(cache): raise the default similarity threshold to the measured safe value` (only if changed).
 
 ### Task 10: Thesis

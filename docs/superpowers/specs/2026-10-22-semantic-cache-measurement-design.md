@@ -79,8 +79,8 @@ that file):
     unit-normalized.
   - (a) PAWS-X `es` test: the 2000 human-translated pairs of the official PAWS-X release
     (`es/test_2k.tsv` from `x-final.tar.gz`; the archive SHA-256 is recorded with the data).
-    Label 1 = paraphrase. Prediction = cosine(sentence1, sentence2) ≥ t. Precision =
-    TP / (TP + FP); recall = TP / (TP + FN).
+    Label 1 = paraphrase. Prediction = cosine(sentence1, sentence2) ≥ t; a hit in (a) is a
+    positive prediction (TP + FP). Precision = TP / (TP + FP); recall = TP / (TP + FN).
   - (c) Paraphrase replay: the cache holds the 1000 Spanish corpus originals. Queries are the 200
     paraphrases (200 prompts stratified 40 per task, seed `20261022`, one `qwen2.5:7b` rewrite
     each, temperature 0, fixed seed) and the 1000 originals leave-one-out. A correct hit is a
@@ -98,21 +98,27 @@ that file):
     and (c) (avoids 0/0 and tiny-sample precision). Only an eligible point can pass or be
     recommended.
   - Pass at 0.90 = both precisions ≥ 0.95 at t = 0.90.
-  - If it fails at 0.90: report it as a result. The recommended t is the smallest eligible t on
-    the grid with both precisions ≥ 0.95; report PAWS-X recall and replay recall there. The
-    criterion does not move.
+  - If it does not pass at 0.90 (including when 0.90 is not eligible): report it as a result.
+    The recommended t is the smallest eligible t on the grid with both precisions ≥ 0.95; report
+    PAWS-X recall and replay recall there. The criterion does not move.
   - If no eligible t reaches 0.95 on both: report "no safe threshold on the grid" and recommend
-    the eligible t with the highest min(precision_a, precision_c).
+    the eligible t with the highest min(precision_a, precision_c); among ties, the smallest t.
   - If no grid point is eligible, the verdict is "not measurable with these data", the product
     default stays 0.90, and the report says so.
-  - Consequence: on a pass the product default stays 0.90; when a t is recommended, the product default
-    becomes that t (new tenants only).
+  - Comparisons (against 0.95, the minimum, ties) use unrounded values.
+  - Consequence: on a pass the product default stays 0.90; when a t is recommended, the product
+    default becomes that t (new tenants only; stored tenant policies keep their value).
   - The 40-item human paraphrase sample and the neighbor labels (b) are reported and never
     adjust the verdict.
 - **Declared beforehand:** the corpus neighbors (b) were inspected during design: 22 pairs of
   distinct Spanish prompts at cosine ≥ 0.90, mostly false hits. These 22 pairs are part of the (b)
   set (cosine ≥ 0.85) and were seen non-blind; one of them is the near-identical MBPP pair
-  (`es:code-0113` vs `es:code-0138`, cosine 1.0). The neighbors are therefore descriptive only.
+  (`es:code-0113` vs `es:code-0138`, cosine 1.0). The neighbors are therefore descriptive only and
+  do not enter the verdict. The same pairs are corpus originals, so in (c) they also appear as
+  leave-one-out false hits by rule (including `es:code-0113` vs `es:code-0138`, which is
+  semantically a correct hit). The author saw them before fixing this criterion, which makes a
+  fail of (c) at 0.90 likely and known in advance; the criterion was kept because a cache that
+  serves a different question's answer at 0.90 is exactly what it must reject.
 - **Sensitivity model:** `nomic-embed-text` v1.5 is an English model; `nomic-embed-text-v2-moe`
   (multilingual) is measured as sensitivity only and does not enter the verdict.
 - **Computed by:** `make cache-eval`, which writes the verdict to
@@ -125,8 +131,9 @@ that file):
   `pawsx/pairs.jsonl` with both models' cosines and the dataset's license notice.
 - **(b) Corpus neighbors**: every pair of distinct prompts among the 1000 Spanish corpus prompts
   with cosine ≥ 0.85 (production embedding), committed as `neighbors/pairs.jsonl`. Joaquín labels
-  them blind ("¿una respuesta a A sirve para B?"); labels go to `neighbors/labels/human-es-1.jsonl`.
-  Descriptive only.
+  them ("¿una respuesta a A sirve para B?"); labels go to `neighbors/labels/human-es-1.jsonl`.
+  The 22 pairs at cosine ≥ 0.90 were seen by the author during design (non-blind); the remaining
+  pairs are labeled blind. Descriptive only.
 - **(c) Paraphrases**: 200 corpus prompts stratified by task (40 per task, seed `20261022`),
   each rewritten once by local `qwen2.5:7b` (temperature 0, fixed seed) with the instruction
   "Reescribe la siguiente consulta con otras palabras, sin cambiar lo que pide ni agregar
@@ -145,7 +152,8 @@ that file):
   Spanish originals (each with its router tier at target 0.95 and its answer at that tier). Queries:
   the 200 paraphrases (a correct hit is the paraphrase's own original) and the 1000 originals
   leave-one-out (any hit is a false hit). Precision = correct hits / hits; recall = correct
-  paraphrase hits / 200. Tier-aware blocks are counted separately.
+  paraphrase hits / 200. The verdict-precision pass runs with the tier rule off (similarity only);
+  the savings replay runs with the tier rule on and counts tier-aware blocks.
 - **Savings vs repetition rate:** a deterministic trace of 1000 requests per repetition rate
   r ∈ {0, 0.05, …, 0.40}, where each request is a repeat with probability r (half exact repeats,
   half paraphrases from (c)), replayed through the same service at the recommended threshold.
@@ -162,9 +170,11 @@ label files exist.
 
 ### Threshold decision (C1)
 
-If the verdict at 0.90 fails, the default `semantic_cache_similarity_threshold` for new tenants
-becomes the recommended t (pydantic default; `scripts/demo_prepare.py` policy; docs). Stored
-tenant policies keep their value (no migration).
+If the verdict at 0.90 does not pass and a t is recommended (a fail with a recommended t, or no
+safe threshold), the default `semantic_cache_similarity_threshold` for new tenants becomes the
+recommended t (pydantic default; `scripts/demo_prepare.py` policy; docs); with no safe threshold
+the docs say that the recommended t does not meet 0.95. A pass, or "not measurable", leaves the
+default at 0.90. Stored tenant policies keep their value (no migration).
 
 ## Part C — thesis and docs
 
