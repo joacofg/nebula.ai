@@ -103,8 +103,10 @@ that file):
     criterion does not move.
   - If no eligible t reaches 0.95 on both: report "no safe threshold on the grid" and recommend
     the eligible t with the highest min(precision_a, precision_c).
-  - Consequence: on a pass the product default stays 0.90; otherwise the product default becomes
-    the recommended t (new tenants only).
+  - If no grid point is eligible, the verdict is "not measurable with these data", the product
+    default stays 0.90, and the report says so.
+  - Consequence: on a pass the product default stays 0.90; when a t is recommended, the product default
+    becomes that t (new tenants only).
   - The 40-item human paraphrase sample and the neighbor labels (b) are reported and never
     adjust the verdict.
 - **Declared beforehand:** the corpus neighbors (b) were inspected during design: 22 pairs of

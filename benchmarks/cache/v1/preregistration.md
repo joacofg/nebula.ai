@@ -22,7 +22,8 @@ The cache is *safe at a threshold t* when precision >= **0.95** on both (a) and 
 - **Pass at 0.90:** both precisions are >= 0.95 at t = 0.90.
 - **If it fails at 0.90:** report it as a result. The recommended t is the smallest eligible t on the grid with both precisions >= 0.95; report PAWS-X recall and replay recall there. The criterion does not move.
 - **If no eligible t reaches 0.95 on both:** report "no safe threshold on the grid" and recommend the eligible t with the highest min(precision_a, precision_c).
-- **Consequence:** on a pass the product default stays 0.90; otherwise the product default becomes the recommended t (new tenants only; stored tenant policies keep their value).
+- **If no grid point is eligible:** the verdict is "not measurable with these data", the product default stays 0.90, and the report says so.
+- **Consequence:** on a pass the product default stays 0.90; when a t is recommended, the product default becomes that t (new tenants only; stored tenant policies keep their value).
 - The 40-item human paraphrase sample and the neighbor labels (b) are reported and never adjust the verdict.
 
 ## Declared beforehand
