@@ -131,7 +131,15 @@ A cached answer costs nothing, so when the only reason to deny a request is a sp
 
 ## Semantic cache threshold
 
-A new tenant's `semantic_cache_similarity_threshold` defaults to `0.99`, the value the pre-registered rule of the cache measurement picked. It does not meet that measurement's 0.95 precision criterion: at 0.99 the precision is 0.620408 on the PAWS-X (a) set and 0.92 on the paraphrase replay (c), with a paraphrase recall of 0.132948. No threshold met the criterion, so a cache hit can still be a wrong answer; lower the threshold only with that in mind. The measurement is in [`benchmarks/cache/v1/report.md`](../benchmarks/cache/v1/report.md). The default applies to tenants created after the change: an existing tenant keeps the value stored in its policy, and an operator can change it per tenant in the console's policy page.
+A new tenant's `semantic_cache_similarity_threshold` defaults to `0.99`, the value the pre-registered rule of the cache measurement picked. It does not meet that measurement's 0.95 precision criterion: at 0.99 the precision is 0.620408 on PAWS-X and 0.92 on the paraphrase replay, with a paraphrase recall of 0.132948. No threshold met the criterion, so a cache hit can still be a wrong answer; lower the threshold only with that in mind. The measurement is in [`benchmarks/cache/v1/report.md`](../benchmarks/cache/v1/report.md). The default applies to tenants created after the change: an existing tenant keeps the value stored in its policy, and an operator can change it per tenant in the console's policy page.
+
+### Upgrading
+
+Upgrading an existing deployment to this version of the semantic cache changes three things:
+
+- The Prometheus label `nebula_cache_lookups_total{result="miss"}` is gone. A miss is now counted as `no_candidate` (no entry passed the tenant, freshness, conversation and tier filters) or `below_threshold` (the closest entry was not similar enough); update dashboards and alerts that read `miss`.
+- At startup the gateway deletes the Qdrant points written before entries carried a tier, since no lookup can match them. The first start after the upgrade begins with a cold cache; later starts find nothing to delete.
+- Existing tenants keep the similarity threshold stored in their policy; only tenants created after the upgrade start at `0.99`.
 
 ## Related docs
 
