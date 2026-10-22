@@ -132,7 +132,8 @@ con el tráfico propio de cada organización.
 2. **El corpus no es tráfico de producción.** Son 1250 prompts de tres datasets públicos y cinco
    tareas, casi sin consultas repetidas. *Impacto:* la proporción de pedidos que el local puede
    atender depende de la mezcla de tareas, y el aporte del caché solo se pudo estimar sobre trazas
-   sintéticas, con tasas de repetición tomadas de otros contextos. *Superación:* reentrenar y
+   sintéticas que recorren tasas de repetición de 0 a 40 %; solo las que se marcan en la sección
+   11.2.3 vienen de la literatura, que las midió sobre otro tráfico. *Superación:* reentrenar y
    reevaluar con una muestra juzgada del tráfico real de un tenant, que diga también cuánto se
    repite ese tráfico.
 3. **El modelo local es lento en el hardware de la evaluación.** La mediana es de 21.3 s por

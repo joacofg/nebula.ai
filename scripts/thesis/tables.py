@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 from scripts.metric_validation import rubric
@@ -473,7 +474,8 @@ class GeneratorError(ValueError):
     pass
 
 
-def _render(name: str, source: Path, build) -> str:
+def _render[T](name: str, source: Path, build: Callable[[], T]) -> T:
+    """``build()``, with a malformed report reported by block name and file."""
     try:
         return build()
     except FileNotFoundError:

@@ -117,7 +117,9 @@ console-test:
 console-e2e:
 	npm --prefix console run e2e
 
-# Thesis: rewrite every <!-- GEN:... --> block from the committed reports (no network).
+# Thesis: rewrite every <!-- GEN:... --> block and the two CP-18 table rows (Table 11.3 and
+# Table A.1) from the committed reports (no network). `python -m scripts.thesis.tables --check`
+# writes nothing and fails if any of them is stale.
 thesis-tables:
 	$(PYTHON) -m scripts.thesis.tables
 

@@ -109,7 +109,7 @@ hipótesis.
 ### 11.2.2 Casos de prueba
 
 La Tabla 11.3 resume los casos de prueba. La tabla completa, con la entrada y el test o reporte
-que respalda cada caso, está en el Anexo A. La suite automática tiene 458 pruebas del backend (pytest) y 182 de la consola (Vitest), todas en verde en la última corrida (19 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
+que respalda cada caso, está en el Anexo A. La suite automática tiene 811 pruebas del backend (pytest) y 186 de la consola (Vitest), todas en verde en la última corrida (22 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
 
 **Tabla 11.3.** Casos de prueba (P = pasó, F = falló).
 
@@ -432,8 +432,9 @@ falso, y algunos prompts distintos del corpus tienen entre sí un coseno tan alt
 umbrales, el caché serviría la respuesta de uno para el otro. Es lo que anticipaba la sección
 8.2.4: el umbral depende del modelo de embeddings y del tipo de consulta. Además, el riesgo era
 conocido. Los pares vecinos más cercanos del corpus se habían visto antes de fijar el criterio, y
-el pre-registro advirtió que hacían probable que el replay fallara en 0.90. El criterio se mantuvo igual, porque un caché que sirve la respuesta de
-otra pregunta es justamente lo que tiene que rechazar.
+el pre-registro advirtió que hacían probable que el replay fallara en 0.90. El criterio se mantuvo
+igual, porque un caché que sirve la respuesta de otra pregunta es justamente lo que tiene que
+rechazar.
 
 La consecuencia está en el producto. Como fija la regla pre-registrada, el umbral por defecto para
 los tenants nuevos pasó de 0.90 a 0.99, el de mayor precisión mínima entre los dos conjuntos,
@@ -450,8 +451,8 @@ pre-registrado, 0.90, el ahorro adicional sería mayor (11.4 % con la tasa de LM
 la calidad bajaría a 0.980, porque cada falso acierto sirve la respuesta de otro prompt, y por la
 regla vale cero: es el costo que el criterio buscaba evitar. Estos porcentajes no se suman al
 31 %, porque se miden contra el router en la misma traza, que solo tiene prompts en español y es
-más cara de rutear que el corpus completo. Lo que sí se puede afirmar es que el caché agrega ahorro al del router, y que
-cuánto agrega depende de cuánto se repite el tráfico.
+más cara de rutear que el corpus completo. Lo que sí se puede afirmar es que el caché agrega
+ahorro al del router, y que cuánto agrega depende de cuánto se repite el tráfico.
 
 Con el objetivo en 0.90 el router ahorra bastante más (57 %, USD 1.06), pero la calidad cae a
 0.903, casi 10 puntos por debajo de la referencia, y no cumple el segundo criterio. Ese punto

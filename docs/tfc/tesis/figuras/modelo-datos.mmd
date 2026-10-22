@@ -47,8 +47,9 @@ erDiagram
     CACHE_POINT {
         vector embedding "Qdrant"
         string tenant_id
-        string prompt
-        string response
+        string context_hash
         string model
-        datetime created_at
+        int tier_rank
+        string response
+        int created_at
     }
