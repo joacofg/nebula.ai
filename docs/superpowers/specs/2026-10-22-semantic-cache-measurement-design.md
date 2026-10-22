@@ -43,7 +43,8 @@ spend and the hard budget are unchanged. The recommendations' `avoided_premium_c
 
 ### Cache before spend guardrails (C9)
 
-When the only reason to deny a request is a spend guardrail (hard budget with `deny`, or the
+When the only reason to deny a request is a spend guardrail (hard budget with `deny`, or with
+`downgrade` when the request cannot be downgraded (explicit premium model or premium_only), or the
 per-request premium cap), the gateway first looks the request up in the cache. A hit is served
 (cost 0, normal cache-hit row). A miss gets the same 403, headers and `policy_denied` ledger row
 as today. Every other denial (routing mode, explicit-model conflict, model allowlist) still
