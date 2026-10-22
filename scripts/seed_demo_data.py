@@ -1,7 +1,9 @@
 """Seed realistic demo data through the live gateway.
 
 Usage: python scripts/seed_demo_data.py  (gateway must be running on :8000)
-Re-runnable: tenant/key creation tolerates 'already exists'; completions append.
+Re-runnable: an existing tenant or active key is left alone; completions append.
+A revoked demo key cannot be recreated (the gateway keeps its secret), so the script stops
+with instructions to reset the local database instead of sending traffic that would fail.
 """
 from __future__ import annotations
 
@@ -64,7 +66,33 @@ CACHE_PROMPTS = [
 ]
 
 
-def ensure_governance(client: httpx.Client) -> None:
+DEMO_KEY_REVOKED_MESSAGE = (
+    "La clave de demo fue revocada y su secreto no se puede reutilizar. "
+    "Borrar .nebula/nebula.db, correr make migrate y volver a correr make demo."
+)
+
+
+class DemoKeyRevokedError(Exception):
+    """The demo key exists but is revoked, so nothing can send traffic with it."""
+
+
+def demo_key_state(records: list[dict]) -> str:
+    """'active', 'revoked' or 'missing' for the demo key in an admin key list.
+
+    A revoked key cannot authenticate, yet it still owns its secret, so it can be
+    neither used nor created again.
+    """
+    demo = [
+        rec
+        for rec in records
+        if rec.get("name") == "acme-demo-key" and rec.get("tenant_id") == DEMO_TENANT_ID
+    ]
+    if any(not rec.get("revoked_at") for rec in demo):
+        return "active"
+    return "revoked" if demo else "missing"
+
+
+def ensure_governance(client: httpx.Client, *, require_key: bool) -> None:
     r = client.get(f"{BASE}/v1/admin/tenants/{DEMO_TENANT_ID}", headers=ADMIN_HEADERS)
     if r.status_code == 200:
         print(f"tenant {DEMO_TENANT_ID}: exists")
@@ -87,12 +115,18 @@ def ensure_governance(client: httpx.Client) -> None:
 
     r = client.get(f"{BASE}/v1/admin/api-keys", headers=ADMIN_HEADERS)
     r.raise_for_status()
-    existing = any(
-        rec.get("name") == "acme-demo-key" and rec.get("tenant_id") == DEMO_TENANT_ID
-        for rec in r.json()
-    )
-    if existing:
+    state = demo_key_state(r.json())
+    if state == "active":
         print("api key acme-demo-key: exists")
+    elif state == "revoked":
+        # The gateway keeps the revoked row's secret, so creating the key again would be
+        # refused. Say so here instead of surfacing that refusal as a traceback.
+        if require_key:
+            raise DemoKeyRevokedError(DEMO_KEY_REVOKED_MESSAGE)
+        print(
+            "api key acme-demo-key: revocada; el Playground funciona, "
+            "pero scripts/seed_demo_data.py no podrá enviar tráfico con ella"
+        )
     else:
         r = client.post(
             f"{BASE}/v1/admin/api-keys",
@@ -121,7 +155,11 @@ def send(client: httpx.Client, prompt: str) -> str:
 def main() -> int:
     counts: dict[str, int] = {}
     with httpx.Client(timeout=120) as client:
-        ensure_governance(client)
+        try:
+            ensure_governance(client, require_key=True)
+        except DemoKeyRevokedError as error:
+            print(error, file=sys.stderr)
+            return 1
         plan = (
             [(p, "local") for p in LOCAL_PROMPTS]
             + [(p, "premium") for p in PREMIUM_PROMPTS]

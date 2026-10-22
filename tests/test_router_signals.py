@@ -39,7 +39,7 @@ async def test_live_routing_signals_include_calibrated_breakdown() -> None:
     assert decision.reason == "token_complexity"
     assert decision.signals["token_count"] == 30
     assert decision.signals["complexity_tier"] == "low"
-    assert decision.signals["budget_proximity"] is None
+    assert "budget_proximity" not in decision.signals
     assert decision.signals["model_constraint"] is False
     assert decision.signals["keyword_match"] is False
     assert decision.signals["route_mode"] == "calibrated"
@@ -59,7 +59,6 @@ async def test_live_routing_signals_include_calibrated_breakdown() -> None:
         "token_score": 0.06,
         "keyword_bonus": 0.0,
         "policy_bonus": 0.0,
-        "budget_penalty": 0.0,
         "outcome_bonus": 0.0,
         "evidence_penalty": 0.0,
         "total_score": 0.06,
@@ -183,7 +182,6 @@ async def test_replay_uses_persisted_signals_without_degradation() -> None:
         "token_score": 0.24,
         "keyword_bonus": 0.0,
         "policy_bonus": 0.0,
-        "budget_penalty": 0.0,
         "outcome_bonus": 0.0,
         "evidence_penalty": 0.0,
         "total_score": 0.24,
@@ -213,7 +211,6 @@ async def test_replay_marks_degraded_when_signals_are_missing() -> None:
         "token_score": 0.1,
         "keyword_bonus": 0.2,
         "policy_bonus": 0.0,
-        "budget_penalty": 0.0,
         "outcome_bonus": 0.0,
         "evidence_penalty": 0.0,
         "total_score": 0.3,
@@ -244,7 +241,6 @@ def test_route_signals_persisted_in_ledger() -> None:
     assert body[0]["request_id"] == request_id
     assert body[0]["route_reason"] == "token_complexity"
     assert body[0]["route_signals"] == {
-        "budget_proximity": None,
         "calibrated_routing": True,
         "complexity_tier": "medium",
         "degraded_routing": False,
@@ -262,7 +258,6 @@ def test_route_signals_persisted_in_ledger() -> None:
         "replay": False,
         "route_mode": "calibrated",
         "score_components": {
-            "budget_penalty": 0.0,
             "evidence_penalty": 0.05,
             "keyword_bonus": 0.0,
             "outcome_bonus": 0.0,

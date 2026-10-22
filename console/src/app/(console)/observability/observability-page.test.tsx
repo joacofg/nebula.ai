@@ -76,13 +76,11 @@ describe("ObservabilityPage", () => {
           complexity_tier: "high",
           keyword_match: true,
           model_constraint: false,
-          budget_proximity: 0.33,
           score_components: {
             total_score: 0.91,
             token_score: 0.66,
             keyword_bonus: 0.15,
             policy_bonus: 0.1,
-            budget_penalty: 0,
           },
         },
         message_type: "chat",

@@ -3,11 +3,25 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import AsyncIterator, Protocol
 
+import httpx
+
 from nebula.models.openai import ChatCompletionRequest
+
+_ERROR_BODY_LIMIT = 300
 
 
 class ProviderError(Exception):
     """Raised when a downstream provider fails."""
+
+
+def describe_http_error(exc: httpx.HTTPError) -> str:
+    """Keep the upstream status and the start of its body, which httpx drops from its message.
+
+    For a streamed response the caller must `aread()` the body before describing the error.
+    """
+    if isinstance(exc, httpx.HTTPStatusError):
+        return f"HTTP {exc.response.status_code}: {exc.response.text[:_ERROR_BODY_LIMIT]}"
+    return str(exc)
 
 
 @dataclass(slots=True)

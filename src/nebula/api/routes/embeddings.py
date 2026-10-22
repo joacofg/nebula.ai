@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
-from nebula.api.dependencies import get_embeddings_service, get_rate_limited_tenant_context
+from nebula.api.dependencies import enforce_rate_limit, get_embeddings_service, get_tenant_context
 from nebula.core.container import ServiceContainer
 from nebula.models.governance import UsageLedgerRecord
 from nebula.models.openai import EmbeddingsResponse, EmbeddingsUsage, EmbeddingsRequest, EmbeddingData
@@ -30,8 +30,9 @@ async def create_embeddings(
     request: Request,
     response: Response,
     service: OllamaEmbeddingsService = Depends(get_embeddings_service),
-    tenant_context: AuthenticatedTenantContext = Depends(get_rate_limited_tenant_context),
+    tenant_context: AuthenticatedTenantContext = Depends(get_tenant_context),
 ) -> EmbeddingsResponse:
+    await enforce_rate_limit(request, response, tenant_context)
     container = request.app.state.container
     request_id = getattr(request.state, "request_id", None)
     try:
@@ -48,7 +49,7 @@ async def create_embeddings(
             policy_outcome=str(exc),
         )
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=str(exc),
         ) from exc
     except EmbeddingsUpstreamError as exc:

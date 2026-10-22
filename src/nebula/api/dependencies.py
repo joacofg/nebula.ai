@@ -2,7 +2,7 @@ import logging
 from datetime import UTC, datetime
 from uuid import uuid4
 
-from fastapi import Depends, Header, HTTPException, Request, Response, status
+from fastapi import Header, HTTPException, Request, Response, status
 
 from nebula.core.container import ServiceContainer
 from nebula.models.governance import UsageLedgerRecord
@@ -66,18 +66,19 @@ def _rate_limit_headers(result) -> dict[str, str]:
     }
 
 
-async def get_rate_limited_tenant_context(
+async def enforce_rate_limit(
     request: Request,
     response: Response,
-    tenant_context: AuthenticatedTenantContext = Depends(get_tenant_context),
-) -> AuthenticatedTenantContext:
-    """Authenticate, then spend one of the tenant's requests for this minute.
+    tenant_context: AuthenticatedTenantContext,
+) -> None:
+    """Spend one of the tenant's requests for this minute, or raise the 429.
 
-    Runs before routing, so a rejected request costs neither an embedding nor a model call.
+    Handlers call this first, after authentication and body validation, so a malformed
+    request costs no token and a rejected one costs neither an embedding nor a model call.
     """
     limit = tenant_context.policy.rate_limit_requests_per_minute
     if limit is None:
-        return tenant_context
+        return
     container = get_container(request)
     tenant_id = tenant_context.tenant.id
     result = await container.rate_limiter.acquire(tenant_id, limit_per_minute=limit)
@@ -85,7 +86,7 @@ async def get_rate_limited_tenant_context(
     request.state.rate_limit_headers = headers
     if result.allowed:
         response.headers.update(headers)
-        return tenant_context
+        return
 
     RATE_LIMITED_COUNT.labels(tenant_id).inc()
     is_embeddings = request.url.path.endswith("/embeddings")
@@ -94,7 +95,7 @@ async def get_rate_limited_tenant_context(
         body = await request.json()
         model = body.get("model") if isinstance(body, dict) else None
         if isinstance(model, str) and model:
-            requested_model = model[:255]  # unvalidated input: bounded to the column
+            requested_model = model  # already bounded to the column by request validation
     except Exception:  # noqa: BLE001 - a malformed body is still a rate-limited request
         pass
     request_id = getattr(request.state, "request_id", None) or f"req-{uuid4().hex}"

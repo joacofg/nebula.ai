@@ -15,21 +15,13 @@ TerminalStatus = Literal[
     "policy_denied",
     "provider_error",
     "rate_limited",
+    "client_disconnected",
 ]
 CalibrationEvidenceState = Literal["sufficient", "thin", "stale", "degraded"]
-# M009 keeps the externally-visible calibration_summary field name for compatibility,
-# but downstream slices should treat it as the shared outcome-evidence summary seam.
+# The externally visible field keeps the name calibration_summary for compatibility;
+# treat it as the shared outcome-evidence summary.
 OutcomeEvidenceState = CalibrationEvidenceState
 CalibrationEvidenceScope = Literal["tenant", "tenant_window"]
-CalibrationDegradedReason = Literal[
-    "missing_route_signals",
-    "degraded_replay_signals",
-]
-CalibrationExcludedReason = Literal[
-    "explicit_model_override",
-    "policy_forced_routing",
-]
-CalibrationGatedReason = Literal["calibrated_routing_disabled"]
 EvidenceRetentionWindow = Literal["24h", "7d", "30d", "90d"]
 MetadataMinimizationLevel = Literal["standard", "strict"]
 GovernedMetadataField = Literal["route_signals"]
@@ -69,8 +61,8 @@ class TenantRecord(BaseModel):
 
 
 class TenantCreateRequest(BaseModel):
-    id: str = Field(min_length=1)
-    name: str = Field(min_length=1)
+    id: str = Field(min_length=1, max_length=255)
+    name: str = Field(min_length=1, max_length=255)
     description: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
     active: bool = True
@@ -78,7 +70,7 @@ class TenantCreateRequest(BaseModel):
 
 
 class TenantUpdateRequest(BaseModel):
-    name: str | None = Field(default=None, min_length=1)
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     description: str | None = None
     metadata: dict[str, Any] | None = None
     active: bool | None = None
@@ -96,7 +88,7 @@ class ApiKeyRecord(BaseModel):
 
 
 class ApiKeyCreateRequest(BaseModel):
-    name: str = Field(min_length=1)
+    name: str = Field(min_length=1, max_length=255)
     tenant_id: str | None = None
     allowed_tenant_ids: list[str] = Field(default_factory=list)
     key: str | None = Field(default=None, min_length=8)

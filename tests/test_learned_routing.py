@@ -198,11 +198,6 @@ async def _route(vector, *, policy=None, request=None, settings=None, routing_mo
     )
 
 
-def test_router_uses_embeddings_only_with_a_learned_model() -> None:
-    assert RouterService(_settings()).uses_embeddings is False
-    assert RouterService(_settings(), learned=_learned()).uses_embeddings is True
-
-
 async def test_learned_router_picks_the_tier_from_the_vector() -> None:
     local = await _route(LOCAL_VECTOR)
     economy = await _route(ECONOMY_VECTOR)
@@ -361,13 +356,13 @@ def test_container_loads_the_artifact_only_when_enabled(tmp_path: Path) -> None:
     artifact = _write_artifact(tmp_path)
     with configured_app() as app:
         with TestClient(app):
-            assert app.state.container.router_service.uses_embeddings is False
+            assert app.state.container.router_service.learned is None
     with configured_app(
         NEBULA_LEARNED_ROUTER_ENABLED="true", NEBULA_LEARNED_ROUTER_PATH=str(artifact)
     ) as app:
         with TestClient(app):
             router = app.state.container.router_service
-            assert router.uses_embeddings is True
+            assert router.learned is not None
             assert router.learned.version == "v1-test"
 
 

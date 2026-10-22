@@ -6,28 +6,47 @@
 **Priority:** P2
 **Detail:** Mobile nav toggle below `lg`; componentize ~22 duplicated rose error banners; wire or delete dead tokens `--color-success`/`--color-danger` and unify rose-vs-pink danger; consolidate 76 magic `tracking-[…]` values into a token; trim happy-talk page headers; replace login 3-column feature grid; modal focus trap (Escape done); skeleton loading states; form label casing (id/name/Description/active — asserted in tests). Full report: `~/.gstack/projects/joacofg-nebula.ai/designs/design-audit-20260713/`.
 
-## Backend / API
+## Gateway / Ledger (deferred from the 2026-10-21 backend-guardrails review)
 
-### Admin create endpoints return 500 instead of 409 on duplicates
+### Mid-stream premium provider errors record cost 0
 **Priority:** P2
-**Noticed:** demo-polish rehearsal, 2026-07-16.
-**Detail:** `POST /v1/admin/tenants` with an existing tenant id raises `ValueError("Tenant already exists")` (`src/nebula/services/governance_store.py:154`) which surfaces as HTTP 500; `create_api_key` has no duplicate guard at all. Both should return 409 with a clear detail message. Also: the api-key existence check in `scripts/seed_demo_data.py` matches revoked keys because `list_api_keys` doesn't filter `revoked_at` — fix alongside the 409 work.
+**Detail:** When a premium stream fails after it has started sending chunks,
+`_wrap_stream_with_ledger` records `terminal_status="provider_error"` with no
+usage, so the row carries no cost even though the provider billed the tokens
+already streamed. Spend skips `provider_error` rows too, so the hard budget undercounts
+these requests (the same class of gap as B5, abandoned streams). Estimate usage
+from the content already streamed, as the `client_disconnected` path does, and
+decide whether those rows count toward spend.
 
-### `budget_penalty` is a dead routing signal
-**Priority:** P2
-**Noticed:** eng review of the v4.0 Fase 1 plan, 2026-08-31.
-**Detail:** `src/nebula/services/router_service.py:200` hardcodes `budget_penalty = 0.0`
-and never reassigns it; `budget_proximity` stays `None` for every request. Both are
-surfaced as routing signals in `X-Nebula-Route-Score` and persisted to the usage ledger,
-so an operator who configures a tenant budget reasonably expects routing to respect it,
-and it never does. Of the six score components this is the only one dead by hardcoded
-value rather than by the `if` in `_decision_from_breakdown` ignoring the score entirely.
-**Depends on:** Fase 2 (wiring `total_score` into the routing decision). Fixing this
-before Fase 2 changes no behavior, because the score decides nothing today. Fix it as
-part of Fase 2, not before. Full context:
-`docs/designs/quality-measurement-routing-regret.md`.
+### A stream abandoned before its first pull records no ledger row
+**Priority:** P3
+**Detail:** `chat_service` pulls the provider's first chunk (so an upstream
+error becomes a 502 before the 200 is committed) before the ledger wrapper
+starts. If the client disconnects before the server first pulls from the
+wrapper, its `try`/`finally` never runs and no row is written, although a
+premium provider already served (and billed) that chunk. Prime the wrapper
+(start it before returning the response) or record the row from the route when
+the response is torn down unstarted.
 
 ## Completed
+
+### Admin create endpoints returned 500 instead of 409 on duplicates
+**Priority:** P2
+**Completed:** 2026-10-21
+**Resolution:** The store raises typed errors that the admin routes map to
+409 (duplicate tenant id or API-key secret), 404 (unknown tenant) and 422 (key
+scoped to no tenant). `scripts/seed_demo_data.py` now recognises a revoked demo
+key instead of treating it as missing.
+
+### `budget_penalty` was a dead routing signal
+**Priority:** P2
+**Completed:** 2026-10-21
+**Resolution:** Removed `budget_penalty` and `budget_proximity` from the score
+breakdown, the route signals, the ledger payload and the console ledger detail.
+Both were hardcoded to `0.0` / `None`, so `X-Nebula-Route-Score` keeps the same
+value. Budgets stay enforced where they always were (hard-budget downgrade or
+deny, per-request cap); ledger rows written before this change still carry the
+two keys and the console ignores them.
 
 ### Fix 18 pre-existing backend test failures (v2.0 in-flight work)
 **Priority:** P0

@@ -14,7 +14,6 @@ from nebula.models.governance import (
 )
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.governance_store import GovernanceStore
-from nebula.services.policy_simulation_service import PolicySimulationService
 from nebula.services.semantic_cache_service import SemanticCacheService
 
 _MAX_RECOMMENDATIONS = 3
@@ -60,11 +59,9 @@ class RecommendationService:
         self,
         *,
         governance_store: GovernanceStore,
-        policy_simulation_service: PolicySimulationService,
         semantic_cache_service: SemanticCacheService,
     ) -> None:
         self.governance_store = governance_store
-        self.policy_simulation_service = policy_simulation_service
         self.semantic_cache_service = semantic_cache_service
 
     async def build_summary(

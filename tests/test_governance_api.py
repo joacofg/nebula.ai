@@ -202,11 +202,11 @@ def test_authentication_returns_401_and_403_for_missing_invalid_and_unauthorized
             )
 
     assert missing.status_code == 401
-    assert missing.json() == {"detail": "Missing client API key."}
+    assert missing.json()["detail"] == "Missing client API key."
     assert invalid.status_code == 401
-    assert invalid.json() == {"detail": "Invalid client API key."}
+    assert invalid.json()["detail"] == "Invalid client API key."
     assert forbidden.status_code == 403
-    assert forbidden.json() == {"detail": "API key is not authorized for the requested tenant."}
+    assert forbidden.json()["detail"] == "API key is not authorized for the requested tenant."
 
 
 def test_admin_endpoints_manage_tenants_keys_and_policy() -> None:
@@ -275,6 +275,89 @@ def test_admin_session_endpoint() -> None:
     assert invalid.json() == {"detail": "Missing or invalid admin API key."}
     assert authorized.status_code == 200
     assert authorized.json() == {"status": "ok"}
+
+
+def test_admin_key_check_accepts_the_exact_key_and_rejects_a_near_miss() -> None:
+    # Regression guard for the constant-time compare: behavior is unchanged.
+    with configured_app() as app:
+        with TestClient(app) as client:
+            exact = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-key"))
+            near_miss = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-kex"))
+            longer = client.get("/v1/admin/session", headers=admin_headers("nebula-admin-keyy"))
+
+    assert exact.status_code == 200
+    assert near_miss.status_code == 401
+    assert longer.status_code == 401
+
+
+def test_admin_key_check_rejects_a_non_ascii_key_instead_of_failing() -> None:
+    with configured_app() as app:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.get(
+                "/v1/admin/session",
+                headers={"X-Nebula-Admin-Key": "nebula-admin-k\xe9y".encode("latin-1")},
+            )
+
+    assert response.status_code == 401
+
+
+def test_tenant_ids_longer_than_the_column_are_rejected_on_create() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            too_long = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "t" * 300, "name": "Too long"},
+            )
+            at_the_limit = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "t" * 255, "name": "At the limit"},
+            )
+
+    assert too_long.status_code == 422
+    assert isinstance(too_long.json()["detail"], list)
+    assert at_the_limit.status_code == 201
+
+
+def test_tenant_and_api_key_names_longer_than_the_column_are_rejected_on_create() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            tenant = client.post(
+                "/v1/admin/tenants",
+                headers=admin_headers(),
+                json={"id": "long-name", "name": "n" * 300},
+            )
+            api_key = client.post(
+                "/v1/admin/api-keys",
+                headers=admin_headers(),
+                json={"name": "n" * 300, "tenant_id": "default"},
+            )
+
+    assert tenant.status_code == 422
+    assert isinstance(tenant.json()["detail"], list)
+    assert api_key.status_code == 422
+    assert isinstance(api_key.json()["detail"], list)
+
+
+def test_tenant_names_longer_than_the_column_are_rejected_on_update() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            too_long = client.patch(
+                "/v1/admin/tenants/default",
+                headers=admin_headers(),
+                json={"name": "n" * 300},
+            )
+            at_the_limit = client.patch(
+                "/v1/admin/tenants/default",
+                headers=admin_headers(),
+                json={"name": "n" * 255},
+            )
+
+    assert too_long.status_code == 422
+    assert isinstance(too_long.json()["detail"], list)
+    assert at_the_limit.status_code == 200
+    assert at_the_limit.json()["name"] == "n" * 255
 
 
 def test_policy_options_endpoint_is_admin_protected_and_includes_default_model() -> None:
@@ -1361,13 +1444,15 @@ def test_usage_ledger_preserves_request_ids_for_denied_and_fallback_blocked_outc
             )
 
     assert premium_denied.status_code == 403
-    assert premium_denied.json() == {
-        "detail": "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
-    }
+    assert (
+        premium_denied.json()["detail"]
+        == "Premium model 'openai/gpt-4.1-mini' is not allowed for this tenant."
+    )
     assert fallback_blocked.status_code == 502
-    assert fallback_blocked.json() == {
-        "detail": "Local provider failed and tenant policy disabled premium fallback."
-    }
+    assert (
+        fallback_blocked.json()["detail"]
+        == "Local provider failed and tenant policy disabled premium fallback."
+    )
     assert denied_entries.status_code == 200
     assert denied_entries.json()[0]["final_route_target"] == "denied"
     assert denied_by_request.status_code == 200
@@ -1437,7 +1522,7 @@ def test_inactive_tenant_chat_request_returns_exact_403_detail() -> None:
             )
 
     assert response.status_code == 403
-    assert response.json() == {"detail": "Resolved tenant is inactive or does not exist."}
+    assert response.json()["detail"] == "Resolved tenant is inactive or does not exist."
 
 
 def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() -> None:
@@ -1481,7 +1566,7 @@ def test_spend_guardrail_denial_returns_exact_detail_and_ledger_correlation() ->
             )
 
     assert denied.status_code == 403
-    assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
     assert denied.headers["X-Nebula-Route-Target"] == "premium"
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied.headers["X-Nebula-Provider"] == "policy"
@@ -1582,7 +1667,7 @@ def test_hard_budget_guardrail_downgrades_auto_routes_and_denies_explicit_premiu
         "Tenant hard budget limit reached; premium routing is blocked "
         f"(spent_usd={expected_spent}, limit_usd={expected_limit_text})."
     )
-    assert denied.json() == {"detail": expected_detail}
+    assert denied.json()["detail"] == expected_detail
     assert denied.headers["X-Nebula-Route-Target"] == "premium"
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert denied_ledger.status_code == 200
@@ -1664,3 +1749,142 @@ def test_admin_policy_simulation_applies_hard_budget_replay_window_semantics() -
     assert body["changed_requests"][0]["simulated_route_target"] == "local"
     assert body["changed_requests"][0]["simulated_route_reason"] == "hard_budget_downgrade"
     assert "hard_budget=exceeded" in body["changed_requests"][0]["simulated_policy_outcome"]
+
+
+def _create_tenant(client: TestClient, tenant_id: str):
+    return client.post(
+        "/v1/admin/tenants",
+        headers=admin_headers(),
+        json={"id": tenant_id, "name": tenant_id.upper()},
+    )
+
+
+def test_creating_a_tenant_that_already_exists_returns_409() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            first = _create_tenant(client, "acme")
+            duplicate = _create_tenant(client, "acme")
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert duplicate.json() == {"detail": "Tenant 'acme' already exists."}
+
+
+def _create_key(client: TestClient, **payload):
+    return client.post("/v1/admin/api-keys", headers=admin_headers(), json=payload)
+
+
+def test_creating_an_api_key_with_an_existing_secret_returns_409() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            first = _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            duplicate = _create_key(
+                client, name="second", tenant_id="acme", key="shared-secret-key"
+            )
+            keys = client.get("/v1/admin/api-keys?tenant_id=acme", headers=admin_headers())
+
+    assert first.status_code == 201
+    assert duplicate.status_code == 409
+    assert duplicate.json() == {"detail": "An API key with this secret already exists."}
+    assert [key["name"] for key in keys.json()] == ["first"]
+
+
+def test_a_revoked_api_key_still_owns_its_secret() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            first = _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            revoked = client.post(
+                f"/v1/admin/api-keys/{first.json()['record']['id']}/revoke",
+                headers=admin_headers(),
+            )
+            reused = _create_key(client, name="again", tenant_id="acme", key="shared-secret-key")
+
+    assert revoked.status_code == 200
+    assert reused.status_code == 409
+    assert reused.json() == {"detail": "An API key with this secret already exists."}
+
+
+def test_creating_an_api_key_for_an_unknown_tenant_returns_404() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            by_tenant_id = _create_key(client, name="ghost-key", tenant_id="ghost")
+            by_allowed_list = _create_key(
+                client, name="ghost-key", tenant_id=None, allowed_tenant_ids=["ghost"]
+            )
+
+    assert by_tenant_id.status_code == 404
+    assert by_tenant_id.json() == {"detail": "Unknown tenant: ghost"}
+    assert by_allowed_list.status_code == 404
+    assert by_allowed_list.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_creating_an_api_key_for_a_tenant_missing_from_its_allowed_list_returns_404() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "a")
+            response = _create_key(client, name="k", tenant_id="ghost", allowed_tenant_ids=["a"])
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_an_unknown_tenant_wins_over_a_duplicate_secret() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            response = _create_key(
+                client, name="second", tenant_id="ghost", key="shared-secret-key"
+            )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Unknown tenant: ghost"}
+
+
+def test_a_duplicate_secret_that_slips_past_the_check_is_still_a_409(monkeypatch) -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _create_tenant(client, "acme")
+            _create_key(client, name="first", tenant_id="acme", key="shared-secret-key")
+            # Simulates a concurrent create: the other request inserts between the
+            # duplicate check and the commit, so only the unique constraint sees it.
+            store = app.state.container.governance_store
+            monkeypatch.setattr(store, "find_api_key_by_secret", lambda *args, **kwargs: None)
+            raced = _create_key(client, name="second", tenant_id="acme", key="shared-secret-key")
+
+    assert raced.status_code == 409
+    assert raced.json() == {"detail": "An API key with this secret already exists."}
+
+
+def test_creating_an_api_key_bound_to_no_tenant_returns_422() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            omitted = _create_key(client, name="loose")
+            empty = _create_key(client, name="loose", tenant_id=None, allowed_tenant_ids=[])
+
+    expected = {"detail": "API keys must be bound to at least one tenant."}
+    assert omitted.status_code == 422
+    assert omitted.json() == expected
+    assert empty.status_code == 422
+    assert empty.json() == expected
+
+
+def test_listing_api_keys_by_tenant_includes_keys_scoped_through_allowed_tenant_ids() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            for tenant_id in ("a", "b", "c"):
+                _create_tenant(client, tenant_id)
+            shared = _create_key(
+                client, name="shared", tenant_id=None, allowed_tenant_ids=["a", "b"]
+            )
+            own_b = _create_key(client, name="own-b", tenant_id="b")
+            _create_key(client, name="own-c", tenant_id="c")
+            for_b = client.get("/v1/admin/api-keys?tenant_id=b", headers=admin_headers())
+            for_c = client.get("/v1/admin/api-keys?tenant_id=c", headers=admin_headers())
+
+    assert shared.status_code == 201
+    assert own_b.status_code == 201
+    assert {key["name"] for key in for_b.json()} == {"shared", "own-b"}
+    assert {key["name"] for key in for_c.json()} == {"own-c"}

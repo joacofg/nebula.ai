@@ -5,10 +5,12 @@ import { plural, reasonLabel, statusLabel } from "@/components/system/labels";
 describe("labels", () => {
   it("maps known codes and passes unknown ones through", () => {
     expect(reasonLabel("learned_router")).toBe("router aprendido");
+    expect(reasonLabel("local_provider_error_fallback_blocked")).toBe("fallback bloqueado por política");
     expect(reasonLabel("something_new")).toBe("something_new");
     expect(reasonLabel(null)).toBe("—");
     expect(statusLabel("provider_error")).toBe("error del proveedor");
     expect(statusLabel("fallback_completed")).toBe("completado con fallback");
+    expect(statusLabel("client_disconnected")).toBe("cortado por el cliente");
   });
 
   it("pluralizes", () => {

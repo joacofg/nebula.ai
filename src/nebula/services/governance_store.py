@@ -1,14 +1,15 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import secrets
 from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from threading import RLock
 from uuid import uuid4
 
 from sqlalchemy import delete, func, inspect, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
 from nebula.core.config import Settings
@@ -23,6 +24,32 @@ from nebula.models.governance import (
     UsageLedgerRecord,
 )
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
+
+logger = logging.getLogger(__name__)
+
+
+class TenantAlreadyExistsError(ValueError):
+    """A tenant with this id exists; the message is safe to return to the operator."""
+
+
+class UnknownTenantError(ValueError):
+    """A key was scoped to a tenant that does not exist; the message is safe to return."""
+
+
+class UnscopedApiKeyError(ValueError):
+    """A key was requested without any tenant; the message is safe to return."""
+
+
+class ApiKeyAlreadyExistsError(ValueError):
+    """A key row, revoked or not, already owns this secret; the message is safe to return."""
+
+
+def default_tenant_policy(settings: Settings) -> TenantPolicy:
+    """The policy a new tenant gets: only the configured premium (and economy) model allowed."""
+    allowed = [settings.premium_model]
+    if settings.economy_model and settings.economy_model not in allowed:
+        allowed.append(settings.economy_model)
+    return TenantPolicy(allowed_premium_models=allowed)
 
 
 @dataclass(slots=True, frozen=True)
@@ -74,7 +101,6 @@ class GovernanceStore:
     def __init__(self, settings: Settings, session_factory: sessionmaker[Session]) -> None:
         self.settings = settings
         self.session_factory = session_factory
-        self._lock = RLock()
         self.engine = session_factory.kw["bind"]
 
     def initialize(self) -> None:
@@ -92,27 +118,39 @@ class GovernanceStore:
         self.engine.dispose()
 
     def ensure_bootstrap(self) -> None:
-        self.create_tenant(
-            tenant_id=self.settings.bootstrap_tenant_id,
-            name=self.settings.bootstrap_tenant_name,
-            description="Bootstrap workspace for local development and smoke tests.",
-            metadata={"bootstrap": True},
-            active=True,
-            policy=self.default_policy(),
-            upsert=True,
-        )
-        self.ensure_api_key(
-            raw_key=self.settings.bootstrap_api_key,
-            name=self.settings.bootstrap_api_key_name,
-            tenant_id=self.settings.bootstrap_tenant_id,
-            allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
-        )
+        # Runs on every startup: an existing tenant keeps whatever the operator
+        # changed (name, active flag, policy); only a missing one is seeded.
+        tenant_id = self.settings.bootstrap_tenant_id
+        if self.get_tenant(tenant_id) is None:
+            self.create_tenant(
+                tenant_id=tenant_id,
+                name=self.settings.bootstrap_tenant_name,
+                description="Bootstrap workspace for local development and smoke tests.",
+                metadata={"bootstrap": True},
+                active=True,
+                policy=self.default_policy(),
+            )
+        else:
+            self._warn_if_premium_model_disallowed(tenant_id)
+        self.operator_api_key()
+
+    def _warn_if_premium_model_disallowed(self, tenant_id: str) -> None:
+        # The allowlist was seeded from the model settings of the first boot; a
+        # database shared by `make demo` and `make run` keeps the other one's.
+        allowed = self.get_policy(tenant_id).allowed_premium_models
+        premium_model = self.settings.premium_model
+        if allowed and premium_model not in allowed:
+            logger.warning(
+                "Bootstrap tenant '%s' does not allow the configured premium model '%s' "
+                "(stored allowlist: %s); premium requests for it will be denied. Add it to "
+                "the tenant policy in the console, or reset the database.",
+                tenant_id,
+                premium_model,
+                ", ".join(allowed),
+            )
 
     def default_policy(self) -> TenantPolicy:
-        allowed = [self.settings.premium_model]
-        if self.settings.economy_model and self.settings.economy_model not in allowed:
-            allowed.append(self.settings.economy_model)
-        return TenantPolicy(allowed_premium_models=allowed)
+        return default_tenant_policy(self.settings)
 
     def list_tenants(self) -> list[TenantRecord]:
         with self._session() as session:
@@ -133,7 +171,6 @@ class GovernanceStore:
         metadata: dict[str, object],
         active: bool,
         policy: TenantPolicy | None = None,
-        upsert: bool = False,
     ) -> TenantRecord:
         now = self._now()
         with self._session() as session:
@@ -149,14 +186,8 @@ class GovernanceStore:
                     updated_at=now,
                 )
                 session.add(tenant)
-            elif upsert:
-                tenant.name = name
-                tenant.description = description
-                tenant.metadata_json = metadata
-                tenant.active = active
-                tenant.updated_at = now
             else:
-                raise ValueError(f"Tenant already exists: {tenant_id}")
+                raise TenantAlreadyExistsError(f"Tenant '{tenant_id}' already exists.")
             session.commit()
         resolved_policy = policy or self.default_policy()
         self.upsert_policy(tenant_id, resolved_policy)
@@ -231,16 +262,16 @@ class GovernanceStore:
         raw_key: str | None = None,
     ) -> tuple[ApiKeyRecord, str]:
         if tenant_id is None and not allowed_tenant_ids:
-            raise ValueError("API keys must be bound to at least one tenant.")
+            raise UnscopedApiKeyError("API keys must be bound to at least one tenant.")
         resolved_allowed_tenant_ids = allowed_tenant_ids or ([tenant_id] if tenant_id else [])
+        self._require_tenants([*resolved_allowed_tenant_ids, *([tenant_id] if tenant_id else [])])
         now = self._now()
         secret = raw_key or f"nbk_{secrets.token_urlsafe(24)}"
+        # A generated secret cannot collide. A supplied one can, and the hash is unique across
+        # revoked rows too, so a revoked key still owns its secret.
+        if raw_key and self.find_api_key_by_secret(raw_key, include_revoked=True) is not None:
+            raise ApiKeyAlreadyExistsError("An API key with this secret already exists.")
         with self._session() as session:
-            for allowed_tenant_id in resolved_allowed_tenant_ids:
-                if session.get(TenantModel, allowed_tenant_id) is None:
-                    raise ValueError(f"Unknown tenant: {allowed_tenant_id}")
-            if tenant_id and session.get(TenantModel, tenant_id) is None:
-                raise ValueError(f"Unknown tenant: {tenant_id}")
             api_key = ApiKeyModel(
                 id=str(uuid4()),
                 name=name,
@@ -253,36 +284,58 @@ class GovernanceStore:
                 updated_at=now,
             )
             session.add(api_key)
-            session.commit()
+            try:
+                session.commit()
+            except IntegrityError as error:
+                # Another request stored this secret after the check above. key_hash is the
+                # only unique column an insert with validated tenants can violate.
+                raise ApiKeyAlreadyExistsError(
+                    "An API key with this secret already exists."
+                ) from error
         stored = self.find_api_key(secret)
         assert stored is not None
         return stored.to_record(), secret
 
-    def ensure_api_key(
-        self,
-        *,
-        raw_key: str,
-        name: str,
-        tenant_id: str | None,
-        allowed_tenant_ids: list[str],
-    ) -> ApiKeyRecord:
-        stored = self.find_api_key(raw_key)
+    def _require_tenants(self, tenant_ids: list[str]) -> None:
+        with self._session() as session:
+            for tenant_id in tenant_ids:
+                if session.get(TenantModel, tenant_id) is None:
+                    raise UnknownTenantError(f"Unknown tenant: {tenant_id}")
+
+    def operator_api_key(self) -> ApiKeyRecord:
+        """The bootstrap key record that operator flows run under, revoked or not.
+
+        Operator flows (admin recommendations, simulation, playground) borrow this
+        record as their tenant context; they never authenticate with it, so a
+        revoked key must not break them. It is created only if no row has its hash.
+        """
+        raw_key = self.settings.bootstrap_api_key
+        # A revoked row still owns its hash (unique), so it counts as found:
+        # inserting the same secret again would only raise ApiKeyAlreadyExistsError.
+        stored = self.find_api_key_by_secret(raw_key, include_revoked=True)
         if stored is not None:
             return stored.to_record()
         record, _ = self.create_api_key(
-            name=name,
-            tenant_id=tenant_id,
-            allowed_tenant_ids=allowed_tenant_ids,
+            name=self.settings.bootstrap_api_key_name,
+            tenant_id=self.settings.bootstrap_tenant_id,
+            allowed_tenant_ids=[self.settings.bootstrap_tenant_id],
             raw_key=raw_key,
         )
         return record
 
     def list_api_keys(self, tenant_id: str | None = None) -> list[ApiKeyRecord]:
         with self._session() as session:
-            stmt = select(ApiKeyModel)
+            stmt = select(ApiKeyModel).order_by(ApiKeyModel.created_at.desc())
+            rows = session.scalars(stmt).all()
             if tenant_id:
-                stmt = stmt.where(ApiKeyModel.tenant_id == tenant_id)
-            rows = session.scalars(stmt.order_by(ApiKeyModel.created_at.desc())).all()
+                # allowed_tenant_ids is a JSON column, so match it here rather than in SQL;
+                # a key scoped only through that list has no tenant_id of its own.
+                rows = [
+                    row
+                    for row in rows
+                    if tenant_id == row.tenant_id
+                    or tenant_id in (row.allowed_tenant_ids_json or [])
+                ]
             return [self._stored_api_key_from_model(row).to_record() for row in rows]
 
     def revoke_api_key(self, api_key_id: str) -> ApiKeyRecord | None:
@@ -297,13 +350,17 @@ class GovernanceStore:
             return self._stored_api_key_from_model(row).to_record()
 
     def find_api_key(self, raw_key: str) -> StoredApiKey | None:
+        """The key a client may authenticate with: revoked keys are not found."""
+        return self.find_api_key_by_secret(raw_key, include_revoked=False)
+
+    def find_api_key_by_secret(
+        self, raw_key: str, *, include_revoked: bool
+    ) -> StoredApiKey | None:
         with self._session() as session:
-            row = session.scalar(
-                select(ApiKeyModel).where(
-                    ApiKeyModel.key_hash == self._hash_key(raw_key),
-                    ApiKeyModel.revoked_at.is_(None),
-                )
-            )
+            stmt = select(ApiKeyModel).where(ApiKeyModel.key_hash == self._hash_key(raw_key))
+            if not include_revoked:
+                stmt = stmt.where(ApiKeyModel.revoked_at.is_(None))
+            row = session.scalar(stmt)
             return self._stored_api_key_from_model(row) if row else None
 
     def record_usage(self, record: UsageLedgerRecord) -> UsageLedgerRecord:
@@ -472,8 +529,9 @@ class GovernanceStore:
         with self._session() as session:
             stmt = select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
                 UsageLedgerModel.tenant_id == tenant_id,
+                # A stream the client abandoned still spent the premium tokens it streamed.
                 UsageLedgerModel.terminal_status.in_(
-                    ["completed", "fallback_completed", "cache_hit"]
+                    ["completed", "fallback_completed", "cache_hit", "client_disconnected"]
                 ),
             )
             if before_timestamp is not None:

@@ -257,7 +257,6 @@ def test_chat_completions_outcome_grounded_request_persists_matching_route_signa
         "token_score": 0.016,
         "keyword_bonus": 0.2,
         "policy_bonus": 0.1,
-        "budget_penalty": 0.0,
         "outcome_bonus": 0.15,
         "evidence_penalty": 0.0,
         "total_score": route_score,
@@ -326,7 +325,7 @@ def test_chat_completions_outcome_grounded_policy_denial_persists_evidence_state
     assert denied.headers["X-Nebula-Route-Reason"] == "explicit_premium_model"
     assert "X-Nebula-Route-Mode" not in denied.headers
     assert "outcome_evidence=sufficient" in denied.headers["X-Nebula-Policy-Outcome"]
-    assert denied.json() == {"detail": "Request exceeds the tenant premium spend guardrail."}
+    assert denied.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
 
     assert ledger.status_code == 200
     rows = ledger.json()
@@ -354,7 +353,7 @@ def test_chat_completions_require_nebula_auth_headers_not_bearer_authorization()
             )
 
     assert response.status_code == 401
-    assert response.json() == {"detail": "Missing client API key."}
+    assert response.json()["detail"] == "Missing client API key."
     assert "X-Nebula-Tenant-ID" not in response.headers
 
 
@@ -409,3 +408,67 @@ def test_chat_completions_reject_requests_without_a_user_message() -> None:
     assert detail[0]["loc"] == ["body"]
     assert detail[0]["type"] == "value_error"
     assert detail[0]["msg"] == "Value error, At least one user message is required."
+
+
+def test_chat_completions_reject_a_model_name_longer_than_the_ledger_column() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "m" * 300,
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
+
+    assert response.status_code == 422
+    assert response.json()["error"]["type"] == "invalid_request_error"
+
+
+def test_chat_completions_accept_a_model_name_of_exactly_the_column_length() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={
+                    "model": "m" * 255,
+                    "messages": [{"role": "user", "content": "hello"}],
+                },
+            )
+
+    assert response.status_code != 422
+
+
+def test_an_oversized_request_id_header_is_bounded_in_the_ledger_and_the_response() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="local response",
+                    model=container.settings.local_model,
+                    provider="ollama",
+                    usage=usage(),
+                ),
+            )
+            container.provider_registry.local_provider = container.local_provider
+            container.cache_service = FakeCacheService()
+            container.chat_service.cache_service = container.cache_service
+
+            response = client.post(
+                "/v1/chat/completions",
+                headers={**auth_headers(), "X-Request-ID": "r" * 500},
+                json={"messages": [{"role": "user", "content": "hello"}]},
+            )
+            rows = client.get(
+                f"/v1/admin/usage/ledger?request_id={'r' * 128}",
+                headers=admin_headers(),
+            ).json()
+
+    assert response.status_code == 200
+    assert response.headers["X-Request-ID"] == "r" * 128
+    assert len(rows) == 1
+    assert rows[0]["request_id"] == "r" * 128

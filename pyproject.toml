@@ -5,7 +5,9 @@ description = "Semantic AI Gateway for routing, caching, and fallback across LLM
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "fastapi>=0.115.0,<1.0.0",
+    "fastapi>=0.116.2,<1.0.0",
+    # HTTP_422_UNPROCESSABLE_CONTENT first ships in Starlette 0.48.0.
+    "starlette>=0.48.0",
     "uvicorn[standard]>=0.30.0,<1.0.0",
     "pydantic>=2.8.0,<3.0.0",
     "pydantic-settings>=2.3.0,<3.0.0",

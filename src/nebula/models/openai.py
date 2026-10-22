@@ -12,7 +12,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatCompletionRequest(BaseModel):
-    model: str = Field(default="nebula-auto")
+    model: str = Field(default="nebula-auto", max_length=255)
     messages: list[ChatMessage] = Field(min_length=1)
     temperature: float | None = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float | None = Field(default=1.0, ge=0.0, le=1.0)
@@ -82,7 +82,7 @@ class ChatCompletionChunk(BaseModel):
 class EmbeddingsRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    model: str = Field(min_length=1)
+    model: str = Field(min_length=1, max_length=255)
     input: str | list[str]
 
     @field_validator("model")

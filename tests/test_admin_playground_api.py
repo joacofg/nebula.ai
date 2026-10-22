@@ -208,5 +208,5 @@ def test_admin_playground_rejects_streaming_even_for_admin_requests() -> None:
     assert response.status_code == 400
     assert response.headers["X-Request-ID"]
     assert response.json() == {
-        "detail": "Playground only supports non-streaming requests in Phase 3."
+        "detail": "Playground only supports non-streaming requests."
     }

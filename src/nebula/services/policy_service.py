@@ -48,6 +48,7 @@ class PolicyResolution:
     hard_budget_exceeded: bool = False
     tenant_spend_total: float | None = None
     allowed_premium_models: tuple[str, ...] = ()
+    max_premium_cost_per_request: float | None = None
 
 
 class PolicyService:
@@ -103,6 +104,7 @@ class PolicyService:
             hard_budget_exceeded=evaluation.hard_budget_exceeded,
             tenant_spend_total=evaluation.tenant_spend_total,
             allowed_premium_models=tuple(tenant_context.policy.allowed_premium_models),
+            max_premium_cost_per_request=tenant_context.policy.max_premium_cost_per_request,
         )
 
     async def evaluate(
@@ -247,6 +249,32 @@ class PolicyService:
             denial_detail=denial_detail,
         )
 
+    def premium_fallback_block_reason(
+        self,
+        request: ChatCompletionRequest,
+        resolution: PolicyResolution,
+        model: str,
+    ) -> str | None:
+        """Why a local failure may not fall back to premium `model` for this tenant, if it may not."""
+        if not resolution.fallback_enabled:
+            return "Local provider failed and tenant policy disabled premium fallback."
+        if resolution.policy_mode == "local_only":
+            return "Local provider failed and tenant policy restricts routing to local only."
+        if resolution.hard_budget_exceeded:
+            return "Local provider failed and the tenant hard budget is exhausted."
+        # An empty allowlist means any premium model is allowed.
+        if resolution.allowed_premium_models and model not in resolution.allowed_premium_models:
+            return f"Local provider failed and premium model '{model}' is not allowed for this tenant."
+        cap = resolution.max_premium_cost_per_request
+        if cap is not None:
+            projected_cost = self._estimate_request_cost(request, model)
+            if projected_cost is not None and projected_cost > cap:
+                return (
+                    "Local provider failed and the premium fallback exceeds "
+                    "the tenant per-request cost limit."
+                )
+        return None
+
     def _escalate_disallowed_economy(self, route_decision: RouteDecision, policy) -> RouteDecision:
         """A learned economy pick the tenant does not allow moves up to an allowed frontier."""
         allowed = policy.allowed_premium_models
@@ -387,35 +415,6 @@ class PolicyService:
         if routing_mode == "local_only" and route_decision.target == "premium":
             return "Tenant policy restricts this request to local routing only."
         return None
-
-    def _enforce_explicit_model_constraints(
-        self,
-        request: ChatCompletionRequest,
-        route_decision: RouteDecision,
-        routing_mode: RoutingMode,
-        tenant_id: str | None = None,
-    ) -> None:
-        detail = self._explicit_model_conflict_detail(
-            request=request,
-            route_decision=route_decision,
-            routing_mode=routing_mode,
-        )
-        if detail is None:
-            return
-        self._policy_denied(
-            tenant_id=tenant_id,
-            route_target=("local" if request.model == self.settings.local_model else route_decision.target),
-            route_reason=(
-                "explicit_local_model"
-                if request.model == self.settings.local_model and routing_mode == "premium_only"
-                else "explicit_premium_model"
-                if request.model not in {self.settings.default_model, self.settings.local_model}
-                and routing_mode == "local_only"
-                else route_decision.reason
-            ),
-            policy_mode=routing_mode,
-            detail=detail,
-        )
 
     def _policy_denied(
         self,

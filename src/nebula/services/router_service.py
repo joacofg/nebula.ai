@@ -35,14 +35,12 @@ class CalibratedScoreBreakdown:
     token_count: int
     complexity_tier: ComplexityTier
     keyword_match: bool
-    budget_proximity: float | None
     model_constraint: bool
     route_mode: RouteMode
     replay: bool
     token_score: float
     keyword_bonus: float
     policy_bonus: float
-    budget_penalty: float
     outcome_bonus: float
     evidence_penalty: float
     outcome_evidence_state: OutcomeEvidenceState | None
@@ -86,14 +84,6 @@ class RouterService:
     def __init__(self, settings: Settings, learned: LearnedRouterModel | None = None) -> None:
         self.settings = settings
         self.learned = learned
-
-    @property
-    def uses_embeddings(self) -> bool:
-        """Whether live routing wants the prompt's embedding (the learned router is loaded)."""
-        return self.learned is not None
-
-    async def choose_target(self, prompt: str, request: ChatCompletionRequest) -> RouteTarget:
-        return (await self.choose_target_with_reason(prompt, request)).target
 
     async def choose_target_for_replay(
         self,
@@ -141,11 +131,6 @@ class RouterService:
             )
             return self._heuristic_with_learned_signal(breakdown, "embedding_dimension_mismatch")
         return self._learned_decision(breakdown, prompt_embedding, policy)
-
-    def resolve_model(self, target: RouteTarget) -> str:
-        if target == "local":
-            return self.settings.local_model
-        return self.settings.premium_model
 
     def _explicit_override_decision(
         self,
@@ -229,7 +214,6 @@ class RouterService:
         replay: bool,
         route_mode: RouteMode,
     ) -> CalibratedScoreBreakdown:
-        budget_proximity: float | None = None
         model_constraint = bool(policy is not None and policy.allowed_premium_models)
         outcome_bonus = self._outcome_bonus(evidence_summary)
         evidence_penalty = self._evidence_penalty(evidence_summary)
@@ -237,7 +221,6 @@ class RouterService:
         token_score = min(token_count / 500, 1.0)
         keyword_bonus = 0.2 if keyword_match else 0.0
         policy_bonus = 0.1 if model_constraint else 0.0
-        budget_penalty = 0.0
         total_score = round(
             min(
                 max(
@@ -245,7 +228,6 @@ class RouterService:
                     + keyword_bonus
                     + policy_bonus
                     + outcome_bonus
-                    - budget_penalty
                     - evidence_penalty,
                     0.0,
                 ),
@@ -258,14 +240,12 @@ class RouterService:
             token_count=token_count,
             complexity_tier=complexity_tier,
             keyword_match=keyword_match,
-            budget_proximity=budget_proximity,
             model_constraint=model_constraint,
             route_mode=route_mode,
             replay=replay,
             token_score=round(token_score, 4),
             keyword_bonus=round(keyword_bonus, 4),
             policy_bonus=round(policy_bonus, 4),
-            budget_penalty=round(budget_penalty, 4),
             outcome_bonus=round(outcome_bonus, 4),
             evidence_penalty=round(evidence_penalty, 4),
             outcome_evidence_state=(evidence_summary.state if evidence_summary is not None else None),
@@ -354,12 +334,11 @@ class RouterService:
         )
 
     def _signals_from_breakdown(self, breakdown: CalibratedScoreBreakdown) -> dict[str, Any]:
-        # Keep route_mode for request-level parity and replay; M009 derives the summary-level
-        # outcome-evidence state separately so degraded can win as a tenant summary outcome.
+        # Keep route_mode for request-level parity and replay; the summary-level
+        # outcome-evidence state is derived separately so degraded can win as a tenant summary outcome.
         return {
             "token_count": breakdown.token_count,
             "complexity_tier": breakdown.complexity_tier,
-            "budget_proximity": breakdown.budget_proximity,
             "model_constraint": breakdown.model_constraint,
             "keyword_match": breakdown.keyword_match,
             "route_mode": breakdown.route_mode,
@@ -369,7 +348,6 @@ class RouterService:
                 "token_score": breakdown.token_score,
                 "keyword_bonus": breakdown.keyword_bonus,
                 "policy_bonus": breakdown.policy_bonus,
-                "budget_penalty": breakdown.budget_penalty,
                 "outcome_bonus": breakdown.outcome_bonus,
                 "evidence_penalty": breakdown.evidence_penalty,
                 "total_score": breakdown.total_score,

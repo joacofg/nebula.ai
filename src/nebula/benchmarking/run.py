@@ -30,6 +30,8 @@ from nebula.benchmarking.dataset import (
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import get_settings
 from nebula.providers.base import CompletionUsage
+from nebula.services.auth_service import ADMIN_API_KEY_HEADER
+from nebula.services.governance_store import default_tenant_policy
 
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 DEFAULT_DATASET_PATH = PROJECT_ROOT / "benchmarks" / "v1" / "scenarios.jsonl"
@@ -222,6 +224,7 @@ class BenchmarkRunner:
             },
         ) as normal_server:
             async with httpx.AsyncClient(base_url=normal_server.base_url, timeout=120.0) as client:
+                await self._reset_bootstrap_policy(client)
                 self.runtime_health = await self._probe_health(client)
                 results.extend(
                     await self._run_groups(
@@ -239,6 +242,7 @@ class BenchmarkRunner:
             },
         ) as fallback_server:
             async with httpx.AsyncClient(base_url=fallback_server.base_url, timeout=120.0) as client:
+                await self._reset_bootstrap_policy(client)
                 results.extend(
                     await self._run_groups(
                         client=client,
@@ -247,6 +251,28 @@ class BenchmarkRunner:
                     )
                 )
         return results
+
+    async def _reset_bootstrap_policy(self, client: httpx.AsyncClient) -> None:
+        """Put the bootstrap tenant back on the policy this harness's settings imply.
+
+        Startup seeds that policy only on first boot, and `make demo`, `make run`
+        and a managed run share `.nebula/nebula.db` with different model
+        settings. After a demo the allowlist lacks this run's premium model, so
+        premium_direct would get 403 and auto_fallback 502 for a reason that has
+        nothing to do with routing. Managed mode only: under --base-url the
+        tenant belongs to that gateway's operator.
+        """
+        tenant_id = self.settings.bootstrap_tenant_id
+        response = await client.put(
+            f"/v1/admin/tenants/{tenant_id}/policy",
+            headers={ADMIN_API_KEY_HEADER: self.settings.admin_api_key},
+            json=default_tenant_policy(self.settings).model_dump(mode="json"),
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"Could not reset the bootstrap tenant policy for '{tenant_id}': "
+                f"HTTP {response.status_code} {response.text[:300]}"
+            )
 
     async def _probe_health(self, client: httpx.AsyncClient) -> dict[str, object]:
         """Ask the gateway what state its dependencies are in, before measuring.

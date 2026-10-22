@@ -13,6 +13,7 @@ from nebula.providers.base import (
     CompletionResult,
     CompletionUsage,
     ProviderError,
+    describe_http_error,
 )
 
 
@@ -30,7 +31,7 @@ class OpenAICompatibleProvider(CompletionProvider):
         response = await self._post(request, stream=False)
         body = response.json()
         return CompletionResult(
-            content=body["choices"][0]["message"]["content"],
+            content=body["choices"][0]["message"]["content"] or "",
             model=body.get("model", self.settings.premium_model),
             provider=self.name,
             finish_reason=body["choices"][0].get("finish_reason", "stop"),
@@ -46,6 +47,8 @@ class OpenAICompatibleProvider(CompletionProvider):
                     json=self._build_payload(request, stream=True),
                     headers=self._headers(),
                 ) as response:
+                    if not response.is_success:
+                        await response.aread()
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line or not line.startswith("data: "):
@@ -55,13 +58,17 @@ class OpenAICompatibleProvider(CompletionProvider):
                             break
                         chunk = json.loads(data)
                         choice = chunk["choices"][0]
-                        delta = choice.get("delta", {}).get("content", "")
+                        delta = choice.get("delta", {}).get("content") or ""
                         yield CompletionChunk(
                             delta=delta,
                             model=chunk.get("model", self.settings.premium_model),
                             finish_reason=choice.get("finish_reason"),
                         )
-            except (httpx.HTTPError, json.JSONDecodeError, KeyError) as exc:
+            except httpx.HTTPError as exc:
+                raise ProviderError(
+                    f"OpenAI-compatible stream failed: {describe_http_error(exc)}"
+                ) from exc
+            except (json.JSONDecodeError, KeyError) as exc:
                 raise ProviderError(f"OpenAI-compatible stream failed: {exc}") from exc
 
         return iterator()
@@ -79,7 +86,9 @@ class OpenAICompatibleProvider(CompletionProvider):
             response.raise_for_status()
             return response
         except httpx.HTTPError as exc:
-            raise ProviderError(f"OpenAI-compatible completion failed: {exc}") from exc
+            raise ProviderError(
+                f"OpenAI-compatible completion failed: {describe_http_error(exc)}"
+            ) from exc
 
     def _headers(self) -> dict[str, str]:
         headers = {"Content-Type": "application/json"}

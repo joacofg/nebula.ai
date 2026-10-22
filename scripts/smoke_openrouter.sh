@@ -1,4 +1,13 @@
 #!/usr/bin/env bash
+#
+# Smoke test against the real premium provider configured in .env (`make smoke-openrouter`,
+# `make smoke-fallback`): starts a gateway and curls the premium model as the bootstrap tenant.
+#
+# The gateway uses the same .nebula/nebula.db as `make run`, `make demo` and `make benchmark`,
+# and the bootstrap tenant's premium allowlist is set from the model settings of the first
+# boot only. A 403 on the premium request after `make demo` means that allowlist lacks
+# .env's NEBULA_PREMIUM_MODEL (the gateway warns about it at startup): add the model to the
+# tenant policy in the console, or delete .nebula/nebula.db and run `make migrate`.
 
 set -euo pipefail
 

@@ -1,9 +1,9 @@
 """Put the demo tenant in the state the defense demo expects.
 
 Usage: python -m scripts.demo_prepare  (gateway must be running on :8000; `make demo` runs it)
-Idempotent: creates acme-demo and its key if missing, sets the policy the three Playground
-examples are tuned for (local / economy / frontier at objective 0.90), and warms Ollama so the
-first local answer does not pay the model's cold load.
+Idempotent: creates acme-demo and its key if missing (a revoked key only warns), sets the
+policy the three Playground examples are tuned for (local / economy / frontier at objective
+0.90), and warms Ollama so the first local answer does not pay the model's cold load.
 """
 from __future__ import annotations
 
@@ -59,7 +59,8 @@ def warm_ollama(client: httpx.Client) -> None:
 
 def main() -> int:
     with httpx.Client(timeout=30) as client:
-        ensure_governance(client)
+        # The Playground does not use the demo tenant's key, so a revoked one only warns here.
+        ensure_governance(client, require_key=False)
         apply_policy(client)
         warm_ollama(client)
     return 0

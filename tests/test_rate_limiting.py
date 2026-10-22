@@ -194,16 +194,50 @@ def test_policy_simulation_and_recommendations_ignore_rate_limited_rows() -> Non
     assert recommendations["window_requests_evaluated"] == 1
 
 
-def test_a_hostile_model_value_still_gets_a_429() -> None:
+_ROUTES = {
+    "chat": (
+        "/v1/chat/completions",
+        {"model": "nebula-auto", "messages": [{"role": "user", "content": "hi"}]},
+        {"messages": []},
+    ),
+    "embeddings": (
+        "/v1/embeddings",
+        {"model": "nomic-embed-text", "input": "hola"},
+        {"input": []},
+    ),
+}
+
+
+def _limited_routes(app, rpm: int) -> None:
+    _mount(app)
+    app.dependency_overrides[get_embeddings_service] = lambda: _Embeddings()
+    _limit(app, rpm=rpm)
+
+
+@pytest.mark.parametrize("route", ["chat", "embeddings"])
+def test_invalid_body_does_not_spend_a_token(route: str) -> None:
+    path, valid, invalid = _ROUTES[route]
     with configured_app() as app:
         with TestClient(app) as client:
-            _mount(app)
-            _limit(app, rpm=1)
-            _chat(client)
-            response = client.post("/v1/chat/completions", headers=auth_headers(),
-                                   json={"model": "x" * 5000, "messages": [{"role": "user", "content": "hi"}]})
-            rows = client.get(f"/v1/admin/usage/ledger?request_id={response.headers['X-Request-ID']}",
-                              headers=admin_headers()).json()
+            _limited_routes(app, rpm=1)
+            rejected = client.post(path, headers=auth_headers(), json=invalid)
+            accepted = client.post(path, headers=auth_headers(), json=valid)
+            limited = client.post(path, headers=auth_headers(), json=valid)
 
-    assert response.status_code == 429
-    assert len(rows[0]["requested_model"]) <= 255
+    assert rejected.status_code == 422
+    assert accepted.status_code == 200
+    assert limited.status_code == 429  # the one token went to the valid request
+
+
+@pytest.mark.parametrize("route", ["chat", "embeddings"])
+def test_limit_still_applies_after_valid_requests(route: str) -> None:
+    path, valid, _ = _ROUTES[route]
+    with configured_app() as app:
+        with TestClient(app) as client:
+            _limited_routes(app, rpm=1)
+            first = client.post(path, headers=auth_headers(), json=valid)
+            second = client.post(path, headers=auth_headers(), json=valid)
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["X-Nebula-Route-Reason"] == "rate_limited"

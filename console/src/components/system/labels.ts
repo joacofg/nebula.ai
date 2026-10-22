@@ -6,6 +6,7 @@ const ROUTE_REASONS: Record<string, string> = {
   explicit_premium_model: "modelo premium pedido",
   explicit_local_model: "modelo local pedido",
   local_provider_error_fallback: "fallback por error local",
+  local_provider_error_fallback_blocked: "fallback bloqueado por política",
   embeddings_request: "embeddings",
   hard_budget_downgrade: "degradado por presupuesto",
   calibrated_routing_disabled: "ruteo calibrado apagado",
@@ -20,6 +21,7 @@ const STATUSES: Record<string, string> = {
   policy_denied: "denegado por política",
   provider_error: "error del proveedor",
   rate_limited: "límite de pedidos",
+  client_disconnected: "cortado por el cliente",
 };
 
 const ROUTES: Record<string, string> = { cache: "caché", denied: "denegado" };

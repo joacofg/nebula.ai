@@ -388,7 +388,7 @@ async def test_premium_provider_outage_keeps_local_serving_and_reports_degraded_
         dependencies = await client.get("/health/dependencies")
 
     assert response.status_code == 503
-    assert response.json() == {"detail": "Governance store unavailable."}
+    assert response.json()["detail"] == "Governance store unavailable."
 
     assert readiness.status_code == 503
     assert readiness.json()["status"] == "not_ready"
@@ -460,7 +460,7 @@ async def test_governance_outage_recovery_restores_serving_and_health_truth() ->
         recovered_dependencies = await client.get("/health/dependencies")
 
     assert outage_response.status_code == 503
-    assert outage_response.json() == {"detail": "Governance store unavailable."}
+    assert outage_response.json()["detail"] == "Governance store unavailable."
     assert outage_ready.status_code == 503
     assert outage_ready.json()["status"] == "not_ready"
     assert outage_dependencies.status_code == 200

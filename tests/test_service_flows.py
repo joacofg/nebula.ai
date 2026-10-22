@@ -135,6 +135,17 @@ class FakePolicyService:
         self.cache_enabled = cache_enabled
         self.fallback_enabled = fallback_enabled
         self.policy_outcome = policy_outcome
+        # The fallback rule reads only the resolution and pricing, so the fake applies the real one.
+        self._fallback_rules = PolicyService(
+            settings,
+            FakeGovernanceStore(),
+            PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
+        )
+
+    def premium_fallback_block_reason(
+        self, request: ChatCompletionRequest, resolution: PolicyResolution, model: str
+    ) -> str | None:
+        return self._fallback_rules.premium_fallback_block_reason(request, resolution, model)
 
     async def resolve(
         self, *, prompt, request, tenant_context, router_service, prompt_embedding=None
@@ -285,11 +296,12 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
         messages=[{"role": "user", "content": "Please review this architecture tradeoff."}],
     )
 
-    response = await service.create_completion(
+    envelope = await service.create_completion_with_metadata(
         request,
         tenant_context=tenant_context(),
         request_id="req-premium",
     )
+    response = envelope.response
 
     assert response.model == service.settings.premium_model
     assert response.choices[0].message.content == "premium response"
@@ -329,11 +341,12 @@ async def test_create_completion_routes_complex_prompts_to_premium_provider() ->
         messages=[{"role": "user", "content": "hello"}],
     )
 
-    response = await service.create_completion(
+    envelope = await service.create_completion_with_metadata(
         request,
         tenant_context=tenant_context(),
         request_id="req-fallback",
     )
+    response = envelope.response
 
     assert response.model == settings.premium_model
     assert response.choices[0].message.content == "fallback response"
@@ -351,11 +364,12 @@ async def test_create_completion_returns_cached_response_without_calling_provide
         messages=[{"role": "user", "content": "hello cache"}],
     )
 
-    response = await service.create_completion(
+    envelope = await service.create_completion_with_metadata(
         request,
         tenant_context=tenant_context(),
         request_id="req-cache",
     )
+    response = envelope.response
 
     assert response.model == "nebula-cache"
     assert response.choices[0].message.content == "cached response"
@@ -392,15 +406,12 @@ async def test_stream_completion_falls_back_to_premium_provider() -> None:
         messages=[{"role": "user", "content": "short"}],
     )
 
-    events = [
-        event
-        async for event in service.stream_completion(
-            request,
-            tenant_context=tenant_context(),
-            request_id="req-stream",
-        )
-    ]
-    payload = b"".join(events)
+    envelope = await service.stream_completion_with_metadata(
+        request,
+        tenant_context=tenant_context(),
+        request_id="req-stream",
+    )
+    payload = b"".join([event async for event in envelope.stream])
 
     assert f'"model": "{settings.premium_model}"'.encode() in payload
     assert b"premium " in payload
@@ -434,7 +445,7 @@ async def test_policy_can_disable_cache_and_block_fallback() -> None:
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        await service.create_completion(
+        await service.create_completion_with_metadata(
             request,
             tenant_context=tenant_context(),
             request_id="req-policy",
@@ -1570,18 +1581,8 @@ async def test_recommendation_service_orders_and_bounds_recommendations_without_
             "enabled": False,
         }
     )
-    settings = Settings()
     recommendation_service = RecommendationService(
         governance_store=store,
-        policy_simulation_service=PolicySimulationService(
-            governance_store=store,
-            router_service=RouterService(settings),
-            policy_service=PolicyService(
-                settings,
-                store,
-                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
-            ),
-        ),
         semantic_cache_service=cache_service,
     )
 
@@ -1632,18 +1633,8 @@ async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runti
     ]
     store = FakeSimulationGovernanceStore(records)
     cache_service = FakeCacheService()
-    settings = Settings()
     recommendation_service = RecommendationService(
         governance_store=store,
-        policy_simulation_service=PolicySimulationService(
-            governance_store=store,
-            router_service=RouterService(settings),
-            policy_service=PolicyService(
-                settings,
-                store,
-                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
-            ),
-        ),
         semantic_cache_service=cache_service,
     )
 
@@ -1671,18 +1662,8 @@ async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runti
 async def test_recommendation_service_returns_no_action_summary_for_quiet_healthy_window() -> None:
     store = FakeSimulationGovernanceStore([])
     cache_service = FakeCacheService()
-    settings = Settings()
     recommendation_service = RecommendationService(
         governance_store=store,
-        policy_simulation_service=PolicySimulationService(
-            governance_store=store,
-            router_service=RouterService(settings),
-            policy_service=PolicyService(
-                settings,
-                store,
-                PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"),
-            ),
-        ),
         semantic_cache_service=cache_service,
     )
 

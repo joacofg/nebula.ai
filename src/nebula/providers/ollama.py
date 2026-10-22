@@ -13,6 +13,7 @@ from nebula.providers.base import (
     CompletionResult,
     CompletionUsage,
     ProviderError,
+    describe_http_error,
 )
 
 
@@ -32,7 +33,7 @@ class OllamaProvider(CompletionProvider):
             response = await self.client.post("/api/chat", json=payload)
             response.raise_for_status()
         except httpx.HTTPError as exc:
-            raise ProviderError(f"Ollama completion failed: {exc}") from exc
+            raise ProviderError(f"Ollama completion failed: {describe_http_error(exc)}") from exc
 
         body = response.json()
         return CompletionResult(
@@ -53,6 +54,8 @@ class OllamaProvider(CompletionProvider):
         async def iterator():
             try:
                 async with self.client.stream("POST", "/api/chat", json=payload) as response:
+                    if not response.is_success:
+                        await response.aread()
                     response.raise_for_status()
                     async for line in response.aiter_lines():
                         if not line:
@@ -63,7 +66,9 @@ class OllamaProvider(CompletionProvider):
                             model=chunk.get("model", payload["model"]),
                             finish_reason="stop" if chunk.get("done") else None,
                         )
-            except (httpx.HTTPError, json.JSONDecodeError) as exc:
+            except httpx.HTTPError as exc:
+                raise ProviderError(f"Ollama stream failed: {describe_http_error(exc)}") from exc
+            except json.JSONDecodeError as exc:
                 raise ProviderError(f"Ollama stream failed: {exc}") from exc
 
         return iterator()

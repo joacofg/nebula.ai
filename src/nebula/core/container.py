@@ -59,7 +59,6 @@ class ServiceContainer:
         )
         self.recommendation_service = RecommendationService(
             governance_store=self.governance_store,
-            policy_simulation_service=self.policy_simulation_service,
             semantic_cache_service=self.cache_service,
         )
         self.retention_lifecycle_service = RetentionLifecycleService(
