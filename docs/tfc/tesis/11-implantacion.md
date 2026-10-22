@@ -95,10 +95,16 @@ versiones de los modelos quedaron en `benchmarks/ground-truth/v1/provenance.json
 4. *Evaluación del router:* validación cruzada de 5 folds agrupada por prompt, y una estimación
    anidada en la que ningún prompt evaluado influye en los pesos ni en los umbrales que lo rutean.
 5. *Rendimiento:* latencia de cada modelo sobre 30 prompts en español, en secuencia.
+6. *Medición del caché semántico:* precisión y cobertura de la decisión de acierto del caché,
+   sobre pares de paráfrasis etiquetados y sobre un replay con el código de búsqueda del gateway,
+   con un pre-registro propio, y ahorro sobre trazas con distintas tasas de repetición.
 
 **Criterios de éxito.** Ahorro ≥ 30 % y calidad ≥ 0.95 frente a la línea base, con el router en
 el objetivo 0.95. Para el instrumento, el pre-registro fijó un κ de al menos 0.4 en el hold-out en
-español como condición para declarar el ground truth "no limitado por los jueces".
+español como condición para declarar el ground truth "no limitado por los jueces". Para el caché,
+su pre-registro fijó que un umbral de similitud es seguro si la precisión de sus aciertos llega a
+0.95 en los dos conjuntos de prueba; es un criterio de seguridad del caché, aparte de los dos de la
+hipótesis.
 
 ### 11.2.2 Casos de prueba
 
@@ -126,9 +132,13 @@ que respalda cada caso, está en el Anexo A. La suite automática tiene 458 prue
 | CP-15 | Replay de la consola | coincide con el artefacto del router | coincide | P |
 | CP-16 | Pruebas de extremo a extremo de la consola | todas pasan | pasan los siete archivos | P |
 | CP-17 | Cifras de la tesis al día con los reportes | ningún bloque desactualizado | al día | P |
+| CP-18 | Precisión del caché semántico (criterio pre-registrado) | ≥ 0.95 en PAWS-X y en el replay de paráfrasis, en 0.90 | ningún umbral la alcanza; en 0.90, 0.453 y 0.803; en el mejor, 0.99, 0.620 y 0.920 | F |
 
 Los casos en F merecen una lectura. CP-04 y CP-07 son resultados negativos esperables y útiles:
 muestran que la regla anterior y la métrica anterior no servían, que es el motivo del trabajo.
+CP-18 es del mismo tipo: muestra que la similitud del embedding, sola, no alcanza para decidir un
+acierto del caché con la precisión exigida, y el pre-registro ya advertía que el replay
+probablemente fallaría en 0.90; se retoma en 11.2.4.
 CP-05 es el que hay que discutir con más cuidado, y se retoma en 11.2.4 y 11.2.5. CP-16 llegó a
 fallar: dos pruebas de la consola usaban selectores ambiguos, que encontraban varios elementos. Se
 reescribieron con roles accesibles y nombres exactos junto con el rediseño de la interfaz, y desde
@@ -255,6 +265,112 @@ del objetivo 0.95 en la estimación anidada.
 | qwen2.5:7b | 21.3 | 36.2 | 30 |
 <!-- /GEN:router-latency -->
 
+**Medición del caché semántico.** El corpus no sirve para medir el caché, porque casi no tiene
+consultas repetidas: entre los 1000 prompts en español hay un solo par casi idéntico, dos prompts
+de MBPP. Por eso el caché se midió aparte, con un pre-registro propio
+(`benchmarks/cache/v1/preregistration.md`) que fijó las definiciones, el criterio y la regla de
+decisión antes de calcular cualquier precisión. La pregunta es la de un clasificador: cuando el
+caché decide que una consulta nueva ya fue respondida, ¿tiene razón? Se responde con dos
+conjuntos. El primero son los pares de prueba en español de PAWS-X [46], traducidos por personas a
+partir de pares en inglés que comparten casi todas las palabras y que a veces son paráfrasis y a
+veces no; cuenta como acierto del caché un par cuyo coseno llega al umbral. El segundo es un
+replay con el propio código de búsqueda del gateway (`SemanticCacheService`) sobre un Qdrant en
+memoria: el caché guarda los 1000 prompts en español y se lo consulta con paráfrasis de 200 de
+ellos, escritas por qwen2.5:7b, y con cada original contra los otros 999. Un acierto es correcto si
+una paráfrasis encuentra su propio original; cualquier otro acierto es falso, incluido el de un
+original que encuentra a otro prompt del corpus. Para el veredicto, el caché decide solo por
+similitud, sin la regla de nivel con que opera el gateway, por la que un pedido solo recibe una
+respuesta generada por un nivel igual o más capaz que el que el router eligió para él. Es seguro
+en un umbral si la precisión de sus aciertos llega a 0.95 en los dos conjuntos:
+
+<!-- GEN:cache-verdict -->
+Con el embedding de producción (`nomic-embed-text`), la grilla de umbrales va de 0.80 a 0.99, y un umbral cuenta solo si tiene al menos 20 aciertos en cada conjunto. Resultado: ningún umbral de la grilla es seguro. En el umbral pre-registrado, 0.90, la precisión fue 0.453 en PAWS-X y 0.803 en el replay. El umbral recomendado es 0.99, el de mayor precisión mínima entre los dos conjuntos (0.620 en PAWS-X y 0.920 en el replay), que no llega a 0.95; su cobertura es 0.168 en PAWS-X y 0.133 en el replay. El valor por defecto para los tenants nuevos pasa a 0.99. Con `nomic-embed-text-v2-moe`, medido solo como sensibilidad, la precisión en 0.90 es 0.466 en PAWS-X y 0.952 en el replay, y la misma regla no daría ningún umbral seguro (recomendaría 0.98, con precisión 0.594 en PAWS-X y 0.917 en el replay); no cambia nada en el producto.
+<!-- /GEN:cache-verdict -->
+
+La Tabla 11.10 muestra la precisión y la cobertura (la proporción de paráfrasis que el caché
+reconoce) en una selección de umbrales; la grilla completa está en `benchmarks/cache/v1/report.md`.
+
+**Tabla 11.10.** Precisión y cobertura del caché por umbral de similitud, con el embedding de
+producción.
+
+<!-- GEN:cache-grid -->
+| Umbral | PAWS-X: aciertos | PAWS-X: precisión | PAWS-X: cobertura | Replay: aciertos | Replay: precisión | Replay: cobertura |
+|---|---|---|---|---|---|---|
+| 0.80 | 1978 | 0.451 | 0.985 | 439 | 0.380 | 0.965 |
+| 0.85 | 1947 | 0.451 | 0.969 | 324 | 0.485 | 0.908 |
+| 0.90 (pre-registrado) | 1805 | 0.453 | 0.901 | 173 | 0.803 | 0.803 |
+| 0.95 | 1290 | 0.464 | 0.660 | 104 | 0.913 | 0.549 |
+| 0.96 | 1100 | 0.475 | 0.576 | 88 | 0.920 | 0.468 |
+| 0.97 | 848 | 0.485 | 0.453 | 73 | 0.918 | 0.387 |
+| 0.98 | 566 | 0.512 | 0.320 | 46 | 0.913 | 0.243 |
+| 0.99 (recomendado) | 245 | 0.620 | 0.168 | 25 | 0.920 | 0.133 |
+<!-- /GEN:cache-grid -->
+
+En PAWS-X la precisión apenas se mueve con el umbral. Si el caché aceptara todos los pares, su
+precisión sería exactamente la proporción de paráfrasis del conjunto, y hasta 0.97 queda muy cerca
+de ese valor; solo sube algo en los dos últimos umbrales:
+
+<!-- GEN:cache-pawsx -->
+El conjunto tiene 1999 pares de prueba en español, 907 de ellos paráfrasis según su etiqueta (0.454 del total). Sobre la grilla, la precisión va de 0.451 a 0.620 con `nomic-embed-text` (el máximo, en 0.99) y de 0.454 a 0.679 con `nomic-embed-text-v2-moe`.
+<!-- /GEN:cache-pawsx -->
+
+En el replay la precisión sí sube con el umbral, pero se estanca por debajo de 0.95. Las
+paráfrasis las escribió qwen2.5:7b, una por prompt, y la regla de validez, que el pre-registro fijó
+antes de generar la versión que se usa, solo mira la longitud: entre la mitad y el doble de la del
+original.
+
+<!-- GEN:cache-replay -->
+Cumplen la regla de validez 173 de las 200 paráfrasis; descartadas: 22 por cortas, 3 por largas y 2 por vacías o idénticas al original. El coseno de cada paráfrasis con su original (`nomic-embed-text`) tiene mediana 0.957, cuartil inferior 0.909 y mínimo 0.551. En 0.90 el replay tuvo 139 aciertos correctos y 34 falsos, y en 0.99, 23 correctos y 2 falsos. Todos los falsos aciertos vienen de originales que encontraron a otro prompt del corpus. Cada paráfrasis se rutea con su propio vector: su nivel coincide con el de su original en 156, es más alto en 6 y más bajo en 11. Con la regla de nivel activa, la precisión es 0.800 en 0.90 (3 aciertos bloqueados por nivel) y 0.920 en 0.99 (ningún acierto bloqueado por nivel). Estado de la revisión humana de la muestra de paráfrasis: pendiente.
+<!-- /GEN:cache-replay -->
+
+El problema del replay está, entonces, en los propios prompts del corpus: algunos están tan cerca
+de otro como una paráfrasis de su original. Esos pares vecinos forman un tercer conjunto,
+descriptivo: los más cercanos se vieron antes de fijar el criterio, y por eso no entran en el
+veredicto.
+
+<!-- GEN:cache-neighbors -->
+Entre los prompts en español del corpus hay 265 pares de prompts distintos con coseno de 0.85 o más con `nomic-embed-text`: 6 desde 0.95, 14 entre 0.90 y 0.95 y 245 entre 0.85 y 0.90. Con `nomic-embed-text-v2-moe`, entre los mismos prompts: 2 desde 0.95, 3 entre 0.90 y 0.95 y 17 entre 0.85 y 0.90. Estado de la revisión humana de esos pares: pendiente.
+<!-- /GEN:cache-neighbors -->
+
+Las dos revisiones humanas del caché, una muestra de 40 paráfrasis sorteada a ciegas y los pares
+vecinos, las hace el autor con un etiquetador que solo muestra los dos textos. Por regla del
+pre-registro son descriptivas: su resultado se informa, pero no modifica el veredicto.
+
+Para estimar el ahorro se armó una traza de 1000 pedidos por cada tasa de repetición r, servida en
+orden por el caché del gateway, que empieza vacío y aplica la regla de nivel. Exactamente r × 1000
+pedidos repiten uno anterior, la mitad con el mismo texto y la mitad con su paráfrasis, y el resto
+son prompts del corpus en español que aparecen una sola vez. Un fallo se sirve en el nivel que
+elige el router (objetivo 0.95), al costo registrado para ese prompt en ese nivel, y se guarda; un
+acierto cuesta cero. Un acierto correcto conserva la calidad de la respuesta guardada, y uno falso
+vale cero. Este trabajo no midió la repetición de un tráfico real, pero la literatura da dos
+referencias. Al limpiar los prompts de primer turno en inglés de LMSYS-Chat-1M [47], un conjunto
+de un millón de conversaciones reales con LLM, FactBench descartó el 12.1 % por duplicados [48]; en
+el estudio de MeanCache, con 20 usuarios de ChatGPT, alrededor del 31 % de las consultas eran
+similares a otras anteriores [14]. La Tabla 11.11 compara, para cada tasa, el router solo con el
+router más el caché, en el umbral que el producto usa por defecto y en el pre-registrado.
+
+**Tabla 11.11.** Costo (USD cada mil pedidos) y calidad de la traza en español según la tasa de
+repetición: router solo y router con caché. El ahorro adicional se mide contra el router solo en
+la misma traza.
+
+<!-- GEN:cache-savings -->
+| Repetición | Router solo: costo | Router solo: calidad | Caché en 0.99: costo | Caché en 0.99: ahorro adicional | Caché en 0.99: calidad | Caché en 0.90: ahorro adicional | Caché en 0.90: calidad |
+|---|---|---|---|---|---|---|---|
+| 0 % | 1.848 | 0.988 | 1.846 | 0.1 % | 0.987 | 1.5 % | 0.971 |
+| 5 % | 1.845 | 0.988 | 1.787 | 3.2 % | 0.987 | 5.7 % | 0.973 |
+| 10 % | 1.880 | 0.991 | 1.746 | 7.1 % | 0.990 | 10.5 % | 0.978 |
+| 12.1 % (duplicados de LMSYS-Chat-1M) | 1.843 | 0.991 | 1.698 | 7.9 % | 0.990 | 11.4 % | 0.980 |
+| 15 % | 1.819 | 0.989 | 1.624 | 10.7 % | 0.988 | 13.9 % | 0.978 |
+| 20 % | 1.847 | 0.989 | 1.566 | 15.2 % | 0.988 | 18.6 % | 0.979 |
+| 25 % | 1.877 | 0.990 | 1.499 | 20.1 % | 0.989 | 23.9 % | 0.983 |
+| 30 % | 1.880 | 0.991 | 1.400 | 25.5 % | 0.990 | 29.2 % | 0.983 |
+| 31 % (MeanCache) | 1.899 | 0.991 | 1.405 | 26.0 % | 0.990 | 30.5 % | 0.985 |
+| 35 % | 1.929 | 0.993 | 1.316 | 31.8 % | 0.991 | 36.3 % | 0.986 |
+| 40 % | 1.861 | 0.992 | 1.222 | 34.3 % | 0.991 | 38.0 % | 0.985 |
+
+La traza usa solo los 1000 prompts en español. Sobre el corpus completo (1250 prompts), el router del gateway cuesta USD 1.706 cada mil (la tesis cita la estimación anidada, USD 1.70); sobre los prompts en español, que son más caros de rutear, cuesta USD 1.848, que es el costo del router solo en la traza sin repetición. Sin repetición, el caché igual sirve algunos pedidos: prompts distintos lo bastante parecidos a uno anterior, que cuentan como falsos aciertos (1 en 0.99 y 17 en 0.90).
+<!-- /GEN:cache-savings -->
+
 ### 11.2.4 Análisis de resultados
 
 Con el objetivo de calidad en 0.95, el router cumple los dos criterios de la hipótesis. Gasta
@@ -297,14 +413,43 @@ insuficientes algunas respuestas baratas que en realidad servían, lo que baja l
 del router y lo empuja a mandar más pedidos al frontier. El 31 % de ahorro está medido con esa
 vara: el ahorro tiende a estar subestimado.
 
-Hay una segunda razón por la que la cifra es conservadora. La hipótesis habla del gateway completo, que
-combina el router con el caché semántico, pero el corpus no tiene consultas repetidas: cada prompt
-aparece una vez por idioma, así que el 31 % sale solo del router. En tráfico real, donde una parte
-de las consultas se repite o se parece a una anterior [19], [14], cada acierto del caché
-evita además la llamada al modelo. Las corridas de agosto, con la heurística, servían 3 de 14
-pedidos desde el caché. El ahorro del caché depende tanto del tráfico que no se puede estimar con
-este corpus, y por eso no se suma; lo que se puede afirmar es que se agrega al del router, no que lo
-reemplaza.
+Hay una segunda razón por la que la cifra es conservadora. La hipótesis habla del gateway completo,
+que combina el router con el caché semántico, pero el 31 % sale solo del router, porque el corpus
+casi no tiene consultas repetidas. En tráfico real una parte de las consultas se repite o se parece
+a una anterior [19], [14], y la medición del caché permite decir cuánto agrega en ese caso y en qué
+condiciones. Su resultado tiene dos caras.
+
+La primera es negativa, y responde al criterio pre-registrado: con el embedding de producción,
+ningún umbral de la grilla alcanza una precisión de 0.95 en los dos conjuntos, y el caso CP-18 se
+reporta como fallado. En PAWS-X la precisión queda cerca de la proporción de paráfrasis del
+conjunto en casi toda la grilla, y en el replay se estanca alrededor de 0.92. Los dos conjuntos
+muestran lo mismo: la similitud del embedding mide cuánto se parecen dos textos, no si piden lo
+mismo. Entre los seis pares de prompts distintos del corpus con coseno de 0.95 o más hay dos
+preguntas sobre el episodio de Game of Thrones que dirigió Alik Sakharov que solo cambian el número
+de temporada, y para el embedding están más cerca entre sí que muchas paráfrasis de su propio
+original. Es lo que anticipaba la sección 8.2.4: el umbral depende del modelo de embeddings y del
+tipo de consulta. Además, el riesgo era conocido. Los pares vecinos más cercanos del corpus se
+habían visto antes de fijar el criterio, y el pre-registro advirtió que hacían probable que el
+replay fallara en 0.90. El criterio se mantuvo igual, porque un caché que sirve la respuesta de
+otra pregunta es justamente lo que tiene que rechazar.
+
+La consecuencia está en el producto. Como fija la regla pre-registrada, el umbral por defecto para
+los tenants nuevos pasó de 0.90 a 0.99, el de mayor precisión mínima entre los dos conjuntos,
+aunque no llegue a 0.95; los tenants existentes conservan el valor que tienen guardado. Es un valor
+conservador: en 0.99 el caché reconoce sobre todo repeticiones exactas o casi exactas y deja pasar
+la mayoría de las paráfrasis (en el replay, su cobertura es 0.133). El modelo multilingüe que se
+midió como sensibilidad tampoco resuelve el problema (amenaza 11).
+
+La segunda cara es positiva. Aun con ese umbral, el caché suma ahorro sobre el router sin bajar la
+calidad de forma apreciable. En la traza en español, con la tasa de duplicados de LMSYS-Chat-1M
+(12.1 %) el costo baja un 7.9 % respecto del router solo, y con la de MeanCache (31 %), un 26.0 %,
+con una calidad de 0.990 contra 0.991 del router solo en los dos casos (Tabla 11.11). Con el umbral
+pre-registrado, 0.90, el ahorro adicional sería mayor (11.4 % con la tasa de LMSYS-Chat-1M), pero
+la calidad bajaría a 0.980, porque cada falso acierto sirve la respuesta de otra pregunta: es el
+costo que el criterio buscaba evitar. Estos porcentajes no se suman al 31 %, porque se miden contra
+el router en la misma traza, que solo tiene prompts en español y es más cara de rutear que el
+corpus completo. Lo que sí se puede afirmar es que el caché agrega ahorro al del router, y que
+cuánto agrega depende de cuánto se repite el tráfico.
 
 Con el objetivo en 0.90 el router ahorra bastante más (57 %, USD 1.06), pero la calidad cae a
 0.903, casi 10 puntos por debajo de la referencia, y no cumple el segundo criterio. Ese punto
@@ -325,13 +470,16 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
    *Mitigación:* la dirección del sesgo se estima sobre la muestra aleatoria (7 contra 2), y un
    conjunto dirigido de rechazos comprobó que esos rechazos tienen fundamento.
 2. **Un único evaluador humano, que es el autor.** Todas las notas humanas son de la misma
-   persona. *Efecto:* no se puede medir el acuerdo entre humanos, y el juicio del evaluador podría
+   persona, incluidas las revisiones del caché (la muestra de paráfrasis y los pares vecinos).
+   *Efecto:* no se puede medir el acuerdo entre humanos, y el juicio del evaluador podría
    estar influido por conocer el sistema. *Mitigación:* el etiquetado fue ciego a la ruta y al
    modelo que generó cada respuesta, el orden de las respuestas se sorteó, y el evaluador pasó por
    una ronda de calibración con ítems diseñados para detectar criterios superficiales. Hubo dos pasadas
    anteriores que se descartaron: una previa a esa ronda y otra que la superó pero que el propio
    evaluador retiró porque juzgaba por el tema y no por la sustituibilidad; las dos quedaron
-   documentadas en el repositorio.
+   documentadas en el repositorio. En el caché, el etiquetador muestra solo los dos textos, en un
+   orden sorteado y sin coseno ni identificador, y por el pre-registro sus resultados no modifican
+   el veredicto.
 3. **Selección de la regla sobre 22 pares elegidos por desacuerdo.** Los pares en inglés con que
    se eligió la regla R3 no son una muestra aleatoria: el piloto los seleccionó porque dos jueces
    previos los leían distinto, y quedaron 20 sustituibles y 2 no. *Efecto:* el κ de selección
@@ -379,3 +527,33 @@ amenaza se indica qué es, qué efecto puede tener sobre los resultados y cómo 
     de la mezcla de tareas; en un tráfico con más escritura abierta, donde el local rinde peor
     (Tabla 11.4), el ahorro sería menor. *Mitigación:* el router se reentrena con un comando sobre
     nuevas etiquetas, y el operador ve la frontera antes de elegir.
+11. **El embedding del caché es un modelo entrenado en inglés.** `nomic-embed-text` [30] es un
+    modelo para inglés, y el caché lo usa sobre consultas en español. *Efecto:* parte de la baja
+    precisión del caché puede deberse al idioma, y otro modelo podría separar mejor las paráfrasis
+    de las preguntas distintas. *Mitigación:* el pre-registro incluyó como sensibilidad un modelo
+    multilingüe, `nomic-embed-text-v2-moe`, que no entra en el veredicto. Con él, la precisión del
+    replay en 0.90 llega a 0.952, pero en PAWS-X queda en 0.466, y la misma regla tampoco
+    encuentra un umbral seguro: los pares adversariales no son un problema solo del idioma.
+    Cambiar el embedding de producción queda fuera del alcance de este trabajo.
+12. **Paráfrasis sintéticas.** Las paráfrasis del replay las escribió qwen2.5:7b, una por prompt,
+    y la regla de validez solo mira la longitud. *Efecto:* una reescritura que responde el prompt
+    en lugar de reformularlo, o que cambia un dato, baja la cobertura si no encuentra su original,
+    y cuenta como acierto correcto si lo encuentra, aunque la respuesta guardada no le sirva.
+    Además, las paráfrasis de usuarios reales pueden alejarse del original más o menos que las de
+    un modelo. Una revisión automática, hecha por un agente de IA y no por una persona, leyó unas
+    75 paráfrasis válidas y marcó 4 que responden en lugar de reescribir, 1 con caracteres
+    corruptos y 2 de código que cambian el nombre del identificador que verifica la prueba.
+    *Mitigación:* la regla se fijó antes de regenerar las paráfrasis, cuando una primera
+    generación respondía en algunos casos en lugar de reescribir, y no se cambió después de ver el
+    resultado; la
+    muestra de 40 pares sorteada a ciegas mide, con una revisión humana, qué tan fiel es el
+    conjunto.
+13. **La traza de ahorro es sintética.** La repetición del tráfico real no se midió: las tasas de
+    la Tabla 11.11 vienen de otros contextos (prompts en inglés de LMSYS-Chat-1M, usuarios de un
+    ámbito académico en MeanCache), y la mezcla de mitad repeticiones exactas y mitad paráfrasis es
+    un supuesto. Además, el router se entrenó sobre estos mismos prompts, así que la calidad del
+    router solo en la traza es optimista. *Efecto:* el ahorro del caché en un tenant real puede ser
+    mayor o menor que el de la tabla, según cuánto y cómo se repita su tráfico. *Mitigación:* se
+    reporta la curva de 0 a 40 % de repetición, para que el operador lea la tasa que corresponde a
+    su tráfico; el ahorro se mide contra el router solo en la misma traza, y la calidad se lee como
+    diferencia respecto de él, no como valor absoluto.
