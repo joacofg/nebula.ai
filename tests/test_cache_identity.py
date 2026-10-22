@@ -14,11 +14,13 @@ from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
 from nebula.services.semantic_cache_service import SemanticCacheService
 from tests.support import (
+    FakeCacheService,
     FixedVectorEmbeddings,
     auth_headers,
     cache_lookups,
     configured_app,
     usage,
+    use_fake_cache,
 )
 
 # Payload indexes are a no-op in local Qdrant, and the client says so on every index.
@@ -68,16 +70,25 @@ class _Gateway:
     # Every prompt embeds to the same vector, so only the payload filters tell entries apart.
     embeddings: FixedVectorEmbeddings
 
-    async def chat(
+    async def post(
         self, messages: list[dict[str, str]], *, model: str = "nebula-auto", stream: bool = False
     ) -> httpx.Response:
-        response = await self.client.post(
+        return await self.client.post(
             "/v1/chat/completions",
             headers=auth_headers(),
             json={"model": model, "messages": messages, "stream": stream},
         )
+
+    async def chat(
+        self, messages: list[dict[str, str]], *, model: str = "nebula-auto", stream: bool = False
+    ) -> httpx.Response:
+        response = await self.post(messages, model=model, stream=stream)
         assert response.status_code == 200, response.text
         return response
+
+    def rows_of(self, response: httpx.Response) -> list:
+        store = self.container.governance_store
+        return store.list_usage_records(request_id=response.headers["X-Request-ID"])
 
     def set_policy(self, **updates: object) -> None:
         store = self.container.governance_store
@@ -309,3 +320,178 @@ async def test_the_avoided_cost_is_priced_at_the_model_the_request_would_have_us
     )
     # A model with no price in the catalog avoids 0, never an error or a guess.
     assert hits["other/model"].route_signals["cache_avoided_cost_usd"] == 0.0
+
+
+# --- A cached answer costs nothing, so spend guardrails ask the cache first (C9) ---
+
+# Every prompt embeds to the same vector here, so only another conversation context misses.
+UNCACHED = [{"role": "system", "content": "Eres X"}, {"role": "user", "content": "hola"}]
+
+
+async def _cache_a_frontier_answer_then_exhaust_the_budget(
+    gateway: _Gateway, *, stream: bool, enforcement: str | None = "deny"
+) -> float:
+    """Cache "premium answer 1" for HOLA; its cost is all the tenant's hard budget allows."""
+    gateway.set_policy(routing_mode_default="premium_only")
+    await gateway.chat(HOLA, stream=stream)
+    spent = gateway.container.governance_store.tenant_spend_total("default")
+    gateway.set_policy(hard_budget_limit_usd=spent, hard_budget_enforcement=enforcement)
+    return spent
+
+
+# No enforcement means deny; a downgrade cannot apply to a premium-only tenant, so it denies too.
+@pytest.mark.parametrize("enforcement", ["deny", None, "downgrade"])
+@pytest.mark.parametrize("stream", [False, True])
+async def test_a_tenant_over_its_hard_budget_still_gets_its_cached_answer(
+    stream: bool, enforcement: str | None
+) -> None:
+    async with _gateway() as gateway:
+        spent = await _cache_a_frontier_answer_then_exhaust_the_budget(
+            gateway, stream=stream, enforcement=enforcement
+        )
+        hit = await gateway.post(HOLA, stream=stream)
+        (row,) = gateway.rows_of(hit)
+        spend_after_hit = gateway.container.governance_store.tenant_spend_total("default")
+
+    assert hit.status_code == 200, hit.text
+    assert hit.headers["X-Nebula-Cache-Hit"] == "true"
+    assert "premium answer 1" in _answer(hit)
+    assert len(gateway.premium.requests) == 1
+    assert row.terminal_status == "cache_hit"
+    assert row.estimated_cost == 0.0
+    assert spend_after_hit == spent
+    # Operators still see the budget the answer was served over, and no denial.
+    outcome = hit.headers["X-Nebula-Policy-Outcome"]
+    assert "hard_budget=exceeded(limit_usd=" in outcome
+    assert f"enforcement={enforcement or 'deny'})" in outcome
+    assert "denied=" not in outcome
+    assert row.policy_outcome == outcome
+
+
+# The cached frontier answer cost USD 0.0000036 (8 + 4 provider-reported tokens at gpt-4o-mini's
+# prices), or 0.00000255 streamed (1 + 4 tokens estimated from the text); both the spend and
+# the limit print rounded to six decimals.
+@pytest.mark.parametrize(("stream", "budget_usd"), [(False, "0.000004"), (True, "0.000003")])
+async def test_a_tenant_over_its_hard_budget_without_a_cached_answer_is_denied_as_before(
+    stream: bool, budget_usd: str
+) -> None:
+    async with _gateway() as gateway:
+        await _cache_a_frontier_answer_then_exhaust_the_budget(gateway, stream=stream)
+        denied = await gateway.post(UNCACHED, stream=stream)
+        (row,) = gateway.rows_of(denied)
+
+    # The exact 403 the gateway answered before the cache was consulted first.
+    detail = (
+        "Tenant hard budget limit reached; premium routing is blocked "
+        f"(spent_usd={budget_usd}, limit_usd={budget_usd})."
+    )
+    outcome = (
+        "routing_mode=premium_only;"
+        f"hard_budget=exceeded(limit_usd={budget_usd},spent_usd={budget_usd},enforcement=deny);"
+        f"denied={detail};"
+        "outcome_evidence=thin(eligible=0,sufficient=0,degraded=0,gated=0,excluded=1)"
+    )
+    assert denied.status_code == 403
+    assert denied.json() == {
+        "error": {"message": detail, "type": "permission_error", "code": "policy_premium_only"},
+        "detail": detail,
+    }
+    nebula_headers = {
+        name: value for name, value in denied.headers.items() if name.startswith("x-nebula-")
+    }
+    assert nebula_headers == {
+        "x-nebula-tenant-id": "default",
+        "x-nebula-route-target": "premium",
+        "x-nebula-route-reason": "policy_premium_only",
+        "x-nebula-provider": "policy",
+        "x-nebula-route-score": "0.0000",
+        "x-nebula-cache-hit": "false",
+        "x-nebula-fallback-used": "false",
+        "x-nebula-policy-mode": "premium_only",
+        "x-nebula-policy-outcome": outcome,
+        "x-nebula-route-tier": "denied",
+    }
+    assert (
+        row.terminal_status,
+        row.final_route_target,
+        row.final_provider,
+        row.requested_model,
+        row.response_model,
+        row.cache_hit,
+        row.estimated_cost,
+        row.latency_ms,
+        row.route_reason,
+        row.policy_outcome,
+        row.route_signals,
+    ) == (
+        "policy_denied",
+        "denied",
+        None,
+        "nebula-auto",
+        None,
+        False,
+        None,
+        None,
+        "policy_premium_only",
+        outcome,
+        None,
+    )
+    assert len(gateway.premium.requests) == 1
+
+
+@pytest.mark.parametrize("stream", [False, True])
+async def test_a_request_over_the_per_request_cap_still_gets_its_cached_answer(
+    stream: bool,
+) -> None:
+    async with _gateway() as gateway:
+        gateway.set_policy(routing_mode_default="premium_only")
+        await gateway.chat(HOLA, stream=stream)
+        gateway.set_policy(max_premium_cost_per_request=1e-9)
+        hit = await gateway.post(HOLA, stream=stream)
+        miss = await gateway.post(UNCACHED, stream=stream)
+        (hit_row,) = gateway.rows_of(hit)
+        (miss_row,) = gateway.rows_of(miss)
+
+    assert hit.status_code == 200, hit.text
+    assert hit.headers["X-Nebula-Cache-Hit"] == "true"
+    assert "premium answer 1" in _answer(hit)
+    assert hit_row.terminal_status == "cache_hit"
+    assert "denied=" not in hit_row.policy_outcome
+    # With nothing cached the cap denies, as before.
+    assert miss.status_code == 403
+    assert miss.json()["detail"] == "Request exceeds the tenant premium spend guardrail."
+    assert miss_row.terminal_status == "policy_denied"
+    assert len(gateway.premium.requests) == 1
+
+
+@pytest.mark.parametrize("stream", [False, True])
+@pytest.mark.parametrize(
+    ("policy", "model", "detail"),
+    [
+        (
+            {"routing_mode_default": "local_only"},
+            "openai/gpt-4o",
+            "Tenant policy does not allow explicit premium routing.",
+        ),
+        (
+            {"allowed_premium_models": ["openai/gpt-4o"]},
+            "other/model",
+            "Premium model 'other/model' is not allowed for this tenant.",
+        ),
+    ],
+    ids=["routing_mode", "allowlist"],
+)
+async def test_denials_other_than_spend_happen_before_the_cache(
+    stream: bool, policy: dict[str, object], model: str, detail: str
+) -> None:
+    async with _gateway() as gateway:
+        cache = use_fake_cache(gateway.container, FakeCacheService("cached answer"))
+        gateway.set_policy(**policy)
+        denied = await gateway.post(HOLA, model=model, stream=stream)
+        (row,) = gateway.rows_of(denied)
+
+    assert denied.status_code == 403
+    assert denied.json()["detail"] == detail
+    assert row.terminal_status == "policy_denied"
+    # A cache that would have answered is never asked.
+    assert cache.lookup_calls == []

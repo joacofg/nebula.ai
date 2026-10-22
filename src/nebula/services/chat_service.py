@@ -33,7 +33,7 @@ from nebula.providers.base import CompletionProvider, CompletionUsage, ProviderE
 from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.embeddings_service import OllamaEmbeddingsService
 from nebula.services.governance_store import GovernanceStore
-from nebula.services.policy_service import PolicyResolution, PolicyService
+from nebula.services.policy_service import PolicyResolution, PolicyService, SpendDenial
 from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouteDecision, RouteTarget, RouterService
 from nebula.services.semantic_cache_service import (
@@ -177,6 +177,14 @@ class ChatService:
             )
             COMPLETION_COUNT.labels("cache", "ok", "false").inc()
             return CompletionResponseEnvelope(response=response, metadata=metadata)
+        if policy_resolution.spend_denial is not None:
+            # A cached answer would have cost nothing; with none, the guardrail denies.
+            self._deny_spend(
+                request=request,
+                tenant_id=tenant_context.tenant.id,
+                request_id=request_id,
+                denial=policy_resolution.spend_denial,
+            )
 
         route_decision = policy_resolution.route_decision
         ROUTE_DECISION_COUNT.labels(route_decision.target, route_decision.reason, "false").inc()
@@ -318,6 +326,7 @@ class ChatService:
         )
         if cache_hit is not None:
             cached_response = cache_hit.response
+            usage = self.policy_service.estimate_usage(request, cached_response)
             COMPLETION_COUNT.labels("cache", "ok", "true").inc()
             metadata = self._metadata(
                 tenant_id=tenant_context.tenant.id,
@@ -327,11 +336,7 @@ class ChatService:
                 cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
-                avoided_cost_usd=self._cache_avoided_cost(
-                    request,
-                    policy_resolution,
-                    self.policy_service.estimate_usage(request, cached_response),
-                ),
+                avoided_cost_usd=self._cache_avoided_cost(request, policy_resolution, usage),
             )
             wrapped_stream = self._wrap_stream_with_ledger(
                 stream=self._stream_text(cached_response, response_id, created, "nebula-cache"),
@@ -341,6 +346,13 @@ class ChatService:
                 started_at=started_at,
             )
             return StreamingCompletionEnvelope(stream=wrapped_stream, metadata=metadata)
+        if policy_resolution.spend_denial is not None:
+            self._deny_spend(
+                request=request,
+                tenant_id=tenant_context.tenant.id,
+                request_id=request_id,
+                denial=policy_resolution.spend_denial,
+            )
 
         route_decision = policy_resolution.route_decision
         ROUTE_DECISION_COUNT.labels(route_decision.target, route_decision.reason, "true").inc()
@@ -871,26 +883,65 @@ class ChatService:
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
                 headers = exc.headers or {}
-                self.governance_store.record_usage(
-                    UsageLedgerRecord(
-                        request_id=request_id or f"req-{uuid4().hex}",
-                        tenant_id=tenant_context.tenant.id,
-                        requested_model=request.model,
-                        final_route_target="denied",
-                        final_provider=None,
-                        fallback_used=False,
-                        cache_hit=False,
-                        response_model=None,
-                        estimated_cost=None,
-                        latency_ms=None,
-                        timestamp=datetime.now(UTC),
-                        terminal_status="policy_denied",
-                        route_reason=headers.get("X-Nebula-Route-Reason"),
-                        policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
-                        route_signals=None,
-                    )
+                self._record_policy_denial(
+                    request=request,
+                    tenant_id=tenant_context.tenant.id,
+                    request_id=request_id,
+                    route_reason=headers.get("X-Nebula-Route-Reason"),
+                    policy_outcome=headers.get("X-Nebula-Policy-Outcome", exc.detail),
                 )
             raise
+
+    def _deny_spend(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        tenant_id: str,
+        request_id: str | None,
+        denial: SpendDenial,
+    ) -> NoReturn:
+        """After a cache miss, the 403 the spend guardrail held back and its policy_denied row."""
+        self._record_policy_denial(
+            request=request,
+            tenant_id=tenant_id,
+            request_id=request_id,
+            route_reason=denial.route_reason,
+            policy_outcome=denial.policy_outcome,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=denial.detail,
+            headers=denial.headers,
+        )
+
+    def _record_policy_denial(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        tenant_id: str,
+        request_id: str | None,
+        route_reason: str | None,
+        policy_outcome: str | None,
+    ) -> None:
+        self.governance_store.record_usage(
+            UsageLedgerRecord(
+                request_id=request_id or f"req-{uuid4().hex}",
+                tenant_id=tenant_id,
+                requested_model=request.model,
+                final_route_target="denied",
+                final_provider=None,
+                fallback_used=False,
+                cache_hit=False,
+                response_model=None,
+                estimated_cost=None,
+                latency_ms=None,
+                timestamp=datetime.now(UTC),
+                terminal_status="policy_denied",
+                route_reason=route_reason,
+                policy_outcome=policy_outcome,
+                route_signals=None,
+            )
+        )
 
     async def _embed_for_routing(self, prompt: str) -> list[float] | None:
         """Embed the prompt once for the learned router; None when it is off or embedding fails."""
