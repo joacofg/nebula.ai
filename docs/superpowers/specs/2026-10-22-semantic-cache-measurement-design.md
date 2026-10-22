@@ -70,7 +70,7 @@ The cache is treated as a classifier of "this request was already answered".
 
 ### Pre-registration (committed before any measurement)
 
-`benchmarks/cache/v1/preregistration.md` fixes, before computing any precision (same text as
+`benchmarks/cache/v1/preregistration.md` fixes, before computing any precision (condensed from
 that file):
 
 - **Definitions:**
@@ -143,7 +143,7 @@ that file):
      leave-one-out disclosure stands as written: it refers to the Spanish pairs.
 
   None of these changes touches the criterion, the threshold, the grid, the eligibility rule or
-  the verdict rule. Same text as the end of `benchmarks/cache/v1/preregistration.md`.
+  the verdict rule. Condensed from the end of `benchmarks/cache/v1/preregistration.md`.
 
 ### Data sets
 

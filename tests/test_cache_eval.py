@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import tarfile
@@ -230,6 +231,13 @@ def test_find_pairs_keeps_only_pairs_at_or_above_the_threshold():
     assert [(p.a_id, p.b_id) for p in pairs] == [("es:x", "es:y"), ("es:w", "es:z")]
 
 
+def test_find_pairs_includes_a_pair_exactly_at_the_threshold():
+    # cos([1, 0], [3, 4]) is exactly 0.6 in floating point, so this pins ">=" against ">"
+    vectors = {"es:x": [1.0, 0.0], "es:z": [3.0, 4.0]}
+    assert [(p.a_id, p.b_id) for p in neighbors.find_pairs(vectors, min_cos=0.6)] == [("es:x", "es:z")]
+    assert neighbors.find_pairs(vectors, min_cos=0.6000001) == []
+
+
 def test_find_pairs_returns_nothing_for_one_vector_or_a_high_threshold():
     assert neighbors.find_pairs({"es:x": [1.0, 0.0]}, min_cos=0.0) == []
     assert neighbors.find_pairs(NEIGHBOR_VECTORS, min_cos=1.01) == []
@@ -253,6 +261,44 @@ def test_pair_records_carry_the_ids_texts_and_cosine_of_each_pair():
         "cos_nomic_v1": pytest.approx(1.0),
     }
     assert [r["pair_id"] for r in records] == ["es:x|es:y", "es:w|es:z"]
+
+
+def _sha256_of(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_verify_test_tsv_accepts_the_file_with_the_expected_hash_and_row_count(tmp_path):
+    # the NS placeholder row counts: it is dropped later, not here
+    path = _tsv(tmp_path, "10\tUno.\tDos.\t1", "5815\tNS\tTres.\t0", "12\tCuatro.\tCinco.\t0")
+    pawsx.verify_test_tsv(path, sha256=_sha256_of(path), rows=3)
+
+
+def test_verify_test_tsv_refuses_a_file_whose_hash_differs_from_the_recorded_one(tmp_path):
+    path = _tsv(tmp_path, "10\tUno.\tDos.\t1")
+    with pytest.raises(ValueError, match="SHA-256"):
+        pawsx.verify_test_tsv(path, sha256="0" * 64, rows=1)
+
+
+def test_verify_test_tsv_refuses_a_file_with_another_number_of_rows(tmp_path):
+    path = _tsv(tmp_path, "10\tUno.\tDos.\t1", "12\tTres.\tCuatro.\t0")
+    with pytest.raises(ValueError, match="rows"):
+        pawsx.verify_test_tsv(path, sha256=_sha256_of(path), rows=2000)
+
+
+def test_the_expected_hash_and_row_count_are_the_ones_recorded_in_the_license_notice():
+    notice = Path("benchmarks/cache/v1/pawsx/LICENSE.md").read_text(encoding="utf-8")
+    assert pawsx.EXPECTED_TSV_SHA256 in notice
+    assert pawsx.EXPECTED_RAW_ROWS == 2000
+    assert "2000 rows" in notice
+
+
+def test_fetch_test_tsv_verifies_a_file_it_finds_in_the_downloads(tmp_path, monkeypatch):
+    monkeypatch.setattr(pawsx, "OFFICIAL_DIR", tmp_path / "official")
+    monkeypatch.setattr(pawsx, "MIRROR_DIR", tmp_path / "mirror")
+    (tmp_path / "mirror").mkdir()
+    (tmp_path / "mirror" / pawsx.TEST_TSV_NAME).write_text(PAWS_HEADER + "10\tUno.\tDos.\t1\n")
+    with pytest.raises(ValueError, match="SHA-256"):
+        pawsx.fetch_test_tsv()
 
 
 def test_rows_to_tsv_round_trips_through_load_pairs(tmp_path):

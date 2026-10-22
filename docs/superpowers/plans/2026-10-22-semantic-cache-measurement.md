@@ -134,7 +134,7 @@
 - `ollama pull nomic-embed-text-v2-moe` before embedding; v2 vectors also with no prefix.
 
 - [ ] **Step 1: Failing unit tests** for parsing, cosine and neighbor extraction. **Step 2:** FAIL. **Step 3:** Implement. **Step 4:** PASS.
-- [ ] **Step 5:** Run `darwin-throttle make cache-data`; check row counts (2000 PAWS-X pairs; neighbor count printed) — do not compute any precision here.
+- [ ] **Step 5:** Run `darwin-throttle make cache-data`; check row counts (1999 PAWS-X pairs; neighbor count printed) — do not compute any precision here.
 - [ ] **Step 6: Commit** `feat(cache-eval): PAWS-X and corpus-neighbor pairs with cosines`.
 
 ### Task 7: Paraphrases and the labeling CLI

@@ -39,6 +39,10 @@ MIRROR_PAGE = 100  # the rows endpoint serves at most 100 rows per request
 DOWNLOADS = Path("artifacts/cache-eval/downloads")
 OFFICIAL_DIR = DOWNLOADS / "pawsx"
 MIRROR_DIR = DOWNLOADS / "pawsx-hf"
+# The file the pre-registration was fixed on, as recorded in benchmarks/cache/v1/pawsx/LICENSE.md:
+# the 2000-row Spanish test TSV (before the NS drop) and its SHA-256.
+EXPECTED_RAW_ROWS = 2000
+EXPECTED_TSV_SHA256 = "2ad948ee2549c06c3c8d3d1b5b7e6cbd32fef96d11a37c799f74a8b36f107f45"
 OUT_PATH = Path("benchmarks/cache/v1/pawsx/pairs.jsonl")
 PRODUCTION_MODEL = "nomic-embed-text"
 SENSITIVITY_MODEL = "nomic-embed-text-v2-moe"
@@ -175,10 +179,40 @@ def _download_mirror_rows() -> list[dict]:
     return rows
 
 
-def fetch_test_tsv() -> tuple[Path, str]:
-    """The Spanish test TSV and where it came from, downloaded once.
+def verify_test_tsv(
+    tsv_path: Path, *, sha256: str = EXPECTED_TSV_SHA256, rows: int = EXPECTED_RAW_ROWS
+) -> None:
+    """Refuse a test TSV that is not the one the pre-registration was fixed on.
 
-    The official archive is tried first. When Google's bucket refuses anonymous reads (it does
+    The check is on the file as downloaded: its SHA-256 and its number of data rows, counting
+    the ``NS`` placeholder that ``read_pairs`` drops afterwards.
+    """
+    found = _sha256(tsv_path)
+    if found != sha256:
+        raise ValueError(
+            f"{tsv_path} has SHA-256 {found}, not the {sha256} recorded in "
+            "benchmarks/cache/v1/pawsx/LICENSE.md; set (a) is fixed by the pre-registration, so "
+            "a different file needs an amendment, not a silent rebuild."
+        )
+    loaded = read_pairs(tsv_path)
+    found_rows = len(loaded.pairs) + len(loaded.skipped)
+    if found_rows != rows:
+        raise ValueError(f"{tsv_path} has {found_rows} data rows, expected {rows} before the NS drop.")
+
+
+def fetch_test_tsv() -> tuple[Path, str]:
+    """The Spanish test TSV and where it came from, downloaded once and verified.
+
+    The file's SHA-256 and row count must be the ones recorded in the dataset notice
+    (``verify_test_tsv``), whether it was just downloaded or found in the downloads directory.
+    """
+    tsv, source = _obtain_test_tsv()
+    verify_test_tsv(tsv)
+    return tsv, source
+
+
+def _obtain_test_tsv() -> tuple[Path, str]:
+    """The official archive is tried first. When Google's bucket refuses anonymous reads (it does
     at the time of writing: HTTP 403), the same split is taken from the Hugging Face dataset
     published by the same organization and written in the official TSV layout.
     """

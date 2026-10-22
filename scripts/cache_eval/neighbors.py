@@ -22,7 +22,7 @@ import numpy as np
 from scripts.ground_truth import records
 
 MIN_COS = 0.85
-DECLARED_COS = 0.90  # the pre-registration declares 22 pairs at or above this cosine
+DECLARED_COS = 0.90  # the pre-registration declares 20 Spanish pairs at or above this cosine
 PROMPTS_PATH = Path("benchmarks/ground-truth/v1/prompts.es.jsonl")
 VECTORS_PATH = Path("artifacts/router-embeddings/none.json")
 OUT_PATH = Path("benchmarks/cache/v1/neighbors/pairs.jsonl")

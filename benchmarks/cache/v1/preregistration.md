@@ -2,7 +2,7 @@
 
 Date: 2026-10-22. Fixed before computing any precision, recall or verdict: the commit of this file, its two amendments (`5bd4632` and `2f20e53`) and the final tightening commit `docs: tighten the cache pre-registration before measuring` and the data-acquisition amendment at the end of this file (commit `docs: record the data-acquisition amendment to the cache pre-registration`) precede every commit that computes one.
 
-Design reference: `docs/superpowers/specs/2026-10-22-semantic-cache-measurement-design.md` (Part B) at spec commit `98015a0`, plus the amendments named above, which made the definitions exact and covered the edge cases. The spec's "Pre-registration" section carries the same text.
+Design reference: `docs/superpowers/specs/2026-10-22-semantic-cache-measurement-design.md` (Part B) at spec commit `98015a0`, plus the amendments named above, which made the definitions exact and covered the edge cases. The spec's "Pre-registration" section condenses it.
 
 ## Definitions
 
