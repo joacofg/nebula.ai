@@ -71,9 +71,10 @@ cache-data:
 	$(PYTHON) -m scripts.cache_eval.pawsx
 	$(PYTHON) -m scripts.cache_eval.neighbors
 
-# Paraphrase set (c): one local qwen2.5:7b rewrite of 200 corpus prompts, embedded with both models
-# (needs Ollama with qwen2.5:7b, nomic-embed-text and nomic-embed-text-v2-moe). Replies are cached in
-# artifacts/cache-eval/paraphrases/, so a re-run does not regenerate.
+# Paraphrase set (c): one local qwen2.5:7b rewrite of 200 corpus prompts (instruction as the system
+# message); the valid ones (0.5-2.0 times the original's length) are embedded with both models, the
+# rest go to dropped.jsonl (needs Ollama with qwen2.5:7b, nomic-embed-text and nomic-embed-text-v2-moe).
+# Replies are cached in artifacts/cache-eval/paraphrases/, so a re-run does not regenerate.
 cache-paraphrases:
 	$(PYTHON) -m scripts.cache_eval.paraphrase
 

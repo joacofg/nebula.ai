@@ -413,7 +413,7 @@ def test_clean_does_not_strip_quotes_that_only_look_like_a_pair():
     assert paraphrase.clean('"hola" y "chao"') == '"hola" y "chao"'
 
 
-def test_chat_request_carries_the_registered_instruction_model_and_options():
+def test_chat_request_sends_the_instruction_as_the_system_message_and_the_prompt_as_the_user_message():
     request = paraphrase.chat_request("¿Qué es un átomo?", seed=20261022)
     assert request == {
         "model": "qwen2.5:7b",
@@ -421,11 +421,11 @@ def test_chat_request_carries_the_registered_instruction_model_and_options():
         "options": {"temperature": 0, "seed": 20261022},
         "messages": [
             {
-                "role": "user",
+                "role": "system",
                 "content": "Reescribe la siguiente consulta con otras palabras, sin cambiar lo que "
-                "pide ni agregar información. Devuelve solo la consulta reescrita.\n\n"
-                "¿Qué es un átomo?",
-            }
+                "pide ni agregar información. Devuelve solo la consulta reescrita.",
+            },
+            {"role": "user", "content": "¿Qué es un átomo?"},
         ],
     }
 
@@ -485,9 +485,9 @@ def test_cached_generate_keys_the_cache_by_prompt_text_and_model(tmp_path):
     assert row == {
         "model": "qwen2.5:7b",
         "seed": 1,
-        # sha256 of the registered instruction, and of "p"
-        "instruction_sha256": "3f29161b253e0110994aa85a529fd6414d3ab0a2bce7ce0eecfab1d4ea6ce0d8",
-        "prompt_sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940",
+        # sha256 of the messages sent for "p" (system instruction, then user prompt), as JSON
+        # with sorted keys: [{"content": "<instruction>", "role": "system"}, {"content": "p", ...
+        "messages_sha256": "24fe1debb53e4a3159fa7419d984cee09df53112ec325732381827f500e91dfe",
         "reply": "uno",
     }
     path.write_text(path.read_text().replace("qwen2.5:7b", "otro-modelo"))
@@ -495,14 +495,25 @@ def test_cached_generate_keys_the_cache_by_prompt_text_and_model(tmp_path):
     assert paraphrase.cached_generate(refetch, path)("p", 1) == "nuevo"
 
 
-def test_cached_generate_does_not_reuse_replies_made_with_another_instruction(tmp_path):
+def test_cached_generate_does_not_reuse_replies_made_with_another_instruction(tmp_path, monkeypatch):
     path = tmp_path / "generations.jsonl"
     paraphrase.cached_generate(ScriptedGenerate({1: "viejo"}), path)("p", 1)
-    path.write_text(
-        path.read_text().replace(
-            "3f29161b253e0110994aa85a529fd6414d3ab0a2bce7ce0eecfab1d4ea6ce0d8", "0" * 64
-        )
-    )
+    monkeypatch.setattr(paraphrase, "INSTRUCTION", "Otra instrucción.")
+    assert paraphrase.cached_generate(ScriptedGenerate({1: "nuevo"}), path)("p", 1) == "nuevo"
+
+
+def test_cached_generate_does_not_reuse_replies_made_with_another_message_layout(tmp_path):
+    path = tmp_path / "generations.jsonl"
+    paraphrase.cached_generate(ScriptedGenerate({1: "viejo"}), path)("p", 1)
+    # the first version sent one user message: the instruction, a blank line, then the prompt
+    old_messages = [{"role": "user", "content": f"{paraphrase.INSTRUCTION}\n\np"}]
+    old_hash = hashlib.sha256(
+        json.dumps(old_messages, ensure_ascii=False, sort_keys=True).encode("utf-8")
+    ).hexdigest()
+    [row] = [json.loads(line) for line in path.read_text().splitlines()]
+    assert row["messages_sha256"] != old_hash
+    row["messages_sha256"] = old_hash
+    path.write_text(json.dumps(row, ensure_ascii=False) + "\n")
     assert paraphrase.cached_generate(ScriptedGenerate({1: "nuevo"}), path)("p", 1) == "nuevo"
 
 
@@ -547,7 +558,74 @@ def test_build_reports_dropped_prompts_and_keeps_the_rest():
         embed_texts=fake_embed,
     )
     assert [r["prompt_id"] for r in result.records] == ["code-0001"]
-    assert [(d.prompt_id, "empty" in d.reason) for d in result.dropped] == [("code-0000", True)]
+    assert [(d.prompt_id, d.kind, d.length_ratio) for d in result.dropped] == [
+        ("code-0000", "empty_or_identical", 0.0)
+    ]
+    assert "empty" in result.dropped[0].reason
+
+
+@pytest.mark.parametrize(
+    ("paraphrase_length", "problem"),
+    [(4, "too_short"), (5, None), (10, None), (20, None), (21, "too_long")],
+)
+def test_a_paraphrase_is_valid_from_half_to_twice_the_original_length_both_included(
+    paraphrase_length, problem
+):
+    assert paraphrase.length_problem("a" * 10, "b" * paraphrase_length) == problem
+
+
+def test_build_drops_paraphrases_outside_the_length_range_and_reports_their_ratio():
+    prompts = corpus_rows(tasks=("code",), size=4)  # originals of 22 characters
+    replies = {
+        "Pregunta code número 0": "Sí.",  # an answer, 3 characters
+        "Pregunta code número 1": "Pregunta distinta code número uno",  # 33 characters
+        "Pregunta code número 2": " ".join(["Pregunta"] * 6),  # 53 characters, past twice 22
+        "Pregunta code número 3": "x" * 11,  # exactly half
+    }
+    result = paraphrase.build(
+        prompts, generate=lambda prompt, seed: replies[prompt], embed_texts=fake_embed
+    )
+    assert [r["prompt_id"] for r in result.records] == ["code-0001", "code-0003"]
+    assert [(d.prompt_id, d.kind) for d in result.dropped] == [
+        ("code-0000", "too_short"),
+        ("code-0002", "too_long"),
+    ]
+    assert [d.length_ratio for d in result.dropped] == pytest.approx([3 / 22, 53 / 22])
+    assert "0.14" in result.dropped[0].reason
+
+
+def test_dropped_records_carry_the_prompt_id_the_reason_and_the_length_ratio():
+    dropped = paraphrase.DroppedPrompt("code-0000", "length ratio 0.14 is below 0.5", "too_short", 3 / 22)
+    assert paraphrase.dropped_record(dropped) == {
+        "prompt_id": "code-0000",
+        "reason": "length ratio 0.14 is below 0.5",
+        "length_ratio": pytest.approx(3 / 22),
+    }
+
+
+def build_result(valid, dropped=0):
+    records = paraphrase_records(valid)
+    gone = [paraphrase.DroppedPrompt(f"x-{i}", "r", "too_short", 0.1) for i in range(dropped)]
+    return paraphrase.BuildResult(records, gone)
+
+
+def test_summary_counts_valid_paraphrases_and_drop_kinds():
+    result = build_result(3)
+    result.dropped.extend(
+        [
+            paraphrase.DroppedPrompt("a", "r", "too_long", 3.0),
+            paraphrase.DroppedPrompt("b", "r", "too_short", 0.1),
+            paraphrase.DroppedPrompt("c", "r", "too_short", 0.2),
+        ]
+    )
+    text = "\n".join(paraphrase.summary(6, result))
+    assert "6 prompts selected: 3 valid paraphrases, 3 dropped" in text
+    assert "too_short: 2" in text and "too_long: 1" in text
+
+
+def test_summary_says_so_when_fewer_than_150_paraphrases_are_valid():
+    assert "fewer than 150" in "\n".join(paraphrase.summary(200, build_result(149, 51)))
+    assert "fewer than 150" not in "\n".join(paraphrase.summary(200, build_result(150, 50)))
 
 
 def paraphrase_records(n=100):
@@ -587,21 +665,37 @@ def test_rewrite_drops_the_prompt_when_the_retry_also_fails():
     assert len(generate.calls) == 2
 
 
-def test_the_committed_paraphrases_are_the_registered_stratified_selection():
+def test_the_committed_paraphrases_and_dropped_rows_cover_the_registered_selection_exactly():
+    root = Path("benchmarks/cache/v1/paraphrases")
     corpus = read_rows(Path("benchmarks/ground-truth/v1/prompts.es.jsonl"), PromptRow)
     selected = paraphrase.select_prompts(corpus)
-    rows = [
-        json.loads(line)
-        for line in Path("benchmarks/cache/v1/paraphrases/paraphrases.jsonl").read_text("utf-8").splitlines()
+    assert len(selected) == 200
+    assert Counter(p.task_type for p in selected) == dict.fromkeys(sorted({p.task_type for p in selected}), 40)
+    rows = [json.loads(line) for line in (root / "paraphrases.jsonl").read_text("utf-8").splitlines()]
+    dropped = [json.loads(line) for line in (root / "dropped.jsonl").read_text("utf-8").splitlines()]
+    assert sorted([r["prompt_id"] for r in rows] + [d["prompt_id"] for d in dropped]) == [
+        p.prompt_id for p in selected
     ]
-    assert len(rows) == 200
-    assert Counter(r["task_type"] for r in rows) == dict.fromkeys(sorted({p.task_type for p in selected}), 40)
-    assert [r["prompt_id"] for r in rows] == [p.prompt_id for p in selected]
-    assert [r["original"] for r in rows] == [p.prompt for p in selected]
+    originals = {p.prompt_id: p.prompt for p in selected}
+    assert all(r["original"] == originals[r["prompt_id"]] for r in rows)
     assert {r["model"] for r in rows} == {"qwen2.5:7b"}
     assert {r["seed"] for r in rows} <= {20261022, 20261023}
     assert all(r["paraphrase"].strip() and r["paraphrase"] != r["original"] for r in rows)
     assert all(-1.0 <= r["cos_nomic_v1"] <= 1.0 and -1.0 <= r["cos_nomic_v2"] <= 1.0 for r in rows)
+
+
+def test_every_committed_paraphrase_is_valid_and_every_dropped_row_is_not():
+    root = Path("benchmarks/cache/v1/paraphrases")
+    rows = [json.loads(line) for line in (root / "paraphrases.jsonl").read_text("utf-8").splitlines()]
+    dropped = [json.loads(line) for line in (root / "dropped.jsonl").read_text("utf-8").splitlines()]
+    assert rows
+    assert all(0.5 <= len(r["paraphrase"]) / len(r["original"]) <= 2.0 for r in rows)
+    assert all(set(d) == {"prompt_id", "reason", "length_ratio"} for d in dropped)
+
+    def explained(d):
+        return not 0.5 <= d["length_ratio"] <= 2.0 or "empty" in d["reason"] or "identical" in d["reason"]
+
+    assert all(explained(d) for d in dropped)
 
 
 def test_the_committed_sample_is_the_registered_blind_draw_of_40_pairs():

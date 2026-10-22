@@ -1,14 +1,17 @@
 """Paraphrases for set (c) of the cache measurement: one local rewrite of 200 corpus prompts.
 
 Set (c) of ``benchmarks/cache/v1/preregistration.md``: 200 of the 1000 Spanish corpus prompts
-(40 per task, seed 20261022), each rewritten once by the local ``qwen2.5:7b`` at temperature 0.
+(40 per task, seed 20261022), each rewritten once by the local ``qwen2.5:7b`` at temperature 0,
+with the instruction as the system message and the prompt as the user message.
 
     python -m scripts.cache_eval.paraphrase
 
 generates the rewrites (raw replies are cached under ``artifacts/cache-eval/paraphrases/``, so a
-re-run never regenerates), embeds every original and paraphrase with both models, and writes
-``benchmarks/cache/v1/paraphrases/paraphrases.jsonl`` plus the 40-pair blind sample
-``benchmarks/cache/v1/paraphrases/sample.jsonl`` that ``scripts.cache_eval.label`` presents.
+re-run never regenerates), keeps the valid ones, embeds every original and paraphrase with both
+models, and writes ``benchmarks/cache/v1/paraphrases/paraphrases.jsonl`` (valid rewrites),
+``dropped.jsonl`` (the rest, with the reason and the length ratio) and the 40-pair blind sample
+``sample.jsonl`` that ``scripts.cache_eval.label`` presents. A paraphrase is valid when its
+length is 0.5 to 2.0 times the original's (the pre-registration's paraphrase-validity amendment).
 """
 
 from __future__ import annotations
@@ -18,7 +21,7 @@ import json
 import os
 import random
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -34,8 +37,10 @@ SAMPLE_SIZE = 40
 SEED = 20261022
 RETRY_SEED = SEED + 1
 MODEL = "qwen2.5:7b"
+MIN_RATIO = 0.5  # a valid paraphrase is 0.5 to 2.0 times the original's length, both included
+MAX_RATIO = 2.0
+MIN_VALID = 150  # fewer valid paraphrases than this has to be said in the report
 GENERATIONS_PATH = Path("artifacts/cache-eval/paraphrases/generations.jsonl")
-DROPPED_PATH = Path("artifacts/cache-eval/paraphrases/dropped.jsonl")
 CORPUS_PATH = Path("benchmarks/ground-truth/v1/prompts.es.jsonl")
 OUT_DIR = Path("benchmarks/cache/v1/paraphrases")
 INSTRUCTION = (
@@ -108,12 +113,16 @@ def select_prompts(
 
 
 def chat_request(prompt: str, *, seed: int) -> dict:
-    """The Ollama ``/api/chat`` body of one rewrite: the registered instruction, then the prompt."""
+    """The Ollama ``/api/chat`` body of one rewrite: the registered instruction as the system
+    message and the prompt, alone, as the user message."""
     return {
         "model": MODEL,
         "stream": False,
         "options": {"temperature": 0, "seed": seed},
-        "messages": [{"role": "user", "content": f"{INSTRUCTION}\n\n{prompt}"}],
+        "messages": [
+            {"role": "system", "content": INSTRUCTION},
+            {"role": "user", "content": prompt},
+        ],
     }
 
 
@@ -128,35 +137,36 @@ def ollama_generate(prompt: str, seed: int) -> str:
     return response.json()["message"]["content"]
 
 
-def _sha256(text: str) -> str:
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+def _messages_sha256(prompt: str) -> str:
+    """Hash of the messages a rewrite of ``prompt`` sends: instruction, layout and prompt."""
+    messages = chat_request(prompt, seed=SEED)["messages"]
+    canonical = json.dumps(messages, ensure_ascii=False, sort_keys=True)
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
 def cached_generate(generate: Generate, path: Path = GENERATIONS_PATH) -> Generate:
     """``generate`` with its raw replies kept in a JSONL file.
 
-    One row per (model, seed, instruction, prompt): a reply that is already in the file is
-    returned without asking the model, so a re-run (or a run that stopped half way) never
-    regenerates, and a reply made with another instruction is never reused. A new reply is
-    appended as soon as it exists.
+    One row per (model, seed, messages): a reply that is already in the file is returned
+    without asking the model, so a re-run (or a run that stopped half way) never regenerates.
+    The messages are hashed whole, so a reply made with another instruction or another message
+    layout is never reused. A new reply is appended as soon as it exists.
     """
-    replies: dict[tuple[str, int, str, str], str] = {}
+    replies: dict[tuple[str, int, str], str] = {}
     if path.exists():
         for line in path.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 row = json.loads(line)
-                key = (row["model"], row["seed"], row["instruction_sha256"], row["prompt_sha256"])
-                replies[key] = row["reply"]
+                replies[(row["model"], row["seed"], row["messages_sha256"])] = row["reply"]
 
     def cached(prompt: str, seed: int) -> str:
-        key = (MODEL, seed, _sha256(INSTRUCTION), _sha256(prompt))
+        key = (MODEL, seed, _messages_sha256(prompt))
         if key not in replies:
             replies[key] = generate(prompt, seed)
             row = {
                 "model": MODEL,
                 "seed": seed,
-                "instruction_sha256": key[2],
-                "prompt_sha256": key[3],
+                "messages_sha256": key[2],
                 "reply": replies[key],
             }
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,10 +186,21 @@ class Rewritten:
 @dataclass(frozen=True)
 class Dropped:
     reason: str
+    length_ratio: float  # of the last reply, 0.0 when it was empty
 
 
 def _same_text(a: str, b: str) -> bool:
     return " ".join(a.split()).casefold() == " ".join(b.split()).casefold()
+
+
+def length_problem(original: str, paraphrase: str) -> str | None:
+    """``"too_short"`` or ``"too_long"`` when the paraphrase's length is outside 0.5 to 2.0 times
+    the original's in characters (both bounds are valid), else ``None``."""
+    if len(paraphrase) < MIN_RATIO * len(original):
+        return "too_short"
+    if len(paraphrase) > MAX_RATIO * len(original):
+        return "too_long"
+    return None
 
 
 def rewrite(original: str, generate: Generate) -> Rewritten | Dropped:
@@ -187,9 +208,10 @@ def rewrite(original: str, generate: Generate) -> Rewritten | Dropped:
 
     An empty reply, or one that says the same as the original once cleaned (ignoring case and
     spacing), is retried once with the next seed; if that fails too the prompt is dropped, with
-    the reason of each attempt.
+    the reason of each attempt. Length validity is checked afterwards, by ``build``.
     """
     failures: list[str] = []
+    text = ""
     for seed in (SEED, RETRY_SEED):
         text = clean(generate(original, seed))
         if not text:
@@ -198,13 +220,15 @@ def rewrite(original: str, generate: Generate) -> Rewritten | Dropped:
             failures.append(f"seed {seed}: identical to the original")
         else:
             return Rewritten(text=text, seed=seed)
-    return Dropped("; ".join(failures))
+    return Dropped("; ".join(failures), len(text) / len(original))
 
 
 @dataclass(frozen=True)
 class DroppedPrompt:
     prompt_id: str
     reason: str
+    kind: str  # "empty_or_identical", "too_short" or "too_long"
+    length_ratio: float
 
 
 @dataclass(frozen=True)
@@ -213,22 +237,44 @@ class BuildResult:
     dropped: list[DroppedPrompt]
 
 
+def dropped_record(dropped: DroppedPrompt) -> dict:
+    """A row of ``dropped.jsonl``."""
+    return {
+        "prompt_id": dropped.prompt_id,
+        "reason": dropped.reason,
+        "length_ratio": dropped.length_ratio,
+    }
+
+
 def build(
     prompts: list[PromptRow], *, generate: Generate, embed_texts: EmbedTexts
 ) -> BuildResult:
-    """A row of ``paraphrases.jsonl`` for every prompt that could be rewritten.
+    """A row of ``paraphrases.jsonl`` for every prompt with a valid paraphrase.
 
-    Each row carries the cosine between the original and its paraphrase under both embedding
-    models (no prefix, unit-normalized), the model and the seed that produced the rewrite.
+    A prompt is dropped, and listed with its reason and length ratio, when no usable rewrite
+    came out (see ``rewrite``) or the rewrite's length is outside ``MIN_RATIO`` to ``MAX_RATIO``
+    times the original's. Each kept row carries the cosine between the original and its
+    paraphrase under both embedding models (no prefix, unit-normalized), the model and the seed
+    that produced the rewrite.
     """
     rewritten: list[tuple[PromptRow, Rewritten]] = []
     dropped: list[DroppedPrompt] = []
     for prompt in prompts:
         outcome = rewrite(prompt.prompt, generate)
-        if isinstance(outcome, Rewritten):
+        if isinstance(outcome, Dropped):
+            dropped.append(
+                DroppedPrompt(prompt.prompt_id, outcome.reason, "empty_or_identical", outcome.length_ratio)
+            )
+            continue
+        problem = length_problem(prompt.prompt, outcome.text)
+        if problem is None:
             rewritten.append((prompt, outcome))
         else:
-            dropped.append(DroppedPrompt(prompt.prompt_id, outcome.reason))
+            ratio = len(outcome.text) / len(prompt.prompt)
+            bound = f"below {MIN_RATIO}" if problem == "too_short" else f"above {MAX_RATIO}"
+            dropped.append(
+                DroppedPrompt(prompt.prompt_id, f"length ratio {ratio:.2f} is {bound}", problem, ratio)
+            )
 
     originals = [prompt.prompt for prompt, _ in rewritten]
     paraphrases = [outcome.text for _, outcome in rewritten]
@@ -275,6 +321,23 @@ def _write_jsonl(rows: list[dict], path: Path) -> None:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def summary(selected: int, result: BuildResult) -> list[str]:
+    """What a run reports: the valid count, the retries, the drop reasons by kind, and a
+    warning when fewer than ``MIN_VALID`` paraphrases are valid (the report has to say so)."""
+    valid = len(result.records)
+    retried = sum(1 for r in result.records if r["seed"] != SEED)
+    lines = [
+        f"{selected} prompts selected: {valid} valid paraphrases, {len(result.dropped)} dropped",
+        f"  {retried} valid paraphrases come from the retry seed",
+    ]
+    kinds = Counter(d.kind for d in result.dropped)
+    lines += [f"  dropped, {kind}: {count}" for kind, count in sorted(kinds.items())]
+    if valid < MIN_VALID:
+        lines.append(f"WARNING: only {valid} valid paraphrases, fewer than {MIN_VALID}; "
+                     "the report has to say so.")
+    return lines
+
+
 def main() -> int:
     corpus = read_rows(CORPUS_PATH, PromptRow)
     prompts = select_prompts(corpus)
@@ -289,17 +352,11 @@ def main() -> int:
 
     result = build(prompts, generate=cached_generate(generate), embed_texts=embed.embed_texts)
     _write_jsonl(result.records, OUT_DIR / "paraphrases.jsonl")
+    _write_jsonl([dropped_record(d) for d in result.dropped], OUT_DIR / "dropped.jsonl")
     _write_jsonl(select_sample(result.records), OUT_DIR / "sample.jsonl")
-    _write_jsonl(
-        [{"prompt_id": d.prompt_id, "reason": d.reason} for d in result.dropped], DROPPED_PATH
-    )
 
-    retried = sum(1 for r in result.records if r["seed"] != SEED)
-    print(f"{len(prompts)} prompts selected: {len(result.records)} paraphrases "
-          f"({retried} from the retry seed), {len(result.dropped)} dropped, "
-          f"{calls} model calls -> {OUT_DIR}")
-    for d in result.dropped:
-        print(f"  dropped {d.prompt_id}: {d.reason}")
+    print("\n".join(summary(len(prompts), result)))
+    print(f"{calls} model calls -> {OUT_DIR}")
     return 0
 
 
