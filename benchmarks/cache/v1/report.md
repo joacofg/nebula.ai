@@ -165,14 +165,13 @@ With the tier rule on (each query looked up with its own tier's rank):
 
 ## Saving vs repetition rate
 
-A trace of 1000 requests per rate r (seed 20261022), served in order through a gateway cache that starts empty, tier rule on. Exactly round(r × 1000) requests, at seeded positions, nested across rates (the repeats of a lower rate are among those of a higher one), repeat a prompt asked earlier: half exact repeats (same text and vector), half its valid paraphrase. The other requests are new Spanish corpus prompts, each at most once (at r = 0 every one of the 1000 is sent once). A first version of the trace drew each request's repeat independently; with this seed that gave 61 repeats at r = 0.037 instead of 37, so the count is now fixed and the rate on the axis is the rate in the trace. A miss is served at the request's router tier (target 0.95) at the cost captured for that prompt and tier (`src/nebula/data/router_replay_v1.json`; local = 0) and stored; a hit costs 0. A correct hit keeps the quality of the cached answer's tier for that prompt (`benchmarks/ground-truth/v1/tiers.jsonl`); a false hit is worth 0. Costs in USD per 1000 requests.
+A trace of 1000 requests per rate r (seed 20261022), served in order through a gateway cache that starts empty, tier rule on. Exactly round(r × 1000) requests, at seeded positions, nested across rates (the repeats of a lower rate are among those of a higher one), repeat a prompt asked earlier: half exact repeats (same text and vector), half its valid paraphrase. The other requests are new Spanish corpus prompts, each at most once (at r = 0 every one of the 1000 is sent once). A first version of the trace drew each request's repeat independently; with this seed that gave 61 repeats at r = 0.037 (a rate the trace no longer uses) instead of 37, so the count is now fixed and the rate on the axis is the rate in the trace. A miss is served at the request's router tier (target 0.95) at the cost captured for that prompt and tier (`src/nebula/data/router_replay_v1.json`; local = 0) and stored; a hit costs 0. A correct hit keeps the quality of the cached answer's tier for that prompt (`benchmarks/ground-truth/v1/tiers.jsonl`); a false hit is worth 0. Costs in USD per 1000 requests.
 
 ### `nomic-embed-text`, t = 0.90
 
 | r | repeats (exact + paraphrase) | hit rate | false-hit rate | tier blocks | cost / 1000 | router only / 1000 | saving vs frontier | extra saving vs router | quality | router-only quality |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 0.000 | 0 + 0 | 1.7 % | 1.7 % | 0 | 1.820 | 1.848 | 26.2 % | 1.5 % | 0.971 | 0.988 |
-| 0.037 | 19 + 18 | 5.0 % | 1.5 % | 0 | 1.752 | 1.832 | 28.7 % | 4.3 % | 0.972 | 0.987 |
 | 0.050 | 25 + 25 | 6.1 % | 1.5 % | 0 | 1.740 | 1.845 | 29.6 % | 5.7 % | 0.973 | 0.988 |
 | 0.100 | 50 + 50 | 10.2 % | 1.3 % | 0 | 1.681 | 1.880 | 33.0 % | 10.5 % | 0.978 | 0.991 |
 | 0.121 | 61 + 60 | 12.2 % | 1.1 % | 0 | 1.633 | 1.843 | 34.4 % | 11.4 % | 0.980 | 0.991 |
@@ -186,16 +185,14 @@ A trace of 1000 requests per rate r (seed 20261022), served in order through a g
 
 Cited repetition rates:
 
-- lmsys_exact_duplicates (r = 0.121): cost 1.633 per 1000, 34.4 % below all-frontier, 11.4 % below the router alone, quality 0.980 (router alone 0.991).
-- meancache (r = 0.31): cost 1.319 per 1000, 47.2 % below all-frontier, 30.5 % below the router alone, quality 0.985 (router alone 0.991).
-- wildchat (r = 0.037): cost 1.752 per 1000, 28.7 % below all-frontier, 4.3 % below the router alone, quality 0.972 (router alone 0.987).
+- FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts (r = 0.121): cost 1.633 per 1000, 34.4 % below all-frontier, 11.4 % below the router alone, quality 0.980 (router alone 0.991).
+- MeanCache's study of 20 ChatGPT users (r = 0.31): cost 1.319 per 1000, 47.2 % below all-frontier, 30.5 % below the router alone, quality 0.985 (router alone 0.991).
 
 ### `nomic-embed-text`, t = 0.99
 
 | r | repeats (exact + paraphrase) | hit rate | false-hit rate | tier blocks | cost / 1000 | router only / 1000 | saving vs frontier | extra saving vs router | quality | router-only quality |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 0.000 | 0 + 0 | 0.1 % | 0.1 % | 0 | 1.846 | 1.848 | 25.1 % | 0.1 % | 0.987 | 0.988 |
-| 0.037 | 19 + 18 | 2.4 % | 0.1 % | 0 | 1.792 | 1.832 | 27.1 % | 2.2 % | 0.986 | 0.987 |
 | 0.050 | 25 + 25 | 3.2 % | 0.1 % | 0 | 1.787 | 1.845 | 27.7 % | 3.2 % | 0.987 | 0.988 |
 | 0.100 | 50 + 50 | 6.6 % | 0.1 % | 0 | 1.746 | 1.880 | 30.4 % | 7.1 % | 0.990 | 0.991 |
 | 0.121 | 61 + 60 | 8.3 % | 0.1 % | 0 | 1.698 | 1.843 | 31.8 % | 7.9 % | 0.990 | 0.991 |
@@ -209,16 +206,14 @@ Cited repetition rates:
 
 Cited repetition rates:
 
-- lmsys_exact_duplicates (r = 0.121): cost 1.698 per 1000, 31.8 % below all-frontier, 7.9 % below the router alone, quality 0.990 (router alone 0.991).
-- meancache (r = 0.31): cost 1.405 per 1000, 43.8 % below all-frontier, 26.0 % below the router alone, quality 0.990 (router alone 0.991).
-- wildchat (r = 0.037): cost 1.792 per 1000, 27.1 % below all-frontier, 2.2 % below the router alone, quality 0.986 (router alone 0.987).
+- FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts (r = 0.121): cost 1.698 per 1000, 31.8 % below all-frontier, 7.9 % below the router alone, quality 0.990 (router alone 0.991).
+- MeanCache's study of 20 ChatGPT users (r = 0.31): cost 1.405 per 1000, 43.8 % below all-frontier, 26.0 % below the router alone, quality 0.990 (router alone 0.991).
 
 ### `nomic-embed-text-v2-moe`, t = 0.90
 
 | r | repeats (exact + paraphrase) | hit rate | false-hit rate | tier blocks | cost / 1000 | router only / 1000 | saving vs frontier | extra saving vs router | quality | router-only quality |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 0.000 | 0 + 0 | 0.4 % | 0.4 % | 0 | 1.841 | 1.848 | 25.3 % | 0.4 % | 0.984 | 0.988 |
-| 0.037 | 19 + 18 | 4.0 % | 0.4 % | 0 | 1.767 | 1.832 | 28.1 % | 3.5 % | 0.983 | 0.987 |
 | 0.050 | 25 + 25 | 5.1 % | 0.4 % | 0 | 1.755 | 1.845 | 29.0 % | 4.9 % | 0.984 | 0.988 |
 | 0.100 | 50 + 50 | 9.0 % | 0.2 % | 0 | 1.703 | 1.880 | 32.1 % | 9.4 % | 0.989 | 0.991 |
 | 0.121 | 61 + 60 | 11.1 % | 0.1 % | 1 | 1.652 | 1.843 | 33.7 % | 10.4 % | 0.990 | 0.991 |
@@ -232,16 +227,14 @@ Cited repetition rates:
 
 Cited repetition rates:
 
-- lmsys_exact_duplicates (r = 0.121): cost 1.652 per 1000, 33.7 % below all-frontier, 10.4 % below the router alone, quality 0.990 (router alone 0.991).
-- meancache (r = 0.31): cost 1.327 per 1000, 46.9 % below all-frontier, 30.1 % below the router alone, quality 0.990 (router alone 0.991).
-- wildchat (r = 0.037): cost 1.767 per 1000, 28.1 % below all-frontier, 3.5 % below the router alone, quality 0.983 (router alone 0.987).
+- FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts (r = 0.121): cost 1.652 per 1000, 33.7 % below all-frontier, 10.4 % below the router alone, quality 0.990 (router alone 0.991).
+- MeanCache's study of 20 ChatGPT users (r = 0.31): cost 1.327 per 1000, 46.9 % below all-frontier, 30.1 % below the router alone, quality 0.990 (router alone 0.991).
 
 ### `nomic-embed-text-v2-moe`, t = 0.98
 
 | r | repeats (exact + paraphrase) | hit rate | false-hit rate | tier blocks | cost / 1000 | router only / 1000 | saving vs frontier | extra saving vs router | quality | router-only quality |
 |---|---|---|---|---|---|---|---|---|---|---|
 | 0.000 | 0 + 0 | 0.2 % | 0.2 % | 0 | 1.843 | 1.848 | 25.2 % | 0.2 % | 0.986 | 0.988 |
-| 0.037 | 19 + 18 | 2.7 % | 0.2 % | 0 | 1.789 | 1.832 | 27.2 % | 2.3 % | 0.985 | 0.987 |
 | 0.050 | 25 + 25 | 3.6 % | 0.2 % | 0 | 1.784 | 1.845 | 27.8 % | 3.3 % | 0.986 | 0.988 |
 | 0.100 | 50 + 50 | 6.6 % | 0.1 % | 0 | 1.745 | 1.880 | 30.4 % | 7.2 % | 0.990 | 0.991 |
 | 0.121 | 61 + 60 | 8.5 % | 0.1 % | 0 | 1.697 | 1.843 | 31.9 % | 7.9 % | 0.990 | 0.991 |
@@ -255,9 +248,8 @@ Cited repetition rates:
 
 Cited repetition rates:
 
-- lmsys_exact_duplicates (r = 0.121): cost 1.697 per 1000, 31.9 % below all-frontier, 7.9 % below the router alone, quality 0.990 (router alone 0.991).
-- meancache (r = 0.31): cost 1.400 per 1000, 44.0 % below all-frontier, 26.3 % below the router alone, quality 0.990 (router alone 0.991).
-- wildchat (r = 0.037): cost 1.789 per 1000, 27.2 % below all-frontier, 2.3 % below the router alone, quality 0.985 (router alone 0.987).
+- FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts (r = 0.121): cost 1.697 per 1000, 31.9 % below all-frontier, 7.9 % below the router alone, quality 0.990 (router alone 0.991).
+- MeanCache's study of 20 ChatGPT users (r = 0.31): cost 1.400 per 1000, 44.0 % below all-frontier, 26.3 % below the router alone, quality 0.990 (router alone 0.991).
 
 ### Consistency with the router's cited cost
 
@@ -305,4 +297,4 @@ The same rule applied to this model would give **no safe threshold on the grid**
 
 ## Provenance
 
-Git commit checked out at generation: `301eaac6e8e04eb2727abb0e36fae6768dee3de4`; these inputs differed from it when the report was generated: `scripts/cache_eval/replay.py`, `scripts/cache_eval/report.py`. The SHA-256 of each file in report.json is the authority (`provenance.files`, with the untracked corpus vectors too), and `provenance.vectors` hashes the vectors used.
+Git commit checked out at generation: `aa6e4ff46517f1fa0e1b62ec192e2fc426a90b88`; these inputs differed from it when the report was generated: `scripts/cache_eval/report.py`. The SHA-256 of each file in report.json is the authority (`provenance.files`, with the untracked corpus vectors too), and `provenance.vectors` hashes the vectors used.

@@ -1557,7 +1557,25 @@ def test_the_committed_savings_start_from_the_routers_own_cost():
         [r0] = [row for row in block["curve"] if row["r"] == 0.0]
         assert r0["router_only_cost_per_1000"] == pytest.approx(consistency["spanish_cost_per_1000"], abs=1e-6)
         assert r0["requests"] == 1000 and r0["fresh"] == 1000
-        assert set(block["cited"]) == {"wildchat", "lmsys_exact_duplicates", "meancache"}
+        assert set(block["cited"]) == {"factbench_lmsys_duplicates", "meancache"}
+        assert 0.037 not in [row["r"] for row in block["curve"]]
+
+
+def test_the_cited_rates_are_only_those_found_in_their_sources():
+    # 12.1 %: FactBench (ACL 2025, App. A.1) removed that share of duplicated first-turn English
+    # prompts from LMSYS-Chat-1M; 31 %: MeanCache's 20-user study. The 3.7 % once attributed to
+    # WildChat is, in that paper, the share of conversations longer than ten turns.
+    from scripts.cache_eval import report
+
+    assert report.CITED_RATES == {"factbench_lmsys_duplicates": 0.121, "meancache": 0.31}
+    assert set(report.RATES) == {i / 100 for i in range(0, 45, 5)} | {0.121, 0.31}
+
+
+def test_the_committed_report_credits_each_cited_rate_to_its_source():
+    markdown = Path("benchmarks/cache/v1/report.md").read_text(encoding="utf-8")
+    assert "FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts (r = 0.121)" in markdown
+    assert "MeanCache's study of 20 ChatGPT users (r = 0.31)" in markdown
+    assert "wildchat" not in markdown.lower()
 
 
 def test_the_committed_report_matches_the_committed_data_and_code():

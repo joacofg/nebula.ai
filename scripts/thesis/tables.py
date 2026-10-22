@@ -45,11 +45,10 @@ CACHE = Path("benchmarks/cache/v1")
 # Thresholds of the cache grid table (the recommended one is always added); the full grid is in
 # benchmarks/cache/v1/report.md.
 CACHE_GRID_SHOWN = (0.80, 0.85, 0.90, 0.95, 0.96, 0.97, 0.98, 0.99)
-# Cited repetition rates of the savings trace that get a labeled row. Only a rate found in its
-# primary source is printed: the 3.7 % the trace attributes to WildChat is not a repetition rate in
-# the WildChat paper (there it is the share of conversations longer than ten turns), so its row is
-# left out of the thesis.
-CITED_RATES = {"lmsys_exact_duplicates": "duplicados de LMSYS-Chat-1M", "meancache": "MeanCache"}
+# The thesis label of each cited repetition rate of the savings trace (sources in
+# scripts/cache_eval/report.py). A cited rate without a label here fails the block, so a new
+# citation cannot reach the thesis before its figure is checked and labeled.
+CITED_RATES = {"factbench_lmsys_duplicates": "duplicados de LMSYS-Chat-1M", "meancache": "MeanCache"}
 DROP_REASONS = {"too_short": "por cortas", "too_long": "por largas",
                 "empty_or_identical": "por vacías o idénticas al original"}
 PENDING = "pendiente"
@@ -405,15 +404,14 @@ def cache_savings(report: dict) -> str:
     curves = s[report["models"]["production"]["key"]]
     thresholds = list(dict.fromkeys(_t(t) for t in (pre["product_default_t"], pre["default_t"])))
     by_rate = [{round(p["r"], 3): p for p in curves[t]["curve"]} for t in thresholds]
-    labels = {round(s["cited_rates"][key], 3): label for key, label in CITED_RATES.items()}
-    unchecked = {round(r, 3) for key, r in s["cited_rates"].items() if key not in CITED_RATES}
+    labels = {round(r, 3): CITED_RATES[key] for key, r in s["cited_rates"].items()}
     first = thresholds[0]
     header = (f"| Repetición | Router solo: costo | Router solo: calidad | Caché en {first}: costo | "
               f"Caché en {first}: ahorro adicional | Caché en {first}: calidad |")
     for t in thresholds[1:]:
         header += f" Caché en {t}: ahorro adicional | Caché en {t}: calidad |"
     rows = [header, "|---|" + "---|" * (5 + 2 * (len(thresholds) - 1))]
-    for r in sorted(set(by_rate[0]) - unchecked):
+    for r in sorted(by_rate[0]):
         points = [curve[r] for curve in by_rate]
         if len({round(p["router_only_cost_per_1000"], 9) for p in points}) != 1:
             raise ValueError(f"the router-only cost of rate {r} differs between thresholds")

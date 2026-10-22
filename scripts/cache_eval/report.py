@@ -304,11 +304,19 @@ def verdict(
 
 # --- Assembly ---------------------------------------------------------------------------------
 
-# Repetition rates of the savings trace: 0 to 40 % in steps of 5 %, plus the three cited ones.
+# Repetition rates of the savings trace: 0 to 40 % in steps of 5 %, plus the two cited ones, each
+# checked in its source. 12.1 %: FactBench (Fatahi Bayat et al., ACL 2025, App. A.1) removed that
+# share of duplicated prompts from LMSYS-Chat-1M's first-turn English prompts. 31 %: MeanCache's
+# study of 20 ChatGPT users found that share of queries similar to earlier ones. (A 3.7 % rate once
+# attributed to WildChat was dropped: in that paper it is the share of conversations longer than
+# ten turns.)
 CITED_RATES: dict[str, float] = {
-    "wildchat": 0.037,
-    "lmsys_exact_duplicates": 0.121,
+    "factbench_lmsys_duplicates": 0.121,
     "meancache": 0.31,
+}
+CITED_RATE_SOURCES: dict[str, str] = {
+    "factbench_lmsys_duplicates": "FactBench's de-duplication of LMSYS-Chat-1M first-turn English prompts",
+    "meancache": "MeanCache's study of 20 ChatGPT users",
 }
 RATES: tuple[float, ...] = tuple(
     sorted({i / 100 for i in range(0, 45, 5)} | set(CITED_RATES.values()))
@@ -817,8 +825,9 @@ def render_markdown(data: dict) -> str:
         "half its valid paraphrase. The "
         "other requests are new Spanish corpus prompts, each at most once (at r = 0 every one of "
         "the 1000 is sent once). A first version of the trace drew each request's repeat "
-        "independently; with this seed that gave 61 repeats at r = 0.037 instead of 37, so the "
-        "count is now fixed and the rate on the axis is the rate in the trace. A miss is served at "
+        "independently; with this seed that gave 61 repeats at r = 0.037 (a rate the trace no longer "
+        "uses) instead of 37, so the count is now fixed and the rate on the axis is the rate in the "
+        "trace. A miss is served at "
         "the request's router tier "
         "(target 0.95) at the cost captured for that prompt and tier "
         "(`src/nebula/data/router_replay_v1.json`; local = 0) and stored; a hit costs 0. A correct hit "
@@ -837,7 +846,8 @@ def render_markdown(data: dict) -> str:
             ]
             out += ["Cited repetition rates:", ""]
             out += [
-                f"- {name} (r = {row['r']}): cost {_usd(row['cost_per_1000'])} per 1000, "
+                f"- {CITED_RATE_SOURCES.get(name, name)} (r = {row['r']}): cost "
+                f"{_usd(row['cost_per_1000'])} per 1000, "
                 f"{_pct(row['saving_vs_frontier'])} below all-frontier, "
                 f"{_pct(row['extra_saving_vs_router'])} below the router alone, quality "
                 f"{_num(row['quality'])} (router alone {_num(row['router_only_quality'])})."

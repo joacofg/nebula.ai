@@ -1531,17 +1531,16 @@
       "benchmarks/ground-truth/v1/tiers.jsonl": "dcefc5bde08532e4837b21fdbab1acb2ad2a657b00cdb2ba7c88d11d6dcdf4a6",
       "scripts/cache_eval/embed.py": "14d4a8b8a8033daa694a6475ec91e890785bbb0e4753b9d259fd7f9ba09a3076",
       "scripts/cache_eval/replay.py": "c73ed0e0377c18bb30e92c5737748f9529d9a4abe34ae520440c35087f7d521b",
-      "scripts/cache_eval/report.py": "75586eb85de3e5d185995dbb0cc24170f31acc67b8606156ddcb01ad26671d47",
+      "scripts/cache_eval/report.py": "cb4b6d6d436c35c84bccedd6b8b14f76efc0cc24b3b335c457b3d139d577eee2",
       "src/nebula/data/learned_router_v1.json": "e1cb98ef552863537dcb56051d12a30bee5bcc57716fd2147871043926d22997",
       "src/nebula/data/router_replay_v1.json": "69298b5db76ae29a5de1a8015f7d352b4d3c78cda5e7833bedc69808563b50c9",
       "src/nebula/services/learned_router.py": "0da28cce3d8911a91ecad0cf86c294d0e44360802788d54f9229df30a99373b2",
       "src/nebula/services/semantic_cache_service.py": "db20b183be3bdf64b8cab58e7cf056a6e29932d4816a0e4cdb8bda67486aa15c"
     },
     "files_differing_from_git_sha": [
-      "scripts/cache_eval/replay.py",
       "scripts/cache_eval/report.py"
     ],
-    "git_sha": "301eaac6e8e04eb2727abb0e36fae6768dee3de4",
+    "git_sha": "aa6e4ff46517f1fa0e1b62ec192e2fc426a90b88",
     "qdrant_client": "1.20.0",
     "vectors": {
       "nomic_v1/originals": "fc3249b5fbdb21836457cbb0bd5c278f9c7046dd2c74a19e2d4e6c39b4ac73c0",
@@ -1565,9 +1564,8 @@
   },
   "savings": {
     "cited_rates": {
-      "lmsys_exact_duplicates": 0.121,
-      "meancache": 0.31,
-      "wildchat": 0.037
+      "factbench_lmsys_duplicates": 0.121,
+      "meancache": 0.31
     },
     "consistency": {
       "cited_cost_per_1000": 1.700955,
@@ -1596,7 +1594,7 @@
     "nomic_v1": {
       "0.90": {
         "cited": {
-          "lmsys_exact_duplicates": {
+          "factbench_lmsys_duplicates": {
             "correct_hits": 111,
             "cost_per_1000": 1.632561,
             "extra_saving_vs_router": 0.114302,
@@ -1637,27 +1635,6 @@
             "saving_vs_frontier": 0.472329,
             "t": 0.9,
             "tier_blocked": 0
-          },
-          "wildchat": {
-            "correct_hits": 35,
-            "cost_per_1000": 1.752267,
-            "extra_saving_vs_router": 0.043388,
-            "false_hit_rate": 0.015,
-            "false_hits": 15,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.05,
-            "hits": 50,
-            "quality": 0.972,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.287037,
-            "t": 0.9,
-            "tier_blocked": 0
           }
         },
         "curve": [
@@ -1679,27 +1656,6 @@
             "router_only_cost_per_1000": 1.847754,
             "router_only_quality": 0.988,
             "saving_vs_frontier": 0.261653,
-            "t": 0.9,
-            "tier_blocked": 0
-          },
-          {
-            "correct_hits": 35,
-            "cost_per_1000": 1.752267,
-            "extra_saving_vs_router": 0.043388,
-            "false_hit_rate": 0.015,
-            "false_hits": 15,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.05,
-            "hits": 50,
-            "quality": 0.972,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.287037,
             "t": 0.9,
             "tier_blocked": 0
           },
@@ -1918,7 +1874,7 @@
       },
       "0.99": {
         "cited": {
-          "lmsys_exact_duplicates": {
+          "factbench_lmsys_duplicates": {
             "correct_hits": 82,
             "cost_per_1000": 1.698011,
             "extra_saving_vs_router": 0.078794,
@@ -1959,27 +1915,6 @@
             "saving_vs_frontier": 0.437661,
             "t": 0.99,
             "tier_blocked": 0
-          },
-          "wildchat": {
-            "correct_hits": 23,
-            "cost_per_1000": 1.792078,
-            "extra_saving_vs_router": 0.021654,
-            "false_hit_rate": 0.001,
-            "false_hits": 1,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.024,
-            "hits": 24,
-            "quality": 0.986,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.270839,
-            "t": 0.99,
-            "tier_blocked": 0
           }
         },
         "curve": [
@@ -2001,27 +1936,6 @@
             "router_only_cost_per_1000": 1.847754,
             "router_only_quality": 0.988,
             "saving_vs_frontier": 0.251373,
-            "t": 0.99,
-            "tier_blocked": 0
-          },
-          {
-            "correct_hits": 23,
-            "cost_per_1000": 1.792078,
-            "extra_saving_vs_router": 0.021654,
-            "false_hit_rate": 0.001,
-            "false_hits": 1,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.024,
-            "hits": 24,
-            "quality": 0.986,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.270839,
             "t": 0.99,
             "tier_blocked": 0
           },
@@ -2242,7 +2156,7 @@
     "nomic_v2": {
       "0.90": {
         "cited": {
-          "lmsys_exact_duplicates": {
+          "factbench_lmsys_duplicates": {
             "correct_hits": 110,
             "cost_per_1000": 1.651707,
             "extra_saving_vs_router": 0.103914,
@@ -2283,27 +2197,6 @@
             "saving_vs_frontier": 0.468972,
             "t": 0.9,
             "tier_blocked": 1
-          },
-          "wildchat": {
-            "correct_hits": 36,
-            "cost_per_1000": 1.767185,
-            "extra_saving_vs_router": 0.035244,
-            "false_hit_rate": 0.004,
-            "false_hits": 4,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.04,
-            "hits": 40,
-            "quality": 0.983,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.280967,
-            "t": 0.9,
-            "tier_blocked": 0
           }
         },
         "curve": [
@@ -2325,27 +2218,6 @@
             "router_only_cost_per_1000": 1.847754,
             "router_only_quality": 0.988,
             "saving_vs_frontier": 0.253463,
-            "t": 0.9,
-            "tier_blocked": 0
-          },
-          {
-            "correct_hits": 36,
-            "cost_per_1000": 1.767185,
-            "extra_saving_vs_router": 0.035244,
-            "false_hit_rate": 0.004,
-            "false_hits": 4,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.04,
-            "hits": 40,
-            "quality": 0.983,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.280967,
             "t": 0.9,
             "tier_blocked": 0
           },
@@ -2564,7 +2436,7 @@
       },
       "0.98": {
         "cited": {
-          "lmsys_exact_duplicates": {
+          "factbench_lmsys_duplicates": {
             "correct_hits": 84,
             "cost_per_1000": 1.696935,
             "extra_saving_vs_router": 0.079377,
@@ -2605,27 +2477,6 @@
             "saving_vs_frontier": 0.439881,
             "t": 0.98,
             "tier_blocked": 0
-          },
-          "wildchat": {
-            "correct_hits": 25,
-            "cost_per_1000": 1.789379,
-            "extra_saving_vs_router": 0.023128,
-            "false_hit_rate": 0.002,
-            "false_hits": 2,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.027,
-            "hits": 27,
-            "quality": 0.985,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.271937,
-            "t": 0.98,
-            "tier_blocked": 0
           }
         },
         "curve": [
@@ -2647,27 +2498,6 @@
             "router_only_cost_per_1000": 1.847754,
             "router_only_quality": 0.988,
             "saving_vs_frontier": 0.252343,
-            "t": 0.98,
-            "tier_blocked": 0
-          },
-          {
-            "correct_hits": 25,
-            "cost_per_1000": 1.789379,
-            "extra_saving_vs_router": 0.023128,
-            "false_hit_rate": 0.002,
-            "false_hits": 2,
-            "fresh": 963,
-            "frontier_cost_per_1000": 2.457726,
-            "hit_rate": 0.027,
-            "hits": 27,
-            "quality": 0.985,
-            "r": 0.037,
-            "repeats_exact": 19,
-            "repeats_paraphrase": 18,
-            "requests": 1000,
-            "router_only_cost_per_1000": 1.831743,
-            "router_only_quality": 0.987,
-            "saving_vs_frontier": 0.271937,
             "t": 0.98,
             "tier_blocked": 0
           },
@@ -2887,7 +2717,6 @@
     },
     "rates": [
       0.0,
-      0.037,
       0.05,
       0.1,
       0.121,
