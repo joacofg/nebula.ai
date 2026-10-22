@@ -893,3 +893,625 @@ def test_the_labeler_reports_a_missing_pairs_file_and_writes_nothing(tmp_path):
     assert session.code == 1
     assert "make cache-paraphrases" in session.text
     assert not (tmp_path / "paraphrases" / "labels").exists()
+
+
+# --- Report: PAWS-X curve ------------------------------------------------------------------
+
+
+def paws_rows():
+    """Six hand-made pairs: three paraphrases (label 1) and three non-paraphrases."""
+    cosines = [(0.95, 1), (0.92, 0), (0.91, 1), (0.85, 1), (0.80, 0), (0.70, 0)]
+    v2 = [0.10, 0.20, 0.30, 0.40, 0.50, 0.60]
+    return [
+        {"id": str(i), "label": label_, "cos_nomic_v1": cos, "cos_nomic_v2": v2[i]}
+        for i, (cos, label_) in enumerate(cosines)
+    ]
+
+
+def test_pawsx_curve_counts_hits_precision_recall_and_f05_at_each_threshold():
+    from scripts.cache_eval import report
+
+    curve = report.pawsx_curve(paws_rows(), model_key="nomic_v1", grid=(0.80, 0.90, 0.93, 0.99))
+    by_t = {row["t"]: row for row in curve}
+    assert [row["t"] for row in curve] == [0.80, 0.90, 0.93, 0.99]
+    # t = 0.80: five hits (cosine >= t, the bound included), three of them paraphrases.
+    assert (by_t[0.80]["hits"], by_t[0.80]["tp"]) == (5, 3)
+    assert by_t[0.80]["precision"] == pytest.approx(0.6)
+    assert by_t[0.80]["recall"] == pytest.approx(1.0)
+    assert by_t[0.80]["f05"] == pytest.approx(0.75 / 1.15)
+    assert (by_t[0.90]["hits"], by_t[0.90]["tp"]) == (3, 2)
+    assert by_t[0.90]["precision"] == pytest.approx(2 / 3)
+    assert by_t[0.90]["recall"] == pytest.approx(2 / 3)
+    assert by_t[0.93]["precision"] == pytest.approx(1.0)
+    assert by_t[0.93]["recall"] == pytest.approx(1 / 3)
+    assert by_t[0.93]["f05"] == pytest.approx(1.25 * (1 / 3) / (0.25 + 1 / 3))
+    # No hit: precision and F0.5 are undefined, not zero.
+    assert (by_t[0.99]["hits"], by_t[0.99]["precision"], by_t[0.99]["f05"]) == (0, None, None)
+    assert by_t[0.99]["recall"] == 0.0
+
+
+def test_pawsx_curve_reads_the_cosine_of_the_model_it_is_given():
+    from scripts.cache_eval import report
+
+    [row] = report.pawsx_curve(paws_rows(), model_key="nomic_v2", grid=(0.45,))
+    # Under v2 only the last two pairs (0.50 and 0.60), both non-paraphrases, reach 0.45.
+    assert (row["hits"], row["tp"]) == (2, 0)
+
+
+def test_f05_is_zero_when_hits_exist_but_none_is_right():
+    from scripts.cache_eval import report
+
+    assert report.f05(0.0, 0.0) == 0.0
+    assert report.f05(None, 0.0) is None
+
+
+# --- Report: the pre-registered verdict ----------------------------------------------------
+
+
+def grid_point(t, pa, pc, hits_a=100, hits_c=100):
+    return {"t": t, "precision_a": pa, "precision_c": pc, "hits_a": hits_a, "hits_c": hits_c}
+
+
+def test_the_verdict_passes_when_both_precisions_reach_0_95_at_0_90():
+    from scripts.cache_eval import report
+
+    points = [grid_point(0.89, 0.99, 0.99), grid_point(0.90, 0.95, 0.96), grid_point(0.91, 0.97, 0.97)]
+    result = report.verdict(points)
+    assert result["verdict"] == "pass"
+    assert result["recommended_t"] is None
+    assert result["product_default_t"] == 0.90
+
+
+def test_a_fail_recommends_the_smallest_eligible_t_with_both_precisions_at_0_95():
+    from scripts.cache_eval import report
+
+    points = [
+        grid_point(0.90, 0.97, 0.94),
+        grid_point(0.91, 0.99, 0.99, hits_c=19),  # safe, but too few hits in (c): not eligible
+        grid_point(0.92, 0.95, 0.951),
+        grid_point(0.93, 0.99, 0.99),
+    ]
+    result = report.verdict(points)
+    assert result["verdict"] == "fail"
+    assert result["recommended_t"] == 0.92
+    assert result["product_default_t"] == 0.92
+    assert result["eligible_t"] == [0.90, 0.92, 0.93]
+
+
+def test_eligibility_needs_20_hits_in_each_set():
+    from scripts.cache_eval import report
+
+    points = [
+        grid_point(0.90, 0.80, 0.80),
+        grid_point(0.91, 0.99, 0.99, hits_a=19),
+        grid_point(0.92, 0.99, 0.99, hits_a=20, hits_c=20),
+    ]
+    assert report.verdict(points)["recommended_t"] == 0.92
+
+
+def test_a_safe_0_90_without_enough_hits_does_not_pass():
+    from scripts.cache_eval import report
+
+    points = [grid_point(0.90, 1.0, 1.0, hits_c=5), grid_point(0.95, 0.96, 0.96)]
+    result = report.verdict(points)
+    assert (result["verdict"], result["recommended_t"]) == ("fail", 0.95)
+
+
+def test_the_verdict_compares_unrounded_precisions():
+    from scripts.cache_eval import report
+
+    # 0.9499 rounds to 0.95 at two decimals; it is still below the criterion.
+    points = [grid_point(0.90, 0.9499, 0.99), grid_point(0.91, 0.95, 0.95)]
+    result = report.verdict(points)
+    assert (result["verdict"], result["recommended_t"]) == ("fail", 0.91)
+
+
+def test_with_no_safe_t_the_eligible_t_with_the_best_worse_precision_is_recommended():
+    from scripts.cache_eval import report
+
+    points = [
+        grid_point(0.90, 0.90, 0.99),  # min 0.90
+        grid_point(0.91, 0.93, 0.94),  # min 0.93 (tie, smallest t wins)
+        grid_point(0.92, 0.94, 0.93),  # min 0.93
+        grid_point(0.93, 0.99, 0.99, hits_a=3),  # not eligible
+        grid_point(0.94, 0.929999, 0.99),  # min just under 0.93
+    ]
+    result = report.verdict(points)
+    assert result["verdict"] == "no_safe_threshold"
+    assert result["recommended_t"] == 0.91
+    assert result["product_default_t"] == 0.91
+
+
+def test_with_no_eligible_point_the_cache_is_not_measurable_and_the_default_stays():
+    from scripts.cache_eval import report
+
+    points = [grid_point(0.90, 1.0, 1.0, hits_a=19), grid_point(0.91, None, None, hits_a=0, hits_c=0)]
+    result = report.verdict(points)
+    assert result["verdict"] == "not_measurable"
+    assert result["recommended_t"] is None
+    assert result["product_default_t"] == 0.90
+
+
+# --- Replay: the gateway's own cache over an in-memory Qdrant ------------------------------
+
+
+def _unit(*xs):
+    return embed.normalize(list(xs))
+
+
+def replay_fixture():
+    """Three originals and two paraphrases in three dimensions, cosines easy to read.
+
+    pA is 0.96 from its own original A. pB is 0.80 from its original B but 0.947 from D, a
+    different prompt 0.95 from B: a false hit. B and D are each other's leave-one-out hit.
+    """
+    from scripts.cache_eval import replay
+
+    d = _unit(0.0, 0.95, (1 - 0.95**2) ** 0.5)
+    originals = [
+        replay.Original("A", "texto A", "local", {"nomic_v1": _unit(1.0, 0.0, 0.0)}),
+        replay.Original("B", "texto B", "frontier", {"nomic_v1": _unit(0.0, 1.0, 0.0)}),
+        replay.Original("D", "texto D", "frontier", {"nomic_v1": d}),
+    ]
+    paraphrases = [
+        replay.Paraphrase("A", "paráfrasis A", "frontier", {"nomic_v1": _unit(0.96, 0.28, 0.0)}),
+        replay.Paraphrase("B", "paráfrasis B", "local", {"nomic_v1": _unit(0.0, 0.8, 0.6)}),
+    ]
+    return originals, paraphrases
+
+
+async def test_the_replay_uses_the_gateways_semantic_cache_service():
+    from nebula.services.semantic_cache_service import SemanticCacheService
+    from scripts.cache_eval import replay
+
+    originals, _ = replay_fixture()
+    cache = await replay.build_cache(originals, model_key="nomic_v1")
+    assert replay.SemanticCacheService is SemanticCacheService
+    assert type(cache) is SemanticCacheService
+    assert cache.enabled
+
+
+async def test_paraphrase_replay_counts_correct_false_and_leave_one_out_hits():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases = replay_fixture()
+    cache = await replay.build_cache(originals, model_key="nomic_v1")
+    at_090 = await replay.paraphrase_replay(cache, paraphrases, originals, t=0.90, model_key="nomic_v1")
+    # pA hits A (correct); pB hits D (false); B and D hit each other leave-one-out (false).
+    assert (at_090["correct_hits"], at_090["false_hits"]) == (1, 3)
+    assert (at_090["paraphrase_hits"], at_090["loo_hits"], at_090["hits"]) == (2, 2, 4)
+    assert at_090["precision"] == pytest.approx(0.25)
+    assert at_090["recall"] == pytest.approx(0.5)
+    assert at_090["tier_blocked"] == 0
+    at_0955 = await replay.paraphrase_replay(cache, paraphrases, originals, t=0.955, model_key="nomic_v1")
+    assert (at_0955["correct_hits"], at_0955["false_hits"], at_0955["precision"]) == (1, 0, 1.0)
+
+
+async def test_leave_one_out_leaves_the_cache_as_it_was():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases = replay_fixture()
+    cache = await replay.build_cache(originals, model_key="nomic_v1")
+    await replay.paraphrase_replay(cache, paraphrases, originals, t=0.90, model_key="nomic_v1")
+    [own] = await replay.best_candidates(cache, [originals[0]], model_key="nomic_v1")
+    assert own.prompt_id == "A" and own.score == pytest.approx(1.0)
+
+
+async def test_with_the_tier_rule_on_a_frontier_paraphrase_cannot_take_a_local_answer():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases = replay_fixture()
+    cache = await replay.build_cache(originals, model_key="nomic_v1")
+    on = await replay.paraphrase_replay(
+        cache, paraphrases, originals, t=0.90, model_key="nomic_v1", tier_rule=True
+    )
+    # pA is routed to frontier and A's answer is local: blocked. pB (local) still takes D's.
+    assert (on["correct_hits"], on["tier_blocked"], on["false_hits"]) == (0, 1, 3)
+    assert on["precision"] == 0.0
+
+
+# --- Replay: savings over a trace with repeats ---------------------------------------------
+
+
+def test_a_trace_without_repeats_sends_every_original_once():
+    from scripts.cache_eval import replay
+
+    ids = [f"p{i}" for i in range(50)]
+    requests = replay.trace(ids, {"p1", "p2"}, rate=0.0, n=50)
+    assert [r.kind for r in requests] == ["fresh"] * 50
+    assert sorted(r.prompt_id for r in requests) == sorted(ids)
+    assert [r.prompt_id for r in requests] != ids  # shuffled with the seed
+
+
+def test_a_trace_repeats_only_what_was_already_asked_and_paraphrases_only_paraphrased_prompts():
+    from scripts.cache_eval import replay
+
+    ids = [f"p{i:03d}" for i in range(1000)]
+    paraphrased = set(ids[::5])
+    requests = replay.trace(ids, paraphrased, rate=0.3, n=1000)
+    seen: set[str] = set()
+    for request in requests:
+        if request.kind == "fresh":
+            assert request.prompt_id not in seen
+            seen.add(request.prompt_id)
+        else:
+            assert request.prompt_id in seen
+            if request.kind == "paraphrase":
+                assert request.prompt_id in paraphrased
+    kinds = Counter(r.kind for r in requests)
+    assert 240 <= kinds["exact"] + kinds["paraphrase"] <= 360  # Bernoulli(0.3) over 1000
+    assert kinds["exact"] > 0 and kinds["paraphrase"] > 0
+
+
+@pytest.mark.parametrize("rate", [0.037, 0.05, 0.121, 0.31, 0.4])
+def test_a_trace_has_exactly_the_rate_of_repeats_half_of_them_exact(rate):
+    from scripts.cache_eval import replay
+
+    ids = [f"p{i:03d}" for i in range(1000)]
+    kinds = Counter(r.kind for r in replay.trace(ids, set(ids[::6]), rate=rate, n=1000))
+    repeats = kinds["exact"] + kinds["paraphrase"]
+    assert repeats == round(rate * 1000)
+    assert kinds["exact"] - kinds["paraphrase"] in (0, 1)
+
+
+def test_the_repeats_of_a_lower_rate_are_among_those_of_a_higher_one():
+    from scripts.cache_eval import replay
+
+    ids = [f"p{i:03d}" for i in range(1000)]
+    low = replay.trace(ids, set(ids[::6]), rate=0.05, n=1000)
+    high = replay.trace(ids, set(ids[::6]), rate=0.2, n=1000)
+    repeat_at = lambda trace: {i for i, r in enumerate(trace) if r.kind != "fresh"}  # noqa: E731
+    assert repeat_at(low) <= repeat_at(high)
+
+
+def test_a_trace_is_fixed_by_its_seed():
+    from scripts.cache_eval import replay
+
+    ids = [f"p{i}" for i in range(200)]
+    first = replay.trace(ids, set(ids[:40]), rate=0.2, n=200)
+    assert replay.trace(list(reversed(ids)), set(ids[:40]), rate=0.2, n=200) == first
+    assert replay.trace(ids, set(ids[:40]), rate=0.2, n=200, seed=1) != first
+
+
+def savings_fixture():
+    """Four orthogonal originals (no two can collide) and one paraphrase of A."""
+    from scripts.cache_eval import replay
+
+    tiers = {"A": "local", "B": "economy", "C": "frontier", "D": "frontier"}
+    originals = [
+        replay.Original(pid, f"texto {pid}", tiers[pid], {"nomic_v1": [float(i == j) for j in range(4)]})
+        for i, pid in enumerate("ABCD")
+    ]
+    paraphrases = [
+        replay.Paraphrase("A", "paráfrasis A", "frontier", {"nomic_v1": _unit(0.97, 0.0, 0.0, 0.243)})
+    ]
+    prices = replay.Prices(
+        cost={
+            "A": {"local": 0.0, "economy": 0.0005, "frontier": 0.001},
+            "B": {"local": 0.0, "economy": 0.002, "frontier": 0.003},
+            "C": {"local": 0.0, "economy": 0.001, "frontier": 0.003},
+            "D": {"local": 0.0, "economy": 0.002, "frontier": 0.004},
+        },
+        quality={
+            "A": {"local": 1.0, "economy": 1.0, "frontier": 1.0},
+            "B": {"local": 0.0, "economy": 1.0, "frontier": 1.0},
+            "C": {"local": 0.0, "economy": 0.0, "frontier": 1.0},
+            "D": {"local": 0.0, "economy": 0.0, "frontier": 1.0},
+        },
+    )
+    return originals, paraphrases, prices
+
+
+async def test_without_repeats_the_cache_costs_exactly_what_the_router_alone_costs():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases, prices = savings_fixture()
+    [row] = await replay.savings_curve(
+        originals, paraphrases, prices, model_key="nomic_v1", rates=[0.0], t=0.90, n=4
+    )
+    # Router alone: 0 + 0.002 + 0.003 + 0.004 over 4 requests = USD 2.25 per 1000.
+    assert row["cost_per_1000"] == pytest.approx(2.25)
+    assert row["router_only_cost_per_1000"] == pytest.approx(2.25)
+    assert row["frontier_cost_per_1000"] == pytest.approx(2.75)
+    assert row["extra_saving_vs_router"] == pytest.approx(0.0)
+    assert row["saving_vs_frontier"] == pytest.approx(1 - 2.25 / 2.75)
+    assert (row["hits"], row["false_hits"], row["quality"]) == (0, 0, 1.0)
+
+
+async def test_a_repeat_hits_for_free_and_a_frontier_paraphrase_is_blocked_from_a_local_answer():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases, prices = savings_fixture()
+    requests = [
+        replay.Request("fresh", "A"),
+        replay.Request("fresh", "B"),
+        replay.Request("exact", "B"),  # hits B's economy answer: free, quality kept (1)
+        replay.Request("paraphrase", "A"),  # frontier-routed; A's answer is local: blocked
+        replay.Request("paraphrase", "A"),  # now hits the frontier answer the block stored
+    ]
+    row = await replay.simulate(
+        requests, originals, paraphrases, prices, model_key="nomic_v1", t=0.90
+    )
+    assert (row["hits"], row["correct_hits"], row["false_hits"], row["tier_blocked"]) == (2, 2, 0, 1)
+    # Paid: B economy 0.002 and the blocked paraphrase at frontier 0.001, over 5 requests.
+    assert row["cost_per_1000"] == pytest.approx(0.003 * 1000 / 5)
+    # Router alone pays every request: 0 + 0.002 + 0.002 + 0.001 + 0.001.
+    assert row["router_only_cost_per_1000"] == pytest.approx(0.006 * 1000 / 5)
+    assert row["extra_saving_vs_router"] == pytest.approx(0.5)
+    assert row["quality"] == pytest.approx(1.0)
+    assert row["hit_rate"] == pytest.approx(0.4)
+
+
+async def test_a_false_hit_is_free_but_worth_nothing():
+    from scripts.cache_eval import replay
+
+    _, _, prices = savings_fixture()
+    near = [
+        replay.Original("B", "texto B", "economy", {"nomic_v1": [1.0, 0.0]}),
+        replay.Original("C", "texto C", "economy", {"nomic_v1": _unit(0.99, 0.141)}),
+    ]
+    row = await replay.simulate(
+        [replay.Request("fresh", "B"), replay.Request("fresh", "C")], near, [], prices,
+        model_key="nomic_v1", t=0.90,
+    )
+    assert (row["hits"], row["false_hits"], row["false_hit_rate"]) == (1, 1, 0.5)
+    assert row["cost_per_1000"] == pytest.approx(0.002 * 1000 / 2)
+    assert row["quality"] == pytest.approx(0.5)  # B served (1), C got B's answer (0)
+
+
+# --- Report: human labels --------------------------------------------------------------------
+
+
+def neighbor_pairs_for_report():
+    cosines = [0.99, 0.96, 0.93, 0.91, 0.88, 0.86]
+    return [
+        {"pair_id": f"es:a-{i}|es:b-{i}", "a_id": f"es:a-{i}", "b_id": f"es:b-{i}", "a": "A", "b": "B",
+         "cos_nomic_v1": cos}
+        for i, cos in enumerate(cosines)
+    ]
+
+
+def label_row(pair_id, value):
+    return {"pair_id": pair_id, "label": value, "rater_id": "human-es-1",
+            "recorded_at": "2026-10-23T10:00:00+00:00"}
+
+
+def test_missing_label_files_read_as_pendiente(tmp_path):
+    from scripts.cache_eval import report
+
+    labels = report.read_labels(tmp_path / "labels" / "human-es-1.jsonl")
+    assert labels is None
+    section = report.neighbors_section(neighbor_pairs_for_report(), labels, thresholds=(0.90,))
+    assert section["human_labels"] == "pendiente"
+    assert [band["pairs"] for band in section["bands"]] == [2, 2, 2]
+    assert report.paraphrase_validation(sample_rows(4), None) == "pendiente"
+
+
+def test_the_last_label_of_a_pair_wins(tmp_path):
+    from scripts.cache_eval import report
+
+    path = tmp_path / "human-es-1.jsonl"
+    write_jsonl(path, [label_row("p1", "no"), label_row("p2", "sí"), label_row("p1", "sí")])
+    assert report.read_labels(path) == {"p1": "sí", "p2": "sí"}
+
+
+def test_neighbor_labels_give_acceptable_shares_by_band_and_agreement_with_the_cache():
+    from scripts.cache_eval import report
+
+    pairs = neighbor_pairs_for_report()
+    labels = {pairs[0]["pair_id"]: "sí", pairs[1]["pair_id"]: "no", pairs[2]["pair_id"]: "no",
+              pairs[3]["pair_id"]: "?", pairs[4]["pair_id"]: "no"}
+    section = report.neighbors_section(pairs, labels, thresholds=(0.90, 0.95))
+    human = section["human_labels"]
+    assert human["labeled"] == 5 and human["pairs"] == 6
+    top, middle, low = section["bands"]
+    assert (top["si"], top["no"], top["acceptable_share"]) == (1, 1, 0.5)
+    assert (middle["si"], middle["no"], middle["unsure"]) == (0, 1, 1)
+    # At 0.90 the cache serves pairs 0-3; of the four sí/no labels it agrees on 0 (sí, served)
+    # and 4 (no, not served): 2 of 4. At 0.95 it serves 0 and 1: agrees on 0, 2 and 4: 3 of 4.
+    assert human["agreement"] == {"0.90": 0.5, "0.95": 0.75}
+
+
+def test_the_paraphrase_check_reports_the_faithful_share_of_the_labeled_sample():
+    from scripts.cache_eval import report
+
+    sample = sample_rows(5)
+    labels = {"code-0000": "sí", "code-0001": "sí", "code-0002": "no", "code-0003": "?"}
+    result = report.paraphrase_validation(sample, labels)
+    assert (result["sample"], result["labeled"], result["si"], result["no"], result["unsure"]) == (5, 4, 2, 1, 1)
+    assert result["faithful_rate"] == pytest.approx(2 / 3)
+
+
+# --- Report: real data ----------------------------------------------------------------------
+
+PRODUCTION_VECTORS = Path("artifacts/router-embeddings/none.json")
+needs_vectors = pytest.mark.skipif(
+    not PRODUCTION_VECTORS.exists(),
+    reason="needs the corpus production vectors (python -m scripts.router.embed)",
+)
+
+
+@needs_vectors
+def test_the_deployed_router_reproduces_the_cited_router_only_cost_within_a_cent():
+    from nebula.services.learned_router import LearnedRouterModel
+    from scripts.cache_eval import report
+
+    check = report.router_only_check(
+        router=LearnedRouterModel.from_file(report.ROUTER_PATH),
+        replay_payload=json.loads(report.ROUTER_REPLAY_PATH.read_text()),
+        vectors=json.loads(PRODUCTION_VECTORS.read_text()),
+    )
+    # The thesis cites USD 1.70 per 1000 prompts at quality target 0.95 (nested estimate).
+    assert check["cited_cost_per_1000"] == pytest.approx(1.70, abs=0.01)
+    assert check["corpus_prompts"] == 1250 and check["spanish_prompts"] == 1000
+    assert abs(check["corpus_cost_per_1000"] - check["cited_cost_per_1000"]) <= 0.01
+
+
+def test_prices_come_from_the_router_replay_costs_and_the_ground_truth_labels():
+    from scripts.cache_eval import report
+
+    rows = [{"key": "es:code-0001", "cost_economy": 0.002, "cost_frontier": 0.003},
+            {"key": "en:code-0001", "cost_economy": 9.0, "cost_frontier": 9.0}]
+    labels = [{"lang": "es", "prompt_id": "code-0001", "local_substitutable": False,
+               "economy_substitutable": True},
+              {"lang": "en", "prompt_id": "code-0001", "local_substitutable": True,
+               "economy_substitutable": True}]
+    prices = report.load_prices(rows, labels)
+    assert prices.cost == {"code-0001": {"local": 0.0, "economy": 0.002, "frontier": 0.003}}
+    assert prices.quality == {"code-0001": {"local": 0.0, "economy": 1.0, "frontier": 1.0}}
+
+
+# --- Report: assembly -------------------------------------------------------------------------
+
+
+def test_the_report_json_has_sorted_keys_and_six_decimal_floats():
+    from scripts.cache_eval import report
+
+    text = report.dumps({"b": 1 / 3, "a": [0.1 + 0.2, None, "sí"], "c": {"z": 2, "y": 1.0}})
+    assert text == (
+        '{\n  "a": [\n    0.3,\n    null,\n    "sí"\n  ],\n  "b": 0.333333,\n'
+        '  "c": {\n    "y": 1.0,\n    "z": 2\n  }\n}\n'
+    )
+    with pytest.raises(ValueError):
+        report.dumps({"x": float("nan")})
+
+
+def tiny_inputs(**overrides):
+    from scripts.cache_eval import report
+
+    originals, paraphrases, prices = savings_fixture()
+    # Router alone over the four fixture prompts at their tiers: USD 2.25 per 1000.
+    router_check = {"spanish_cost_per_1000": 2.25, "corpus_cost_per_1000": 1.705,
+                    "cited_cost_per_1000": 1.701}
+    paraphrase_rows = [{"prompt_id": "A", "task_type": "code", "original": "texto A",
+                        "paraphrase": "paráfrasis A", "cos_nomic_v1": 0.97, "cos_nomic_v2": 0.9}]
+    fields = dict(
+        originals=originals,
+        paraphrases=paraphrases,
+        paraphrase_rows=paraphrase_rows,
+        dropped=[{"prompt_id": "B", "reason": "length ratio 0.1000 is below 0.5", "length_ratio": 0.1}],
+        pawsx=paws_rows(),
+        neighbors=neighbor_pairs_for_report(),
+        sample=sample_rows(2),
+        neighbor_labels=None,
+        paraphrase_labels=None,
+        prices=prices,
+        router_check=router_check,
+        model_keys=("nomic_v1",),
+        rates=(0.0, 0.5),
+        trace_length=4,
+        provenance={"git_sha": "abc"},
+    )
+    fields.update(overrides)
+    return report.Inputs(**fields)
+
+
+async def test_the_report_is_byte_identical_for_the_same_inputs_and_says_pendiente():
+    from scripts.cache_eval import report
+
+    first = report.dumps(await report.build(tiny_inputs()))
+    second = report.dumps(await report.build(tiny_inputs()))
+    assert first == second
+    data = json.loads(first)
+    assert set(data) >= {"preregistration", "pawsx", "paraphrases", "neighbors",
+                         "paraphrase_validation", "savings", "models", "provenance"}
+    assert data["neighbors"]["human_labels"] == "pendiente"
+    assert data["paraphrase_validation"] == "pendiente"
+    # Four originals cannot give 20 hits in (c): nothing is eligible.
+    assert data["preregistration"]["verdict"] == "not_measurable"
+    assert data["savings"]["nomic_v1"]["0.90"]["curve"][0]["r"] == 0.0
+    assert "pendiente" in report.render_markdown(data)
+
+
+async def test_the_sensitivity_model_gets_the_rules_outcome_but_never_sets_the_product_default():
+    from dataclasses import replace
+
+    from scripts.cache_eval import report
+
+    base = tiny_inputs()
+    both = lambda items: [replace(i, vectors={**i.vectors, "nomic_v2": i.vectors["nomic_v1"]}) for i in items]  # noqa: E731
+    inputs = replace(base, originals=both(base.originals), paraphrases=both(base.paraphrases),
+                     model_keys=("nomic_v1", "nomic_v2"))
+    data = json.loads(report.dumps(await report.build(inputs)))
+    [sensitivity] = data["models"]["sensitivity"]
+    assert sensitivity["name"] == "nomic-embed-text-v2-moe"
+    assert "product_default_t" not in sensitivity["verdict"]
+    assert "product_default_t" in data["preregistration"]
+    section = report.render_markdown(data).split("## Sensitivity")[1].split("## Limitations")[0]
+    assert "product default" not in section and "changes nothing in the product" in section
+
+
+async def test_the_report_refuses_a_savings_baseline_that_is_not_the_routers():
+    from scripts.cache_eval import report
+
+    wrong = {"spanish_cost_per_1000": 2.30, "corpus_cost_per_1000": 1.705, "cited_cost_per_1000": 1.701}
+    with pytest.raises(ValueError, match="router-only"):
+        await report.build(tiny_inputs(router_check=wrong))
+
+
+# --- The committed report -----------------------------------------------------------------------
+
+REPORT_JSON = Path("benchmarks/cache/v1/report.json")
+
+
+def committed_report():
+    return json.loads(REPORT_JSON.read_text(encoding="utf-8"))
+
+
+def test_the_committed_verdict_follows_from_its_own_grid():
+    from scripts.cache_eval import report
+
+    data = committed_report()
+    pre = data["preregistration"]
+    assert pre["verdict"] in {"pass", "fail", "no_safe_threshold", "not_measurable"}
+    recomputed = report.verdict(pre["grid"])
+    assert (recomputed["verdict"], recomputed["recommended_t"]) == (pre["verdict"], pre["recommended_t"])
+    assert [p["t"] for p in pre["grid"]] == list(report.GRID)
+    assert pre["at_default"]["t"] == 0.9
+    assert pre["valid_paraphrases"] == 173 and pre["leave_one_out_originals"] == 1000
+    for key in ("precision_a", "precision_c", "recall_a", "recall_c", "hits_a", "hits_c"):
+        assert key in pre["at_default"]
+    if pre["recommended_t"] is not None:
+        assert pre["at_recommended"]["t"] == pre["recommended_t"]
+
+
+def test_the_committed_savings_start_from_the_routers_own_cost():
+    data = committed_report()
+    consistency = data["savings"]["consistency"]
+    # The thesis cites USD 1.70 per 1000 for the router alone at target 0.95; the shipped
+    # router reproduces it on the corpus within a cent.
+    assert consistency["cited_cost_per_1000"] == pytest.approx(1.70, abs=0.01)
+    assert consistency["corpus_cost_per_1000"] == pytest.approx(consistency["cited_cost_per_1000"], abs=0.01)
+    for block in data["savings"]["nomic_v1"].values():
+        [r0] = [row for row in block["curve"] if row["r"] == 0.0]
+        assert r0["router_only_cost_per_1000"] == pytest.approx(consistency["spanish_cost_per_1000"], abs=1e-6)
+        assert r0["requests"] == 1000 and r0["fresh"] == 1000
+        assert set(block["cited"]) == {"wildchat", "lmsys_exact_duplicates", "meancache"}
+
+
+def test_the_committed_report_matches_the_committed_data():
+    data = committed_report()
+    files = data["provenance"]["files"]
+    for path in ("benchmarks/cache/v1/preregistration.md", "benchmarks/cache/v1/pawsx/pairs.jsonl",
+                 "benchmarks/cache/v1/neighbors/pairs.jsonl", "benchmarks/cache/v1/paraphrases/paraphrases.jsonl",
+                 "benchmarks/cache/v1/paraphrases/sample.jsonl", "benchmarks/ground-truth/v1/tiers.jsonl",
+                 "src/nebula/data/learned_router_v1.json", "src/nebula/data/router_replay_v1.json"):
+        assert files[path] == hashlib.sha256(Path(path).read_bytes()).hexdigest(), path
+
+
+def test_the_committed_report_says_pendiente_until_labels_exist():
+    data = committed_report()
+    markdown = Path("benchmarks/cache/v1/report.md").read_text(encoding="utf-8")
+    for set_name, section in (("neighbors", data["neighbors"]["human_labels"]),
+                              ("paraphrases", data["paraphrase_validation"])):
+        if not Path(f"benchmarks/cache/v1/{set_name}/labels/human-es-1.jsonl").exists():
+            assert section == "pendiente"
+            assert "pendiente" in markdown
+    assert "blind spot" in markdown
+
+
+def test_the_grid_is_0_80_to_0_99_in_hundredths():
+    from scripts.cache_eval import report
+
+    assert report.GRID[0] == 0.8 and report.GRID[-1] == 0.99 and len(report.GRID) == 20
+    assert 0.9 in report.GRID

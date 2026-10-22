@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data cache-paraphrases cache-label
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data cache-paraphrases cache-label cache-eval
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -81,6 +81,14 @@ cache-paraphrases:
 # Blind human labeling: make cache-label SET=neighbors  (or SET=paraphrases). Resumable; q quits.
 cache-label:
 	$(PYTHON) -m scripts.cache_eval.label $(SET)
+
+# The cache measurement: the pre-registered verdict, the PAWS-X and paraphrase-replay curves and the
+# saving over the router, through the gateway's own cache on an in-memory Qdrant, into
+# benchmarks/cache/v1/report.{json,md}. No paid API; needs artifacts/router-embeddings/none.json, and
+# Ollama only for vectors not yet cached under artifacts/cache-eval/vectors/. Human-label sections
+# read "pendiente" until the label files exist.
+cache-eval:
+	$(PYTHON) -m scripts.cache_eval.report
 
 migrate:
 	./.venv/bin/alembic upgrade head
