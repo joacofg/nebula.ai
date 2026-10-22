@@ -144,6 +144,16 @@ that file):
 
   None of these changes touches the criterion, the threshold, the grid, the eligibility rule or
   the verdict rule. Condensed from the end of `benchmarks/cache/v1/preregistration.md`.
+- **Amendment (paraphrase validity, 2026-10-22, before any hit, precision or recall was
+  computed):** the first generation put the instruction and the prompt in one message and
+  `qwen2.5:7b` answered instead of rewriting in some cases (27 of 200 under 30 % of the
+  original's length; only lengths were inspected). Paraphrases are regenerated with the
+  instruction as the system message and the prompt as the user message. A paraphrase is valid
+  when its length is between 0.5 and 2.0 times the original's (characters); invalid ones are
+  dropped and counted. (c) uses only valid paraphrases: recall = correct hits / valid
+  paraphrases. The 40-item human sample is drawn from valid paraphrases. If fewer than 150 are
+  valid, the report says so. The criterion, threshold, grid, eligibility and verdict rule are
+  unchanged. Condensed from the end of `benchmarks/cache/v1/preregistration.md`.
 
 ### Data sets
 

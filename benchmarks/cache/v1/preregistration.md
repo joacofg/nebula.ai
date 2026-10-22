@@ -1,6 +1,6 @@
 # Pre-registration: semantic cache measurement
 
-Date: 2026-10-22. Fixed before computing any precision, recall or verdict: the commit of this file, its two amendments (`5bd4632` and `2f20e53`) and the final tightening commit `docs: tighten the cache pre-registration before measuring` and the data-acquisition amendment at the end of this file (commit `docs: record the data-acquisition amendment to the cache pre-registration`) precede every commit that computes one.
+Date: 2026-10-22. Fixed before computing any precision, recall or verdict: the commit of this file, its two amendments (`5bd4632` and `2f20e53`) and the final tightening commit `docs: tighten the cache pre-registration before measuring` and the data-acquisition amendment at the end of this file (commit `docs: record the data-acquisition amendment to the cache pre-registration`) and the paraphrase-validity amendment at the end of this file (commit `docs: fix the paraphrase validity rule before regenerating`) precede every commit that computes one.
 
 Design reference: `docs/superpowers/specs/2026-10-22-semantic-cache-measurement-design.md` (Part B) at spec commit `98015a0`, plus the amendments named above, which made the definitions exact and covered the edge cases. The spec's "Pre-registration" section condenses it.
 
@@ -50,3 +50,14 @@ Written after the evaluation data were built (`make cache-data`, commit `feat(ca
 3. **Declared prior inspection, corrected.** At cosine >= 0.90 there are **20** pairs of distinct Spanish prompts among the 1000 corpus prompts (22 when the 250-prompt English subset is counted too; the two extra pairs are `en:code-0021` vs `en:code-0046` at 0.946 and `en:summarisation-0050` vs `es:summarisation-0050` at 0.906). The (b) set at cosine >= 0.85 has **265** Spanish pairs. The 20 pairs were seen non-blind, including the near-identical MBPP pair (`es:code-0113` vs `es:code-0138`, cosine 1.0). The leave-one-out disclosure above stands as written: it refers to the Spanish pairs.
 
 None of these changes touches the criterion (precision >= 0.95 on both (a) and (c)), the threshold (t = 0.90), the grid (0.80-0.99, step 0.01), the eligibility rule (>= 20 hits in each of (a) and (c)) or the verdict rule. The one removed row has label 0, so it could only have been a true negative or a false positive in (a).
+
+## Amendment (paraphrase validity, 2026-10-22, before any hit, precision or recall was computed)
+
+The first generation of the paraphrases put the instruction and the prompt in one user message, and `qwen2.5:7b` answered instead of rewriting in some cases: 27 of 200 paraphrases were under 30 % of the original's length (only lengths were inspected; no cosine, hit, precision or recall was looked at). Paraphrases are regenerated with the instruction as the system message and the prompt as the user message. The rule below is fixed before the regeneration, without seeing its outputs.
+
+- A paraphrase is **valid** when its length is between 0.5 and 2.0 times the original's, in characters (both bounds included). Invalid paraphrases are dropped and counted, with their reason.
+- (c) uses only valid paraphrases: recall = correct hits / valid paraphrases. Wherever the definitions above say 200 paraphrases for (c), the count is the number of valid paraphrases. The 1000 originals leave-one-out are unchanged.
+- The 40-item human sample is drawn from valid paraphrases.
+- If fewer than 150 paraphrases are valid, the report says so.
+
+None of this touches the criterion (precision >= 0.95 on both (a) and (c)), the threshold (t = 0.90), the grid (0.80-0.99, step 0.01), the eligibility rule (>= 20 hits in each of (a) and (c)) or the verdict rule.
