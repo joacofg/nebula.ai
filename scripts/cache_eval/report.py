@@ -201,19 +201,20 @@ def _label_counts(ids: Sequence[str], labels: Mapping[str, str]) -> dict:
 
 
 def neighbors_section(
-    pairs: Sequence[dict], labels: Mapping[str, str] | None, *, thresholds: Sequence[float]
+    pairs: Sequence[dict],
+    labels: Mapping[str, str] | None,
+    *,
+    thresholds: Sequence[float],
+    column: str = "cos_nomic_v1",
 ) -> dict:
-    """Set (b), descriptive only: pairs per production-cosine band and, once labeled, the share
-    a human finds acceptable ("¿Una respuesta a A sirve para B?" = sí) per band, and how often
-    the cache's decision at each threshold (serve when cosine >= t) agrees with the human."""
+    """Set (b), descriptive only: pairs per cosine band (``column``, the production model's by
+    default) and, once labeled, the share a human finds acceptable ("¿Una respuesta a A sirve
+    para B?" = sí) per band, and how often the cache's decision at each threshold (serve when
+    cosine >= t) agrees with the human."""
     bands = []
     upper: float | None = None
     for lower in NEIGHBOR_BANDS:
-        members = [
-            p
-            for p in pairs
-            if p["cos_nomic_v1"] >= lower and (upper is None or p["cos_nomic_v1"] < upper)
-        ]
+        members = [p for p in pairs if p[column] >= lower and (upper is None or p[column] < upper)]
         band = {"from": lower, "to": upper, "pairs": len(members)}
         if labels is not None:
             band |= _label_counts([p["pair_id"] for p in members], labels)
@@ -226,9 +227,7 @@ def neighbors_section(
     decided = [p for p in pairs if labels.get(p["pair_id"]) in ("sí", "no")]
     agreement = {}
     for t in thresholds:
-        agree = sum(
-            1 for p in decided if (p["cos_nomic_v1"] >= t) == (labels[p["pair_id"]] == "sí")
-        )
+        agree = sum(1 for p in decided if (p[column] >= t) == (labels[p["pair_id"]] == "sí"))
         agreement[t_key(t)] = _ratio(agree, len(decided))
     section["human_labels"] = {
         "pairs": len(pairs),
@@ -415,9 +414,10 @@ def _v2_neighbor_bands(originals: Sequence[Original]) -> dict:
     vectors = {o.prompt_id: o.vectors["nomic_v2"] for o in originals}
     pairs = find_pairs(vectors, min_cos=NEIGHBOR_BANDS[-1])
     return neighbors_section(
-        [{"pair_id": f"{p.a_id}|{p.b_id}", "cos_nomic_v1": p.cosine} for p in pairs],
+        [{"pair_id": f"{p.a_id}|{p.b_id}", "cos_nomic_v2": p.cosine} for p in pairs],
         None,
         thresholds=(),
+        column="cos_nomic_v2",
     )["bands"]
 
 
@@ -812,8 +812,9 @@ def render_markdown(data: dict) -> str:
         "",
         f"A trace of {trace['length']} requests per rate r (seed {trace['seed']}), served in order "
         "through a gateway cache that starts empty, tier rule on. Exactly round(r × 1000) requests, "
-        "at seeded random positions (each request is a repeat with probability r), repeat a prompt "
-        "asked earlier: half exact repeats (same text and vector), half its valid paraphrase. The "
+        "at seeded positions, nested across rates (the repeats of a lower rate are among those of "
+        "a higher one), repeat a prompt asked earlier: half exact repeats (same text and vector), "
+        "half its valid paraphrase. The "
         "other requests are new Spanish corpus prompts, each at most once (at r = 0 every one of "
         "the 1000 is sent once). A first version of the trace drew each request's repeat "
         "independently; with this seed that gave 61 repeats at r = 0.037 instead of 37, so the "
@@ -906,10 +907,11 @@ def render_markdown(data: dict) -> str:
         "## Limitations",
         "",
         "- **The validity rule has a known blind spot.** It keeps any rewrite whose length is 0.5 to "
-        "2.0 times the original's, so it cannot see what a rewrite says. A reviewer who read about "
-        "75 of the valid paraphrases found 4 that answer the prompt instead of rewriting it, 1 "
-        "corrupted with CJK characters, and 2 code prompts whose rewrite renamed the identifier the "
-        "test asserts on. They stay in (c) because the rule was fixed before the rewrites were seen "
+        "2.0 times the original's, so it cannot see what a rewrite says. An automated review (an AI "
+        "code-review agent, not a human rater) read about 75 of the valid paraphrases and flagged 4 "
+        "that answer the prompt instead of rewriting it, 1 corrupted with CJK characters, and 2 code "
+        "prompts whose rewrite renamed the identifier the test asserts on; these counts are not a "
+        "human check. They stay in (c) because the rule was fixed before the rewrites were seen "
         "and is not changed after. Such a rewrite that misses its original lowers the replay's "
         "recall; one that still matches its original counts as a correct hit although the cached "
         "answer may not serve it. The 40-pair human check measures how faithful the set is.",
@@ -928,11 +930,27 @@ def render_markdown(data: dict) -> str:
         "",
         "## Provenance",
         "",
-        f"Git commit at generation: `{data['provenance'].get('git_sha', 'unknown')}`. SHA-256 of every "
-        "input file and of the vectors used are in `report.json` (`provenance`).",
+        *_provenance_lines(data["provenance"]),
         "",
     ]
     return "\n".join(out)
+
+
+def _provenance_lines(provenance: dict) -> list[str]:
+    differing = provenance.get("files_differing_from_git_sha")
+    if differing is None:
+        state = "whether any input differed from it is unknown (git was not available)"
+    elif differing:
+        state = "these inputs differed from it when the report was generated: " + ", ".join(
+            f"`{path}`" for path in differing
+        )
+    else:
+        state = "no tracked input differed from it when the report was generated"
+    return [
+        f"Git commit checked out at generation: `{provenance.get('git_sha', 'unknown')}`; {state}. "
+        "The SHA-256 of each file in report.json is the authority (`provenance.files`, with the "
+        "untracked corpus vectors too), and `provenance.vectors` hashes the vectors used."
+    ]
 
 
 # --- Loading and the command ----------------------------------------------------------------------
@@ -969,20 +987,35 @@ def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def _git_sha() -> str:
+def _git(*args: str) -> str | None:
     try:
         done = subprocess.run(
-            ["git", "rev-parse", "HEAD"], capture_output=True, text=True, check=True, timeout=10
+            ["git", *args], capture_output=True, text=True, check=True, timeout=10
         )
     except (OSError, subprocess.SubprocessError):
-        return "unknown"
-    return done.stdout.strip()
+        return None
+    return done.stdout
+
+
+def _git_sha() -> str:
+    out = _git("rev-parse", "HEAD")
+    return "unknown" if out is None else out.strip()
+
+
+def _files_differing_from_head(files: Sequence[Path]) -> list[str] | None:
+    """Tracked inputs that were modified or new against the checked-out commit (None if unknown)."""
+    out = _git("status", "--porcelain", "--untracked-files=all", "--", *map(str, files))
+    if out is None:
+        return None
+    return sorted(line[3:] for line in out.splitlines() if line.strip())
 
 
 def provenance(files: Sequence[Path], vectors: Mapping[str, Sequence[Sequence[float]]]) -> dict:
-    """Git commit, SHA-256 of each input file, and of each set of vectors (canonical JSON)."""
+    """Git commit and which inputs differed from it, SHA-256 of each input file, and of each set
+    of vectors (canonical JSON). The file hashes are the authority; the commit is context."""
     return {
         "git_sha": _git_sha(),
+        "files_differing_from_git_sha": _files_differing_from_head(files),
         "files": {str(path): _sha256(path.read_bytes()) for path in files},
         "vectors": {
             name: _sha256(json.dumps([list(v) for v in vs]).encode("utf-8"))

@@ -31,9 +31,10 @@ from nebula.services.semantic_cache_service import TIER_RANK, SemanticCacheServi
 
 TENANT_ID = "cache-eval"
 COLLECTION = "cache-eval"
-# The lowest threshold a lookup is asked for: it returns the best candidate however far, so
-# every registered threshold is applied afterwards to the same answer.
-FLOOR_THRESHOLD = 0.0
+# The lowest threshold a lookup is asked for: no cosine is below it, so the lookup returns the
+# best candidate however far, every registered threshold is applied afterwards to the same
+# answer, and "no candidate" while an eligible entry exists can only mean the lookup failed.
+FLOOR_THRESHOLD = -1.0
 MAX_ENTRY_AGE_HOURS = 24
 # The served model per tier, as the corpus captured it (the model field only matters to
 # explicit-model lookups, which the replay never makes).
@@ -96,15 +97,17 @@ def request_context(text: str) -> str:
     return context_hash([ChatMessage(role="user", content=text)])
 
 
-async def new_cache(*, dimensions: int) -> SemanticCacheService:
-    """An empty, initialized gateway cache over an in-memory Qdrant."""
+async def new_cache(
+    *, dimensions: int, client: AsyncQdrantClient | None = None
+) -> SemanticCacheService:
+    """An empty, initialized gateway cache over an in-memory Qdrant (or the given client)."""
     settings = Settings(
         _env_file=None,
         embedding_dimensions=dimensions,
         semantic_cache_collection=COLLECTION,
     )
     cache = SemanticCacheService(
-        settings, _NoEmbeddings(), client=AsyncQdrantClient(location=":memory:")
+        settings, _NoEmbeddings(), client=client or AsyncQdrantClient(location=":memory:")
     )
     with warnings.catch_warnings():
         # Local Qdrant says on every index that payload indexes have no effect there.
@@ -127,20 +130,63 @@ async def store(cache: SemanticCacheService, query: Query, *, tier: str, model_k
     )
 
 
-async def build_cache(originals: Sequence[Original], *, model_key: str) -> SemanticCacheService:
-    """The gateway cache holding every original's answer at its router tier, in input order."""
+async def point_count(cache: SemanticCacheService, *, min_tier_rank: int | None = None) -> int:
+    """How many entries the collection holds (from ``min_tier_rank`` up, when given)."""
+    count_filter = None
+    if min_tier_rank is not None:
+        count_filter = qdrant_models.Filter(
+            must=[
+                qdrant_models.FieldCondition(
+                    key="tier_rank", range=qdrant_models.Range(gte=min_tier_rank)
+                )
+            ]
+        )
+    result = await cache.client.count(
+        collection_name=COLLECTION, count_filter=count_filter, exact=True
+    )
+    return result.count
+
+
+async def _eligible_counts(cache: SemanticCacheService) -> dict[int, int]:
+    """Entries a lookup with each tier's rank may match (every entry shares tenant and context)."""
+    return {rank: await point_count(cache, min_tier_rank=rank) for rank in TIER_RANK.values()}
+
+
+async def build_cache(
+    originals: Sequence[Original], *, model_key: str, client: AsyncQdrantClient | None = None
+) -> SemanticCacheService:
+    """The gateway cache holding every original's answer at its router tier, in input order.
+
+    The gateway's store only logs a failure, so the collection is counted afterwards: a cache
+    missing any original raises instead of quietly turning hits into misses.
+    """
     if not originals:
         raise ValueError("build_cache needs at least one original; use new_cache for an empty one.")
-    cache = await new_cache(dimensions=len(originals[0].vectors[model_key]))
+    cache = await new_cache(dimensions=len(originals[0].vectors[model_key]), client=client)
     for original in originals:
         await store(cache, original, tier=original.tier, model_key=model_key)
+    stored = await point_count(cache)
+    if stored != len(originals):
+        raise RuntimeError(
+            f"The cache stored {stored} of {len(originals)} originals: a store failed."
+        )
     return cache
 
 
 async def lookup(
-    cache: SemanticCacheService, query: Query, *, model_key: str, min_tier_rank: int
+    cache: SemanticCacheService,
+    query: Query,
+    *,
+    model_key: str,
+    min_tier_rank: int,
+    expect_candidate: bool,
 ) -> Candidate:
-    """The gateway's lookup for ``query`` at the floor threshold: its best candidate."""
+    """The gateway's lookup for ``query`` at the floor threshold: its best candidate.
+
+    The gateway turns a failed query into a miss. With the floor below every cosine, a lookup
+    that finds nothing although ``expect_candidate`` (an eligible entry exists) has failed, and
+    raises.
+    """
     found = await cache.lookup(
         query.text,
         tenant_id=TENANT_ID,
@@ -152,6 +198,11 @@ async def lookup(
         vector=query.vectors[model_key],
     )
     if found is None:
+        if expect_candidate:
+            raise RuntimeError(
+                f"The cache lookup for {query.prompt_id} found nothing although an eligible entry "
+                "exists: the lookup failed (see the semantic_cache_lookup_failed log)."
+            )
         return Candidate(None, None, None)
     answer = json.loads(found.response)
     return Candidate(answer["prompt_id"], answer["tier"], found.score)
@@ -169,10 +220,20 @@ async def best_candidates(
     model_key: str,
     tier_rule: bool = False,
 ) -> list[Candidate]:
-    return [
-        await lookup(cache, q, model_key=model_key, min_tier_rank=_min_rank(q, tier_rule))
-        for q in queries
-    ]
+    eligible = await _eligible_counts(cache)
+    out = []
+    for q in queries:
+        rank = _min_rank(q, tier_rule)
+        out.append(
+            await lookup(
+                cache,
+                q,
+                model_key=model_key,
+                min_tier_rank=rank,
+                expect_candidate=eligible[rank] > 0,
+            )
+        )
+    return out
 
 
 async def _point_ids(cache: SemanticCacheService) -> dict[str, list[str]]:
@@ -202,6 +263,8 @@ async def leave_one_out_candidates(
     id, vector and payload) right after, so the cache ends as it started.
     """
     ids = await _point_ids(cache)
+    eligible = await _eligible_counts(cache)
+    total = await point_count(cache)
     out: list[Candidate] = []
     for original in originals:
         own = ids[marker(original.prompt_id, original.tier)]
@@ -212,13 +275,16 @@ async def leave_one_out_candidates(
             collection_name=COLLECTION,
             points_selector=qdrant_models.PointIdsList(points=own),
         )
+        rank = _min_rank(original, tier_rule)
+        others = eligible[rank] - (len(own) if TIER_RANK[original.tier] >= rank else 0)
         try:
             out.append(
                 await lookup(
                     cache,
                     original,
                     model_key=model_key,
-                    min_tier_rank=_min_rank(original, tier_rule),
+                    min_tier_rank=rank,
+                    expect_candidate=others > 0,
                 )
             )
         finally:
@@ -229,6 +295,8 @@ async def leave_one_out_candidates(
                     for p in saved
                 ],
             )
+    if await point_count(cache) != total:
+        raise RuntimeError("Leave-one-out did not put every original back in the cache.")
     return out
 
 
@@ -397,6 +465,7 @@ async def simulate(
     *,
     model_key: str,
     t: float,
+    client: AsyncQdrantClient | None = None,
 ) -> dict:
     """Serve ``requests`` in order through an initially empty gateway cache, tier rule on.
 
@@ -405,12 +474,15 @@ async def simulate(
     a false hit is worth 0. A miss is served at the request's tier, at that tier's cost and
     quality, and stored. A paraphrase costs what its original costs on the same tier. A tier
     block is a request whose own prompt's answer would have been a hit without the tier rule.
+    A lookup that finds nothing while an eligible entry was stored, or a cache that ends with
+    fewer entries than misses stored, raises: the gateway's cache would hide either failure.
     """
     by_id = {o.prompt_id: o for o in originals}
     paraphrase_of = {p.prompt_id: p for p in paraphrases}
     dimensions = len(next(iter(by_id.values())).vectors[model_key])
-    cache = await new_cache(dimensions=dimensions)
+    cache = await new_cache(dimensions=dimensions, client=client)
     stored_ranks: dict[str, list[int]] = {}
+    stored_by_rank = Counter()
     totals = Counter()
     for request in requests:
         query = (
@@ -425,10 +497,15 @@ async def simulate(
         totals["frontier_cost"] += prices.cost[pid]["frontier"]
         totals[request.kind] += 1
 
-        best = await lookup(cache, query, model_key=model_key, min_tier_rank=rank)
+        eligible = sum(n for stored_rank, n in stored_by_rank.items() if stored_rank >= rank)
+        best = await lookup(
+            cache, query, model_key=model_key, min_tier_rank=rank, expect_candidate=eligible > 0
+        )
         correct = best.hit(t) and best.prompt_id == pid
         if not correct and any(r < rank for r in stored_ranks.get(pid, [])):
-            without_rule = await lookup(cache, query, model_key=model_key, min_tier_rank=0)
+            without_rule = await lookup(
+                cache, query, model_key=model_key, min_tier_rank=0, expect_candidate=True
+            )
             totals["tier_blocked"] += without_rule.hit(t) and without_rule.prompt_id == pid
         if best.hit(t):
             totals["hits"] += 1
@@ -442,7 +519,14 @@ async def simulate(
             totals["quality"] += prices.quality[pid][tier]
             await store(cache, query, tier=tier, model_key=model_key)
             stored_ranks.setdefault(pid, []).append(rank)
+            stored_by_rank[rank] += 1
 
+    stored = await point_count(cache)
+    if stored != stored_by_rank.total():
+        raise RuntimeError(
+            f"The cache holds {stored} entries after {stored_by_rank.total()} stored misses: "
+            "a store failed."
+        )
     n = len(requests)
     per_1000 = 1000 / n
     return {

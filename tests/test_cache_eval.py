@@ -1097,6 +1097,70 @@ async def test_leave_one_out_leaves_the_cache_as_it_was():
     assert own.prompt_id == "A" and own.score == pytest.approx(1.0)
 
 
+class FailingQdrant:
+    """An in-memory Qdrant whose writes or queries can be made to fail, as a broken server would.
+    The gateway's cache swallows both (a failed store is logged, a failed lookup is a miss)."""
+
+    def __new__(cls, *, fail_upsert=False, fail_query=False):
+        from qdrant_client import AsyncQdrantClient
+
+        class _Failing(AsyncQdrantClient):
+            async def upsert(self, *args, **kwargs):
+                if self.fail_upsert:
+                    raise RuntimeError("qdrant upsert failed")
+                return await super().upsert(*args, **kwargs)
+
+            async def query_points(self, *args, **kwargs):
+                if self.fail_query:
+                    raise RuntimeError("qdrant query failed")
+                return await super().query_points(*args, **kwargs)
+
+        client = _Failing(location=":memory:")
+        client.fail_upsert, client.fail_query = fail_upsert, fail_query
+        return client
+
+
+async def test_a_cache_that_fails_to_store_stops_the_replay():
+    from scripts.cache_eval import replay
+
+    originals, _ = replay_fixture()
+    with pytest.raises(RuntimeError, match="stored"):
+        await replay.build_cache(originals, model_key="nomic_v1", client=FailingQdrant(fail_upsert=True))
+
+
+async def test_a_cache_that_fails_to_look_up_stops_the_replay_instead_of_counting_misses():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases = replay_fixture()
+    client = FailingQdrant()
+    cache = await replay.build_cache(originals, model_key="nomic_v1", client=client)
+    client.fail_query = True
+    with pytest.raises(RuntimeError, match="lookup"):
+        await replay.paraphrase_replay(cache, paraphrases, originals, t=0.90, model_key="nomic_v1")
+
+
+async def test_a_failing_cache_stops_the_savings_trace():
+    from scripts.cache_eval import replay
+
+    originals, paraphrases, prices = savings_fixture()
+    requests = [replay.Request("fresh", "A"), replay.Request("fresh", "B"), replay.Request("exact", "A")]
+    for client in (FailingQdrant(fail_upsert=True), FailingQdrant(fail_query=True)):
+        with pytest.raises(RuntimeError):
+            await replay.simulate(
+                requests, originals, paraphrases, prices, model_key="nomic_v1", t=0.90, client=client
+            )
+
+
+async def test_a_lookup_returns_the_best_candidate_even_at_a_negative_cosine():
+    from scripts.cache_eval import replay
+
+    [a] = replay_fixture()[0][:1]
+    cache = await replay.build_cache([a], model_key="nomic_v1")
+    away = replay.Paraphrase("X", "lejos", "local", {"nomic_v1": _unit(-0.6, 0.8, 0.0)})
+    [best] = await replay.best_candidates(cache, [away], model_key="nomic_v1")
+    assert best.prompt_id == "A" and best.score == pytest.approx(-0.6, abs=1e-6)
+
+
 async def test_with_the_tier_rule_on_a_frontier_paraphrase_cannot_take_a_local_answer():
     from scripts.cache_eval import replay
 
@@ -1139,8 +1203,7 @@ def test_a_trace_repeats_only_what_was_already_asked_and_paraphrases_only_paraph
             if request.kind == "paraphrase":
                 assert request.prompt_id in paraphrased
     kinds = Counter(r.kind for r in requests)
-    assert 240 <= kinds["exact"] + kinds["paraphrase"] <= 360  # Bernoulli(0.3) over 1000
-    assert kinds["exact"] > 0 and kinds["paraphrase"] > 0
+    assert (kinds["exact"], kinds["paraphrase"]) == (150, 150)
 
 
 @pytest.mark.parametrize("rate", [0.037, 0.05, 0.121, 0.31, 0.4])
@@ -1310,6 +1373,14 @@ def test_neighbor_labels_give_acceptable_shares_by_band_and_agreement_with_the_c
     # At 0.90 the cache serves pairs 0-3; of the four sí/no labels it agrees on 0 (sí, served)
     # and 4 (no, not served): 2 of 4. At 0.95 it serves 0 and 1: agrees on 0, 2 and 4: 3 of 4.
     assert human["agreement"] == {"0.90": 0.5, "0.95": 0.75}
+
+
+def test_neighbor_bands_read_the_cosine_column_they_are_given():
+    from scripts.cache_eval import report
+
+    pairs = [{"pair_id": f"p{i}", "cos_nomic_v2": cos} for i, cos in enumerate([0.97, 0.91, 0.86])]
+    section = report.neighbors_section(pairs, None, thresholds=(), column="cos_nomic_v2")
+    assert [band["pairs"] for band in section["bands"]] == [1, 1, 1]
 
 
 def test_the_paraphrase_check_reports_the_faithful_share_of_the_labeled_sample():
@@ -1489,14 +1560,31 @@ def test_the_committed_savings_start_from_the_routers_own_cost():
         assert set(block["cited"]) == {"wildchat", "lmsys_exact_duplicates", "meancache"}
 
 
-def test_the_committed_report_matches_the_committed_data():
+def test_the_committed_report_matches_the_committed_data_and_code():
     data = committed_report()
     files = data["provenance"]["files"]
-    for path in ("benchmarks/cache/v1/preregistration.md", "benchmarks/cache/v1/pawsx/pairs.jsonl",
-                 "benchmarks/cache/v1/neighbors/pairs.jsonl", "benchmarks/cache/v1/paraphrases/paraphrases.jsonl",
-                 "benchmarks/cache/v1/paraphrases/sample.jsonl", "benchmarks/ground-truth/v1/tiers.jsonl",
-                 "src/nebula/data/learned_router_v1.json", "src/nebula/data/router_replay_v1.json"):
+    data_files = (
+        "benchmarks/cache/v1/preregistration.md", "benchmarks/cache/v1/pawsx/pairs.jsonl",
+        "benchmarks/cache/v1/neighbors/pairs.jsonl", "benchmarks/cache/v1/paraphrases/paraphrases.jsonl",
+        "benchmarks/cache/v1/paraphrases/dropped.jsonl", "benchmarks/cache/v1/paraphrases/sample.jsonl",
+        "benchmarks/ground-truth/v1/prompts.es.jsonl", "benchmarks/ground-truth/v1/tiers.jsonl",
+        "src/nebula/data/learned_router_v1.json", "src/nebula/data/router_replay_v1.json",
+    )
+    # A later edit of the code that computed the report makes this stale report fail loudly.
+    code_files = (
+        "scripts/cache_eval/replay.py", "scripts/cache_eval/report.py", "scripts/cache_eval/embed.py",
+        "src/nebula/services/semantic_cache_service.py", "src/nebula/services/learned_router.py",
+    )
+    for path in data_files + code_files:
         assert files[path] == hashlib.sha256(Path(path).read_bytes()).hexdigest(), path
+
+
+def test_the_committed_report_says_which_inputs_differed_from_its_commit():
+    provenance = committed_report()["provenance"]
+    assert isinstance(provenance["files_differing_from_git_sha"], list)
+    assert set(provenance["files_differing_from_git_sha"]) <= set(provenance["files"])
+    markdown = Path("benchmarks/cache/v1/report.md").read_text(encoding="utf-8")
+    assert "SHA-256 of each file in report.json is the authority" in markdown
 
 
 def test_the_committed_report_says_pendiente_until_labels_exist():
