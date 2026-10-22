@@ -191,8 +191,10 @@ that file):
   verdict-precision pass runs with the tier rule off (similarity only);
   the savings replay runs with the tier rule on and counts tier-aware blocks.
 - **Savings vs repetition rate:** a deterministic trace of 1000 requests per repetition rate
-  r ∈ {0, 0.05, …, 0.40}, where each request is a repeat with probability r (half exact repeats,
-  half paraphrases from (c)), replayed through the same service at the recommended threshold.
+  r ∈ {0, 0.05, …, 0.40} with exactly round(r·1000) repeats of earlier prompts at seeded
+  positions, nested across rates (the repeats of a lower rate are among those of a higher one),
+  half exact repeats and half paraphrases from (c), replayed through the same service at the
+  pre-registered default 0.90 and at the recommended threshold.
   Costs per tier from `src/nebula/data/router_replay_v1.json`; a correct hit costs 0 and keeps the
   quality of the cached answer (ground-truth substitutability of its tier); a false hit counts as
   quality 0. Report cost per 1000 requests, saving vs all-frontier and extra saving vs router-only,
