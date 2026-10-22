@@ -38,6 +38,7 @@ from nebula.services.provider_registry import ProviderRegistry
 from nebula.services.router_service import RouteDecision, RouteTarget, RouterService
 from nebula.services.semantic_cache_service import (
     TIER_RANK,
+    UNTIERED_RANK,
     CacheHit,
     SemanticCacheService,
     context_hash,
@@ -265,9 +266,7 @@ class ChatService:
             terminal_status = "fallback_completed"
 
         usage = self._resolved_usage(request, result.content, result.usage)
-        await self._store_in_cache(
-            self._cache_write(cache_key, metadata, served_model), result.content
-        )
+        await self._store_in_cache(self._cache_write(cache_key, served_model), result.content)
         response = self._build_response(content=result.content, model=result.model, usage=usage)
         await self._record_usage(
             request_id=request_id,
@@ -457,13 +456,21 @@ class ChatService:
             model=model,
         )
 
-    def _cache_write(
-        self, key: _CacheKey | None, metadata: CompletionMetadata, served_model: str
-    ) -> _CacheWrite | None:
+    def _cache_write(self, key: _CacheKey | None, served_model: str) -> _CacheWrite | None:
         if key is None:
             return None
-        # The tier that actually served, so a fallback answer is filed under the fallback's tier.
-        return _CacheWrite(key=key, tier_rank=TIER_RANK[metadata.route_tier], model=served_model)
+        # Ranked by the model that actually served, so a fallback answer is filed under the
+        # fallback model's tier.
+        return _CacheWrite(key=key, tier_rank=self._tier_rank_of(served_model), model=served_model)
+
+    def _tier_rank_of(self, model: str) -> int:
+        """The tier a model's answers can serve: only the configured tier models have one."""
+        ranks = {self.settings.local_model: TIER_RANK["local"]}
+        if self.settings.economy_model:
+            ranks[self.settings.economy_model] = TIER_RANK["economy"]
+        # Last, so a frontier model also configured as the economy model keeps frontier rank.
+        ranks[self.settings.premium_model] = TIER_RANK["frontier"]
+        return ranks.get(model, UNTIERED_RANK)
 
     async def _store_in_cache(self, write: _CacheWrite | None, response: str) -> None:
         if write is None:
@@ -650,7 +657,7 @@ class ChatService:
                 request_id=request_id,
                 tenant_id=tenant_id,
                 cache_write=self._cache_write(
-                    cache_key, metadata, self._served_model(request, route_decision)
+                    cache_key, self._served_model(request, route_decision)
                 ),
             )
             return stream, metadata
@@ -692,7 +699,7 @@ class ChatService:
                     created=created,
                     request_id=request_id,
                     tenant_id=tenant_id,
-                    cache_write=self._cache_write(cache_key, fallback_metadata, fallback_model),
+                    cache_write=self._cache_write(cache_key, fallback_model),
                 )
             except ProviderError as fallback_exc:
                 await self._fail_fallback(

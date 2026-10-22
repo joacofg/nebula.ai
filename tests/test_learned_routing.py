@@ -16,7 +16,14 @@ from nebula.services.auth_service import AuthenticatedTenantContext
 from nebula.services.learned_router import LearnedRouterModel
 from nebula.services.policy_service import PolicyService
 from nebula.services.router_service import RouterService
-from tests.support import FakeCacheService, admin_headers, auth_headers, configured_app, usage
+from tests.support import (
+    FakeCacheService,
+    admin_headers,
+    auth_headers,
+    cache_lookups,
+    configured_app,
+    usage,
+)
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -608,6 +615,28 @@ def test_a_prefixed_router_embedding_is_not_reused_by_the_cache(tmp_path: Path) 
     assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
     assert cache.lookup_vectors == [bare_vector]
     assert cache.store_vectors == [bare_vector]
+
+
+def test_a_failed_bare_prompt_embedding_skips_the_cache_once(tmp_path: Path) -> None:
+    artifact = tmp_path / "prefixed.json"
+    artifact.write_text(json.dumps({**_artifact(), "prefix": "classification"}), encoding="utf-8")
+    with configured_app(**_learned_env(tmp_path, NEBULA_LEARNED_ROUTER_PATH=str(artifact))) as app:
+        with TestClient(app) as client:
+            _, premium, cache, embeddings = _mount(app)
+            # Routing embeds fine; the bare prompt (the cache's) does not.
+            embeddings.VECTORS = {"classification: economy prompt": ECONOMY_VECTOR}
+            before = cache_lookups("embedding_unavailable")
+            response = _chat(client, "economy prompt")
+            counted = cache_lookups("embedding_unavailable") - before
+
+    assert response.status_code == 200
+    assert response.headers["X-Nebula-Route-Tier"] == "economy"
+    assert premium.requested_models == [ECONOMY_MODEL]
+    # One bare-prompt attempt, not retried; the request is served without the cache.
+    assert embeddings.calls == ["classification: economy prompt", "economy prompt"]
+    assert counted == 1
+    assert cache.lookup_vectors == []
+    assert cache.stored_entries == []
 
 
 def test_cache_hit_reports_the_cache_tier(tmp_path: Path) -> None:

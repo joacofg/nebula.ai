@@ -10,3 +10,4 @@ The cache used to match on the embedding of the latest user message alone, so it
 
 - Lower hit rate than a context-blind, tier-blind cache.
 - Cold start after upgrade: existing Qdrant points lack `tier_rank` and can never match, so they are deleted at startup and the cache starts empty once.
+- An answer is ranked by the model that served it (the configured local, economy or frontier model, a fallback included); an answer from any other model, which only an explicit request can produce, gets rank -1, so no `auto` request ever receives it and only a later request for that same model can.

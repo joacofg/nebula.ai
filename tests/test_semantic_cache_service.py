@@ -12,6 +12,7 @@ from nebula.core.config import Settings
 from nebula.models.openai import ChatMessage
 from nebula.services.semantic_cache_service import (
     TIER_RANK,
+    UNTIERED_RANK,
     CacheHit,
     SemanticCacheService,
     context_hash,
@@ -203,6 +204,19 @@ def test_context_hash_leaves_out_only_the_latest_user_message() -> None:
     assert follow_up == context_hash([*earlier, user("¿cómo va?")])
 
 
+def test_context_hash_accepts_a_lone_surrogate() -> None:
+    # JSON allows "\ud800" in a request body; it decodes to a string UTF-8 cannot encode.
+    messages = [
+        ChatMessage(role="system", content="\ud800"),
+        ChatMessage(role="user", content="hola"),
+    ]
+
+    digest = context_hash(messages)
+
+    assert len(digest) == 64
+    assert digest != EMPTY_LIST_SHA256
+
+
 async def _in_memory_service() -> SemanticCacheService:
     service = SemanticCacheService(
         settings=Settings(NEBULA_EMBEDDING_DIMENSIONS=3),
@@ -297,9 +311,10 @@ async def test_lookup_requires_same_context_hash() -> None:
 
 
 async def test_frontier_request_never_gets_lower_tier_answer() -> None:
-    local_only = await _in_memory_service()
-    await _store(local_only, "local answer", tier="local")
-    assert await _lookup(local_only, min_tier_rank=TIER_RANK["frontier"]) is None
+    lower_tiers = await _in_memory_service()
+    await _store(lower_tiers, "local answer", tier="local")
+    await _store(lower_tiers, "economy answer", tier="economy")
+    assert await _lookup(lower_tiers, min_tier_rank=TIER_RANK["frontier"]) is None
 
     # The other direction is fine: an economy-routed request may receive a frontier answer.
     frontier = await _in_memory_service()
@@ -332,6 +347,15 @@ async def test_lookup_needs_exactly_one_of_a_tier_or_a_model(scope: dict) -> Non
 async def test_initialize_purges_points_without_tier_rank() -> None:
     service = await _in_memory_service()
     await _store(service, "current answer", tier="local")
+    # A model outside the tiers has a rank too (below them all); it is not a legacy point.
+    await service.store(
+        "other model answer",
+        tenant_id="acme",
+        vector=ANY_VECTOR,
+        context_hash=EMPTY_CONTEXT,
+        tier_rank=UNTIERED_RANK,
+        model="other/model",
+    )
     # A point written before entries had an identity: raw prompt, no context, no tier.
     await service.client.upsert(
         collection_name=service.settings.semantic_cache_collection,
@@ -354,7 +378,7 @@ async def test_initialize_purges_points_without_tier_rank() -> None:
 
     assert service.enabled
     remaining = [payload["response"] for payload in await _stored_payloads(service)]
-    assert remaining == ["current answer"]
+    assert sorted(remaining) == ["current answer", "other model answer"]
 
 
 async def test_initialize_indexes_every_field_a_lookup_filters_on() -> None:

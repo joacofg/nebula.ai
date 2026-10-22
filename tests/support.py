@@ -11,6 +11,7 @@ from uuid import uuid4
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
+from prometheus_client import REGISTRY
 
 from nebula.core.config import get_settings
 from nebula.core.container import ServiceContainer
@@ -136,6 +137,9 @@ class FakeCacheService:
         model: str | None,
         vector: list[float] | None = None,
     ) -> CacheHit | None:
+        # The real contract; the filters themselves are ignored.
+        if (min_tier_rank is None) == (model is None):
+            raise ValueError("Set exactly one of min_tier_rank or model.")
         self.lookup_calls.append((tenant_id, prompt, similarity_threshold, max_entry_age_hours))
         if self.lookup_error is not None:
             raise self.lookup_error
@@ -155,6 +159,8 @@ class FakeCacheService:
     ) -> None:
         if self.store_error is not None:
             raise self.store_error
+        if vector is None:
+            return  # as the real cache: nothing to file the answer under
         self.stored_entries.append((tenant_id, response, model, tier_rank))
 
     async def close(self) -> None:
@@ -177,6 +183,11 @@ class FixedVectorEmbeddings:
 
     async def close(self) -> None:
         return None
+
+
+def cache_lookups(result: str) -> float:
+    """The process-wide count of `nebula_cache_lookups_total{result=...}` so far."""
+    return REGISTRY.get_sample_value("nebula_cache_lookups_total", {"result": result}) or 0.0
 
 
 def use_fake_cache(

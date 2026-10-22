@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 
 # An answer can serve any request routed to its own tier or a lower one, never a higher one.
 TIER_RANK: dict[str, int] = {"local": 0, "economy": 1, "frontier": 2}
+# The rank of an answer from a model that is no tier's model (an explicit request for some other
+# model): below every tier, so no auto lookup matches it, only an explicit one for that model.
+UNTIERED_RANK = -1
 
 # Every payload field a lookup filters on.
 _INDEXED_FIELDS: dict[str, qdrant_models.PayloadSchemaType] = {
@@ -45,8 +48,9 @@ def context_hash(messages: list[ChatMessage]) -> str:
         for index, message in enumerate(messages)
         if index != latest_user
     ]
-    canonical = json.dumps(context, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+    # ASCII-escaped, so any decoded JSON string encodes, a lone surrogate included.
+    canonical = json.dumps(context, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("ascii")).hexdigest()
 
 
 @dataclass(slots=True, frozen=True)
@@ -137,12 +141,14 @@ class SemanticCacheService:
             CACHE_LOOKUPS.labels("disabled").inc()
             return None
 
-        # A vector already computed for routing is the same embedding of the same prompt.
         if vector is None:
+            # Only for callers that bring no vector. The gateway's chat path brings one: it
+            # embeds the prompt itself and, when that fails, counts `embedding_unavailable`
+            # and skips the lookup, so each failure is counted once.
             vector = await self.embeddings_service.embed(prompt)
-        if vector is None:
-            CACHE_LOOKUPS.labels("embedding_unavailable").inc()
-            return None
+            if vector is None:
+                CACHE_LOOKUPS.labels("embedding_unavailable").inc()
+                return None
 
         now = int(time())
         freshness_cutoff = now - max_entry_age_hours * 3600

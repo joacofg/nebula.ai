@@ -39,6 +39,7 @@ from nebula.services.router_service import RouteDecision, RouterService
 from nebula.services.semantic_cache_service import TIER_RANK
 from tests.support import (
     FakeCacheService,
+    FixedVectorEmbeddings,
     StubProvider,
     admin_headers,
     configured_app,
@@ -245,6 +246,8 @@ def build_service(
         ),
         governance_store=store,
         policy_service=policy_service or FakePolicyService(active_settings),
+        # As in production: the chat path embeds the prompt, so the cache gets a vector.
+        embeddings_service=FixedVectorEmbeddings(),
     )
     return service, active_cache, active_local, active_premium, store
 

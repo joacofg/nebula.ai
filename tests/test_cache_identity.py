@@ -13,7 +13,13 @@ from qdrant_client import AsyncQdrantClient
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
 from nebula.services.semantic_cache_service import SemanticCacheService
-from tests.support import FixedVectorEmbeddings, auth_headers, configured_app, usage
+from tests.support import (
+    FixedVectorEmbeddings,
+    auth_headers,
+    cache_lookups,
+    configured_app,
+    usage,
+)
 
 # Payload indexes are a no-op in local Qdrant, and the client says so on every index.
 pytestmark = pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
@@ -78,8 +84,14 @@ class _Gateway:
         store.upsert_policy("default", store.get_policy("default").model_copy(update=updates))
 
 
+class _UnavailableEmbeddings(FixedVectorEmbeddings):
+    async def embed(self, text: str) -> list[float] | None:
+        self.calls.append(text)
+        return None  # what OllamaEmbeddingsService.embed returns when Ollama fails
+
+
 @asynccontextmanager
-async def _gateway() -> AsyncIterator[_Gateway]:
+async def _gateway(embeddings: FixedVectorEmbeddings | None = None) -> AsyncIterator[_Gateway]:
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EMBEDDING_DIMENSIONS="3") as app:
         async with app.router.lifespan_context(app):
             container = app.state.container
@@ -88,7 +100,8 @@ async def _gateway() -> AsyncIterator[_Gateway]:
             premium = _NumberedProvider("premium", settings.premium_model)
             container.provider_registry.local_provider = local
             container.provider_registry.premium_provider = premium
-            embeddings = FixedVectorEmbeddings()
+            # The cache and the chat path share one embeddings service, as in the container.
+            embeddings = embeddings or FixedVectorEmbeddings()
             cache = SemanticCacheService(
                 settings=settings,
                 embeddings_service=embeddings,
@@ -145,6 +158,23 @@ async def test_chat_embeds_once_per_request_with_router_off() -> None:
     assert gateway.embeddings.calls == ["hola", "hola"]
 
 
+async def test_a_failed_cache_embedding_skips_the_cache_with_the_router_off() -> None:
+    embeddings = _UnavailableEmbeddings()
+    async with _gateway(embeddings) as gateway:
+        before = cache_lookups("embedding_unavailable")
+        first = await gateway.chat([{"role": "user", "content": "hola"}])
+        counted = cache_lookups("embedding_unavailable") - before
+        second = await gateway.chat([{"role": "user", "content": "hola"}])
+
+    # One attempt per request: the cache never retries the embedding on its own...
+    assert embeddings.calls == ["hola", "hola"]
+    assert counted == 1
+    # ...and with no vector nothing was stored, so the provider answers again.
+    assert first.headers["X-Nebula-Cache-Hit"] == "false"
+    assert second.headers["X-Nebula-Cache-Hit"] == "false"
+    assert "ollama answer 2" in _answer(second)
+
+
 HOLA = [{"role": "user", "content": "hola"}]
 
 
@@ -175,11 +205,34 @@ async def test_explicit_model_request_gets_only_that_models_answer() -> None:
         other = await gateway.chat(HOLA, model="other/model")
         same = await gateway.chat(HOLA, model=frontier_model)
 
-    # Both are frontier-tier requests, but an explicit model is not a tier.
+    # A frontier answer is not an answer from the model the request names.
     assert other.headers["X-Nebula-Cache-Hit"] == "false"
     assert "premium answer 2" in _answer(other)
+    # Asking for the frontier model by name gets its answer, not the other model's.
     assert same.headers["X-Nebula-Cache-Hit"] == "true"
     assert "premium answer 1" in _answer(same)
+
+
+async def test_an_explicit_other_model_answer_never_serves_an_auto_request() -> None:
+    async with _gateway() as gateway:
+        frontier_model = gateway.container.settings.premium_model
+        gateway.set_policy(allowed_premium_models=[frontier_model, "other/model"])
+        await gateway.chat(HOLA, model="other/model")  # premium answer 1, by a model in no tier
+        local = await gateway.chat(HOLA)  # a short prompt routes local
+        gateway.set_policy(routing_mode_default="premium_only")
+        frontier = await gateway.chat(HOLA)
+        again = await gateway.chat(HOLA, model="other/model")
+
+    # Its answer ranks below every tier: not even a local request may take it...
+    assert local.headers["X-Nebula-Route-Tier"] == "local"
+    assert local.headers["X-Nebula-Cache-Hit"] == "false"
+    assert "ollama answer 1" in _answer(local)
+    # ...nor a frontier one (which the local answer cannot serve either)...
+    assert frontier.headers["X-Nebula-Cache-Hit"] == "false"
+    assert "premium answer 2" in _answer(frontier)
+    # ...only another request for that same model.
+    assert again.headers["X-Nebula-Cache-Hit"] == "true"
+    assert "premium answer 1" in _answer(again)
 
 
 @pytest.mark.parametrize("stream", [False, True])
