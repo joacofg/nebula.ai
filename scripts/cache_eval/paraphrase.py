@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import random
 import re
@@ -203,6 +204,18 @@ def length_problem(original: str, paraphrase: str) -> str | None:
     return None
 
 
+def _length_reason(ratio: float, problem: str) -> str:
+    """Why a paraphrase was dropped, with its ratio to four decimals. A ratio that would round
+    onto the bound it broke (0.49999 to "0.5000") is cut toward the outside instead, so the
+    printed number always reads as out of range."""
+    low = problem == "too_short"
+    bound = MIN_RATIO if low else MAX_RATIO
+    shown = round(ratio, 4)
+    if (shown >= bound) if low else (shown <= bound):
+        shown = (math.floor if low else math.ceil)(ratio * 10_000) / 10_000
+    return f"length ratio {shown:.4f} is {'below' if low else 'above'} {bound}"
+
+
 def rewrite(original: str, generate: Generate) -> Rewritten | Dropped:
     """One cleaned rewrite of ``original``.
 
@@ -271,9 +284,8 @@ def build(
             rewritten.append((prompt, outcome))
         else:
             ratio = len(outcome.text) / len(prompt.prompt)
-            bound = f"below {MIN_RATIO}" if problem == "too_short" else f"above {MAX_RATIO}"
             dropped.append(
-                DroppedPrompt(prompt.prompt_id, f"length ratio {ratio:.2f} is {bound}", problem, ratio)
+                DroppedPrompt(prompt.prompt_id, _length_reason(ratio, problem), problem, ratio)
             )
 
     originals = [prompt.prompt for prompt, _ in rewritten]

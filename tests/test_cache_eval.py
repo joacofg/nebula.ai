@@ -591,7 +591,25 @@ def test_build_drops_paraphrases_outside_the_length_range_and_reports_their_rati
         ("code-0002", "too_long"),
     ]
     assert [d.length_ratio for d in result.dropped] == pytest.approx([3 / 22, 53 / 22])
-    assert "0.14" in result.dropped[0].reason
+    assert result.dropped[0].reason == "length ratio 0.1364 is below 0.5"
+
+
+@pytest.mark.parametrize(
+    ("original_length", "paraphrase_length", "shown"),
+    [
+        (725, 361, "length ratio 0.4979 is below 0.5"),  # 0.497931..., not "0.50 is below 0.5"
+        (100_000, 49_999, "length ratio 0.4999 is below 0.5"),  # 0.49999 would round to 0.5000
+        (100_000, 200_001, "length ratio 2.0001 is above 2.0"),  # 2.00001 would round to 2.0000
+    ],
+)
+def test_a_drop_reason_never_prints_a_ratio_that_reads_as_the_bound(
+    original_length, paraphrase_length, shown
+):
+    prompt = PromptRow("code-0000", "code", "src:0", "a" * original_length, "corpus")
+    result = paraphrase.build(
+        [prompt], generate=lambda text, seed: "b" * paraphrase_length, embed_texts=fake_embed
+    )
+    assert [d.reason for d in result.dropped] == [shown]
 
 
 def test_dropped_records_carry_the_prompt_id_the_reason_and_the_length_ratio():
