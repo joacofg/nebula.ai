@@ -5,7 +5,7 @@ PYTEST := .venv/bin/pytest
 RUFF := .venv/bin/ruff
 UVICORN := .venv/bin/uvicorn
 
-.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data
+.PHONY: setup install test lint qdrant-up qdrant-down ollama-pull run smoke-openrouter smoke-fallback benchmark benchmark-demo metric-corpus metric-label metric-judge metric-report selfhost-up selfhost-down selfhost-logs migrate migrate-create console-install console-dev console-test console-e2e thesis-tables thesis-figures thesis-docx demo cache-data cache-paraphrases cache-label
 
 setup:
 	$(PYTHON_BOOTSTRAP) -m venv .venv
@@ -70,6 +70,16 @@ metric-report:
 cache-data:
 	$(PYTHON) -m scripts.cache_eval.pawsx
 	$(PYTHON) -m scripts.cache_eval.neighbors
+
+# Paraphrase set (c): one local qwen2.5:7b rewrite of 200 corpus prompts, embedded with both models
+# (needs Ollama with qwen2.5:7b, nomic-embed-text and nomic-embed-text-v2-moe). Replies are cached in
+# artifacts/cache-eval/paraphrases/, so a re-run does not regenerate.
+cache-paraphrases:
+	$(PYTHON) -m scripts.cache_eval.paraphrase
+
+# Blind human labeling: make cache-label SET=neighbors  (or SET=paraphrases). Resumable; q quits.
+cache-label:
+	$(PYTHON) -m scripts.cache_eval.label $(SET)
 
 migrate:
 	./.venv/bin/alembic upgrade head

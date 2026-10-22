@@ -5,10 +5,14 @@ from __future__ import annotations
 import io
 import json
 import tarfile
+from collections import Counter
+from datetime import datetime
+from pathlib import Path
 
 import pytest
 
-from scripts.cache_eval import embed, neighbors, pawsx
+from scripts.cache_eval import embed, label, neighbors, paraphrase, pawsx
+from scripts.ground_truth.records import PromptRow, read_rows
 
 
 def test_normalize_scales_a_vector_to_unit_length():
@@ -280,3 +284,454 @@ def test_pair_record_adds_both_models_cosines_to_the_pair():
         "cos_nomic_v1": 0.91,
         "cos_nomic_v2": 0.84,
     }
+
+
+# --- Paraphrases (set c) ------------------------------------------------------------------
+
+
+def corpus_rows(tasks=("code", "factual_qa", "open_writing"), size=10):
+    return [
+        PromptRow(
+            prompt_id=f"{task}-{i:04d}",
+            task_type=task,
+            source=f"src:{i}",
+            prompt=f"Pregunta {task} número {i}",
+            role="corpus",
+        )
+        for task in tasks
+        for i in range(size)
+    ]
+
+
+def test_select_prompts_takes_the_same_number_of_prompts_from_every_task():
+    picked = paraphrase.select_prompts(corpus_rows(), per_task=4)
+    assert Counter(row.task_type for row in picked) == {"code": 4, "factual_qa": 4, "open_writing": 4}
+
+
+def test_select_prompts_is_deterministic_and_ignores_the_order_of_the_input():
+    rows = corpus_rows()
+    first = paraphrase.select_prompts(rows, per_task=4, seed=7)
+    assert paraphrase.select_prompts(list(reversed(rows)), per_task=4, seed=7) == first
+    assert paraphrase.select_prompts(rows, per_task=4, seed=8) != first
+
+
+def test_select_prompts_lists_the_prompts_in_id_order():
+    picked = paraphrase.select_prompts(corpus_rows(), per_task=4)
+    assert [row.prompt_id for row in picked] == sorted(row.prompt_id for row in picked)
+
+
+def test_select_prompts_defaults_to_the_registered_sample():
+    assert paraphrase.PER_TASK == 40
+    assert paraphrase.SEED == 20261022
+
+
+def test_select_prompts_fails_loudly_when_a_task_has_too_few_prompts():
+    with pytest.raises(ValueError, match="code"):
+        paraphrase.select_prompts(corpus_rows(size=3), per_task=4)
+
+
+@pytest.mark.parametrize(
+    ("reply", "expected"),
+    [
+        ("¿Qué tan grande es la Luna?", "¿Qué tan grande es la Luna?"),
+        ("  ¿Qué tan grande es la Luna?\n", "¿Qué tan grande es la Luna?"),
+        ('"¿Qué tan grande es la Luna?"', "¿Qué tan grande es la Luna?"),
+        ("'Explica la fotosíntesis.'", "Explica la fotosíntesis."),
+        ("«Explica la fotosíntesis.»", "Explica la fotosíntesis."),
+        ("“Explica la fotosíntesis.”", "Explica la fotosíntesis."),
+        ("Consulta reescrita: Explica la fotosíntesis.", "Explica la fotosíntesis."),
+        ("Reescritura: \"Explica la fotosíntesis.\"", "Explica la fotosíntesis."),
+        ("Aquí tienes la consulta reescrita:\n\nExplica la fotosíntesis.", "Explica la fotosíntesis."),
+        ("**Consulta reescrita:** Explica la fotosíntesis.", "Explica la fotosíntesis."),
+    ],
+)
+def test_clean_strips_whitespace_quotes_and_announcing_prefixes(reply, expected):
+    assert paraphrase.clean(reply) == expected
+
+
+@pytest.mark.parametrize(
+    "reply",
+    [
+        'Escribe una función que devuelva "hola" y "chao".',
+        'Qué significa "hola" en inglés',
+        "Dime la hora: ahora mismo.",
+        "Pregunta de «ejemplo» y de «prueba»",
+        "",
+    ],
+)
+def test_clean_keeps_quotes_and_colons_that_belong_to_the_text(reply):
+    assert paraphrase.clean(reply) == reply
+
+
+def test_clean_does_not_strip_quotes_that_only_look_like_a_pair():
+    assert paraphrase.clean('"hola" y "chao"') == '"hola" y "chao"'
+
+
+def test_chat_request_carries_the_registered_instruction_model_and_options():
+    request = paraphrase.chat_request("¿Qué es un átomo?", seed=20261022)
+    assert request == {
+        "model": "qwen2.5:7b",
+        "stream": False,
+        "options": {"temperature": 0, "seed": 20261022},
+        "messages": [
+            {
+                "role": "user",
+                "content": "Reescribe la siguiente consulta con otras palabras, sin cambiar lo que "
+                "pide ni agregar información. Devuelve solo la consulta reescrita.\n\n"
+                "¿Qué es un átomo?",
+            }
+        ],
+    }
+
+
+class ScriptedGenerate:
+    """Stands in for the model: replies are given per seed, calls are recorded."""
+
+    def __init__(self, replies):
+        self.replies = replies
+        self.calls: list[tuple[str, int]] = []
+
+    def __call__(self, prompt: str, seed: int) -> str:
+        self.calls.append((prompt, seed))
+        return self.replies[seed]
+
+
+def test_rewrite_accepts_a_good_first_reply_without_retrying():
+    generate = ScriptedGenerate({20261022: '"¿Qué es un átomo en realidad?"'})
+    result = paraphrase.rewrite("¿Qué es un átomo?", generate)
+    assert result == paraphrase.Rewritten(text="¿Qué es un átomo en realidad?", seed=20261022)
+    assert generate.calls == [("¿Qué es un átomo?", 20261022)]
+
+
+@pytest.mark.parametrize(
+    "bad_reply",
+    ["", "   \n", '"¿Qué es un átomo?"', "¿qué es   un átomo?", "Reescritura: ¿Qué es un átomo?"],
+)
+def test_rewrite_retries_once_with_the_next_seed_when_the_reply_is_empty_or_identical(bad_reply):
+    generate = ScriptedGenerate({20261022: bad_reply, 20261023: "Dime qué es un átomo."})
+    result = paraphrase.rewrite("¿Qué es un átomo?", generate)
+    assert result == paraphrase.Rewritten(text="Dime qué es un átomo.", seed=20261023)
+    assert [seed for _, seed in generate.calls] == [20261022, 20261023]
+
+
+def test_cached_generate_never_asks_the_model_twice_for_the_same_prompt_and_seed(tmp_path):
+    path = tmp_path / "generations.jsonl"
+    generate = ScriptedGenerate({1: "uno", 2: "dos"})
+    cached = paraphrase.cached_generate(generate, path)
+    assert [cached("p", 1), cached("p", 1), cached("p", 2)] == ["uno", "uno", "dos"]
+    assert generate.calls == [("p", 1), ("p", 2)]
+
+
+def test_cached_generate_survives_a_restart_and_keeps_the_raw_reply(tmp_path):
+    path = tmp_path / "generations.jsonl"
+    paraphrase.cached_generate(ScriptedGenerate({1: '"uno"\n'}), path)("p", 1)
+    again = ScriptedGenerate({1: "otra cosa"})
+    assert paraphrase.cached_generate(again, path)("p", 1) == '"uno"\n'
+    assert again.calls == []
+
+
+def test_cached_generate_keys_the_cache_by_prompt_text_and_model(tmp_path):
+    path = tmp_path / "generations.jsonl"
+    paraphrase.cached_generate(ScriptedGenerate({1: "uno"}), path)("p", 1)
+    other = ScriptedGenerate({1: "otro"})
+    assert paraphrase.cached_generate(other, path)("q", 1) == "otro"
+    [row, _] = [json.loads(line) for line in path.read_text().splitlines()]
+    assert row == {
+        "model": "qwen2.5:7b",
+        "seed": 1,
+        # sha256 of the registered instruction, and of "p"
+        "instruction_sha256": "3f29161b253e0110994aa85a529fd6414d3ab0a2bce7ce0eecfab1d4ea6ce0d8",
+        "prompt_sha256": "148de9c5a7a44d19e56cd9ae1a554bf67847afb0c58f6e12fa29ac7ddfca9940",
+        "reply": "uno",
+    }
+    path.write_text(path.read_text().replace("qwen2.5:7b", "otro-modelo"))
+    refetch = ScriptedGenerate({1: "nuevo"})
+    assert paraphrase.cached_generate(refetch, path)("p", 1) == "nuevo"
+
+
+def test_cached_generate_does_not_reuse_replies_made_with_another_instruction(tmp_path):
+    path = tmp_path / "generations.jsonl"
+    paraphrase.cached_generate(ScriptedGenerate({1: "viejo"}), path)("p", 1)
+    path.write_text(
+        path.read_text().replace(
+            "3f29161b253e0110994aa85a529fd6414d3ab0a2bce7ce0eecfab1d4ea6ce0d8", "0" * 64
+        )
+    )
+    assert paraphrase.cached_generate(ScriptedGenerate({1: "nuevo"}), path)("p", 1) == "nuevo"
+
+
+def fake_embed(texts, *, model):
+    """Two-dimensional vectors: the first axis counts the words, so cosines are easy to predict."""
+    scale = 1.0 if model == "nomic-embed-text" else 2.0
+    return [[scale * len(t.split()), 1.0] for t in texts]
+
+
+def test_build_pairs_every_original_with_its_paraphrase_and_both_cosines():
+    prompts = corpus_rows(tasks=("code",), size=2)
+    replies = {
+        "Pregunta code número 0": "Pregunta distinta code número cero",
+        "Pregunta code número 1": "Pregunta code número 1 ",
+    }
+    result = paraphrase.build(
+        prompts,
+        generate=lambda prompt, seed: replies[prompt] if seed == 20261022 else "Otra cosa, uno",
+        embed_texts=fake_embed,
+    )
+    [first, second] = result.records
+    assert first == {
+        "prompt_id": "code-0000",
+        "task_type": "code",
+        "original": "Pregunta code número 0",
+        "paraphrase": "Pregunta distinta code número cero",
+        "model": "qwen2.5:7b",
+        "seed": 20261022,
+        "cos_nomic_v1": pytest.approx(embed.cosine([4.0, 1.0], [5.0, 1.0])),
+        "cos_nomic_v2": pytest.approx(embed.cosine([8.0, 1.0], [10.0, 1.0])),
+    }
+    # the second reply is identical to its original, so the retry seed produced the paraphrase
+    assert (second["paraphrase"], second["seed"]) == ("Otra cosa, uno", 20261023)
+    assert result.dropped == []
+
+
+def test_build_reports_dropped_prompts_and_keeps_the_rest():
+    prompts = corpus_rows(tasks=("code",), size=2)
+    result = paraphrase.build(
+        prompts,
+        generate=lambda prompt, seed: "" if prompt.endswith("0") else f"Reformulado: {prompt}.",
+        embed_texts=fake_embed,
+    )
+    assert [r["prompt_id"] for r in result.records] == ["code-0001"]
+    assert [(d.prompt_id, "empty" in d.reason) for d in result.dropped] == [("code-0000", True)]
+
+
+def paraphrase_records(n=100):
+    return [
+        {"prompt_id": f"code-{i:04d}", "task_type": "code", "original": f"O{i}",
+         "paraphrase": f"P{i}", "model": "qwen2.5:7b", "seed": 20261022,
+         "cos_nomic_v1": 0.9, "cos_nomic_v2": 0.8}
+        for i in range(n)
+    ]
+
+
+def test_select_sample_has_only_the_blind_columns_with_a_as_the_original():
+    [first, *_] = paraphrase.select_sample(paraphrase_records(), size=5)
+    assert set(first) == {"pair_id", "a", "b"}
+    assert first["a"].startswith("O") and first["b"] == first["a"].replace("O", "P")
+    assert first["pair_id"].startswith("code-")
+
+
+def test_select_sample_is_deterministic_without_repeats_and_ignores_input_order():
+    records = paraphrase_records()
+    sample = paraphrase.select_sample(records, size=40)
+    assert len({row["pair_id"] for row in sample}) == 40
+    assert paraphrase.select_sample(list(reversed(records)), size=40) == sample
+    assert paraphrase.select_sample(records, size=40, seed=1) != sample
+
+
+def test_select_sample_defaults_to_40_pairs_and_never_exceeds_what_exists():
+    assert len(paraphrase.select_sample(paraphrase_records())) == 40
+    assert len(paraphrase.select_sample(paraphrase_records(7))) == 7
+
+
+def test_rewrite_drops_the_prompt_when_the_retry_also_fails():
+    generate = ScriptedGenerate({20261022: "", 20261023: "¿Qué es un átomo?"})
+    result = paraphrase.rewrite("¿Qué es un átomo?", generate)
+    assert isinstance(result, paraphrase.Dropped)
+    assert "identical" in result.reason
+    assert len(generate.calls) == 2
+
+
+def test_the_committed_paraphrases_are_the_registered_stratified_selection():
+    corpus = read_rows(Path("benchmarks/ground-truth/v1/prompts.es.jsonl"), PromptRow)
+    selected = paraphrase.select_prompts(corpus)
+    rows = [
+        json.loads(line)
+        for line in Path("benchmarks/cache/v1/paraphrases/paraphrases.jsonl").read_text("utf-8").splitlines()
+    ]
+    assert len(rows) == 200
+    assert Counter(r["task_type"] for r in rows) == dict.fromkeys(sorted({p.task_type for p in selected}), 40)
+    assert [r["prompt_id"] for r in rows] == [p.prompt_id for p in selected]
+    assert [r["original"] for r in rows] == [p.prompt for p in selected]
+    assert {r["model"] for r in rows} == {"qwen2.5:7b"}
+    assert {r["seed"] for r in rows} <= {20261022, 20261023}
+    assert all(r["paraphrase"].strip() and r["paraphrase"] != r["original"] for r in rows)
+    assert all(-1.0 <= r["cos_nomic_v1"] <= 1.0 and -1.0 <= r["cos_nomic_v2"] <= 1.0 for r in rows)
+
+
+def test_the_committed_sample_is_the_registered_blind_draw_of_40_pairs():
+    root = Path("benchmarks/cache/v1/paraphrases")
+    rows = [json.loads(line) for line in (root / "paraphrases.jsonl").read_text("utf-8").splitlines()]
+    sample = [json.loads(line) for line in (root / "sample.jsonl").read_text("utf-8").splitlines()]
+    assert len(sample) == 40
+    assert all(set(row) == {"pair_id", "a", "b"} for row in sample)
+    assert sample == paraphrase.select_sample(rows)
+    by_id = {r["prompt_id"]: r for r in rows}
+    assert all((by_id[s["pair_id"]]["original"], by_id[s["pair_id"]]["paraphrase"]) == (s["a"], s["b"]) for s in sample)
+
+
+# --- Labeling CLI -------------------------------------------------------------------------
+
+
+def neighbor_rows(n=30):
+    """Rows as ``neighbors/pairs.jsonl`` has them: sorted by cosine, with ids and the cosine."""
+    return [
+        {
+            "pair_id": f"es:code-{i:04d}|es:code-{i + 100:04d}",
+            "a_id": f"es:code-{i:04d}",
+            "b_id": f"es:code-{i + 100:04d}",
+            "a": f"Texto A número {i}",
+            "b": f"Texto B número {i}",
+            "cos_nomic_v1": 0.9137 - i * 0.001,
+        }
+        for i in range(n)
+    ]
+
+
+def sample_rows(n=6):
+    return [{"pair_id": f"code-{i:04d}", "a": f"Original {i}", "b": f"Paráfrasis {i}"} for i in range(n)]
+
+
+def write_jsonl(path, rows):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows), encoding="utf-8")
+
+
+def read_jsonl(path):
+    return [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line]
+
+
+class Session:
+    """Drives ``label.main`` without a terminal: scripted answers in, captured output out."""
+
+    def __init__(self, root, set_name, answers):
+        self.outputs: list[str] = []
+        self.prompts: list[str] = []
+        pending = iter(answers)
+
+        def input_fn(prompt=""):
+            self.prompts.append(prompt)
+            try:
+                return next(pending)
+            except StopIteration:
+                raise EOFError from None
+
+        self.code = label.main(
+            [set_name, "--root", str(root)], input_fn=input_fn, output_fn=self.outputs.append
+        )
+
+    @property
+    def text(self):
+        return "\n".join(self.outputs)
+
+
+def test_the_labeler_asks_the_registered_spanish_questions():
+    assert label.SETS["neighbors"].question == "¿Una respuesta a A sirve para B?"
+    assert label.SETS["paraphrases"].question == "¿B pide lo mismo que A?"
+    assert label.RATER_ID == "human-es-1"
+    assert label.SEED == 20261022
+
+
+def test_presentation_is_a_fixed_shuffle_that_ignores_the_order_of_the_pairs_file():
+    rows = neighbor_rows()
+    shown = label.presentation(rows)
+    assert label.presentation(list(reversed(rows))) == shown
+    assert [p.pair_id for p in shown] != [r["pair_id"] for r in rows]
+    assert [p.pair_id for p in shown] != sorted(r["pair_id"] for r in rows)
+    assert sorted(p.pair_id for p in shown) == sorted(r["pair_id"] for r in rows)
+
+
+def test_presentation_swaps_a_and_b_at_random_and_keeps_every_text():
+    rows = neighbor_rows()
+    shown = label.presentation(rows)
+    by_id = {r["pair_id"]: r for r in rows}
+    swapped = [p for p in shown if p.a == by_id[p.pair_id]["b"]]
+    straight = [p for p in shown if p.a == by_id[p.pair_id]["a"]]
+    assert len(swapped) + len(straight) == len(rows)
+    assert swapped and straight
+    for p in shown:
+        assert {p.a, p.b} == {by_id[p.pair_id]["a"], by_id[p.pair_id]["b"]}
+
+
+def test_presentation_depends_on_the_seed():
+    rows = neighbor_rows()
+    assert label.presentation(rows, seed=1) != label.presentation(rows)
+
+
+def test_the_labeler_appends_one_row_per_answer_with_the_spanish_label(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(3))
+    session = Session(tmp_path, "neighbors", ["s", "n", "?"])
+    assert session.code == 0
+    rows = read_jsonl(tmp_path / "neighbors" / "labels" / "human-es-1.jsonl")
+    assert [r["label"] for r in rows] == ["sí", "no", "?"]
+    order = [p.pair_id for p in label.presentation(neighbor_rows(3))]
+    assert [r["pair_id"] for r in rows] == order
+    for row in rows:
+        assert set(row) == {"pair_id", "label", "rater_id", "recorded_at"}
+        assert row["rater_id"] == "human-es-1"
+        assert datetime.fromisoformat(row["recorded_at"]).tzinfo is not None
+
+
+def test_the_labeler_accepts_only_s_n_and_question_mark_and_asks_again(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(1))
+    session = Session(tmp_path, "neighbors", ["x", "", "sí", "yes", "1", "S "])
+    rows = read_jsonl(tmp_path / "neighbors" / "labels" / "human-es-1.jsonl")
+    assert [r["label"] for r in rows] == ["sí"]
+    assert session.text.count("Respuesta no válida") == 5
+
+
+def test_q_quits_and_the_next_run_resumes_with_the_pairs_not_yet_labeled(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(5))
+    labels = tmp_path / "neighbors" / "labels" / "human-es-1.jsonl"
+    first = Session(tmp_path, "neighbors", ["s", "n", "q", "s"])
+    assert first.code == 0
+    assert len(read_jsonl(labels)) == 2
+    second = Session(tmp_path, "neighbors", ["?", "?", "?", "?"])
+    rows = read_jsonl(labels)
+    assert [r["label"] for r in rows] == ["sí", "no", "?", "?", "?"]
+    assert [r["pair_id"] for r in rows] == [p.pair_id for p in label.presentation(neighbor_rows(5))]
+    assert "Par 3 de 5" in second.text
+    assert "Par 2 de 5" not in second.text
+
+
+def test_the_labeler_stops_cleanly_when_the_input_ends(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(3))
+    session = Session(tmp_path, "neighbors", ["s"])
+    assert session.code == 0
+    assert len(read_jsonl(tmp_path / "neighbors" / "labels" / "human-es-1.jsonl")) == 1
+
+
+def test_the_labeler_does_nothing_when_every_pair_is_labeled(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(2))
+    Session(tmp_path, "neighbors", ["s", "s"])
+    again = Session(tmp_path, "neighbors", ["n"])
+    assert again.prompts == []
+    assert "No quedan pares" in again.text
+    assert len(read_jsonl(tmp_path / "neighbors" / "labels" / "human-es-1.jsonl")) == 2
+
+
+def test_the_labeler_shows_only_a_b_and_the_question_never_cosines_ids_or_tiers(tmp_path):
+    write_jsonl(tmp_path / "neighbors" / "pairs.jsonl", neighbor_rows(4))
+    session = Session(tmp_path, "neighbors", ["s", "s", "s", "s"])
+    assert "¿Una respuesta a A sirve para B?" in session.text
+    assert session.text.count("Texto A número") + session.text.count("Texto B número") == 8
+    for secret in ("0.91", "0.9", "cos", "es:code", "|", "tier", "premium", "local", "economy"):
+        assert secret not in session.text, secret
+    for secret in ("0.91", "es:code", "cos"):
+        assert all(secret not in prompt for prompt in session.prompts)
+
+
+def test_the_labeler_presents_paraphrase_pairs_with_the_paraphrase_question(tmp_path):
+    write_jsonl(tmp_path / "paraphrases" / "sample.jsonl", sample_rows(3))
+    session = Session(tmp_path, "paraphrases", ["s", "n", "s"])
+    assert "¿B pide lo mismo que A?" in session.text
+    assert "¿Una respuesta a A" not in session.text
+    rows = read_jsonl(tmp_path / "paraphrases" / "labels" / "human-es-1.jsonl")
+    assert sorted(r["pair_id"] for r in rows) == ["code-0000", "code-0001", "code-0002"]
+    assert "code-000" not in session.text
+
+
+def test_the_labeler_reports_a_missing_pairs_file_and_writes_nothing(tmp_path):
+    session = Session(tmp_path, "paraphrases", ["s"])
+    assert session.code == 1
+    assert "make cache-paraphrases" in session.text
+    assert not (tmp_path / "paraphrases" / "labels").exists()
