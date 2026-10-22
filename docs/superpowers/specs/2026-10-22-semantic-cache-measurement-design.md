@@ -77,8 +77,9 @@ that file):
   - A *hit* at threshold t: the best cache candidate has cosine ≥ t.
   - Production embedding: Ollama `nomic-embed-text` (digest `0a109f422b47`), no prefix,
     unit-normalized.
-  - (a) PAWS-X `es` test: the 2000 human-translated pairs of the official PAWS-X release
-    (`es/test_2k.tsv` from `x-final.tar.gz`; the archive SHA-256 is recorded with the data).
+  - (a) PAWS-X `es` test: the 1999 valid human-translated pairs of the PAWS-X `es` test split
+    (2000 rows minus one `NS` placeholder row; source, checksums and cleaning are in the
+    data-acquisition amendment below and in `benchmarks/cache/v1/pawsx/LICENSE.md`).
     Label 1 = paraphrase. Prediction = cosine(sentence1, sentence2) ≥ t; a hit in (a) is a
     positive prediction (TP + FP). Precision = TP / (TP + FP); recall = TP / (TP + FN).
   - (c) Paraphrase replay: the cache holds the 1000 Spanish corpus originals. Queries are the 200
@@ -110,8 +111,9 @@ that file):
     default becomes that t (new tenants only; stored tenant policies keep their value).
   - The 40-item human paraphrase sample and the neighbor labels (b) are reported and never
     adjust the verdict.
-- **Declared beforehand:** the corpus neighbors (b) were inspected during design: 22 pairs of
-  distinct Spanish prompts at cosine ≥ 0.90, mostly false hits. These 22 pairs are part of the (b)
+- **Declared beforehand:** the corpus neighbors (b) were inspected during design: 20 pairs of
+  distinct Spanish prompts at cosine ≥ 0.90, mostly false hits (the first version said 22, a count
+  that included the English subset; see the amendment below). These 20 pairs are part of the (b)
   set (cosine ≥ 0.85) and were seen non-blind; one of them is the near-identical MBPP pair
   (`es:code-0113` vs `es:code-0138`, cosine 1.0). The neighbors are therefore descriptive only and
   do not enter the verdict. The same pairs are corpus originals, so in (c) they also appear as
@@ -123,17 +125,37 @@ that file):
   (multilingual) is measured as sensitivity only and does not enter the verdict.
 - **Computed by:** `make cache-eval`, which writes the verdict to
   `benchmarks/cache/v1/report.json` (key `preregistration`).
+- **Amendment (data acquisition, 2026-10-22, before any precision was computed):**
+  1. *Source of (a).* The official archive `https://storage.googleapis.com/paws/pawsx/x-final.tar.gz`
+     answered HTTP 403 to every anonymous request, so the archive and its SHA-256 are not
+     available. The `es` test split (2000 rows) was taken from the Hugging Face dataset
+     `google-research-datasets/paws-x` (same publisher, revision
+     `4cd8187c404bda33cb1f62b49b001115862acf37`) and checked row for row against its parquet file
+     `es/test-00000-of-00001.parquet`, SHA-256
+     `5ba872e113a79c783616e59d3d28ec0e922b6db745d797e5eb95010a32928bee`. Byte identity with
+     `x-final/es/test_2k.tsv` could not be verified.
+  2. *Size of (a).* 1999 valid pairs, not 2000: one `NS` placeholder row (id 5815, label 0) is
+     dropped, as the dataset README instructs.
+  3. *Declared prior inspection, corrected.* At cosine ≥ 0.90 there are 20 pairs of distinct
+     Spanish prompts (22 counting the 250-prompt English subset; the two extra pairs are
+     `en:code-0021` vs `en:code-0046` at 0.946 and `en:summarisation-0050` vs
+     `es:summarisation-0050` at 0.906). The (b) set at ≥ 0.85 has 265 Spanish pairs. The
+     leave-one-out disclosure stands as written: it refers to the Spanish pairs.
+
+  None of these changes touches the criterion, the threshold, the grid, the eligibility rule or
+  the verdict rule. Same text as the end of `benchmarks/cache/v1/preregistration.md`.
 
 ### Data sets
 
-- **(a) PAWS-X `es` test**: 2000 human-translated, human-labeled pairs (label 1 = paraphrase).
+- **(a) PAWS-X `es` test**: 1999 valid human-translated, human-labeled pairs (label 1 = paraphrase;
+  the 2000-row split minus one `NS` placeholder row).
   Adversarial word-swap Wikipedia sentences, so it stresses false hits. Committed as
   `pawsx/pairs.jsonl` with both models' cosines and the dataset's license notice.
 - **(b) Corpus neighbors**: every pair of distinct prompts among the 1000 Spanish corpus prompts
-  with cosine ≥ 0.85 (production embedding), committed as `neighbors/pairs.jsonl`. Joaquín labels
-  them ("¿una respuesta a A sirve para B?"); labels go to `neighbors/labels/human-es-1.jsonl`.
-  The 22 pairs at cosine ≥ 0.90 were seen by the author during design (non-blind); the remaining
-  pairs are labeled blind. Descriptive only.
+  with cosine ≥ 0.85 (production embedding; 265 pairs), committed as `neighbors/pairs.jsonl`.
+  Joaquín labels them ("¿una respuesta a A sirve para B?"); labels go to
+  `neighbors/labels/human-es-1.jsonl`. The 20 pairs at cosine ≥ 0.90 were seen by the author
+  during design (non-blind); the remaining pairs are labeled blind. Descriptive only.
 - **(c) Paraphrases**: 200 corpus prompts stratified by task (40 per task, seed `20261022`),
   each rewritten once by local `qwen2.5:7b` (temperature 0, fixed seed) with the instruction
   "Reescribe la siguiente consulta con otras palabras, sin cambiar lo que pide ni agregar

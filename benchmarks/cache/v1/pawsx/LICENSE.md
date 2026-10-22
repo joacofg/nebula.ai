@@ -34,7 +34,8 @@ Google LLC is acknowledged as the data source.
 
 ## Provenance
 
-The pre-registration names the official archive as the source:
+The pre-registration first named the official archive as the source (the change is recorded in its
+"Amendment (data acquisition, 2026-10-22, before any precision was computed)", `../preregistration.md`):
 `https://storage.googleapis.com/paws/pawsx/x-final.tar.gz`, member `x-final/es/test_2k.tsv`.
 The URL is the one in the dataset README, but on 2026-10-22 Google's bucket answered every
 anonymous request with HTTP 403 (`Anonymous caller does not have storage.objects.get access`),
