@@ -162,6 +162,7 @@ class ChatService:
                 cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
+                avoided_cost_usd=self._cache_avoided_cost(request, policy_resolution, usage),
             )
             response = self._build_response(content=cached_response, model="nebula-cache", usage=usage)
             await self._record_usage(
@@ -326,6 +327,11 @@ class ChatService:
                 cache_hit=cache_hit,
                 fallback_used=False,
                 policy_resolution=policy_resolution,
+                avoided_cost_usd=self._cache_avoided_cost(
+                    request,
+                    policy_resolution,
+                    self.policy_service.estimate_usage(request, cached_response),
+                ),
             )
             wrapped_stream = self._wrap_stream_with_ledger(
                 stream=self._stream_text(cached_response, response_id, created, "nebula-cache"),
@@ -953,6 +959,25 @@ class ChatService:
         model = policy_resolution.route_decision.model
         return "economy" if model and model == self.settings.economy_model else "frontier"
 
+    def _cache_avoided_cost(
+        self,
+        request: ChatCompletionRequest,
+        policy_resolution: PolicyResolution,
+        usage: CompletionUsage,
+    ) -> float:
+        """What the request would have cost on its chosen route, had the cache not answered it.
+
+        Recorded as a route signal on the hit row; the row's `estimated_cost` stays 0, so spend
+        and the hard budget are untouched. Under `metadata_minimization_level=strict` the store
+        drops route signals, and such a hit counts as 0 avoided in the recommendations.
+        """
+        route_decision = policy_resolution.route_decision
+        if route_decision.target == "local":
+            return 0.0
+        # None: the model has no price in the catalog, and a guess would invent savings.
+        cost = self.policy_service.estimate_cost(self._served_model(request, route_decision), usage)
+        return cost or 0.0
+
     def _resolved_usage(
         self,
         request: ChatCompletionRequest,
@@ -1014,12 +1039,15 @@ class ChatService:
         cache_hit: bool | CacheHit,
         fallback_used: bool,
         policy_resolution: PolicyResolution,
+        avoided_cost_usd: float | None = None,
     ) -> CompletionMetadata:
         signals: dict[str, Any] = dict(policy_resolution.route_decision.signals or {})
         if isinstance(cache_hit, CacheHit):
             signals["cache_similarity_score"] = round(cache_hit.score, 4)
             signals["cache_entry_age_seconds"] = cache_hit.age_seconds
             signals["cache_entry_model"] = cache_hit.model
+        if avoided_cost_usd is not None:
+            signals["cache_avoided_cost_usd"] = avoided_cost_usd
         return CompletionMetadata(
             tenant_id=tenant_id,
             route_target=route_target,

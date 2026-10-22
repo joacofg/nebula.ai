@@ -100,11 +100,13 @@ class RecommendationService:
             sum((row.estimated_cost or 0.0) for row in ledger if row.final_route_target == "premium"),
             6,
         )
+        # A hit's own estimated_cost is 0 by design; what it avoided rides in its route signals
+        # (absent on rows whose signals were suppressed, which count as 0).
         avoided_premium_cost_usd = round(
             sum(
-                (row.estimated_cost or 0.0)
+                float((row.route_signals or {}).get("cache_avoided_cost_usd") or 0.0)
                 for row in ledger
-                if row.cache_hit and (row.estimated_cost or 0.0) > 0
+                if row.cache_hit
             ),
             6,
         )

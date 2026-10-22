@@ -11,7 +11,7 @@ export function CacheSummary({ cache }: { cache: CacheControlSummary }) {
         <Readout
           items={[
             { label: "Tasa de aciertos estimada", value: `${Math.round(cache.estimated_hit_rate * 100)} %`, emphasis: true },
-            { label: "Premium evitado", value: `USD ${cache.avoided_premium_cost_usd.toFixed(2)}`, emphasis: true },
+            { label: "Premium evitado", value: `USD ${cache.avoided_premium_cost_usd.toFixed(4)}`, emphasis: true },
             { label: "Caché activada", value: cache.enabled ? "sí" : "no" },
             { label: "Estado en runtime", value: cache.runtime_status },
             { label: "Umbral de similitud", value: cache.similarity_threshold.toFixed(2) },

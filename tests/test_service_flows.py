@@ -1566,8 +1566,9 @@ async def test_recommendation_service_orders_and_bounds_recommendations_without_
             timestamp=now.replace(microsecond=3),
             final_route_target="premium",
             terminal_status="cache_hit",
-            estimated_cost=0.008,
+            estimated_cost=0.0,
             route_reason="semantic_cache",
+            route_signals={"cache_avoided_cost_usd": 0.008},
         ).model_copy(update={"cache_hit": True}),
         _ledger_record(
             request_id="req-denied",
@@ -1662,6 +1663,44 @@ async def test_recommendation_service_surfaces_low_cache_hit_guidance_when_runti
     assert bundle.recommendations[0].evidence[1].value == "0.95"
     assert store.record_usage_calls == []
     assert store.policy_updates == []
+
+
+@pytest.mark.asyncio
+async def test_recommendation_service_sums_the_cost_each_cache_hit_avoided() -> None:
+    now = datetime.now(UTC)
+
+    def hit(index: int, signals: dict | None) -> UsageLedgerRecord:
+        return _ledger_record(
+            request_id=f"req-hit-{index}",
+            timestamp=now.replace(microsecond=index),
+            final_route_target="cache",
+            terminal_status="cache_hit",
+            route_signals=signals,
+        ).model_copy(update={"cache_hit": True})
+
+    store = FakeSimulationGovernanceStore(
+        [
+            hit(0, {"cache_avoided_cost_usd": 0.008}),
+            hit(1, {"cache_avoided_cost_usd": 0.0012}),
+            hit(2, {"cache_avoided_cost_usd": 0.0}),
+            # Signals suppressed (strict minimization) or never recorded: counts as 0.
+            hit(3, None),
+            # A served request is not an avoided one, whatever its signals say.
+            _ledger_record(
+                request_id="req-served",
+                timestamp=now.replace(microsecond=4),
+                route_signals={"cache_avoided_cost_usd": 5.0},
+            ),
+        ]
+    )
+    recommendation_service = RecommendationService(
+        governance_store=store,
+        semantic_cache_service=FakeCacheService(),
+    )
+
+    bundle = await recommendation_service.build_summary(tenant_context=tenant_context())
+
+    assert bundle.cache_summary.avoided_premium_cost_usd == pytest.approx(0.0092)
 
 
 @pytest.mark.asyncio

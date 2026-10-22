@@ -190,7 +190,7 @@ describe("ObservabilityPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "Caché" }));
     expect(await screen.findByRole("group", { name: "Tasa de aciertos estimada" })).toHaveTextContent("38 %");
-    expect(screen.getByRole("group", { name: "Premium evitado" })).toHaveTextContent("USD 0.84");
+    expect(screen.getByRole("group", { name: "Premium evitado" })).toHaveTextContent("USD 0.8400");
     expect(screen.getByText("Degraded cache runtime remains visible")).toBeInTheDocument();
 
     await user.click(screen.getByRole("tab", { name: "Calibración" }));

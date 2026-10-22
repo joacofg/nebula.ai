@@ -248,3 +248,57 @@ async def test_a_fallback_answer_is_stored_under_the_tier_that_served_it(stream:
     # Routed local, served by frontier: good enough for a frontier request.
     assert frontier.headers["X-Nebula-Cache-Hit"] == "true"
     assert "premium answer 1" in _answer(frontier)
+
+
+def _hit_rows(gateway: _Gateway) -> list:
+    store = gateway.container.governance_store
+    return [row for row in store.list_usage_records(tenant_id="default") if row.cache_hit]
+
+
+@pytest.mark.parametrize("stream", [False, True])
+async def test_a_frontier_hit_records_the_cost_it_avoided_without_spending_it(stream: bool) -> None:
+    async with _gateway() as gateway:
+        gateway.set_policy(routing_mode_default="premium_only")
+        await gateway.chat(HOLA, stream=stream)
+        store = gateway.container.governance_store
+        spend_before_hit = store.tenant_spend_total("default")
+        hit = await gateway.chat(HOLA, stream=stream)
+        spend_after_hit = store.tenant_spend_total("default")
+        (row,) = _hit_rows(gateway)
+
+    assert hit.headers["X-Nebula-Cache-Hit"] == "true"
+    # What the frontier model would have charged: the prompt "hola" is 1 token and the answer
+    # "premium answer 1" 4, at gpt-4o-mini's USD 0.15 / 0.60 per million tokens.
+    assert row.route_signals["cache_avoided_cost_usd"] == pytest.approx(1 * 0.15e-6 + 4 * 0.6e-6)
+    # The hit itself costs nothing: spend and the hard budget see no change.
+    assert row.estimated_cost == 0.0
+    assert spend_after_hit == spend_before_hit
+
+
+@pytest.mark.parametrize("stream", [False, True])
+async def test_a_local_hit_avoids_no_cost(stream: bool) -> None:
+    async with _gateway() as gateway:
+        await gateway.chat(HOLA, stream=stream)  # a short prompt routes local
+        hit = await gateway.chat(HOLA, stream=stream)
+        (row,) = _hit_rows(gateway)
+
+    assert hit.headers["X-Nebula-Route-Tier"] == "cache"
+    assert row.route_signals["cache_avoided_cost_usd"] == 0.0
+    assert row.estimated_cost == 0.0
+
+
+async def test_the_avoided_cost_is_priced_at_the_model_the_request_would_have_used() -> None:
+    async with _gateway() as gateway:
+        gateway.set_policy(allowed_premium_models=["openai/gpt-4o", "other/model"])
+        await gateway.chat(HOLA, model="openai/gpt-4o")
+        await gateway.chat(HOLA, model="openai/gpt-4o")
+        await gateway.chat(HOLA, model="other/model")
+        await gateway.chat(HOLA, model="other/model")
+        unknown_price_row, priced_row = _hit_rows(gateway)
+
+    # An explicit model is priced as itself, not as the configured frontier model.
+    assert priced_row.route_signals["cache_avoided_cost_usd"] == pytest.approx(
+        1 * 2.5e-6 + 4 * 10.0e-6
+    )
+    # A model with no price in the catalog avoids 0, never an error or a guess.
+    assert unknown_price_row.route_signals["cache_avoided_cost_usd"] == 0.0
