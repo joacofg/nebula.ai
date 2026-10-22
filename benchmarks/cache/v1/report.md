@@ -297,4 +297,4 @@ The same rule applied to this model would give **no safe threshold on the grid**
 
 ## Provenance
 
-Git commit checked out at generation: `aa6e4ff46517f1fa0e1b62ec192e2fc426a90b88`; these inputs differed from it when the report was generated: `scripts/cache_eval/report.py`. The SHA-256 of each file in report.json is the authority (`provenance.files`, with the untracked corpus vectors too), and `provenance.vectors` hashes the vectors used.
+Git commit checked out at generation: `0ff7602440c6d317b4fd943bbc61f9c15c3ec270`; these inputs differed from it when the report was generated: `scripts/cache_eval/replay.py`. The SHA-256 of each file in report.json is the authority (`provenance.files`, with the untracked corpus vectors too), and `provenance.vectors` hashes the vectors used.

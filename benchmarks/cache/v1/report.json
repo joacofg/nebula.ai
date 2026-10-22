@@ -1530,17 +1530,17 @@
       "benchmarks/ground-truth/v1/prompts.es.jsonl": "a1e2736f17d4f14d39b324ca576827a1561ef92c53527f6e266f0f77d7894626",
       "benchmarks/ground-truth/v1/tiers.jsonl": "dcefc5bde08532e4837b21fdbab1acb2ad2a657b00cdb2ba7c88d11d6dcdf4a6",
       "scripts/cache_eval/embed.py": "14d4a8b8a8033daa694a6475ec91e890785bbb0e4753b9d259fd7f9ba09a3076",
-      "scripts/cache_eval/replay.py": "c73ed0e0377c18bb30e92c5737748f9529d9a4abe34ae520440c35087f7d521b",
+      "scripts/cache_eval/replay.py": "30fd0284cf935c2fd3a79f7951f1ec5e63d412efb3530acb771217e8e3f29e1d",
       "scripts/cache_eval/report.py": "cb4b6d6d436c35c84bccedd6b8b14f76efc0cc24b3b335c457b3d139d577eee2",
       "src/nebula/data/learned_router_v1.json": "e1cb98ef552863537dcb56051d12a30bee5bcc57716fd2147871043926d22997",
       "src/nebula/data/router_replay_v1.json": "69298b5db76ae29a5de1a8015f7d352b4d3c78cda5e7833bedc69808563b50c9",
       "src/nebula/services/learned_router.py": "0da28cce3d8911a91ecad0cf86c294d0e44360802788d54f9229df30a99373b2",
-      "src/nebula/services/semantic_cache_service.py": "db20b183be3bdf64b8cab58e7cf056a6e29932d4816a0e4cdb8bda67486aa15c"
+      "src/nebula/services/semantic_cache_service.py": "7b31da08742ca9eb61647f34d73ab677fe906f630f69db3082e075a2fe6adc91"
     },
     "files_differing_from_git_sha": [
-      "scripts/cache_eval/report.py"
+      "scripts/cache_eval/replay.py"
     ],
-    "git_sha": "aa6e4ff46517f1fa0e1b62ec192e2fc426a90b88",
+    "git_sha": "0ff7602440c6d317b4fd943bbc61f9c15c3ec270",
     "qdrant_client": "1.20.0",
     "vectors": {
       "nomic_v1/originals": "fc3249b5fbdb21836457cbb0bd5c278f9c7046dd2c74a19e2d4e6c39b4ac73c0",

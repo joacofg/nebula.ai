@@ -7,8 +7,9 @@ conversation context). Each stored answer is a marker naming the corpus prompt i
 the tier that produced it; a hit's marker says whether the hit was correct and which tier's
 answer it served.
 
-Lookups ask for the best candidate at a floor threshold of 0.0 and the registered thresholds
-are applied here, ``score >= t``: one lookup per query serves the whole grid.
+Lookups ask for the best candidate at the floor threshold ``FLOOR_THRESHOLD`` (-1.0, below every
+cosine) and the registered thresholds are applied here, ``score >= t``: one lookup per query
+serves the whole grid.
 """
 
 from __future__ import annotations
@@ -405,15 +406,15 @@ def trace(
     """``n`` requests of which exactly ``round(rate * n)`` are repeats of a prompt already asked
     earlier in the trace, half of them exact and half paraphrases (the extra one, if odd, exact).
 
-    Each position is a repeat with probability ``rate``: the repeat positions are the first
-    ``round(rate * n)`` of a seeded permutation of the positions, alternately exact and
-    paraphrase, so the repeats of a lower rate are among those of a higher one and the rate
-    on the axis is the rate in the trace (drawing each request independently gave 61 repeats
-    instead of 37 at r = 0.037 with this seed). New prompts come in a seeded shuffle of the
-    sorted ids, each at most once, so a trace without repeats sends every prompt exactly once
-    when ``n`` equals their number. A repeat picks uniformly among the prompts asked so far
-    (for a paraphrase, among those with a valid paraphrase); a repeat that comes before any
-    prompt it could repeat is moved to the next position where one exists.
+    The count is fixed, not drawn: the repeat positions are the first ``round(rate * n)`` of a
+    seeded permutation of the positions, alternately exact and paraphrase, so the repeats of a
+    lower rate are among those of a higher one and the rate on the axis is the rate in the
+    trace (at r = 0.121 and n = 1000, exactly 121 repeats: 61 exact, 60 paraphrases). New
+    prompts come in a seeded shuffle of the sorted ids, each at most once, so a trace without
+    repeats sends every prompt exactly once when ``n`` equals their number. A repeat picks
+    uniformly among the prompts asked so far (for a paraphrase, among those with a valid
+    paraphrase); a repeat that comes before any prompt it could repeat is moved to the next
+    position where one exists.
     """
     rng = random.Random(seed)
     fresh_order = sorted(original_ids)
