@@ -65,5 +65,5 @@ test("operator can create, edit, and keep an inactive tenant visible", async ({ 
   await page.getByRole("button", { name: "Guardar tenant" }).click();
 
   await page.getByRole("combobox").selectOption("inactive");
-  await expect(page.getByText("Updated description")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Tenants" }).getByText("Updated description")).toBeVisible();
 });
