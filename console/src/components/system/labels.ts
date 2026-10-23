@@ -24,6 +24,12 @@ const ROUTE_REASONS: Record<string, string> = {
   calibrated_routing_disabled: "ruteo automático apagado",
   rate_limited: "límite de pedidos",
   fallback: "fallback",
+  // Not route reasons but the codes the calibration summary counts rows under; they share this
+  // table because the summary words them with `reasonLabel`.
+  explicit_model_override: "modelo explícito",
+  policy_forced_routing: "ruteo forzado por la política",
+  missing_route_signals: "sin señales de ruteo",
+  degraded_replay_signals: "señales incompletas",
 };
 
 const STATUSES: Record<string, string> = {

@@ -50,6 +50,15 @@ describe("labels", () => {
     expect(reasonLabel("embeddings_something_new")).toBe("embeddings_something_new");
   });
 
+  it("labels the codes the calibration summary counts rows under", () => {
+    expect(reasonLabel("explicit_model_override")).toBe("modelo explícito");
+    expect(reasonLabel("policy_forced_routing")).toBe("ruteo forzado por la política");
+    expect(reasonLabel("missing_route_signals")).toBe("sin señales de ruteo");
+    expect(reasonLabel("degraded_replay_signals")).toBe("señales incompletas");
+    expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
+    expect(reasonLabel("rate_limited")).toBe("límite de pedidos");
+  });
+
   it("names the heuristic the same way as a reason and as a router", () => {
     expect(reasonLabel("token_complexity")).toBe("heurística por complejidad");
     expect(routerLabel("token_complexity")).toBe("Heurística por complejidad");

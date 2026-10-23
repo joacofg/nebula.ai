@@ -98,7 +98,11 @@ export default function PolicyPage() {
   );
   const header = <PageHeader title="Política" cells={[{ label: "Tenant", value: tenantSelect }]} />;
 
-  if (tenantsQuery.isLoading || optionsQuery.isLoading || policyQuery.isLoading) {
+  // `isPending`, not `isLoading`: a query that has no data yet but is not fetching (paused while
+  // the gateway is unreachable) is still waiting, not an empty list or an unchosen tenant. The
+  // policy query is disabled until a tenant is chosen, so it only counts once there is one.
+  const waitingForPolicy = selectedTenantId.length > 0 && policyQuery.isPending;
+  if (tenantsQuery.isPending || optionsQuery.isPending || waitingForPolicy) {
     return (
       <section>
         {header}

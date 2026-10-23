@@ -1,6 +1,7 @@
+import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 
 import PolicyPage from "@/app/(console)/policy/page";
 import * as adminApi from "@/lib/admin-api";
@@ -303,6 +304,54 @@ describe("policy-page", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("El gateway devolvió un error (500).");
     expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
+  });
+
+  describe("when the gateway cannot be reached yet", () => {
+    afterEach(() => {
+      onlineManager.setOnline(true);
+    });
+
+    // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
+    async function letQueriesSettle() {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    it("keeps the loading rows while the selected tenant's policy has not arrived", async () => {
+      // The connection drops right after the tenant list arrives, so the policy query starts paused.
+      listTenantsMock.mockImplementation(async () => {
+        onlineManager.setOnline(false);
+        return [
+          {
+            id: "tenant-a",
+            name: "Tenant A",
+            description: null,
+            metadata: {},
+            active: true,
+            created_at: "2026-03-27T00:00:00Z",
+            updated_at: "2026-03-27T00:00:00Z",
+          },
+        ];
+      });
+      renderPolicyPage();
+
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("tenant-a"));
+      await letQueriesSettle();
+
+      expect(getTenantPolicyMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
+      expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
+    });
+
+    it("does not claim there are no tenants while the list has not arrived", async () => {
+      onlineManager.setOnline(false);
+      renderPolicyPage();
+
+      await letQueriesSettle();
+
+      expect(listTenantsMock).not.toHaveBeenCalled();
+      expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
+      expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
+    });
   });
 
   it("shows preview errors from the simulation mutation", async () => {
