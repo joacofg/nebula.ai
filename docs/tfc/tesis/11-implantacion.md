@@ -89,7 +89,8 @@ versiones de los modelos quedaron en `benchmarks/ground-truth/v1/provenance.json
 
 1. *Unitarias y de integración* (pytest para el backend, Vitest para la consola): cada componente
    del gateway y de la consola, con proveedores y caché simulados.
-2. *De extremo a extremo* (Playwright): la consola contra el gateway real.
+2. *De extremo a extremo* (Playwright): la consola compilada, en un navegador, con las respuestas
+   del gateway simuladas en sus proxies.
 3. *Validación del instrumento de calidad:* acuerdo de los jueces con un lector humano, con
    reglas y umbral pre-registrados antes de correr los jueces sobre el corpus.
 4. *Evaluación del router:* validación cruzada de 5 folds agrupada por prompt, y una estimación
