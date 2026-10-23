@@ -58,6 +58,7 @@ test("operator can create, edit, and keep an inactive tenant visible", async ({ 
   await page.locator("form").getByRole("button", { name: "Crear tenant" }).click();
 
   await expect(page.getByRole("heading", { name: "Editar Team B" })).toBeVisible();
+  await expect(page.getByRole("status").filter({ hasText: "Tenant creado." })).toBeVisible();
 
   await page.locator("tbody").getByText("Team B", { exact: true }).click();
   await page.getByLabel("Descripción").fill("Updated description");

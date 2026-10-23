@@ -98,6 +98,8 @@ test("operator can create, reveal once, and revoke an API key", async ({ page })
 
   await expect(page.getByText("No se vuelve a mostrar.")).toBeVisible();
   await page.getByRole("button", { name: "Cerrar", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "Prefijo" })).toBeVisible();
+  await expect(page.getByRole("cell", { name: "nbk_new2" })).toBeVisible();
 
   await page.getByRole("button", { name: "Revocar", exact: true }).first().click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Revocar clave" }).click();

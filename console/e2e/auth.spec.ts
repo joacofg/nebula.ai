@@ -34,6 +34,12 @@ test("operator can sign in and land on the evaluation page", async ({ page }) =>
 
   await expect(page).toHaveURL(/\/evaluacion$/);
   await expect(page.getByRole("heading", { level: 1, name: "Evaluación del router" })).toBeVisible();
+
+  // Signing out ends on the login page, said as a sign-out and not as an expired session.
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(page.getByLabel("Clave de admin")).toBeVisible();
+  await expect(page.getByText("Sesión cerrada.")).toBeVisible();
+  await expect(page.getByText("La sesión se cerró. Ingresar la clave de admin otra vez.")).toHaveCount(0);
 });
 
 test("refresh clears the in-memory admin session", async ({ page }) => {

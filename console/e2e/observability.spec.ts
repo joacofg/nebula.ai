@@ -1,5 +1,8 @@
 import { expect, test } from "@playwright/test";
 
+// The console shows moments in the operator's local time; pin the zone so the reading is fixed.
+test.use({ timezoneId: "America/Argentina/Buenos_Aires" });
+
 test("operator can inspect request-first outage and recovery truth on observability", async ({ page }) => {
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
@@ -22,7 +25,9 @@ test("operator can inspect request-first outage and recovery truth on observabil
     });
   });
 
+  const ledgerRequests: URL[] = [];
   await page.route("**/api/admin/usage/ledger**", async (route) => {
+    ledgerRequests.push(new URL(route.request().url()));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -197,16 +202,25 @@ test("operator can inspect request-first outage and recovery truth on observabil
   const ledger = page.getByRole("table", { name: "Ledger de pedidos" });
   await expect(ledger.getByRole("row", { name: /req-governance-001/ })).toBeVisible();
   await expect(page.getByRole("heading", { name: /Pedido/ })).toContainText("req-gove");
+  // The cost cell says how many rows it adds up.
+  await expect(page.locator("header")).toContainText("USD 0.0210 en 1 pedido");
+
+  await page.getByRole("combobox", { name: "Nivel" }).selectOption("frontier");
+  await expect.poll(() => ledgerRequests.some((url) => url.searchParams.get("tier") === "frontier")).toBe(true);
 
   await page.getByRole("tab", { name: "Dependencias" }).click();
   const deps = page.getByRole("tabpanel");
   await expect(deps.getByText("governance_store", { exact: true })).toBeVisible();
   await expect(deps.getByText("semantic_cache", { exact: true })).toBeVisible();
   await expect(deps.getByText("premium_provider", { exact: true })).toBeVisible();
-  await expect(deps.getByText("serving critical")).toBeVisible();
-  await expect(deps.getByText("fail closed")).toBeVisible();
-  await expect(deps.getByText("governance query failed")).toBeVisible();
-  await expect(deps.getByText("premium provider recovered")).toBeVisible();
-  await expect(deps.getByText("2026-04-12T01:03:00Z")).toBeVisible();
+  await expect(deps.getByText("crítica para servir")).toBeVisible();
+  await expect(deps.getByText("bloquea pedidos")).toBeVisible();
+  await expect(deps.getByText("falló la consulta al almacén")).toBeVisible();
+  // A code the console does not know reads as sent, never as an empty cell.
+  await expect(deps.getByText("premium_provider_recovered", { exact: true })).toBeVisible();
+  // Moments read in local time; the gateway's ISO value stays as the title.
+  const recoveredAt = deps.getByTitle("2026-04-12T01:03:00Z");
+  await expect(recoveredAt).toHaveText(/22:03:00/);
+  await expect(recoveredAt).not.toHaveText(/2026-04-12T/);
   await expect(page.getByText(/dashboard/i)).toHaveCount(0);
 });
