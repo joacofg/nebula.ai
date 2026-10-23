@@ -600,7 +600,50 @@ async def test_premium_stream_stops_reading_when_the_finish_chunk_has_usage() ->
         rows = _ledger_rows_for(client, "req-finish-usage")
 
     assert events[-1] == b"data: [DONE]\n\n"
+    assert rows[0]["prompt_tokens"] == 11
     assert rows[0]["completion_tokens"] == 7
+    assert rows[0]["total_tokens"] == 18
+
+
+async def test_premium_stream_closes_the_provider_iterator_when_it_stops_early() -> None:
+    with fallback_client() as (_client, container, _premium):
+        model = container.settings.premium_model
+        closed = False
+
+        class _UsageThenSilence(StubProvider):
+            def stream_complete(self, request: ChatCompletionRequest):
+                async def iterator():
+                    nonlocal closed
+                    try:
+                        yield CompletionChunk(delta="hola", model=model)
+                        yield CompletionChunk(delta="", model=model, finish_reason="stop")
+                        yield CompletionChunk(
+                            delta="",
+                            model=model,
+                            usage=CompletionUsage(
+                                prompt_tokens=11, completion_tokens=7, total_tokens=18
+                            ),
+                        )
+                        await asyncio.Event().wait()
+                    finally:
+                        closed = True
+
+                return iterator()
+
+        _use_premium(container, _UsageThenSilence("mock-premium"))
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-closes-upstream",
+        )
+
+        async def read_all() -> list[bytes]:
+            return [event async for event in envelope.stream]
+
+        await asyncio.wait_for(read_all(), timeout=5)
+
+    # Stopping at the usage chunk left the iterator suspended; the service must release it.
+    assert closed
 
 
 async def test_failure_before_the_finish_chunk_is_still_a_provider_error(monkeypatch) -> None:

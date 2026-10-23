@@ -73,6 +73,7 @@ class OpenAICompatibleProvider(CompletionProvider):
                         yield CompletionChunk(
                             delta=delta,
                             model=chunk.get("model", self.settings.premium_model),
+                            # Raw here; ChatService._stream_provider normalizes it for the client.
                             finish_reason=choice.get("finish_reason"),
                             usage=usage,
                         )

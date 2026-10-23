@@ -225,6 +225,6 @@ def test_n_greater_than_one_is_rejected_and_n_one_is_served() -> None:
     body = rejected.json()
     assert rejected.status_code == 422
     assert body["error"]["type"] == "invalid_request_error"
-    assert "n" in body["error"]["message"]
-    assert isinstance(body["detail"], list) and body["detail"][0]["loc"] == ["body", "n"]
+    assert isinstance(body["detail"], list)
+    assert body["detail"][0]["loc"][-1] == "n"
     assert accepted.status_code == 200

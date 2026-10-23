@@ -515,7 +515,7 @@ def test_chat_completion_returns_provider_finish_reason() -> None:
     assert response.json()["choices"][0]["finish_reason"] == "length"
 
 
-def test_premium_stream_with_unknown_finish_reason_does_not_break() -> None:
+def test_fallback_stream_with_unknown_finish_reason_does_not_break() -> None:
     with fallback_client() as (client, container, premium):
         premium.stream_chunks = [
             CompletionChunk(delta="premium answer", model=container.settings.premium_model),

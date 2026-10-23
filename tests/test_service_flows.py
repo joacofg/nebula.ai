@@ -1030,6 +1030,30 @@ async def test_denied_rows_are_excluded_not_degraded() -> None:
     assert summary.excluded_reasons == [CalibrationReasonCount(reason="denied_request", count=2)]
 
 
+@pytest.mark.asyncio
+async def test_a_denied_row_is_excluded_even_when_its_reason_is_calibrated_routing_disabled() -> None:
+    # Exclusion is checked before gating: a denied row never ran through the router, so the
+    # routing-disabled reason it carries must not count it as gated.
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.append(
+        _ledger_record(
+            request_id="req-denied-while-gated",
+            timestamp=now.replace(microsecond=52),
+            terminal_status="policy_denied",
+            route_reason="calibrated_routing_disabled",
+            route_signals=None,
+        )
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.excluded_request_count == 1
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="denied_request", count=1)]
+    assert summary.gated_request_count == 0
+    assert summary.gated_reasons == []
+
+
 class _FakeClock:
     def __init__(self) -> None:
         self.now = 0.0
