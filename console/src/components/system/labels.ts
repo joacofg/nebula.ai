@@ -67,6 +67,12 @@ const ROUTING_MODES: Record<string, string> = {
   premium_only: "Solo premium",
 };
 
+// The languages the router evaluation reports its per-language figures for.
+const LANGUAGES: Record<string, string> = {
+  es: "Español",
+  en: "Inglés",
+};
+
 const ROUTERS: Record<string, string> = {
   learned_router: "Router aprendido",
   token_complexity: "Heurística por complejidad",
@@ -233,6 +239,11 @@ export function routeLabel(code: string | null | undefined) {
 /** The level a request was served at: local / economy / frontier / caché / denegado. */
 export function tierLabel(code: string | null | undefined) {
   return lookup(TIERS, code);
+}
+
+/** The language of an evaluation figure: Español / Inglés. */
+export function languageLabel(code: string | null | undefined) {
+  return lookup(LANGUAGES, code);
 }
 
 /** The tenant's routing mode default: auto / local_only / premium_only. */

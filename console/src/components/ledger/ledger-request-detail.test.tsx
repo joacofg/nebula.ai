@@ -173,6 +173,33 @@ describe("ledger-request-detail", () => {
     expect(screen.getByRole("img", { name: /economy elegido/ })).toHaveAttribute("width");
   });
 
+  it("names the tier that served a fallback row, not the one the router chose", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "premium",
+          response_model: "anthropic/claude-sonnet-4.5",
+          fallback_used: true,
+          route_reason: "local_provider_error_fallback",
+          route_signals: {
+            tier: "local",
+            p_local: 0.9,
+            p_economy: 0.95,
+            quality_target: 0.95,
+            operating_point: { tau_local: 0.82, tau_economy: 0.92 },
+            learned_router: "v1",
+          },
+        }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: "Por qué este nivel" });
+    expect(heading.parentElement).toHaveTextContent("frontier");
+    expect(
+      screen.getByText("Se sirvió con frontier por un fallback; el router había elegido local."),
+    ).toBeInTheDocument();
+  });
+
   it("renders the heuristic inspection with its additive score", () => {
     renderWithProviders(
       <LedgerRequestDetail entry={{ ...mockEntry, route_reason: "token_complexity", route_signals: heuristicSignals }} />,

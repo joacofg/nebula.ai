@@ -29,6 +29,7 @@ import {
   suppressedFieldLabel,
   tierLabel,
   insightLevelLabel,
+  languageLabel,
   recommendationCategoryLabel,
   recommendationEvidenceLabel,
 } from "@/components/system/labels";
@@ -98,6 +99,7 @@ describe("every label function", () => {
     ["enforcementLabel", enforcementLabel],
     ["complexityLabel", complexityLabel],
     ["tierLabel", tierLabel],
+    ["languageLabel", languageLabel],
     ["insightLevelLabel", insightLevelLabel],
     ["recommendationCategoryLabel", recommendationCategoryLabel],
     ["recommendationEvidenceLabel", recommendationEvidenceLabel],
@@ -439,5 +441,18 @@ describe("approximationNoteLabel", () => {
 describe("the reason a tenant's automatic routing is off", () => {
   it("is named like the Policy checkbox that turns it off", () => {
     expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
+  });
+});
+
+describe("languageLabel", () => {
+  it.each([
+    ["es", "Español"],
+    ["en", "Inglés"],
+  ])("labels %s as %s", (code, label) => {
+    expect(languageLabel(code)).toBe(label);
+  });
+
+  it("returns an unknown language code as it came", () => {
+    expect(languageLabel("pt")).toBe("pt");
   });
 });

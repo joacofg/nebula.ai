@@ -71,6 +71,27 @@ describe("Recommendations", () => {
     expect(screen.getByRole("group", { name: "Estado de la caché" })).toHaveTextContent("melting");
   });
 
+  it("words the default routing mode on the pressure card in Spanish, keeping a mode it does not know", () => {
+    const pressure = {
+      code: "review_premium_routing_pressure",
+      title: "Review premium routing pressure",
+      category: "policy",
+      priority: 2,
+      summary: "Premium share is high.",
+      recommended_action: "Review routing.",
+      evidence: [{ label: "routing_mode_default", value: "auto" }],
+    } as unknown as RecommendationCard;
+    const { unmount } = render(<Recommendations bundle={bundle([pressure])} />);
+
+    expect(screen.getByRole("group", { name: "Modo de ruteo" })).toHaveTextContent("Automático");
+    expect(screen.getByRole("group", { name: "Modo de ruteo" })).not.toHaveTextContent("auto");
+    unmount();
+
+    const unknownMode = { ...pressure, evidence: [{ label: "routing_mode_default", value: "round_robin" }] };
+    render(<Recommendations bundle={bundle([unknownMode as RecommendationCard])} />);
+    expect(screen.getByRole("group", { name: "Modo de ruteo" })).toHaveTextContent("round_robin");
+  });
+
   it("words the category in Spanish and keeps one it does not know as sent", () => {
     const { unmount } = render(<Recommendations bundle={bundle([tuneCache])} />);
     expect(screen.getByText(/^caché · prioridad 2$/)).toBeInTheDocument();

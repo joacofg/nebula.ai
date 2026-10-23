@@ -18,6 +18,7 @@ import { ReplayFeed } from "@/components/evaluation/replay-feed";
 import { TierShareBar } from "@/components/evaluation/tier-share-bar";
 import { useTenantTarget, type TenantTarget } from "@/components/evaluation/use-tenant-target";
 import { Figure } from "@/components/system/figure";
+import { languageLabel } from "@/components/system/labels";
 import { PageHeader } from "@/components/system/page-header";
 import { Readout } from "@/components/system/readout";
 import { ErrorAlert, LoadingRows } from "@/components/system/state";
@@ -38,7 +39,6 @@ import {
 } from "@/lib/router-replay";
 
 const REPLAY_SEED = 20260930;
-const LANG_LABELS: Record<string, string> = { es: "Español", en: "Inglés" };
 
 function prefersReducedMotion() {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
@@ -158,7 +158,7 @@ function EvaluationBody({ replay, tenantTarget }: { replay: RouterReplay; tenant
                 value: allFrontier ? "todo frontier (∞ · ∞)" : `${formatTau(point.tau_local)} · ${formatTau(point.tau_economy)}`,
               },
               ...langs.map(([lang, figure]) => ({
-                label: `${LANG_LABELS[lang] ?? lang} · ${figure.n} pedidos`,
+                label: `${languageLabel(lang)} · ${figure.n} pedidos`,
                 // Two figures with their units stay on one line in the 380 px panel; on a phone they
                 // wrap between the figures, never inside one.
                 value: (

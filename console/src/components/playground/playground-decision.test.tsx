@@ -189,12 +189,39 @@ describe("PlaygroundDecision", () => {
   });
 
   it("explains a local failure fallback on top of the learned decision", () => {
+    // A fallback row keeps the router's own tier ("local") in its signals; the tier that answered
+    // arrives as `routeTier`.
     const { container } = render(
-      <PlaygroundDecision entry={entry({ route_reason: "local_provider_error_fallback", fallback_used: true })}
-                          routeTier="economy" />,
+      <PlaygroundDecision
+        entry={entry({
+          route_reason: "local_provider_error_fallback",
+          fallback_used: true,
+          route_signals: { ...entry().route_signals, tier: "local", p_local: 0.8 },
+        })}
+        routeTier="economy"
+      />,
     );
     expect(panelText(container)).toMatch(/falló el modelo local/i);
-    expect(screen.getByRole("img", { name: /local descartado \(p 0\.69 < τ 0\.76\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /local elegido \(p 0\.80 ≥ τ 0\.76\)/ })).toBeInTheDocument();
+    // The badge names the tier that served the request, not the one the router chose.
+    expect(screen.getByRole("heading", { name: "Por qué este nivel" }).parentElement).toHaveTextContent("economy");
+    expect(
+      screen.getByText("Se sirvió con economy por un fallback; el router había elegido local."),
+    ).toBeInTheDocument();
+  });
+
+  it("keeps the badge and adds no fallback note on a learned row that was not a fallback", () => {
+    render(
+      <PlaygroundDecision
+        entry={entry({ route_signals: { ...entry().route_signals, tier: "local", p_local: 0.8 } })}
+        routeTier="economy"
+      />,
+    );
+
+    const header = screen.getByRole("heading", { name: "Por qué este nivel" }).parentElement;
+    expect(header).toHaveTextContent("local");
+    expect(header).not.toHaveTextContent("economy");
+    expect(screen.queryByText(/por un fallback/)).not.toBeInTheDocument();
   });
 
   it("tells a dimension mismatch apart from an unavailable embedding", () => {
