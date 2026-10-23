@@ -54,7 +54,9 @@ async function proxyRequest(request: NextRequest, path: string[]) {
       status: response.status,
       headers: responseHeaders,
     });
-  } catch {
+  } catch (error) {
+    // Not every failure here is the network: keep the cause, the client only gets gateway_unreachable.
+    console.error("Nebula admin proxy: the gateway call failed:", error);
     return gatewayUnreachableResponse();
   }
 }

@@ -36,7 +36,9 @@ export async function GET(request: NextRequest) {
         "Content-Type": response.headers.get("Content-Type") ?? "application/json",
       },
     });
-  } catch {
+  } catch (error) {
+    // Not every failure here is the network: keep the cause, the client only gets gateway_unreachable.
+    console.error("Nebula runtime health proxy: the gateway call failed:", error);
     return gatewayUnreachableResponse();
   }
 }

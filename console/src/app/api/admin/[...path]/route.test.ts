@@ -1,13 +1,20 @@
 import { NextRequest } from "next/server";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { GET, POST } from "./route";
 
 const context = (...path: string[]) => ({ params: Promise.resolve({ path }) });
 
 describe("admin proxy", () => {
+  const consoleError = vi.spyOn(console, "error");
+
+  beforeEach(() => {
+    consoleError.mockImplementation(() => {});
+  });
+
   afterEach(() => {
     vi.unstubAllGlobals();
+    consoleError.mockReset();
   });
 
   it("forwards the gateway answer with its status and headers", async () => {
@@ -46,5 +53,25 @@ describe("admin proxy", () => {
 
     expect(response.status).toBe(503);
     await expect(response.json()).resolves.toEqual({ detail: "gateway_unreachable" });
+  });
+
+  it("logs why the gateway call failed before answering 503, so a bug is not mistaken for a network error", async () => {
+    const cause = new TypeError("fetch failed");
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(cause));
+
+    const response = await GET(new NextRequest("http://console.test/api/admin/tenants"), context("tenants"));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ detail: "gateway_unreachable" });
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("admin proxy"), cause);
+  });
+
+  it("does not log when the gateway answers, even with an error status", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 500 })));
+
+    await GET(new NextRequest("http://console.test/api/admin/tenants"), context("tenants"));
+
+    expect(consoleError).not.toHaveBeenCalled();
   });
 });

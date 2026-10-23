@@ -48,7 +48,9 @@ export async function POST(request: NextRequest) {
       status: upstream.status,
       headers,
     });
-  } catch {
+  } catch (error) {
+    // Not every failure here is the network: keep the cause, the client only gets gateway_unreachable.
+    console.error("Nebula playground proxy: the gateway call failed:", error);
     return gatewayUnreachableResponse();
   }
 }
