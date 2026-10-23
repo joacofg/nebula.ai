@@ -503,13 +503,13 @@ export function PolicyForm({
                   id="hard-budget-limit-usd"
                   label={FIELD_LABELS.hardBudgetLimitUsd}
                   error={fieldErrors.hardBudgetLimitUsd}
-                  hint="Vacío: sin límite."
                 >
                   {(control) => (
                     <input
                       {...control}
                       className="field-input"
                       inputMode="decimal"
+                      placeholder="Sin límite"
                       value={formState.hardBudgetLimitUsd}
                       onChange={(event) => set("hardBudgetLimitUsd", event.target.value)}
                     />

@@ -970,10 +970,13 @@ describe("policy-form", () => {
     for (const label of [
       "Límite de pedidos por minuto",
       "Costo premium máximo por pedido (USD)",
+      "Presupuesto duro acumulado (USD)",
       "Presupuesto blando (USD)",
     ]) {
       expect(screen.getByLabelText(label), label).toHaveAttribute("placeholder", "Sin límite");
     }
+    // The placeholder says it; a hint repeating it would be one more line to read.
+    expect(screen.queryByText("Vacío: sin límite.")).not.toBeInTheDocument();
   });
 
   it("does not validate a field the runtime does not enforce, and keeps it as it was stored", async () => {
