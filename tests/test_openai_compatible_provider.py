@@ -7,7 +7,7 @@ import pytest
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import ProviderError
+from nebula.providers.base import CompletionUsage, ProviderError
 from nebula.providers.openai_compatible import OpenAICompatibleProvider
 
 
@@ -265,6 +265,62 @@ async def test_stream_null_delta_content_is_an_empty_delta() -> None:
 
     assert [chunk.delta for chunk in chunks] == ["", "hi", ""]
     assert chunks[-1].finish_reason == "length"
+    await provider.close()
+
+
+def test_stream_payload_requests_usage() -> None:
+    provider = _provider_with_handler(lambda request: None)
+    request = _hello_request()
+
+    assert provider._build_payload(request, stream=True)["stream_options"] == {
+        "include_usage": True
+    }
+    assert "stream_options" not in provider._build_payload(request, stream=False)
+
+
+@pytest.mark.asyncio
+async def test_stream_parses_usage_only_chunk() -> None:
+    sse_body = (
+        b'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+        b'data: {"choices":[],"usage":{"prompt_tokens":11,"completion_tokens":7,'
+        b'"total_tokens":18}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, sse_body, headers={"content-type": "text/event-stream"})
+
+    provider = _provider_with_handler(handler)
+
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert [chunk.delta for chunk in chunks] == ["hi", "", ""]
+    assert chunks[1].finish_reason == "stop"
+    assert chunks[-1].finish_reason is None
+    assert chunks[-1].usage == CompletionUsage(11, 7, 18)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_parses_usage_on_finish_chunk() -> None:
+    sse_body = (
+        b'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}],'
+        b'"usage":{"prompt_tokens":11,"completion_tokens":7,"total_tokens":18}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, sse_body, headers={"content-type": "text/event-stream"})
+
+    provider = _provider_with_handler(handler)
+
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert chunks[-1].finish_reason == "stop"
+    assert chunks[-1].usage == CompletionUsage(11, 7, 18)
+    assert chunks[0].usage is None
     await provider.close()
 
 

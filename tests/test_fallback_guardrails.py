@@ -11,7 +11,7 @@ from fastapi.testclient import TestClient
 
 from nebula.core.container import ServiceContainer
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import CompletionChunk, ProviderError
+from nebula.providers.base import CompletionChunk, CompletionUsage, ProviderError
 from nebula.services.auth_service import AuthenticatedTenantContext
 from tests.support import (
     StubProvider,
@@ -381,6 +381,147 @@ async def test_abandoned_stream_counts_toward_the_hard_budget() -> None:
 
     assert follow_up.status_code == 403
     assert "hard_budget=exceeded" in follow_up.headers["X-Nebula-Policy-Outcome"]
+
+
+def _is_finish_event(event: bytes) -> bool:
+    payload = event.removeprefix(b"data: ").strip()
+    if payload == b"[DONE]":
+        return False
+    return bool(json.loads(payload)["choices"][0].get("finish_reason"))
+
+
+async def test_premium_stream_ledger_uses_provider_usage() -> None:
+    with fallback_client() as (client, container, premium):
+        model = container.settings.premium_model
+        provider_usage = CompletionUsage(prompt_tokens=11, completion_tokens=7, total_tokens=18)
+        premium.stream_chunks = [
+            CompletionChunk(delta="hola", model=model),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+            CompletionChunk(delta="", model=model, usage=provider_usage),
+        ]
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-usage",
+        )
+        events = [event async for event in envelope.stream]
+        rows = _ledger_rows_for(client, "req-usage")
+        expected_cost = container.policy_service.estimate_cost(model, provider_usage)
+
+    assert events[-1] == b"data: [DONE]\n\n"
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "completed"
+    assert rows[0]["prompt_tokens"] == 11
+    assert rows[0]["completion_tokens"] == 7
+    assert rows[0]["total_tokens"] == 18
+    assert expected_cost and expected_cost > 0
+    assert rows[0]["estimated_cost"] == pytest.approx(expected_cost)
+
+
+async def test_premium_stream_ignores_content_after_the_finish_chunk() -> None:
+    with fallback_client() as (client, container, premium):
+        model = container.settings.premium_model
+        premium.stream_chunks = [
+            CompletionChunk(delta="hola", model=model),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+            CompletionChunk(delta=" late", model=model),
+        ]
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-late",
+        )
+        events = [event async for event in envelope.stream]
+
+    assert [_content_of(event) for event in events if _content_of(event)] == ["hola"]
+    assert events[-1] == b"data: [DONE]\n\n"
+    assert sum(_is_finish_event(event) for event in events[:-1]) == 1
+
+
+async def test_premium_stream_without_usage_falls_back_to_estimate() -> None:
+    with fallback_client() as (client, container, premium):
+        model = container.settings.premium_model
+        premium.stream_chunks = [
+            CompletionChunk(delta="hola", model=model),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+        ]
+        request = _stream_request(model)
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            request,
+            tenant_context=_tenant_context(container),
+            request_id="req-estimate",
+        )
+        _events = [event async for event in envelope.stream]
+        rows = _ledger_rows_for(client, "req-estimate")
+        estimate = container.policy_service.estimate_usage(request, "hola")
+
+    assert len(rows) == 1
+    assert rows[0]["prompt_tokens"] == estimate.prompt_tokens
+    assert rows[0]["completion_tokens"] == estimate.completion_tokens
+    assert rows[0]["completion_tokens"] > 0
+    assert rows[0]["estimated_cost"] > 0
+
+
+async def test_stream_disconnect_after_finish_writes_one_row() -> None:
+    # The client leaves once it has the finish chunk, before the provider's usage chunk is read.
+    with fallback_client() as (client, container, premium):
+        model = container.settings.premium_model
+        premium.stream_chunks = [
+            CompletionChunk(delta="hola", model=model),
+            CompletionChunk(delta="", model=model, finish_reason="stop"),
+            CompletionChunk(
+                delta="",
+                model=model,
+                usage=CompletionUsage(prompt_tokens=11, completion_tokens=7, total_tokens=18),
+            ),
+        ]
+        request = _stream_request(model)
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            request,
+            tenant_context=_tenant_context(container),
+            request_id="req-after-finish",
+        )
+        async for event in envelope.stream:
+            if _is_finish_event(event):
+                break
+        await envelope.stream.aclose()
+        rows = _ledger_rows_for(client, "req-after-finish")
+        estimate = container.policy_service.estimate_usage(request, "hola")
+
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "client_disconnected"
+    assert rows[0]["completion_tokens"] == estimate.completion_tokens
+    assert rows[0]["estimated_cost"] > 0
+
+
+async def test_provider_failure_after_the_finish_chunk_does_not_fail_the_stream() -> None:
+    with fallback_client() as (client, container, _premium):
+        model = container.settings.premium_model
+
+        async def finish_then_die() -> None:
+            raise provider_error("connection reset after finish")
+
+        class _FinishThenDies(StubProvider):
+            def stream_complete(self, request: ChatCompletionRequest):
+                async def iterator():
+                    yield CompletionChunk(delta="hola", model=model)
+                    yield CompletionChunk(delta="", model=model, finish_reason="stop")
+                    await finish_then_die()
+
+                return iterator()
+
+        _use_premium(container, _FinishThenDies("mock-premium"))
+        envelope = await container.chat_service.stream_completion_with_metadata(
+            _stream_request(model),
+            tenant_context=_tenant_context(container),
+            request_id="req-reset-after-finish",
+        )
+        events = [event async for event in envelope.stream]
+        rows = _ledger_rows_for(client, "req-reset-after-finish")
+
+    assert events[-1] == b"data: [DONE]\n\n"
+    assert len(rows) == 1
+    assert rows[0]["terminal_status"] == "completed"
 
 
 @pytest.mark.parametrize("via_fallback", [False, True], ids=["premium_primary", "after_fallback"])

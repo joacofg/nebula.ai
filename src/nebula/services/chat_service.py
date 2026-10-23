@@ -77,6 +77,17 @@ class _CacheWrite:
 
 
 @dataclass(slots=True)
+class _StreamUsage:
+    """The usage a provider reported for one stream.
+
+    The ledger wrapper owns it and hands it down to `_stream_provider`, which fills it when the
+    provider's usage chunk arrives. It stays None for providers that report none.
+    """
+
+    usage: CompletionUsage | None = None
+
+
+@dataclass(slots=True)
 class CompletionMetadata:
     tenant_id: str
     route_target: Literal["local", "premium", "cache", "denied"]
@@ -375,6 +386,7 @@ class ChatService:
             policy_resolution.policy_outcome,
         )
         provider = self.provider_registry.get(route_decision.target)
+        stream_usage = _StreamUsage()
         stream, metadata = await self._prepare_stream_provider(
             provider=provider,
             request=request,
@@ -385,6 +397,7 @@ class ChatService:
             policy_resolution=policy_resolution,
             started_at=started_at,
             cache_key=cache_key,
+            stream_usage=stream_usage,
         )
 
         wrapped_stream = self._wrap_stream_with_ledger(
@@ -393,6 +406,7 @@ class ChatService:
             metadata=metadata,
             request_id=request_id,
             started_at=started_at,
+            stream_usage=stream_usage,
         )
         return StreamingCompletionEnvelope(stream=wrapped_stream, metadata=metadata)
 
@@ -573,12 +587,21 @@ class ChatService:
         request_id: str | None,
         tenant_id: str,
         cache_write: _CacheWrite | None,
+        stream_usage: _StreamUsage,
     ):
         content_parts: list[str] = []
         started_at = perf_counter()
+        finished = False
 
         try:
             async for chunk in provider.stream_complete(request):
+                if chunk.usage is not None:
+                    stream_usage.usage = chunk.usage
+
+                if finished:
+                    # Keep reading only for the usage chunk the provider sends after the finish.
+                    continue
+
                 if chunk.delta:
                     content_parts.append(chunk.delta)
                     yield self._sse(
@@ -596,6 +619,7 @@ class ChatService:
                     )
 
                 if chunk.finish_reason:
+                    finished = True
                     await self._store_in_cache(cache_write, "".join(content_parts))
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
@@ -622,20 +646,29 @@ class ChatService:
                             ],
                         )
                     )
-                    yield b"data: [DONE]\n\n"
-                    return
-        except ProviderError:
-            COMPLETION_COUNT.labels(provider.name, "error", "true").inc()
-            PROVIDER_LATENCY.labels(provider.name, "stream", "error").observe(
-                perf_counter() - started_at
-            )
-            raise
         except Exception as exc:
-            COMPLETION_COUNT.labels(provider.name, "error", "true").inc()
-            PROVIDER_LATENCY.labels(provider.name, "stream", "error").observe(
-                perf_counter() - started_at
-            )
-            raise ProviderError(f"Streaming failed for {provider.name}: {exc}") from exc
+            if finished:
+                # The answer is complete and already counted as ok: losing the connection
+                # while waiting for the usage chunk costs only the exact token counts.
+                logger.warning(
+                    "stream_failed_after_finish request_id=%s tenant_id=%s provider=%s error=%s",
+                    request_id,
+                    tenant_id,
+                    provider.name,
+                    exc,
+                )
+            else:
+                COMPLETION_COUNT.labels(provider.name, "error", "true").inc()
+                PROVIDER_LATENCY.labels(provider.name, "stream", "error").observe(
+                    perf_counter() - started_at
+                )
+                if isinstance(exc, ProviderError):
+                    raise
+                raise ProviderError(f"Streaming failed for {provider.name}: {exc}") from exc
+
+        if finished:
+            yield b"data: [DONE]\n\n"
+            return
 
         logger.warning(
             "stream_terminated_without_finish request_id=%s tenant_id=%s provider=%s",
@@ -678,6 +711,7 @@ class ChatService:
         policy_resolution: PolicyResolution,
         started_at: float,
         cache_key: _CacheKey | None,
+        stream_usage: _StreamUsage,
     ) -> tuple[AsyncIterator[bytes], CompletionMetadata]:
         route_decision = policy_resolution.route_decision
         metadata = self._metadata(
@@ -700,6 +734,7 @@ class ChatService:
                 cache_write=self._cache_write(
                     cache_key, self._served_model(request, route_decision)
                 ),
+                stream_usage=stream_usage,
             )
             return stream, metadata
         except ProviderError as exc:
@@ -741,6 +776,7 @@ class ChatService:
                     request_id=request_id,
                     tenant_id=tenant_id,
                     cache_write=self._cache_write(cache_key, fallback_model),
+                    stream_usage=stream_usage,
                 )
             except ProviderError as fallback_exc:
                 await self._fail_fallback(
@@ -765,6 +801,7 @@ class ChatService:
         request_id: str | None,
         tenant_id: str,
         cache_write: _CacheWrite | None,
+        stream_usage: _StreamUsage,
     ) -> AsyncIterator[bytes]:
         provider_stream = self._stream_provider(
             provider=provider,
@@ -774,6 +811,7 @@ class ChatService:
             request_id=request_id,
             tenant_id=tenant_id,
             cache_write=cache_write,
+            stream_usage=stream_usage,
         )
 
         try:
@@ -1337,6 +1375,7 @@ class ChatService:
         metadata: CompletionMetadata,
         request_id: str | None,
         started_at: float,
+        stream_usage: _StreamUsage | None = None,
     ) -> AsyncIterator[bytes]:
         async def iterator():
             content_parts: list[str] = []
@@ -1377,7 +1416,11 @@ class ChatService:
                     usage=(
                         None
                         if terminal_status == "provider_error"
-                        else self.policy_service.estimate_usage(request, "".join(content_parts))
+                        else self._resolved_usage(
+                            request,
+                            "".join(content_parts),
+                            stream_usage.usage if stream_usage else None,
+                        )
                     ),
                     latency_ms=(perf_counter() - started_at) * 1000,
                     terminal_status=terminal_status,

@@ -2,7 +2,16 @@ import asyncio
 
 from nebula.core.config import Settings
 from nebula.models.openai import ChatCompletionRequest
-from nebula.providers.base import CompletionChunk, CompletionProvider, CompletionResult
+from nebula.providers.base import (
+    CompletionChunk,
+    CompletionProvider,
+    CompletionResult,
+    CompletionUsage,
+)
+
+
+def _approximate_tokens(text: str) -> int:
+    return max(1, len(text) // 4)
 
 
 class MockPremiumProvider(CompletionProvider):
@@ -38,6 +47,18 @@ class MockPremiumProvider(CompletionProvider):
                 delta="",
                 model=self.settings.premium_model,
                 finish_reason="stop",
+            )
+            # Like a real provider with include_usage: the counts arrive after the finish.
+            prompt_tokens = _approximate_tokens(prompt)
+            completion_tokens = _approximate_tokens(text)
+            yield CompletionChunk(
+                delta="",
+                model=self.settings.premium_model,
+                usage=CompletionUsage(
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    total_tokens=prompt_tokens + completion_tokens,
+                ),
             )
 
         return iterator()
