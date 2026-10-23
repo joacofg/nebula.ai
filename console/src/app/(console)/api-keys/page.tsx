@@ -103,7 +103,7 @@ export default function ApiKeysPage() {
   const tenantFilter = (
     <select
       aria-label="Tenant"
-      className="h-9 min-w-52 rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
+      className="h-9 w-52 max-w-full rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
       value={selectedTenantId ?? ""}
       onChange={(event) => {
         revokeMutation.reset();
