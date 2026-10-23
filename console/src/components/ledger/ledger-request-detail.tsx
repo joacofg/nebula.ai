@@ -11,6 +11,7 @@ import {
   messageTypeLabel,
   minimizationLabel,
   NO_SCORE_LABEL,
+  policyOutcomeLabel,
   reasonLabel,
   retentionWindowLabel,
   scoreLabel,
@@ -28,10 +29,6 @@ type LedgerRequestDetailProps = {
 };
 
 type Section = { title: string; summary: string | null; items: ReadoutItem[] };
-
-function orDash(value: string | null | undefined) {
-  return value && value.length > 0 ? value : "—";
-}
 
 /** The reason of a denial in Spanish; the gateway's own sentence stays as the title when it was translated. */
 function denialReason(text: string): ReadoutItem["value"] {
@@ -55,6 +52,27 @@ function formatScore(value: unknown) {
   return numericValue.toFixed(2);
 }
 
+// The two sentences of the policy that are about spend; every other denial is about the request itself.
+const HARD_BUDGET_DENIAL = "Tenant hard budget limit reached";
+const PER_REQUEST_CAP_DENIAL = "Request exceeds the tenant premium spend guardrail.";
+
+function isBudgetDenial(text: string) {
+  return text.startsWith(HARD_BUDGET_DENIAL) || text === PER_REQUEST_CAP_DENIAL;
+}
+
+/** The `denied=` sentence of a policy outcome; null when it has none. */
+function deniedPart(policyOutcome: string) {
+  return policyOutcome.match(/(?:^|;)denied=([^;]+)/)?.[1] ?? null;
+}
+
+/** The denial on its own line, for the ones that are not about the budget (those read under Presupuesto). */
+function otherDenialItems(policyOutcome: string | null | undefined): ReadoutItem[] {
+  const denied = policyOutcome ? deniedPart(policyOutcome) : null;
+  return denied !== null && !isBudgetDenial(denied)
+    ? [{ label: "Motivo de la denegación", value: denialReason(denied) }]
+    : [];
+}
+
 function budgetSection(policyOutcome: string | null | undefined): Section | null {
   if (!policyOutcome) {
     return null;
@@ -74,11 +92,13 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
     summary = "Premium degradado a local";
     items.push({ label: "Acción", value: "Degradado a local" });
   }
-  const denied = policyOutcome.match(/(?:^|;)denied=([^;]+)/);
-  if (denied) {
-    summary = "Pedido premium denegado por presupuesto";
-    items.push({ label: "Motivo de la denegación", value: denialReason(denied[1]) });
-  } else if (policyOutcome.startsWith("Tenant hard budget limit reached; premium routing is blocked")) {
+  const denied = deniedPart(policyOutcome);
+  if (denied !== null) {
+    if (isBudgetDenial(denied)) {
+      summary = "Pedido premium denegado por presupuesto";
+      items.push({ label: "Motivo de la denegación", value: denialReason(denied) });
+    }
+  } else if (policyOutcome.startsWith(`${HARD_BUDGET_DENIAL}; premium routing is blocked`)) {
     summary = "Pedido premium denegado por presupuesto";
     items.push({ label: "Motivo de la denegación", value: denialReason(policyOutcome) });
     const spent = policyOutcome.match(/spent_usd=([^,)]+)/);
@@ -211,7 +231,8 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
               { label: "Tenant", value: <span className="font-mono text-[13px]">{entry.tenant_id}</span> },
               { label: "Tipo de mensaje", value: messageTypeLabel(entry.message_type) },
               { label: "Modelo pedido", value: <span className="font-mono text-[13px]">{entry.requested_model}</span> },
-              { label: "Política", value: <span className="font-mono text-[12px] font-normal">{orDash(entry.policy_outcome)}</span> },
+              { label: "Política", value: <span title={entry.policy_outcome ?? ""}>{policyOutcomeLabel(entry.policy_outcome)}</span> },
+              ...otherDenialItems(entry.policy_outcome),
               { label: "Retención", value: retentionWindowLabel(entry.evidence_retention_window) },
               { label: "Vence", value: entry.evidence_expires_at ? formatTimestamp(entry.evidence_expires_at) : "—" },
               { label: "Minimización", value: minimizationLabel(entry.metadata_minimization_level) },

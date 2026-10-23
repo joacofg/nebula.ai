@@ -66,8 +66,9 @@ describe("ledger-request-detail", () => {
     expect(group("Tenant")).toHaveTextContent("tenant-embeddings");
     expect(group("Tipo de mensaje")).toHaveTextContent("Embeddings");
     expect(group("Modelo pedido")).toHaveTextContent("text-embedding-3-small");
-    // The gateway's own policy string is evidence and stays as written.
-    expect(group("Política")).toHaveTextContent("allowed");
+    // The policy outcome reads as the routing mode it applied; the gateway's own string stays one hover away.
+    expect(group("Política")).toHaveTextContent("Automático");
+    expect(within(group("Política")).getByText("Automático")).toHaveAttribute("title", "allowed");
     expect(group("Retención")).toHaveTextContent("30 días");
     expect(group("Minimización")).toHaveTextContent("estricta");
     expect(group("Campos suprimidos")).toHaveTextContent("ninguno");
@@ -353,6 +354,88 @@ describe("ledger-request-detail", () => {
     expect(reason).toHaveTextContent(spanish);
     // The gateway's own sentence stays one hover away, for whoever has to search the logs for it.
     expect(within(reason).getByText(spanish)).toHaveAttribute("title", english);
+  });
+
+  it.each([
+    [
+      "routing_mode=premium_only;denied=Tenant policy requires premium-only routing.;outcome_evidence=thin(eligible=0,sufficient=0)",
+      "Solo premium, denegado",
+    ],
+    ["routing_mode=local_only;denied=Tenant policy restricts this request to local routing only.", "Solo local, denegado"],
+    ["routing_mode=local_only", "Solo local"],
+    ["denied=Premium model 'openai/gpt-4o' is not allowed for this tenant.", "Automático, denegado"],
+    ["soft_budget=exceeded;outcome_evidence=sufficient(eligible=7,sufficient=7)", "Automático"],
+  ])("words the policy outcome %j as the mode it applied, not as the raw composite", (outcome, label) => {
+    renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, policy_outcome: outcome }} />);
+
+    const policy = group("Política");
+    expect(policy).toHaveTextContent(label);
+    expect(policy).not.toHaveTextContent("routing_mode");
+    expect(policy).not.toHaveTextContent("outcome_evidence");
+    expect(within(policy).getByText(label)).toHaveAttribute("title", outcome);
+  });
+
+  it.each([
+    ["the hard budget", "Tenant hard budget limit reached"],
+    ["the per-request cap", "Request exceeds the tenant premium spend guardrail."],
+  ])("files a denial by %s under Presupuesto, with its reason once", (_kind, sentence) => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "denied",
+          terminal_status: "policy_denied",
+          policy_outcome: `routing_mode=auto;denied=${sentence};outcome_evidence=thin(eligible=0,sufficient=0)`,
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Presupuesto" })).toBeInTheDocument();
+    expect(screen.getByText("Pedido premium denegado por presupuesto")).toBeInTheDocument();
+    expect(screen.getAllByRole("group", { name: "Motivo de la denegación" })).toHaveLength(1);
+  });
+
+  it.each([
+    ["a model that is not allowed", "Premium model 'openai/gpt-4o' is not allowed for this tenant."],
+    ["premium-only routing", "Tenant policy requires premium-only routing."],
+    ["explicit premium routing under local-only", "Tenant policy does not allow explicit premium routing."],
+    ["local-only routing", "Tenant policy restricts this request to local routing only."],
+    ["a reason it does not know", "Something new was denied."],
+  ])("does not call a denial for %s a budget denial, and shows its reason on its own line", (_kind, sentence) => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "denied",
+          terminal_status: "policy_denied",
+          policy_outcome: `routing_mode=auto;denied=${sentence};outcome_evidence=thin(eligible=0,sufficient=0)`,
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("heading", { name: "Presupuesto" })).not.toBeInTheDocument();
+    expect(screen.queryByText(/denegado por presupuesto/)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("group", { name: "Motivo de la denegación" })).toHaveLength(1);
+  });
+
+  it("keeps the exceeded hard budget under Presupuesto without blaming it for a denial it did not cause", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "denied",
+          terminal_status: "policy_denied",
+          policy_outcome:
+            "hard_budget=exceeded(limit_usd=0.05,spent_usd=0.1,enforcement=deny);denied=Premium model 'openai/gpt-4o' is not allowed for this tenant.",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("heading", { name: "Presupuesto" })).toBeInTheDocument();
+    expect(screen.getByText("Presupuesto duro alcanzado")).toBeInTheDocument();
+    expect(screen.queryByText("Pedido premium denegado por presupuesto")).not.toBeInTheDocument();
+    expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
+    expect(group("Motivo de la denegación")).toHaveTextContent("Modelo premium 'openai/gpt-4o' no permitido para este tenant");
   });
 
   it("keeps a denial it does not know as the gateway wrote it", () => {
