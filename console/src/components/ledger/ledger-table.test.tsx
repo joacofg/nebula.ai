@@ -22,7 +22,7 @@ const baseRow: UsageLedgerRecord = {
   latency_ms: 180,
   timestamp: "2026-03-16T22:00:00Z",
   terminal_status: "completed",
-  route_reason: "embeddings_request",
+  route_reason: "embeddings_direct",
   policy_outcome: "allowed",
   route_signals: null,
   message_type: "chat",

@@ -210,6 +210,27 @@ describe("PlaygroundDecision", () => {
     ).toBeInTheDocument();
   });
 
+  it("adds no tier note when the fallback served the tier the router had chosen", () => {
+    // The router picked local (p 0.8 >= tau 0.76) and the row reports local as the served tier.
+    render(
+      <PlaygroundDecision
+        entry={entry({
+          route_reason: "local_provider_error_fallback",
+          fallback_used: true,
+          route_signals: { ...entry().route_signals, tier: "local", p_local: 0.8 },
+        })}
+        routeTier="local"
+      />,
+    );
+
+    expect(screen.queryByText(/Se sirvió con/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/había elegido/)).not.toBeInTheDocument();
+    // The generic paragraph about the failed local model still shows.
+    expect(
+      screen.getByText("Falló el modelo local y se sirvió con el proveedor premium (fallback)."),
+    ).toBeInTheDocument();
+  });
+
   it("keeps the badge and adds no fallback note on a learned row that was not a fallback", () => {
     render(
       <PlaygroundDecision
