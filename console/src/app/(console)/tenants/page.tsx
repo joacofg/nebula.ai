@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type MouseEvent, type ReactNode } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus, Search } from "lucide-react";
@@ -36,6 +36,10 @@ export default function TenantsPage() {
   const [drawerChoice, setDrawerChoice] = useState<DrawerState | null>(null);
   const [createRequests, setCreateRequests] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  // Where focus goes when the drawer closes: the Crear tenant that opened it, else the selected row.
+  const headerCreateRef = useRef<HTMLButtonElement>(null);
+  const createOpenerRef = useRef<HTMLElement | null>(null);
+  const selectedRowRef = useRef<HTMLTableRowElement>(null);
 
   const tenantsQuery = useQuery({
     queryKey: queryKeys.tenants,
@@ -52,13 +56,15 @@ export default function TenantsPage() {
       ? (tenantsQuery.data ?? []).find((tenant) => tenant.id === drawerState.tenantId) ?? null
       : null;
 
-  function openCreate() {
+  function openCreate(event: MouseEvent<HTMLButtonElement>) {
+    createOpenerRef.current = event.currentTarget;
     setNotice(null);
     setDrawerChoice({ mode: "create" });
     setCreateRequests((count) => count + 1);
   }
 
   function openTenant(tenant: TenantRecord) {
+    createOpenerRef.current = null;
     setNotice(null);
     setSelectedTenantId(tenant.id);
     setDrawerChoice({ mode: "edit", tenantId: tenant.id });
@@ -110,6 +116,10 @@ export default function TenantsPage() {
   const activeCount = (tenantsQuery.data ?? []).filter((tenant) => tenant.active).length;
 
   const closeDrawer = () => {
+    // The drawer takes its Cerrar button with it: give focus back before it goes.
+    const opener = createOpenerRef.current?.isConnected ? createOpenerRef.current : headerCreateRef.current;
+    (drawerState.mode === "create" ? opener : selectedRowRef.current)?.focus();
+    createOpenerRef.current = null;
     setNotice(null);
     setDrawerChoice({ mode: "closed" });
   };
@@ -148,7 +158,7 @@ export default function TenantsPage() {
         title="Tenants"
         cells={[{ label: "Estado", value: tenantsQuery.data ? `${activeCount} activos` : "—" }]}
         actions={
-          <Button type="button" onClick={openCreate}>
+          <Button ref={headerCreateRef} type="button" onClick={openCreate}>
             <Plus aria-hidden className="size-4" />
             Crear tenant
           </Button>
@@ -201,6 +211,7 @@ export default function TenantsPage() {
             <TenantTable
               tenants={filteredTenants}
               selectedTenantId={selectedTenantId}
+              selectedRowRef={selectedRowRef}
               onSelectTenant={openTenant}
             />
           )}

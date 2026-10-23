@@ -152,6 +152,62 @@ describe("tenants page", () => {
     expect(screen.getByLabelText("Id")).toHaveFocus();
   });
 
+  it("returns focus to Crear tenant when the drawer it opened is closed from the keyboard", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+    const create = screen.getByRole("button", { name: "Crear tenant" });
+
+    create.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByLabelText("Id")).toHaveFocus();
+    await user.tab({ shift: true });
+    expect(screen.getByRole("button", { name: "Cerrar" })).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByLabelText("Id")).not.toBeInTheDocument();
+    expect(create).toHaveFocus();
+  });
+
+  it("returns focus to the selected row when the drawer that edits it is closed from the keyboard", async () => {
+    const user = userEvent.setup();
+    mockedListTenants.mockResolvedValue([TENANT_A, TENANT_B]);
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    // The drawer is open on the first tenant from the start: Cerrar hands focus to its row.
+    screen.getByRole("button", { name: "Cerrar" }).focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByRole("row", { name: /Tenant A/ })).toHaveFocus();
+
+    // Opened from a row with Enter, it goes back to that row.
+    screen.getByRole("row", { name: /Tenant B/ }).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("heading", { name: "Editar Tenant B" })).toBeInTheDocument();
+    screen.getByRole("button", { name: "Cerrar" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByRole("heading", { name: /Editar/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Tenant B/ })).toHaveFocus();
+  });
+
+  it("returns focus to the Crear tenant that was pressed, the one in the empty state or the header's", async () => {
+    const user = userEvent.setup();
+    mockedListTenants.mockResolvedValue([]);
+    renderWithProviders(<TenantsPage />);
+    await screen.findByText("Todavía no hay tenants.");
+
+    // The drawer was never opened by a control here: focus goes to the page's own Crear tenant.
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    const [header, empty] = screen.getAllByRole("button", { name: "Crear tenant" });
+    expect(header).toHaveFocus();
+
+    empty.focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    expect(empty).toHaveFocus();
+  });
+
   it("confirms the new tenant and opens it for editing", async () => {
     const user = userEvent.setup();
     vi.mocked(createTenant).mockImplementation(async () => {
