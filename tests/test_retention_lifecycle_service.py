@@ -249,7 +249,10 @@ async def test_retention_sweep_continues_after_one_tenant_fails(
 
     assert result["status"] == "ok"
     assert answer is None
-    assert [r.tenant_id for r in caplog.records if hasattr(r, "tenant_id")] == ["default"]
+    # The JSON formatter drops `extra`, so the tenant id has to be in the rendered message.
+    failures = [r.getMessage() for r in caplog.records if "retention_sweep_failed" in r.getMessage()]
+    assert len(failures) == 1
+    assert "tenant_id=default" in failures[0]
 
 
 @pytest.mark.asyncio

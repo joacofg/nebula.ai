@@ -185,7 +185,7 @@ class RetentionLifecycleService:
                 cutoff = int(now.timestamp()) - policy.semantic_cache_max_entry_age_hours * 3600
                 await self._semantic_cache.delete_expired(tenant_id=tenant.id, created_before=cutoff)
             except Exception:  # noqa: BLE001
-                logger.exception("retention sweep failed", extra={"tenant_id": tenant.id})
+                logger.exception("retention_sweep_failed tenant_id=%s", tenant.id)
 
     @staticmethod
     def _normalize(value: datetime) -> datetime:
