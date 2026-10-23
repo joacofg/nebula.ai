@@ -23,7 +23,8 @@ type Shown = { ready: boolean; target: number };
  * instead of showing a placeholder), and when the operator switches to a tenant whose policy is
  * not cached the target holds its last value rather than passing through 0.95. A pick made on the
  * slider belongs to the tenant it was made for: switching tenant re-opens at that tenant's target.
- * While a save is in flight the target and the tenant are locked, so the confirmation that comes
+ * Until that policy arrives the held `target` is the previous tenant's, so `settling` is true and
+ * the page must not let it be applied or moved. While a save is in flight the target and the tenant are locked, so the confirmation that comes
  * back always describes what is on screen.
  */
 export function useTenantTarget(adminKey: string) {
@@ -69,6 +70,8 @@ export function useTenantTarget(adminKey: string) {
   return {
     /** The tenant list and the selected tenant's policy have each arrived or failed (once is enough). */
     ready: settled || shown.ready,
+    /** The selected tenant's policy is still arriving: `target` may be held over from the last tenant. */
+    settling: !settled,
     tenants: tenantsQuery.data,
     tenantsError: tenantsQuery.isError ? tenantsQuery.error : null,
     policyError: policyQuery.isError ? policyQuery.error : null,

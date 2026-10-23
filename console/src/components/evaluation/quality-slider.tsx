@@ -3,7 +3,7 @@ import { TARGET_MAX, TARGET_MIN, TARGET_STEP, formatTarget, snapTarget } from "@
 type QualitySliderProps = {
   value: number;
   onChange: (value: number) => void;
-  /** Locked while a save is in flight, so its confirmation describes the value on screen. */
+  /** Locked while a save is in flight or the tenant's target is loading: what is on screen must be what gets written. */
   disabled?: boolean;
 };
 

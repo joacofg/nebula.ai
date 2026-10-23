@@ -322,6 +322,35 @@ describe("evaluation page", () => {
     expect(screen.getByText("Objetivo actual 0.85")).toBeInTheDocument();
   });
 
+  it("locks Aplicar and the slider while the next tenant's policy loads, so the held value is never written to it", async () => {
+    const user = userEvent.setup();
+    adminApi.listTenants.mockResolvedValue([...tenants, acme]);
+    const pendingAcme = deferred<TenantPolicy>();
+    adminApi.getTenantPolicy.mockImplementation((_key: string, id: string) =>
+      id === "acme" ? pendingAcme.promise : Promise.resolve({ ...policy, routing_quality_target: 0.9 }),
+    );
+    adminApi.updateTenantPolicy.mockImplementation(async (_key: string, _id: string, body: TenantPolicy) => body);
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
+    await screen.findByRole("option", { name: "Acme Robotics" });
+    expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeEnabled();
+    await user.selectOptions(screen.getByRole("combobox", { name: "Tenant" }), "acme");
+
+    expect(await screen.findByText("Objetivo actual —")).toBeInTheDocument();
+    expect(slider).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeDisabled();
+    await user.click(screen.getByRole("button", { name: "Aplicar al tenant" }));
+    expect(adminApi.updateTenantPolicy).not.toHaveBeenCalled();
+
+    await act(async () => pendingAcme.resolve({ ...policy, routing_quality_target: 0.85 }));
+
+    await waitFor(() => expect(slider).toHaveValue("0.85"));
+    expect(slider).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeEnabled();
+    expect(screen.getByRole("combobox", { name: "Tenant" })).toBeEnabled();
+  });
+
   it("locks the slider and the tenant while a save is in flight and keeps its confirmation", async () => {
     const user = userEvent.setup();
     adminApi.listTenants.mockResolvedValue([...tenants, acme]);

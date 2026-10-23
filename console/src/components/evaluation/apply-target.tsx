@@ -22,6 +22,7 @@ export function ApplyTarget({ tenantTarget }: ApplyTargetProps) {
     currentTarget,
     target,
     saving,
+    settling,
     apply,
   } = tenantTarget;
   const tenantId = selectedTenantId ?? "";
@@ -56,7 +57,7 @@ export function ApplyTarget({ tenantTarget }: ApplyTargetProps) {
         </div>
         <Button
           type="button"
-          disabled={!tenantId || saving}
+          disabled={!tenantId || saving || settling}
           onClick={() => apply.mutate({ id: tenantId, value: target })}
         >
           {saving ? "Guardando…" : "Aplicar al tenant"}

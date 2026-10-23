@@ -62,14 +62,14 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
-function setup() {
+function setup(adminKey = "nebula-admin-key") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <SelectedTenantProvider>{children}</SelectedTenantProvider>
     </QueryClientProvider>
   );
-  return { queryClient, ...renderHook(() => useTenantTarget("nebula-admin-key"), { wrapper }) };
+  return { queryClient, ...renderHook(() => useTenantTarget(adminKey), { wrapper }) };
 }
 
 describe("useTenantTarget", () => {
@@ -136,6 +136,87 @@ describe("useTenantTarget", () => {
 
     await act(async () => pendingB.resolve(policy(0.85)));
     await waitFor(() => expect(result.current.target).toBe(0.85));
+  });
+
+  it("settles while the next tenant's policy is pending, so a held target is not the new tenant's", async () => {
+    const pendingB = deferred<TenantPolicy>();
+    adminApi.getTenantPolicy.mockImplementation((_key: string, id: string) =>
+      id === "a" ? Promise.resolve(policy(0.9)) : pendingB.promise,
+    );
+    const { result } = setup();
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect(result.current.settling).toBe(false);
+
+    act(() => result.current.setTenantId("b"));
+    expect(result.current.ready).toBe(true);
+    expect(result.current.target).toBe(0.9);
+    expect(result.current.settling).toBe(true);
+
+    await act(async () => pendingB.resolve(policy(0.85)));
+    await waitFor(() => expect(result.current.settling).toBe(false));
+    expect(result.current.target).toBe(0.85);
+  });
+
+  it("does not settle for a tenant whose policy is already cached", async () => {
+    const { result } = setup();
+    await waitFor(() => expect(result.current.target).toBe(0.9));
+    act(() => result.current.setTenantId("b"));
+    await waitFor(() => expect(result.current.target).toBe(0.85));
+
+    act(() => result.current.setTenantId("a"));
+
+    expect(result.current.settling).toBe(false);
+    expect(result.current.target).toBe(0.9);
+  });
+
+  it("is not settling once the policy failed: the target is the 0.95 fallback, not a held value", async () => {
+    adminApi.getTenantPolicy.mockRejectedValue(new AdminApiError(503, "unreachable"));
+    const { result } = setup();
+
+    await waitFor(() => expect(result.current.policyError).toBeInstanceOf(AdminApiError));
+    expect(result.current.settling).toBe(false);
+  });
+
+  it("is ready and settled with no admin key, and asks for nothing", async () => {
+    const { result } = setup("");
+
+    expect(result.current.ready).toBe(true);
+    expect(result.current.settling).toBe(false);
+    expect(result.current.target).toBe(0.95);
+    expect(adminApi.listTenants).not.toHaveBeenCalled();
+    expect(adminApi.getTenantPolicy).not.toHaveBeenCalled();
+  });
+
+  it("drops the policy error when the policy later loads", async () => {
+    adminApi.getTenantPolicy.mockRejectedValue(new AdminApiError(503, "unreachable"));
+    const { result, queryClient } = setup();
+    await waitFor(() => expect(result.current.policyError).toBeInstanceOf(AdminApiError));
+
+    adminApi.getTenantPolicy.mockResolvedValue(policy(0.9));
+    await act(async () => {
+      await queryClient.invalidateQueries();
+    });
+
+    await waitFor(() => expect(result.current.policyError).toBeNull());
+    expect(result.current.currentTarget).toBe(0.9);
+    expect(result.current.target).toBe(0.9);
+  });
+
+  it("drops the policy error when the tenant changes", async () => {
+    adminApi.getTenantPolicy.mockImplementation(async (_key: string, id: string) => {
+      if (id === "a") {
+        throw new AdminApiError(503, "unreachable");
+      }
+      return policy(0.85);
+    });
+    const { result } = setup();
+    await waitFor(() => expect(result.current.policyError).toBeInstanceOf(AdminApiError));
+
+    act(() => result.current.setTenantId("b"));
+
+    expect(result.current.policyError).toBeNull();
+    await waitFor(() => expect(result.current.target).toBe(0.85));
+    expect(result.current.policyError).toBeNull();
   });
 
   it("re-opens at a tenant's own target when coming back to it: A, B, A", async () => {

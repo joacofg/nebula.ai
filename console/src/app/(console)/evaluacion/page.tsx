@@ -107,7 +107,7 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
 }
 
 function EvaluationBody({ replay, tenantTarget }: { replay: RouterReplay; tenantTarget: TenantTarget }) {
-  const { target, setTarget, saving } = tenantTarget;
+  const { target, setTarget, saving, settling } = tenantTarget;
   const [initialPlaying] = useState(() => !prefersReducedMotion());
 
   const front = useMemo(() => paretoFront(replay.operating_points), [replay]);
@@ -146,7 +146,7 @@ function EvaluationBody({ replay, tenantTarget }: { replay: RouterReplay; tenant
           </Figure>
         </div>
         <div className="flex flex-col gap-5 border-t border-line p-5 xl:border-t-0">
-          <QualitySlider value={target} onChange={setTarget} disabled={saving} />
+          <QualitySlider value={target} onChange={setTarget} disabled={saving || settling} />
           <Readout
             items={[
               { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier), emphasis: true },
