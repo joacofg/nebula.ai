@@ -579,7 +579,7 @@ describe("policy-form", () => {
     expect(notes.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos.")).toBeInTheDocument();
     expect(
       notes.getByText(
-        "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+        "Los pedidos sin probabilidades guardadas del router cargado usan la heurística.",
       ),
     ).toBeInTheDocument();
     expect(notes.queryByText(/Replay uses/)).not.toBeInTheDocument();

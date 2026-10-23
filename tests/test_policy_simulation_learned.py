@@ -534,6 +534,34 @@ async def test_rows_the_policy_decided_count_as_policy_not_heuristic(
     assert "heuristic_fallback_rows" not in response.approximation_note_codes
 
 
+@pytest.mark.parametrize(
+    ("candidate", "requested_model"),
+    [
+        # An explicit local model under premium-only routing, and an explicit premium model
+        # under local-only routing, are denied by the candidate policy.
+        (TenantPolicy(routing_mode_default="premium_only"), LOCAL_MODEL),
+        (TenantPolicy(routing_mode_default="local_only"), FRONTIER_MODEL),
+    ],
+)
+async def test_an_explicit_model_row_the_policy_denies_still_counts_as_policy(
+    candidate: TenantPolicy, requested_model: str
+) -> None:
+    row = _row(
+        "req-explicit",
+        route_signals=None,
+        requested_model=requested_model,
+        estimated_cost=0.05,
+    )
+
+    response = await _simulate([row], candidate)
+
+    summary = response.summary
+    assert (summary.policy_rows, summary.heuristic_rows, summary.learned_router_rows) == (1, 0, 0)
+    [changed] = response.changed_requests
+    assert changed.simulated_route_target == "denied"
+    assert changed.decision_source == "policy"
+
+
 async def test_policy_rows_add_up_with_the_other_sources() -> None:
     keyword_signals = {**_heuristic_signals(), "keyword_match": True}
     rows = [

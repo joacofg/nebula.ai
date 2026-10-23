@@ -419,7 +419,7 @@ describe("approximationNoteLabel", () => {
     ["ledger_metadata_replay", "Se usan los metadatos guardados en el ledger, no el texto de los pedidos."],
     ["token_count_approximation", "Sin señales completas, la complejidad se aproxima con los tokens guardados."],
     ["pricing_estimate", "El costo usa los precios actuales; no se llama a ningún proveedor."],
-    ["heuristic_fallback_rows", "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística."],
+    ["heuristic_fallback_rows", "Los pedidos sin probabilidades guardadas del router cargado usan la heurística."],
     ["cache_rows_held", "Los pedidos que respondió la caché siguen en caché: se asume que la respuesta guardada sirve al nivel que elegiría el borrador."],
   ])("words %s in Spanish", (code, label) => {
     expect(approximationNoteLabel(code, "English text from the API")).toBe(label);

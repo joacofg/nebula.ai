@@ -53,9 +53,8 @@ APPROXIMATION_NOTES = (
 )
 HEURISTIC_FALLBACK_NOTE = (
     "heuristic_fallback_rows",
-    "Rows without stored learned-router probabilities for the loaded artifact, or that the "
-    "candidate policy keeps off the learned router, are replayed with the token-complexity "
-    "heuristic.",
+    "Rows without stored learned-router probabilities for the loaded artifact are replayed with "
+    "the token-complexity heuristic.",
 )
 CACHE_ROWS_HELD_NOTE = (
     "cache_rows_held",
