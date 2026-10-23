@@ -470,24 +470,6 @@ def _strict_row(request_id: str, **overrides) -> UsageLedgerRecord:
             id="strict-minimization",
         ),
         pytest.param(
-            _row(
-                "req-explicit",
-                route_signals=_learned_signals(0.62, 0.91),
-                requested_model=FRONTIER_MODEL,
-            ),
-            TenantPolicy(),
-            MODEL,
-            "explicit_premium_model",
-            id="explicit-model",
-        ),
-        pytest.param(
-            _row("req-learned", route_signals=_learned_signals(0.62, 0.91)),
-            TenantPolicy(calibrated_routing_enabled=False),
-            MODEL,
-            "calibrated_routing_disabled",
-            id="candidate-turns-routing-off",
-        ),
-        pytest.param(
             _row("req-learned", route_signals=_learned_signals(0.62, 0.91)),
             TenantPolicy(),
             None,
@@ -514,6 +496,92 @@ async def test_rows_without_learned_signals_use_the_heuristic(
     assert changed.simulated_route_reason == expected_reason
     assert "heuristic_fallback_rows" in response.approximation_note_codes
     assert len(response.approximation_note_codes) == len(response.approximation_notes)
+
+
+@pytest.mark.parametrize(
+    ("candidate", "requested_model", "expected_reason"),
+    [
+        (TenantPolicy(routing_mode_default="local_only"), "nebula-auto", "policy_local_only"),
+        (TenantPolicy(routing_mode_default="premium_only"), "nebula-auto", "policy_premium_only"),
+        (TenantPolicy(calibrated_routing_enabled=False), "nebula-auto", "calibrated_routing_disabled"),
+        (TenantPolicy(), FRONTIER_MODEL, "explicit_premium_model"),
+        (TenantPolicy(), LOCAL_MODEL, "explicit_local_model"),
+    ],
+)
+async def test_rows_the_policy_decided_count_as_policy_not_heuristic(
+    candidate: TenantPolicy, requested_model: str, expected_reason: str
+) -> None:
+    # Learned rows too: a candidate that bypasses the router decides them itself.
+    rows = [
+        _row(
+            f"req-{seconds}",
+            seconds=seconds,
+            route_signals=_learned_signals(0.62, 0.91),
+            requested_model=requested_model,
+            estimated_cost=0.05,
+        )
+        for seconds in range(3)
+    ]
+
+    response = await _simulate(rows, candidate)
+
+    summary = response.summary
+    assert (summary.policy_rows, summary.heuristic_rows, summary.learned_router_rows) == (3, 0, 0)
+    assert summary.evaluated_rows == 3
+    assert {item.decision_source for item in response.changed_requests} == {"policy"}
+    assert {item.simulated_route_reason for item in response.changed_requests} == {expected_reason}
+    # The heuristic fallback note is about rows the heuristic decided; none was.
+    assert "heuristic_fallback_rows" not in response.approximation_note_codes
+
+
+async def test_policy_rows_add_up_with_the_other_sources() -> None:
+    keyword_signals = {**_heuristic_signals(), "keyword_match": True}
+    rows = [
+        _row("req-learned", seconds=0, route_signals=_learned_signals(0.62, 0.91)),
+        _row(
+            "req-heuristic",
+            seconds=1,
+            route_signals=keyword_signals,
+            final_route_target="local",
+            response_model=LOCAL_MODEL,
+            route_reason="token_complexity",
+        ),
+        _row(
+            "req-explicit",
+            seconds=2,
+            route_signals=None,
+            requested_model=FRONTIER_MODEL,
+            route_reason="explicit_premium_model",
+        ),
+        _row(
+            "req-cache",
+            seconds=3,
+            route_signals=_learned_signals(0.8, 0.95, tier="local"),
+            final_route_target="cache",
+        ),
+    ]
+
+    response = await _simulate(rows, TenantPolicy(routing_quality_target=0.9))
+
+    summary = response.summary
+    sources = {item.request_id: item.decision_source for item in response.changed_requests}
+    assert sources.get("req-learned") == "learned_router"
+    assert sources.get("req-heuristic") == "heuristic"
+    assert summary.evaluated_rows == 4
+    assert (
+        summary.learned_router_rows,
+        summary.heuristic_rows,
+        summary.policy_rows,
+        summary.cache_rows,
+    ) == (1, 1, 1, 1)
+    assert (
+        summary.learned_router_rows
+        + summary.heuristic_rows
+        + summary.policy_rows
+        + summary.cache_rows
+        == summary.evaluated_rows
+    )
+    assert "heuristic_fallback_rows" in response.approximation_note_codes
 
 
 def _cache_row(request_id: str, *, seconds: int = 0) -> UsageLedgerRecord:
@@ -742,14 +810,14 @@ HARD_BUDGET = {"hard_budget_limit_usd": 1.0}
             {"routing_mode_default": "premium_only"},
             0.0,
             ("premium", "policy_premium_only", "frontier"),
-            "heuristic",
+            "policy",
             id="premium-only",
         ),
         pytest.param(
             {"routing_mode_default": "local_only"},
             0.0,
             ("local", "policy_local_only", "local"),
-            "heuristic",
+            "policy",
             id="local-only",
         ),
         pytest.param(

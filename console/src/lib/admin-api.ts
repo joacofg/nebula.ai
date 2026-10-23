@@ -99,8 +99,11 @@ export type PolicySimulationWindow = {
 /** Rows per tier; every key is present. */
 export type TierCounts = Record<Tier, number>;
 
-/** How the simulation re-decided a row: the learned router from its stored probabilities, or the heuristic. */
-export type SimulationDecisionSource = "learned_router" | "heuristic";
+/**
+ * How the simulation re-decided a row: the learned router from its stored probabilities, the
+ * heuristic, or the policy itself (an explicit model, a pinned routing mode, calibrated routing off).
+ */
+export type SimulationDecisionSource = "learned_router" | "heuristic" | "policy";
 
 export type PolicySimulationOutcomeCounts = {
   evaluated_rows: number;
@@ -115,9 +118,11 @@ export type PolicySimulationOutcomeCounts = {
    */
   baseline_tier_counts?: TierCounts;
   simulated_tier_counts?: TierCounts;
-  /** With `cache_rows`, add up to `evaluated_rows`; absent from older gateways. */
+  /** With `policy_rows` and `cache_rows`, add up to `evaluated_rows`; absent from older gateways. */
   learned_router_rows?: number;
   heuristic_rows?: number;
+  /** Rows no router decided: the policy did. Absent from gateways that predate the count. */
+  policy_rows?: number;
   /** Cache hits the draft keeps as cache hits (neither router re-decides them); absent from older gateways. */
   cache_rows?: number;
 };

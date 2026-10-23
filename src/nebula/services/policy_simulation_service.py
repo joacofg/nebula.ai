@@ -24,6 +24,18 @@ from nebula.services.router_service import ReplayRouteContext, RouteDecision, Ro
 
 TIERS = ("local", "economy", "frontier")
 
+# Route reasons of a decision no router made: the request named a model, the candidate pins the
+# routing mode, or calibrated routing is off. Such a row is the policy's, not the heuristic's.
+POLICY_DECIDED_REASONS = frozenset(
+    {
+        "explicit_local_model",
+        "explicit_premium_model",
+        "policy_local_only",
+        "policy_premium_only",
+        "calibrated_routing_disabled",
+    }
+)
+
 # (code, text): clients word the notes by code; the text stays for API clients that show it.
 APPROXIMATION_NOTES = (
     (
@@ -135,6 +147,7 @@ class PolicySimulationService:
         decision_source_counts: dict[SimulationDecisionSource, int] = {
             "learned_router": 0,
             "heuristic": 0,
+            "policy": 0,
         }
         cache_rows = 0
 
@@ -183,6 +196,8 @@ class PolicySimulationService:
                     evidence_summary_override=calibration_summary,
                     tenant_spend_total=spend_before,
                 )
+                if evaluation.route_decision.reason in POLICY_DECIDED_REASONS:
+                    decision_source = "policy"
             decision_source_counts[decision_source] += 1
 
             simulated_target = self._simulation_target(evaluation)
@@ -261,6 +276,7 @@ class PolicySimulationService:
                 simulated_tier_counts=simulated_tier_counts,
                 learned_router_rows=decision_source_counts["learned_router"],
                 heuristic_rows=decision_source_counts["heuristic"],
+                policy_rows=decision_source_counts["policy"],
                 cache_rows=cache_rows,
             ),
             calibration_summary=calibration_summary,

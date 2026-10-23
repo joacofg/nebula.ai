@@ -828,6 +828,7 @@ function DecisionSources({ summary }: { summary: PolicySimulationOutcomeCounts }
   return (
     <p className="m-0 text-[13px] text-ink-3">
       {`${learnedRows} con el router aprendido · ${heuristicRows} con la heurística`}
+      {summary.policy_rows ? ` · ${summary.policy_rows} por la política` : ""}
       {summary.cache_rows ? ` · ${summary.cache_rows} siguen en caché` : ""}
     </p>
   );
