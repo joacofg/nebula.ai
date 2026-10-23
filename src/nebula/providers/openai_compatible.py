@@ -131,8 +131,12 @@ class OpenAICompatibleProvider(CompletionProvider):
         if not usage:
             return None
 
-        return CompletionUsage(
+        extracted = CompletionUsage(
             prompt_tokens=usage.get("prompt_tokens", 0),
             completion_tokens=usage.get("completion_tokens", 0),
             total_tokens=usage.get("total_tokens", 0),
         )
+        # Some routes send zeros when they do not count; pricing that would record a free answer.
+        if not (extracted.total_tokens or extracted.prompt_tokens or extracted.completion_tokens):
+            return None
+        return extracted

@@ -594,12 +594,17 @@ class ChatService:
         finished = False
 
         try:
-            async for chunk in provider.stream_complete(request):
+            provider_chunks = provider.stream_complete(request)
+            async for chunk in provider_chunks:
                 if chunk.usage is not None:
                     stream_usage.usage = chunk.usage
 
                 if finished:
-                    # Keep reading only for the usage chunk the provider sends after the finish.
+                    # Keep reading only for the usage chunk the provider sends after the
+                    # finish, and stop at it: an upstream that holds the connection open
+                    # must not delay [DONE] or the ledger row.
+                    if stream_usage.usage is not None:
+                        break
                     continue
 
                 if chunk.delta:
@@ -619,7 +624,6 @@ class ChatService:
                     )
 
                 if chunk.finish_reason:
-                    finished = True
                     await self._store_in_cache(cache_write, "".join(content_parts))
                     COMPLETION_COUNT.labels(provider.name, "ok", "true").inc()
                     PROVIDER_LATENCY.labels(provider.name, "stream", "ok").observe(
@@ -646,6 +650,16 @@ class ChatService:
                             ],
                         )
                     )
+                    # Only now is a failure the provider's, not ours: the store and metrics
+                    # above must still fail the stream as they did before the usage chunk.
+                    finished = True
+                    if stream_usage.usage is not None:
+                        break
+            if finished:
+                # Release the upstream connection when we stopped before its iterator ended.
+                aclose = getattr(provider_chunks, "aclose", None)
+                if aclose is not None:
+                    await aclose()
         except Exception as exc:
             if finished:
                 # The answer is complete and already counted as ok: losing the connection
@@ -767,6 +781,8 @@ class ChatService:
                 fallback_used=True,
                 policy_resolution=policy_resolution,
             )
+            # The failed attempt may have reported usage before it died; it is not this stream's.
+            stream_usage.usage = None
             try:
                 fallback_stream = await self._prefetched_stream(
                     provider=fallback_provider,

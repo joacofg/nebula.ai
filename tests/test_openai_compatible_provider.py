@@ -324,6 +324,68 @@ async def test_stream_parses_usage_on_finish_chunk() -> None:
     await provider.close()
 
 
+@pytest.mark.asyncio
+async def test_stream_chunk_with_empty_choices_and_no_usage_yields_nothing() -> None:
+    sse_body = (
+        b'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[],"usage":null}\n\n'
+        b'data: {"choices":[]}\n\n'
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, sse_body, headers={"content-type": "text/event-stream"})
+
+    provider = _provider_with_handler(handler)
+
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert [(chunk.delta, chunk.finish_reason) for chunk in chunks] == [("hi", None), ("", "stop")]
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_stream_all_zero_usage_is_not_usage() -> None:
+    sse_body = (
+        b'data: {"choices":[{"delta":{"content":"hi"},"finish_reason":null}]}\n\n'
+        b'data: {"choices":[{"delta":{},"finish_reason":"stop"}]}\n\n'
+        b'data: {"choices":[],"usage":{"prompt_tokens":0,"completion_tokens":0,'
+        b'"total_tokens":0}}\n\n'
+        b"data: [DONE]\n\n"
+    )
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, sse_body, headers={"content-type": "text/event-stream"})
+
+    provider = _provider_with_handler(handler)
+
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert [chunk.delta for chunk in chunks] == ["hi", ""]
+    assert all(chunk.usage is None for chunk in chunks)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+async def test_complete_all_zero_usage_is_not_usage() -> None:
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "choices": [{"message": {"content": "ok"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+            },
+        )
+
+    provider = _provider_with_handler(handler)
+
+    result = await provider.complete(_hello_request())
+
+    assert result.usage is None
+    await provider.close()
+
+
 def test_payload_does_not_forward_n() -> None:
     provider = _provider_with_handler(lambda request: None)
 
