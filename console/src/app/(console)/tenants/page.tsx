@@ -26,6 +26,7 @@ import { TenantTable } from "@/components/tenants/tenant-table";
 type DrawerState = { mode: "create" } | { mode: "edit"; tenantId: string } | { mode: "closed" };
 
 const TENANT_CREATED = "Tenant creado.";
+const TENANT_SAVED = "Tenant guardado.";
 
 export default function TenantsPage() {
   const queryClient = useQueryClient();
@@ -93,7 +94,7 @@ export default function TenantsPage() {
       );
       setSelectedTenantId(tenant.id);
       setDrawerChoice({ mode: "edit", tenantId: tenant.id });
-      setNotice(creating ? TENANT_CREATED : null);
+      setNotice(creating ? TENANT_CREATED : TENANT_SAVED);
       await queryClient.invalidateQueries({ queryKey: queryKeys.tenants });
     },
   });
@@ -116,19 +117,27 @@ export default function TenantsPage() {
   const activeCount = (tenantsQuery.data ?? []).filter((tenant) => tenant.active).length;
 
   const closeDrawer = () => {
-    // The drawer takes its Cerrar button with it: give focus back before it goes.
+    // The drawer takes its Cerrar button with it: give focus back before it goes. An edited tenant
+    // whose row the search or the filter hides has no row to go back to: Crear tenant takes it.
     const opener = createOpenerRef.current?.isConnected ? createOpenerRef.current : headerCreateRef.current;
-    (drawerState.mode === "create" ? opener : selectedRowRef.current)?.focus();
+    const row = selectedRowRef.current?.isConnected ? selectedRowRef.current : headerCreateRef.current;
+    (drawerState.mode === "create" ? opener : row)?.focus();
     createOpenerRef.current = null;
     setNotice(null);
     setDrawerChoice({ mode: "closed" });
   };
   const submitTenant = async (payload: TenantInput, creating: boolean) => {
+    setNotice(null);
     await mutation.mutateAsync({ payload, creating });
   };
+  // A confirmation belongs to the save it confirms: the next edit takes it away.
+  const clearNotice = () => setNotice(null);
+  // `isPending`, not `isLoading`: a list that has not arrived is still waiting even when the query
+  // is paused (the gateway unreachable), never an empty list.
+  const waitingForTenants = tenantsQuery.isPending;
   // No drawer while the list loads (it would flash a new-tenant form), nor once it was closed.
   let drawer: ReactNode = null;
-  if (!tenantsQuery.isLoading && drawerState.mode === "create") {
+  if (!waitingForTenants && drawerState.mode === "create") {
     drawer = (
       <TenantEditorDrawer
         mode="create"
@@ -136,10 +145,11 @@ export default function TenantsPage() {
         isSaving={mutation.isPending}
         focusRequest={createRequests}
         onClose={closeDrawer}
+        onEdit={clearNotice}
         onSubmit={(payload) => submitTenant(payload, true)}
       />
     );
-  } else if (!tenantsQuery.isLoading && drawerState.mode === "edit" && editedTenant) {
+  } else if (!waitingForTenants && drawerState.mode === "edit" && editedTenant) {
     drawer = (
       <TenantEditorDrawer
         mode="edit"
@@ -147,6 +157,7 @@ export default function TenantsPage() {
         notice={notice}
         isSaving={mutation.isPending}
         onClose={closeDrawer}
+        onEdit={clearNotice}
         onSubmit={(payload) => submitTenant(payload, false)}
       />
     );
@@ -192,7 +203,7 @@ export default function TenantsPage() {
             </label>
           </div>
 
-          {tenantsQuery.isLoading ? (
+          {waitingForTenants ? (
             <LoadingRows rows={6} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
             <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />

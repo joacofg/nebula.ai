@@ -24,8 +24,9 @@ type Shown = { ready: boolean; target: number };
  * not cached the target holds its last value rather than passing through 0.95. A pick made on the
  * slider belongs to the tenant it was made for: switching tenant re-opens at that tenant's target.
  * Until that policy arrives the held `target` is the previous tenant's, so `settling` is true and
- * the page must not let it be applied or moved. While a save is in flight the target and the tenant are locked, so the confirmation that comes
- * back always describes what is on screen.
+ * the hook refuses to move it (`setTarget`) or to apply it (`apply.mutate`); the page disables
+ * both as well. While a save is in flight the target and the tenant are locked, so the
+ * confirmation that comes back always describes what is on screen.
  */
 export function useTenantTarget(adminKey: string) {
   const queryClient = useQueryClient();
@@ -89,13 +90,22 @@ export function useTenantTarget(adminKey: string) {
     /** What the slider shows. */
     target: settled ? resolved : shown.target,
     setTarget: (value: number) => {
-      if (saving) {
+      if (saving || !settled) {
         return;
       }
       setPick({ tenantId, value });
       apply.reset();
     },
-    apply,
+    /** The save; `mutate` does nothing while settling, when `target` may be the last tenant's. */
+    apply: {
+      ...apply,
+      mutate: (...args: Parameters<typeof apply.mutate>) => {
+        if (!settled) {
+          return;
+        }
+        apply.mutate(...args);
+      },
+    },
     saving,
   };
 }

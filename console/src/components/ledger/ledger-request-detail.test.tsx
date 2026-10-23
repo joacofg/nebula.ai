@@ -396,12 +396,25 @@ describe("ledger-request-detail", () => {
   });
 
   it.each([
-    ["a model that is not allowed", "Premium model 'openai/gpt-4o' is not allowed for this tenant."],
-    ["premium-only routing", "Tenant policy requires premium-only routing."],
-    ["explicit premium routing under local-only", "Tenant policy does not allow explicit premium routing."],
-    ["local-only routing", "Tenant policy restricts this request to local routing only."],
-    ["a reason it does not know", "Something new was denied."],
-  ])("does not call a denial for %s a budget denial, and shows its reason on its own line", (_kind, sentence) => {
+    [
+      "a model that is not allowed",
+      "Premium model 'openai/gpt-4o' is not allowed for this tenant.",
+      "Modelo premium 'openai/gpt-4o' no permitido para este tenant",
+    ],
+    ["premium-only routing", "Tenant policy requires premium-only routing.", "La política exige ruteo solo premium"],
+    [
+      "explicit premium routing under local-only",
+      "Tenant policy does not allow explicit premium routing.",
+      "La política no permite pedir un modelo premium",
+    ],
+    [
+      "local-only routing",
+      "Tenant policy restricts this request to local routing only.",
+      "La política restringe el pedido a ruteo solo local",
+    ],
+    // A sentence it does not know stays as the gateway wrote it.
+    ["a reason it does not know", "Something new was denied.", "Something new was denied."],
+  ])("does not call a denial for %s a budget denial, and shows its reason on its own line", (_kind, sentence, spanish) => {
     renderWithProviders(
       <LedgerRequestDetail
         entry={{
@@ -416,6 +429,7 @@ describe("ledger-request-detail", () => {
     expect(screen.queryByRole("heading", { name: "Presupuesto" })).not.toBeInTheDocument();
     expect(screen.queryByText(/denegado por presupuesto/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("group", { name: "Motivo de la denegación" })).toHaveLength(1);
+    expect(group("Motivo de la denegación")).toHaveTextContent(spanish);
   });
 
   it("keeps the exceeded hard budget under Presupuesto without blaming it for a denial it did not cause", () => {

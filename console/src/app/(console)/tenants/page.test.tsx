@@ -1,3 +1,4 @@
+import { onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -19,7 +20,7 @@ vi.mock("@/lib/admin-api", () => ({
 
 import TenantsPage from "@/app/(console)/tenants/page";
 import { useAdminSession } from "@/lib/admin-session-provider";
-import { createTenant, listTenants } from "@/lib/admin-api";
+import { createTenant, listTenants, updateTenant } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
 
 const mockedUseAdminSession = vi.mocked(useAdminSession);
@@ -63,6 +64,23 @@ describe("tenants page", () => {
     mockedListTenants.mockRejectedValue(new Error("Tenants unavailable."));
     renderWithProviders(<TenantsPage />);
     expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+  });
+
+  it("keeps loading, with no drawer, and does not claim there are no tenants while the gateway cannot be reached", async () => {
+    mockedListTenants.mockClear();
+    onlineManager.setOnline(false);
+    try {
+      renderWithProviders(<TenantsPage />);
+      // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      expect(mockedListTenants).not.toHaveBeenCalled();
+      expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
+      expect(screen.queryByText("Todavía no hay tenants.")).not.toBeInTheDocument();
+      expect(screen.queryByRole("heading", { name: "Nuevo tenant" })).not.toBeInTheDocument();
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("offers to create the first tenant when there are none", async () => {
@@ -191,6 +209,21 @@ describe("tenants page", () => {
     expect(screen.getByRole("row", { name: /Tenant B/ })).toHaveFocus();
   });
 
+  it("returns focus to Crear tenant when the row of the tenant being edited is filtered out", async () => {
+    const user = userEvent.setup();
+    mockedListTenants.mockResolvedValue([TENANT_A, TENANT_B]);
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.type(screen.getByPlaceholderText("Buscar por id o nombre"), "tenant-b");
+    expect(screen.queryByRole("row", { name: /Tenant A/ })).not.toBeInTheDocument();
+    screen.getByRole("button", { name: "Cerrar" }).focus();
+    await user.keyboard("{Enter}");
+
+    expect(screen.queryByRole("heading", { name: /Editar/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Crear tenant" })).toHaveFocus();
+  });
+
   it("returns focus to the Crear tenant that was pressed, the one in the empty state or the header's", async () => {
     const user = userEvent.setup();
     mockedListTenants.mockResolvedValue([]);
@@ -232,6 +265,37 @@ describe("tenants page", () => {
     // The confirmation belongs to that save: picking another tenant clears it.
     await user.click(within(screen.getByRole("table", { name: "Tenants" })).getByRole("row", { name: /Tenant A/ }));
     expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("confirms a saved edit with 'Tenant guardado.' until the next edit", async () => {
+    const user = userEvent.setup();
+    vi.mocked(updateTenant).mockImplementation(async (_key, id, payload) => ({ ...TENANT_A, ...payload, id }));
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.clear(screen.getByLabelText("Descripción"));
+    await user.type(screen.getByLabelText("Descripción"), "Edited");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Guardar tenant" }));
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Tenant guardado.");
+    expect(vi.mocked(updateTenant)).toHaveBeenCalledWith("admin-key", "tenant-a", expect.objectContaining({ description: "Edited" }));
+
+    // The confirmation belongs to that save: the next edit takes it away.
+    await user.type(screen.getByLabelText("Descripción"), "!");
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("does not confirm an edit the gateway refused", async () => {
+    const user = userEvent.setup();
+    vi.mocked(updateTenant).mockRejectedValue(new Error("No se encontró el recurso."));
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.click(screen.getByRole("button", { name: "Guardar tenant" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se encontró el recurso.");
+    expect(screen.queryByText("Tenant guardado.")).not.toBeInTheDocument();
   });
 
   it("shows no drawer while the tenants load, and a new-tenant form when there are none", async () => {

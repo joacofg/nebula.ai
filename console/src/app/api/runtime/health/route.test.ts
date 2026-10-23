@@ -1,3 +1,5 @@
+import { inspect } from "node:util";
+
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -67,6 +69,26 @@ describe("runtime health proxy", () => {
     await expect(response.json()).resolves.toEqual({ detail: "gateway_unreachable" });
     expect(consoleError).toHaveBeenCalledTimes(1);
     expect(consoleError).toHaveBeenCalledWith(expect.stringContaining("runtime health proxy"), cause);
+  });
+
+  it.each([
+    ["the session check", () => vi.fn().mockRejectedValue(new TypeError("fetch failed"))],
+    [
+      "the dependency check",
+      () =>
+        vi
+          .fn()
+          .mockResolvedValueOnce(new Response("{}", { status: 200 }))
+          .mockRejectedValueOnce(new TypeError("fetch failed")),
+    ],
+  ])("does not log the admin key when %s fails", async (_name, stub) => {
+    const adminKey = "nb-admin-secret-7f3a";
+    vi.stubGlobal("fetch", stub());
+
+    await GET(request(adminKey));
+
+    expect(consoleError).toHaveBeenCalledTimes(1);
+    expect(inspect(consoleError.mock.calls, { depth: 10 })).not.toContain(adminKey);
   });
 
   it("does not log when the admin key is missing or the gateway answers", async () => {

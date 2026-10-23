@@ -1,5 +1,4 @@
-import { routeLabel, statusLabel } from "@/components/system/labels";
-import { tierLabel } from "@/components/system/tier-badge";
+import { routeLabel, statusLabel, tierLabel } from "@/components/system/labels";
 import type { TenantRecord } from "@/lib/admin-api";
 
 type LedgerFiltersProps = {

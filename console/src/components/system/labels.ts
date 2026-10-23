@@ -50,6 +50,16 @@ const ROUTES: Record<string, string> = {
   embeddings: "Embeddings",
 };
 
+// The level a request was served at, as the tier badges and the Nivel filter name it: the thesis
+// terms stay untranslated (lowercase, unlike a route), the cache and a denial in Spanish.
+const TIERS: Record<string, string> = {
+  local: "local",
+  economy: "economy",
+  frontier: "frontier",
+  cache: "caché",
+  denied: "denegado",
+};
+
 const ROUTING_MODES: Record<string, string> = {
   auto: "Automático",
   local_only: "Solo local",
@@ -145,6 +155,28 @@ const CACHE_EVIDENCE: Record<string, string> = {
   avoided_premium_cost_usd: "Premium evitado",
 };
 
+// How much a cache insight matters (`level`).
+const INSIGHT_LEVELS: Record<string, string> = { info: "info", notice: "aviso", warning: "alerta" };
+
+// What a recommendation is about (`category`).
+const RECOMMENDATION_CATEGORIES: Record<string, string> = { policy: "política", cache: "caché", info: "info" };
+
+// The `label` of each evidence row of a recommendation.
+const RECOMMENDATION_EVIDENCE: Record<string, string> = {
+  cache_hit_rate: "Tasa de aciertos",
+  similarity_threshold: "Umbral de similitud",
+  max_entry_age_hours: "Antigüedad máxima (h)",
+  premium_share: "Proporción premium",
+  premium_cost_usd: "Costo premium (USD)",
+  routing_mode_default: "Modo de ruteo",
+  policy_denials: "Denegaciones",
+  max_premium_cost_per_request: "Costo premium máximo por pedido",
+  window_requests: "Pedidos en la ventana",
+  last_request_at: "Último pedido",
+  cache_runtime_status: "Estado de la caché",
+  cache_runtime_detail: "Detalle",
+};
+
 // The governance values a ledger row carries.
 const MESSAGE_TYPES: Record<string, string> = { chat: "Chat", embeddings: "Embeddings" };
 
@@ -195,6 +227,11 @@ function lookup(labels: Record<string, string>, code: string | null | undefined)
 /** Where the answer came from: local / premium / cache / denied / embeddings. */
 export function routeLabel(code: string | null | undefined) {
   return lookup(ROUTES, code);
+}
+
+/** The level a request was served at: local / economy / frontier / caché / denegado. */
+export function tierLabel(code: string | null | undefined) {
+  return lookup(TIERS, code);
 }
 
 /** The tenant's routing mode default: auto / local_only / premium_only. */
@@ -292,6 +329,21 @@ export function cacheInsightLabel(code: string | null | undefined) {
 /** The name of one evidence row of a cache insight. */
 export function cacheEvidenceLabel(label: string | null | undefined) {
   return lookup(CACHE_EVIDENCE, label);
+}
+
+/** How much a cache insight matters: info / aviso / alerta. */
+export function insightLevelLabel(level: string | null | undefined) {
+  return lookup(INSIGHT_LEVELS, level);
+}
+
+/** What a recommendation is about: política / caché / info. */
+export function recommendationCategoryLabel(category: string | null | undefined) {
+  return lookup(RECOMMENDATION_CATEGORIES, category);
+}
+
+/** The name of one evidence row of a recommendation. */
+export function recommendationEvidenceLabel(label: string | null | undefined) {
+  return lookup(RECOMMENDATION_EVIDENCE, label);
 }
 
 export function messageTypeLabel(code: string | null | undefined) {

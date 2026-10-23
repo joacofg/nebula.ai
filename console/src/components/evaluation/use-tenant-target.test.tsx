@@ -157,6 +157,37 @@ describe("useTenantTarget", () => {
     expect(result.current.target).toBe(0.85);
   });
 
+  it("refuses a new target and an apply while the next tenant's policy is pending, so the held value is never written", async () => {
+    const pendingB = deferred<TenantPolicy>();
+    adminApi.getTenantPolicy.mockImplementation((_key: string, id: string) =>
+      id === "a" ? Promise.resolve(policy(0.9)) : pendingB.promise,
+    );
+    const { result } = setup();
+    await waitFor(() => expect(result.current.target).toBe(0.9));
+
+    act(() => result.current.setTenantId("b"));
+    expect(result.current.settling).toBe(true);
+    act(() => result.current.setTarget(0.8));
+    act(() => result.current.apply.mutate({ id: "b", value: result.current.target }));
+
+    expect(result.current.target).toBe(0.9);
+    expect(result.current.saving).toBe(false);
+    expect(adminApi.updateTenantPolicy).not.toHaveBeenCalled();
+
+    // Once B's policy is in, the slider opens at B's own target (the refused pick left nothing
+    // behind), and both work again.
+    await act(async () => pendingB.resolve(policy(0.85)));
+    await waitFor(() => expect(result.current.settling).toBe(false));
+    expect(result.current.target).toBe(0.85);
+    expect(adminApi.updateTenantPolicy).not.toHaveBeenCalled();
+    act(() => result.current.setTarget(0.8));
+    expect(result.current.target).toBe(0.8);
+    adminApi.updateTenantPolicy.mockResolvedValue(policy(0.8));
+    act(() => result.current.apply.mutate({ id: "b", value: 0.8 }));
+    await waitFor(() => expect(result.current.apply.isSuccess).toBe(true));
+    expect(adminApi.updateTenantPolicy).toHaveBeenCalledTimes(1);
+  });
+
   it("does not settle for a tenant whose policy is already cached", async () => {
     const { result } = setup();
     await waitFor(() => expect(result.current.target).toBe(0.9));

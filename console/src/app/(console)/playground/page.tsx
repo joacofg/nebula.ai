@@ -77,7 +77,8 @@ export default function PlaygroundPage() {
 
       <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="border-line px-6 py-6 xl:border-r">
-          {tenantsQuery.isLoading ? (
+          {/* `isPending`, not `isLoading`: a list paused while the gateway is unreachable is still waiting. */}
+          {tenantsQuery.isPending ? (
             <LoadingRows rows={4} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
             <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
@@ -145,6 +146,7 @@ function PlaygroundResponseCard({
   adminKey: string | null;
 }) {
   const requestId = result?.requestId ?? "";
+  const lookupEnabled = Boolean(adminKey && requestId);
   const recordedOutcomeQuery = useQuery({
     queryKey: queryKeys.usageLedgerEntry(requestId),
     queryFn: async () => {
@@ -153,17 +155,16 @@ function PlaygroundResponseCard({
       }
       return getUsageLedgerEntry(adminKey, requestId);
     },
-    enabled: Boolean(adminKey && requestId),
+    enabled: lookupEnabled,
   });
+  // `isPending`, not `isLoading`: a lookup paused while the gateway is unreachable is still waiting.
+  // A disabled one (no request yet) is pending forever, so it only counts once it can run.
+  const waitingForLedger = lookupEnabled && recordedOutcomeQuery.isPending;
 
-  // TanStack clears `data` and `error` when a request starts, so a pending one has neither.
+  // TanStack clears `data` and `error` when a request starts, so a pending one has neither. The
+  // waiting rows say it once, as the other loading states do.
   if (isPending) {
-    return (
-      <div className="flex flex-col gap-3">
-        <p className="m-0 text-ink-2">Esperando respuesta…</p>
-        <LoadingRows rows={4} label="Esperando respuesta…" />
-      </div>
-    );
+    return <LoadingRows rows={4} label="Esperando respuesta…" />;
   }
 
   if (error) {
@@ -178,7 +179,7 @@ function PlaygroundResponseCard({
     <div className="flex flex-col gap-8">
       {result.errorDetail ? <ErrorAlert error={result.errorDetail} fallback="No se pudo completar el pedido." /> : null}
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
-      {recordedOutcomeQuery.isLoading ? (
+      {waitingForLedger ? (
         <LoadingRows rows={3} label="Esperando el registro del ledger" />
       ) : recordedOutcomeQuery.isError ? (
         <Alert variant="warning">
@@ -200,7 +201,7 @@ function PlaygroundResponseCard({
         // The ledger block records the routing facts once. Without a ledger record (the lookup
         // failed, or found nothing) the headers' copy keeps the result from coming back empty;
         // while the lookup runs it waits, so the facts never show in both places.
-        response={recordedOutcomeQuery.data || recordedOutcomeQuery.isLoading ? undefined : responseFacts(result)}
+        response={recordedOutcomeQuery.data || waitingForLedger ? undefined : responseFacts(result)}
       />
     </div>
   );

@@ -27,6 +27,10 @@ import {
   servingEffectLabel,
   statusLabel,
   suppressedFieldLabel,
+  tierLabel,
+  insightLevelLabel,
+  recommendationCategoryLabel,
+  recommendationEvidenceLabel,
 } from "@/components/system/labels";
 
 describe("labels", () => {
@@ -91,6 +95,10 @@ describe("every label function", () => {
     ["suppressedFieldLabel", suppressedFieldLabel],
     ["enforcementLabel", enforcementLabel],
     ["complexityLabel", complexityLabel],
+    ["tierLabel", tierLabel],
+    ["insightLevelLabel", insightLevelLabel],
+    ["recommendationCategoryLabel", recommendationCategoryLabel],
+    ["recommendationEvidenceLabel", recommendationEvidenceLabel],
   ] as const;
 
   it.each(labelFunctions)("%s returns an unknown code as it came", (_name, label) => {
@@ -272,6 +280,53 @@ describe("cache labels", () => {
     expect(cacheEvidenceLabel("cache_hits")).toBe("Aciertos");
     expect(cacheEvidenceLabel("window_requests")).toBe("Pedidos en la ventana");
     expect(cacheEvidenceLabel("avoided_premium_cost_usd")).toBe("Premium evitado");
+  });
+
+  it.each([
+    ["info", "info"],
+    ["notice", "aviso"],
+    ["warning", "alerta"],
+  ])("words the insight level %s as %s", (code, label) => {
+    expect(insightLevelLabel(code)).toBe(label);
+  });
+});
+
+describe("tierLabel", () => {
+  it.each([
+    ["local", "local"],
+    ["economy", "economy"],
+    ["frontier", "frontier"],
+    ["cache", "caché"],
+    ["denied", "denegado"],
+  ])("labels the tier %s as %s, the thesis terms untranslated", (code, label) => {
+    expect(tierLabel(code)).toBe(label);
+  });
+});
+
+describe("recommendation labels", () => {
+  it.each([
+    ["policy", "política"],
+    ["cache", "caché"],
+    ["info", "info"],
+  ])("words the category %s as %s", (code, label) => {
+    expect(recommendationCategoryLabel(code)).toBe(label);
+  });
+
+  it.each([
+    ["cache_hit_rate", "Tasa de aciertos"],
+    ["similarity_threshold", "Umbral de similitud"],
+    ["max_entry_age_hours", "Antigüedad máxima (h)"],
+    ["premium_share", "Proporción premium"],
+    ["premium_cost_usd", "Costo premium (USD)"],
+    ["routing_mode_default", "Modo de ruteo"],
+    ["policy_denials", "Denegaciones"],
+    ["max_premium_cost_per_request", "Costo premium máximo por pedido"],
+    ["window_requests", "Pedidos en la ventana"],
+    ["last_request_at", "Último pedido"],
+    ["cache_runtime_status", "Estado de la caché"],
+    ["cache_runtime_detail", "Detalle"],
+  ])("names the evidence row %s as %s", (code, label) => {
+    expect(recommendationEvidenceLabel(code)).toBe(label);
   });
 });
 

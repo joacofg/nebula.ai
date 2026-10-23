@@ -1,6 +1,7 @@
+import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import PlaygroundPage from "@/app/(console)/playground/page";
 import type { PlaygroundCompletionResult } from "@/lib/admin-api";
@@ -384,13 +385,15 @@ describe("playground-page", () => {
 
     await sendPrompt(user, "A slow local model");
 
-    expect(await screen.findByText(WAITING)).toBeInTheDocument();
-    expect(screen.getByRole("status", { name: WAITING })).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: WAITING })).toBeInTheDocument();
+    // Said once: the waiting rows carry it, no second line repeats it to a screen reader.
+    expect(screen.getAllByRole("status", { name: WAITING })).toHaveLength(1);
+    expect(screen.queryByText(WAITING)).not.toBeInTheDocument();
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument();
 
     request.resolve(completion({ requestId: "req-slow" }));
     expect(await screen.findByText("A slow answer")).toBeInTheDocument();
-    expect(screen.queryByText(WAITING)).not.toBeInTheDocument();
+    expect(screen.queryByRole("status", { name: WAITING })).not.toBeInTheDocument();
   });
 
   it("waits again, without the last answer, when a second prompt is sent", async () => {
@@ -405,7 +408,7 @@ describe("playground-page", () => {
 
     await user.click(screen.getByRole("button", { name: "Enviar" }));
 
-    expect(await screen.findByText(WAITING)).toBeInTheDocument();
+    expect(await screen.findByRole("status", { name: WAITING })).toBeInTheDocument();
     expect(screen.queryByText("A slow answer")).not.toBeInTheDocument();
     expect(screen.queryByText(EMPTY_STATE)).not.toBeInTheDocument();
   });
@@ -570,12 +573,52 @@ describe("playground-page", () => {
       await sendPrompt(user, "The gateway is down");
 
       expect(await screen.findByText("No se pudo conectar con el gateway.")).toBeInTheDocument();
-      expect(screen.queryByText(WAITING)).not.toBeInTheDocument();
+      expect(screen.queryByRole("status", { name: WAITING })).not.toBeInTheDocument();
       // Node reports an unhandled rejection once the microtask queue drains: wait one macrotask.
       await new Promise((resolve) => setTimeout(resolve, 0));
       expect(unhandled).not.toHaveBeenCalled();
     } finally {
       process.off("unhandledRejection", unhandled);
     }
+  });
+
+  describe("when the gateway cannot be reached", () => {
+    afterEach(() => {
+      onlineManager.setOnline(true);
+    });
+
+    // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
+    async function letQueriesSettle() {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    }
+
+    it("keeps loading the tenants and does not claim there are none", async () => {
+      onlineManager.setOnline(false);
+      renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+      await letQueriesSettle();
+
+      expect(adminApi.listTenants).not.toHaveBeenCalled();
+      expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
+      expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
+    });
+
+    it("waits for the ledger record, with the facts held back, while its lookup cannot start", async () => {
+      const user = userEvent.setup();
+      // The answer arrives, and the connection drops before the ledger lookup starts.
+      adminApi.createPlaygroundCompletion.mockImplementation(async () => {
+        onlineManager.setOnline(false);
+        return completion({ requestId: "req-offline" });
+      });
+      renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+      await sendPrompt(user, "Then the network drops");
+      expect(await screen.findByText("A slow answer")).toBeInTheDocument();
+      await letQueriesSettle();
+
+      expect(adminApi.getUsageLedgerEntry).not.toHaveBeenCalled();
+      expect(screen.getByRole("status", { name: "Esperando el registro del ledger" })).toBeInTheDocument();
+      for (const fact of ["Ruta", "Nivel", "Caché"]) {
+        expect(screen.queryByRole("group", { name: fact }), fact).not.toBeInTheDocument();
+      }
+    });
   });
 });

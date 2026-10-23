@@ -1,11 +1,14 @@
 import type { RecommendationBundle } from "@/lib/admin-api";
 
-import { plural } from "@/components/system/labels";
+import {
+  plural,
+  recommendationCategoryLabel,
+  recommendationEvidenceLabel,
+  runtimeStatusLabel,
+} from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
 import { formatPercentText } from "@/lib/format";
-
-const CATEGORY: Record<string, string> = { policy: "política", cache: "caché", info: "info" };
 
 type Copy = { title: string; summary: string; action: string };
 
@@ -40,20 +43,10 @@ const COPY: Record<string, Copy> = {
   },
 };
 
-const EVIDENCE: Record<string, string> = {
-  cache_hit_rate: "Tasa de aciertos",
-  similarity_threshold: "Umbral de similitud",
-  max_entry_age_hours: "Antigüedad máxima (h)",
-  premium_share: "Proporción premium",
-  premium_cost_usd: "Costo premium (USD)",
-  routing_mode_default: "Modo de ruteo",
-  policy_denials: "Denegaciones",
-  max_premium_cost_per_request: "Costo premium máximo por pedido",
-  window_requests: "Pedidos en la ventana",
-  last_request_at: "Último pedido",
-  cache_runtime_status: "Estado de la caché",
-  cache_runtime_detail: "Detalle",
-};
+/** An evidence value as text: the cache's runtime status in Spanish, a percentage with its space ("16 %"). */
+function evidenceValue(label: string, value: string) {
+  return label === "cache_runtime_status" ? runtimeStatusLabel(value) : formatPercentText(value);
+}
 
 export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {
   return (
@@ -72,7 +65,7 @@ export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
                 <h3 className="m-0 text-base font-semibold text-ink">{copy?.title ?? item.title}</h3>
                 <span className="font-label text-[13px] font-medium text-ink-3">
-                  {CATEGORY[item.category] ?? item.category} · prioridad {item.priority}
+                  {recommendationCategoryLabel(item.category)} · prioridad {item.priority}
                 </span>
                 <span className="ml-auto font-mono text-[12px] text-ink-3">{item.code}</span>
               </div>
@@ -84,8 +77,8 @@ export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {
               {item.evidence.length ? (
                 <Readout
                   items={item.evidence.map((e) => ({
-                    label: EVIDENCE[e.label] ?? e.label,
-                    value: <span className="text-sm">{formatPercentText(e.value)}</span>,
+                    label: recommendationEvidenceLabel(e.label),
+                    value: <span className="text-sm">{evidenceValue(e.label, e.value)}</span>,
                   }))}
                 />
               ) : null}

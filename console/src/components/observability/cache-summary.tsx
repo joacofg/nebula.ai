@@ -1,10 +1,8 @@
 import type { CacheControlSummary } from "@/lib/admin-api";
 
-import { cacheEvidenceLabel, cacheInsightLabel, runtimeStatusLabel } from "@/components/system/labels";
+import { cacheEvidenceLabel, cacheInsightLabel, insightLevelLabel, runtimeStatusLabel } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { formatUsd } from "@/lib/format";
-
-const LEVEL: Record<string, string> = { info: "info", notice: "aviso", warning: "alerta" };
 
 /** An evidence value the gateway wrote as text, read by what its row is; one it cannot read stays as written. */
 function evidenceValue(label: string, value: string) {
@@ -49,7 +47,7 @@ export function CacheSummary({ cache }: { cache: CacheControlSummary }) {
               <article key={insight.code} className="flex flex-col gap-1.5 border-t border-line pt-3">
                 <div className="flex items-baseline gap-3">
                   <h3 className="m-0 text-base font-semibold text-ink">{title ?? insight.title}</h3>
-                  <span className="font-label text-[13px] font-medium text-ink-3">{LEVEL[insight.level] ?? insight.level}</span>
+                  <span className="font-label text-[13px] font-medium text-ink-3">{insightLevelLabel(insight.level)}</span>
                 </div>
                 {title === null ? <p className="m-0 text-sm text-ink-2">{insight.summary}</p> : null}
                 {insight.evidence.length ? (

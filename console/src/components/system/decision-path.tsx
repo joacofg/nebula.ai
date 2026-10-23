@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "cn";
 
-import { tierLabel } from "@/components/system/tier-badge";
+import { tierLabel } from "@/components/system/labels";
 
 export type DecisionStep = { tier: "local" | "economy"; p: number | null; tau: number | null };
 export type DecisionTier = "local" | "economy" | "frontier" | "cache" | "denied";
@@ -38,7 +38,11 @@ function clears(step: DecisionStep) {
   return step.p !== null && step.tau !== null && step.p >= step.tau;
 }
 
-/** p and τ written to the same number of decimals, at least as many as it takes to tell them apart (six at most). */
+/**
+ * p and τ as `formatProb` writes them: up to four decimals with trailing zeros stripped, two at
+ * least, so each keeps its own length ("0.8328" beside "0.76"). Two values that would read the same
+ * both get one more decimal at a time, six at most, until they differ.
+ */
 function formatPair(p: number, tau: number): [string, string] {
   let decimals = 4;
   while (decimals < 6 && p !== tau && formatProb(p, decimals) === formatProb(tau, decimals)) {
