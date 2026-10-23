@@ -23,17 +23,13 @@ function filters(overrides: Partial<ComponentProps<typeof LedgerFilters>> = {}) 
       onTerminalStatusChange={vi.fn()}
       onFromTimestampChange={vi.fn()}
       onToTimestampChange={vi.fn()}
-      onRefresh={vi.fn()}
       {...overrides}
     />
   );
 }
 
 describe("ledger-filters", () => {
-  it("renders the expected filter controls and refresh action", async () => {
-    const user = userEvent.setup();
-    const onRefresh = vi.fn();
-
+  it("renders the expected filter controls", () => {
     renderWithProviders(
       filters({
         tenants: [
@@ -47,7 +43,6 @@ describe("ledger-filters", () => {
             updated_at: "2026-03-16T12:00:00Z",
           },
         ],
-        onRefresh,
       }),
     );
 
@@ -66,9 +61,8 @@ describe("ledger-filters", () => {
     expect(status.getByRole("option", { name: "caché" })).toHaveValue("cache_hit");
     expect(status.getByRole("option", { name: "completado" })).toHaveValue("completed");
     expect(status.getByRole("option", { name: "error del proveedor" })).toHaveValue("provider_error");
-
-    await user.click(screen.getByRole("button", { name: "Actualizar" }));
-    expect(onRefresh).toHaveBeenCalledTimes(1);
+    // Refreshing is a page action (the Observabilidad header), not a filter.
+    expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
   it("filters by the tier the router chose, with the options in the thesis order", async () => {

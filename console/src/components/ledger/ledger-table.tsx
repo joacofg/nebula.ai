@@ -43,7 +43,7 @@ export function formatLatency(value: number | null) {
   return value >= 1000 ? `${(value / 1000).toFixed(1)} s` : `${Math.round(value)} ms`;
 }
 
-const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
+const HEAD = "px-2 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }: LedgerTableProps) {
   // The row that last had focus. The table is one stop for Tab (roving tabindex): up to 500 rows
@@ -89,18 +89,18 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
 
   return (
     <div className="max-h-[620px] overflow-auto">
-      {/* Fixed columns sized to their content ("23/10 14:05:03", "USD 0.0000", "completado"), so at
-          1440 px the table fits its 776 px cell and Modelo keeps room for "openai/gpt-4.1". */}
-      <table className="w-full min-w-[760px] table-fixed border-collapse text-sm" aria-label="Ledger de pedidos">
+      {/* Fixed columns sized to their content ("23/10 14:05:03", "economy", "USD 0.0000",
+          "Latencia"), so the table fits its cell beside the detail from 1280 px (656 px there, 776
+          at 1440) and Modelo keeps room for "openai/gpt-4.1". Tokens live in the detail. */}
+      <table className="w-full min-w-[640px] table-fixed border-collapse text-sm" aria-label="Ledger de pedidos">
         <colgroup>
-          <col className="w-[126px]" />
-          <col className="w-[88px]" />
-          <col className="w-[96px]" />
-          <col />
-          <col className="w-[68px]" />
-          <col className="w-[96px]" />
+          <col className="w-[118px]" />
           <col className="w-[76px]" />
-          <col className="w-[96px]" />
+          <col className="w-[88px]" />
+          <col />
+          <col className="w-[88px]" />
+          <col className="w-[70px]" />
+          <col className="w-[92px]" />
         </colgroup>
         <thead>
           <tr className="sticky top-0 z-10 border-b border-line-strong bg-surface shadow-[inset_0_-1px_0_var(--color-line-strong)]">
@@ -108,7 +108,6 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
             <th scope="col" className={HEAD}>Pedido</th>
             <th scope="col" className={HEAD}>Nivel</th>
             <th scope="col" className={HEAD}>Modelo</th>
-            <th scope="col" className={cn(HEAD, "text-right")}>Tokens</th>
             <th scope="col" className={cn(HEAD, "text-right")}>Costo</th>
             <th scope="col" className={cn(HEAD, "text-right")}>Latencia</th>
             <th scope="col" className={HEAD}>Estado</th>
@@ -131,23 +130,22 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                   selected ? "bg-mark-soft shadow-[inset_0_1px_0_var(--color-mark-line),inset_0_-1px_0_var(--color-mark-line)]" : "hover:bg-canvas",
                 )}
               >
-                <td className="truncate px-3 py-2 font-mono text-[12px] text-ink-3">{formatDateTime(row.timestamp)}</td>
-                <td className="truncate px-3 py-2 font-mono text-[12px] text-ink-2" title={row.request_id}>
+                <td className="truncate px-2 py-2 font-mono text-[12px] text-ink-3">{formatDateTime(row.timestamp)}</td>
+                <td className="truncate px-2 py-2 font-mono text-[12px] text-ink-2" title={row.request_id}>
                   {row.request_id.slice(0, 8)}
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <TierBadge tier={rowTier(row)} />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-2 py-2">
                   <span className="block truncate font-mono text-[12px] text-ink-2" title={row.response_model ?? ""}>
                     {row.response_model ?? "—"}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right font-medium">{row.total_tokens}</td>
-                <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
-                <td className="px-3 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
+                <td className="whitespace-nowrap px-2 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
+                <td className="px-2 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
                 {/* Long labels ("completado con fallback") wrap instead of being cut. */}
-                <td className="px-3 py-2 font-label text-[13px] leading-tight text-ink-2" title={statusLabel(row.terminal_status)}>
+                <td className="px-2 py-2 font-label text-[13px] leading-tight text-ink-2" title={statusLabel(row.terminal_status)}>
                   {statusLabel(row.terminal_status)}
                 </td>
               </tr>

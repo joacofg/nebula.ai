@@ -1,8 +1,5 @@
-import { RefreshCw } from "lucide-react";
-
 import { routeLabel, statusLabel } from "@/components/system/labels";
 import { tierLabel } from "@/components/system/tier-badge";
-import { Button } from "@/components/ui/button";
 import type { TenantRecord } from "@/lib/admin-api";
 
 type LedgerFiltersProps = {
@@ -19,7 +16,6 @@ type LedgerFiltersProps = {
   onTerminalStatusChange: (value: string) => void;
   onFromTimestampChange: (value: string) => void;
   onToTimestampChange: (value: string) => void;
-  onRefresh: () => void;
 };
 
 const ROUTE_TARGET_OPTIONS = ["cache", "local", "premium", "denied", "embeddings"];
@@ -48,10 +44,10 @@ export function LedgerFilters({
   onTerminalStatusChange,
   onFromTimestampChange,
   onToTimestampChange,
-  onRefresh,
 }: LedgerFiltersProps) {
-  // Minimum widths sized so the six filters and "Actualizar" share one row at 1440 px: the tenant
-  // cell holds a name like "Acme Robotics", the short selects "Todas", the dates "dd/mm/aaaa, hh:mm".
+  // Minimum widths sized so the six filters share one row from 1280 px ("Actualizar" lives in the
+  // page header): the tenant cell holds a name like "Acme Robotics", the short selects "Todas",
+  // the dates "dd/mm/aaaa, hh:mm".
   const cell = "flex min-w-[140px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5 first:border-l-0";
   const tenantCell = "flex min-w-[184px] flex-1 flex-col gap-1 px-4 py-2.5";
   const wide = "flex min-w-[220px] flex-[1.4] flex-col gap-1 border-l border-line px-4 py-2.5";
@@ -116,13 +112,6 @@ export function LedgerFilters({
         <span className="font-label text-[13px] font-medium text-ink-3">Hasta</span>
         <input className={control} type="datetime-local" value={toTimestamp} onChange={(event) => onToTimestampChange(event.target.value)} />
       </label>
-
-      <div className="flex items-end border-l border-line px-4 py-2.5">
-        <Button type="button" variant="outline" onClick={onRefresh} className="h-9">
-          <RefreshCw aria-hidden className="size-4" />
-          Actualizar
-        </Button>
-      </div>
     </div>
   );
 }

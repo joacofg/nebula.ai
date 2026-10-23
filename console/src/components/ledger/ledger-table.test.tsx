@@ -56,9 +56,15 @@ describe("ledger-table", () => {
     const onSelectRow = vi.fn();
     renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-001" onSelectRow={onSelectRow} isLoading={false} />);
 
-    for (const name of ["Fecha", "Pedido", "Nivel", "Modelo", "Tokens", "Costo", "Latencia", "Estado"]) {
-      expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
-    }
+    expect(screen.getAllByRole("columnheader").map((header) => header.textContent)).toEqual([
+      "Fecha",
+      "Pedido",
+      "Nivel",
+      "Modelo",
+      "Costo",
+      "Latencia",
+      "Estado",
+    ]);
     await userEvent.click(screen.getByRole("row", { name: /req-002/ }));
     expect(onSelectRow).toHaveBeenCalledWith("req-002");
   });

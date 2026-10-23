@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
 import { useQuery } from "@tanstack/react-query";
+import { RefreshCw } from "lucide-react";
 
 import { CacheSummary } from "@/components/observability/cache-summary";
 import { CalibrationSummary } from "@/components/observability/calibration-summary";
@@ -12,6 +13,7 @@ import { Recommendations } from "@/components/observability/recommendations";
 import { plural } from "@/components/system/labels";
 import { PageHeader } from "@/components/system/page-header";
 import { LoadingRows } from "@/components/system/state";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RuntimeHealthCards } from "@/components/health/runtime-health-cards";
 import { LedgerFilters } from "@/components/ledger/ledger-filters";
@@ -147,6 +149,20 @@ export default function ObservabilityPage() {
             ),
           },
         ]}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            className="h-9"
+            onClick={() => {
+              void ledgerQuery.refetch();
+              void recommendationsQuery.refetch();
+            }}
+          >
+            <RefreshCw aria-hidden className="size-4" />
+            Actualizar
+          </Button>
+        }
       />
       <LedgerFilters
         tenants={tenantsQuery.data ?? []}
@@ -162,10 +178,6 @@ export default function ObservabilityPage() {
         onTerminalStatusChange={setTerminalStatus}
         onFromTimestampChange={setFromTimestamp}
         onToTimestampChange={setToTimestamp}
-        onRefresh={() => {
-          void ledgerQuery.refetch();
-          void recommendationsQuery.refetch();
-        }}
       />
       {tenantsQuery.isError ? (
         <div className="px-6 pt-4">
@@ -173,7 +185,9 @@ export default function ObservabilityPage() {
         </div>
       ) : null}
 
-      <div className="grid border-b border-line xl:grid-cols-[minmax(0,1fr)_400px]">
+      {/* At 1280 px the detail takes 360 px so every ledger column fits beside it; from 1440 px, 400.
+          Both breakpoints are arbitrary so Tailwind orders them by width (a named `xl:` would win). */}
+      <div className="grid border-b border-line min-[1280px]:grid-cols-[minmax(0,1fr)_360px] min-[1440px]:grid-cols-[minmax(0,1fr)_400px]">
         <div className="min-w-0 px-6 py-5">
           {ledgerQuery.isError ? (
             <ErrorAlert error={ledgerQuery.error} fallback="No se pudo cargar el ledger." />

@@ -182,6 +182,22 @@ describe("ObservabilityPage", () => {
     expectTextToAppearBefore(container, "req-inte", "Recomendaciones");
   });
 
+  it("refreshes the ledger and the tenant context from the page header, outside the filters", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await screen.findByRole("table", { name: "Ledger de pedidos" });
+    await waitFor(() => expect(getTenantRecommendations).toHaveBeenCalled());
+    const ledgerCalls = listUsageLedger.mock.calls.length;
+    const recommendationCalls = getTenantRecommendations.mock.calls.length;
+
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(screen.getByRole("group", { name: "Filtros del ledger" })).queryByRole("button")).not.toBeInTheDocument();
+    await user.click(within(header).getByRole("button", { name: "Actualizar" }));
+
+    await waitFor(() => expect(listUsageLedger.mock.calls.length).toBe(ledgerCalls + 1));
+    await waitFor(() => expect(getTenantRecommendations.mock.calls.length).toBe(recommendationCalls + 1));
+  });
+
   it("keeps tenant context in tabs: recommendations, cache, calibration and dependencies", async () => {
     const user = userEvent.setup();
     renderPage();
