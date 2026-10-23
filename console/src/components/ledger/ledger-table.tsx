@@ -146,7 +146,8 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                 <td className="px-3 py-2 text-right font-medium">{row.total_tokens}</td>
                 <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
                 <td className="px-3 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
-                <td className="truncate px-3 py-2 font-label text-[13px] text-ink-2" title={row.terminal_status}>
+                {/* Long labels ("completado con fallback") wrap instead of being cut. */}
+                <td className="px-3 py-2 font-label text-[13px] leading-tight text-ink-2" title={statusLabel(row.terminal_status)}>
                   {statusLabel(row.terminal_status)}
                 </td>
               </tr>

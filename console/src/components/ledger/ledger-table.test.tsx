@@ -79,6 +79,30 @@ describe("ledger-table", () => {
     expect(screen.getAllByRole("row", { current: true })).toHaveLength(1);
   });
 
+  it("titles the Estado cell with the Spanish label, never the gateway's code", () => {
+    const statuses = [
+      ["fallback_completed", "completado con fallback"],
+      ["policy_denied", "denegado por política"],
+      ["provider_error", "error del proveedor"],
+      ["rate_limited", "límite de pedidos"],
+      ["client_disconnected", "cortado por el cliente"],
+    ] as const;
+    const statusRows = statuses.map(([status], index) => ({
+      ...baseRow,
+      request_id: `req-status-${index}`,
+      terminal_status: status,
+    }));
+    renderWithProviders(<LedgerTable rows={statusRows} selectedRequestId={null} onSelectRow={vi.fn()} isLoading={false} />);
+
+    statuses.forEach(([status, label], index) => {
+      const cells = within(screen.getByRole("row", { name: new RegExp(`req-status-${index}`) })).getAllByRole("cell");
+      const estado = cells[cells.length - 1];
+      expect(estado).toHaveTextContent(label);
+      expect(estado).toHaveAttribute("title", label);
+      expect(estado).not.toHaveAttribute("title", status);
+    });
+  });
+
   it("shows the date and the time on the viewer's clock", () => {
     const stamped = [
       { ...baseRow, request_id: "req-utc", timestamp: new Date(2026, 9, 22, 14, 5, 3).toISOString() },
