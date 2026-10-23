@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 
 import { AdminSessionProvider } from "@/lib/admin-session-provider";
+import { queryClientDefaultOptions } from "@/lib/query-provider";
 import { SelectedTenantProvider } from "@/lib/selected-tenant";
 
 type WrapperProps = {
@@ -16,13 +17,15 @@ type RenderOptions = {
   queryClient?: QueryClient;
 };
 
-/** The query client the tests render with: no retries, so a failure shows at once. */
+/**
+ * The query client the tests render with: the console's own defaults (its network mode too),
+ * but no retries, so a failure shows at once.
+ */
 export function createTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
-      queries: {
-        retry: false,
-      },
+      ...queryClientDefaultOptions,
+      queries: { ...queryClientDefaultOptions.queries, retry: false },
     },
   });
 }

@@ -816,11 +816,18 @@ export function PolicyForm({
   );
 }
 
-/** Which router re-decided the rows, and how many the cache keeps: "37 con el router aprendido · …". */
+/**
+ * Which router re-decided the rows, and how many the cache keeps: "37 con el router aprendido · …".
+ * An older gateway may not report the router counts: then nothing is said, never "undefined".
+ */
 function DecisionSources({ summary }: { summary: PolicySimulationOutcomeCounts }) {
+  const { learned_router_rows: learnedRows, heuristic_rows: heuristicRows } = summary;
+  if (learnedRows === undefined || heuristicRows === undefined) {
+    return null;
+  }
   return (
     <p className="m-0 text-[13px] text-ink-3">
-      {`${summary.learned_router_rows} con el router aprendido · ${summary.heuristic_rows} con la heurística`}
+      {`${learnedRows} con el router aprendido · ${heuristicRows} con la heurística`}
       {summary.cache_rows ? ` · ${summary.cache_rows} siguen en caché` : ""}
     </p>
   );

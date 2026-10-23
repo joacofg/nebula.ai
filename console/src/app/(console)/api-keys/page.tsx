@@ -141,7 +141,7 @@ export default function ApiKeysPage() {
             <ErrorAlert error={revokeMutation.error} fallback="No se pudo revocar la clave." />
           </div>
         ) : null}
-        {/* `isPending`, not `isLoading`: a list paused while the gateway is unreachable is still waiting. */}
+        {/* `isPending`, not `isLoading`: a list that has not arrived is still waiting, never an empty one. */}
         {apiKeysQuery.isPending ? (
           <LoadingRows rows={6} label="Cargando claves" />
         ) : apiKeysQuery.isError ? (

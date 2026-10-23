@@ -132,8 +132,7 @@ export default function TenantsPage() {
   };
   // A confirmation belongs to the save it confirms: the next edit takes it away.
   const clearNotice = () => setNotice(null);
-  // `isPending`, not `isLoading`: a list that has not arrived is still waiting even when the query
-  // is paused (the gateway unreachable), never an empty list.
+  // `isPending`, not `isLoading`: a list that has not arrived is still waiting, never an empty list.
   const waitingForTenants = tenantsQuery.isPending;
   // No drawer while the list loads (it would flash a new-tenant form), nor once it was closed.
   let drawer: ReactNode = null;

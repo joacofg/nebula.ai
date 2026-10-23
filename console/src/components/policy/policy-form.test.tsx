@@ -454,6 +454,23 @@ describe("policy-form", () => {
     expect(screen.getByText("7 con el router aprendido · 3 con la heurística")).toBeInTheDocument();
   });
 
+  it.each([
+    ["the learned router's count", ["learned_router_rows"]],
+    ["the heuristic's count", ["heuristic_rows"]],
+    ["both counts", ["learned_router_rows", "heuristic_rows"]],
+  ] as const)("says nothing of the decision sources when an older gateway leaves out %s", (_name, absent) => {
+    const summary = { ...baseSimulationResult.summary };
+    for (const field of absent) {
+      delete summary[field];
+    }
+    renderPolicyForm({ simulationResult: { ...baseSimulationResult, summary } });
+
+    expect(screen.queryByText(/con el router aprendido|con la heurística/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/undefined|NaN/)).not.toBeInTheDocument();
+    // The rest of the preview is still there.
+    expect(screen.getByText("Pedidos evaluados")).toBeInTheDocument();
+  });
+
   it("adds the cache hits the draft keeps, and their row reads the same before and after", () => {
     renderPolicyForm({
       simulationResult: {

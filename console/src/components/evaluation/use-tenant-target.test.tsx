@@ -1,12 +1,13 @@
 import type { ReactNode } from "react";
 
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { useTenantTarget } from "@/components/evaluation/use-tenant-target";
 import { AdminApiError, type TenantPolicy, type TenantRecord } from "@/lib/admin-api";
 import { SelectedTenantProvider } from "@/lib/selected-tenant";
+import { createTestQueryClient } from "@/test/render";
 
 const adminApi = vi.hoisted(() => ({
   listTenants: vi.fn(),
@@ -63,7 +64,7 @@ function deferred<T>() {
 }
 
 function setup(adminKey = "nebula-admin-key") {
-  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const queryClient = createTestQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={queryClient}>
       <SelectedTenantProvider>{children}</SelectedTenantProvider>

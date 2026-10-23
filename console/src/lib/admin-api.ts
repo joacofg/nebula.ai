@@ -115,9 +115,9 @@ export type PolicySimulationOutcomeCounts = {
    */
   baseline_tier_counts?: TierCounts;
   simulated_tier_counts?: TierCounts;
-  /** With `cache_rows`, add up to `evaluated_rows`. */
-  learned_router_rows: number;
-  heuristic_rows: number;
+  /** With `cache_rows`, add up to `evaluated_rows`; absent from older gateways. */
+  learned_router_rows?: number;
+  heuristic_rows?: number;
   /** Cache hits the draft keeps as cache hits (neither router re-decides them); absent from older gateways. */
   cache_rows?: number;
 };

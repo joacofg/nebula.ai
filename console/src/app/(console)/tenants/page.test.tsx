@@ -1,6 +1,6 @@
 import { onlineManager } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
-import { screen, within } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/admin-session-provider", async (importOriginal) => {
@@ -66,18 +66,23 @@ describe("tenants page", () => {
     expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
   });
 
-  it("keeps loading, with no drawer, and does not claim there are no tenants while the gateway cannot be reached", async () => {
-    mockedListTenants.mockClear();
+  it("keeps loading, with no drawer, and does not claim there are no tenants while the list has not arrived", async () => {
+    mockedListTenants.mockReturnValue(new Promise<never>(() => {}));
+    renderWithProviders(<TenantsPage />);
+    await waitFor(() => expect(mockedListTenants).toHaveBeenCalled());
+
+    expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
+    expect(screen.queryByText("Todavía no hay tenants.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Nuevo tenant" })).not.toBeInTheDocument();
+  });
+
+  it("lists the tenants while the browser reports no network, the gateway being on localhost", async () => {
     onlineManager.setOnline(false);
     try {
       renderWithProviders(<TenantsPage />);
-      // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
-      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      expect(mockedListTenants).not.toHaveBeenCalled();
-      expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
-      expect(screen.queryByText("Todavía no hay tenants.")).not.toBeInTheDocument();
-      expect(screen.queryByRole("heading", { name: "Nuevo tenant" })).not.toBeInTheDocument();
+      expect(await screen.findByText("Tenant A")).toBeInTheDocument();
+      expect(mockedListTenants).toHaveBeenCalledWith("admin-key");
     } finally {
       onlineManager.setOnline(true);
     }

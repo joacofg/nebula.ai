@@ -1,7 +1,6 @@
-import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import PlaygroundPage from "@/app/(console)/playground/page";
 import type { PlaygroundCompletionResult } from "@/lib/admin-api";
@@ -582,43 +581,13 @@ describe("playground-page", () => {
     }
   });
 
-  describe("when the gateway cannot be reached", () => {
-    afterEach(() => {
-      onlineManager.setOnline(true);
-    });
+  // The ledger record that has not arrived is covered above, by "waits for the ledger record".
+  it("keeps loading the tenants and does not claim there are none while the list has not arrived", async () => {
+    adminApi.listTenants.mockReturnValue(new Promise<never>(() => {}));
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+    await waitFor(() => expect(adminApi.listTenants).toHaveBeenCalled());
 
-    // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
-    async function letQueriesSettle() {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
-    it("keeps loading the tenants and does not claim there are none", async () => {
-      onlineManager.setOnline(false);
-      renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
-      await letQueriesSettle();
-
-      expect(adminApi.listTenants).not.toHaveBeenCalled();
-      expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
-      expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
-    });
-
-    it("waits for the ledger record, with the facts held back, while its lookup cannot start", async () => {
-      const user = userEvent.setup();
-      // The answer arrives, and the connection drops before the ledger lookup starts.
-      adminApi.createPlaygroundCompletion.mockImplementation(async () => {
-        onlineManager.setOnline(false);
-        return completion({ requestId: "req-offline" });
-      });
-      renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
-      await sendPrompt(user, "Then the network drops");
-      expect(await screen.findByText("A slow answer")).toBeInTheDocument();
-      await letQueriesSettle();
-
-      expect(adminApi.getUsageLedgerEntry).not.toHaveBeenCalled();
-      expect(screen.getByRole("status", { name: "Esperando el registro del ledger" })).toBeInTheDocument();
-      for (const fact of ["Ruta", "Nivel", "Caché"]) {
-        expect(screen.queryByRole("group", { name: fact }), fact).not.toBeInTheDocument();
-      }
-    });
+    expect(screen.getByRole("status", { name: "Cargando tenants" })).toBeInTheDocument();
+    expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
   });
 });

@@ -1,7 +1,6 @@
-import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import PolicyPage from "@/app/(console)/policy/page";
 import * as adminApi from "@/lib/admin-api";
@@ -308,64 +307,28 @@ describe("policy-page", () => {
     expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
   });
 
-  describe("when the gateway cannot be reached yet", () => {
-    afterEach(() => {
-      onlineManager.setOnline(true);
-    });
-
-    // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
-    async function letQueriesSettle() {
-      await new Promise((resolve) => setTimeout(resolve, 50));
-    }
-
+  describe("while a first answer has not arrived", () => {
     it("keeps the loading rows while the selected tenant's policy has not arrived", async () => {
-      // The options and the tenant list arrive; the connection drops right after, so only the
-      // policy query starts paused.
-      const answerOptions = getPolicyOptionsMock.getMockImplementation()!;
-      let optionsArrived!: () => void;
-      const optionsDone = new Promise<void>((resolve) => (optionsArrived = resolve));
-      getPolicyOptionsMock.mockImplementation(async (...args) => {
-        const options = await answerOptions(...args);
-        optionsArrived();
-        return options;
-      });
-      listTenantsMock.mockImplementation(async () => {
-        await optionsDone;
-        onlineManager.setOnline(false);
-        return [
-          {
-            id: "tenant-a",
-            name: "Tenant A",
-            description: null,
-            metadata: {},
-            active: true,
-            created_at: "2026-03-27T00:00:00Z",
-            updated_at: "2026-03-27T00:00:00Z",
-          },
-        ];
-      });
+      // The options and the tenant list arrive; only the policy of the selected tenant waits.
+      getTenantPolicyMock.mockReturnValue(new Promise<never>(() => {}));
       renderPolicyPage();
 
       await waitFor(() => expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("tenant-a"));
-      await letQueriesSettle();
+      await waitFor(() => expect(getTenantPolicyMock).toHaveBeenCalledWith("admin-key", "tenant-a"));
 
-      expect(getPolicyOptionsMock).toHaveBeenCalledTimes(1);
-      expect(getTenantPolicyMock).not.toHaveBeenCalled();
       expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
       expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
     });
 
     it("does not claim there are no tenants while the list has not arrived", async () => {
-      // The options are already known; only the tenant list waits for the connection.
+      // The options are already known; only the tenant list waits.
       const queryClient = createTestQueryClient();
       queryClient.setQueryData(queryKeys.policyOptions, await getPolicyOptionsMock("admin-key"));
-      getPolicyOptionsMock.mockClear();
-      onlineManager.setOnline(false);
+      listTenantsMock.mockReturnValue(new Promise<never>(() => {}));
       renderWithProviders(<PolicyPage />, { adminKey: "admin-key", queryClient });
 
-      await letQueriesSettle();
+      await waitFor(() => expect(listTenantsMock).toHaveBeenCalled());
 
-      expect(listTenantsMock).not.toHaveBeenCalled();
       expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
       expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
     });

@@ -77,7 +77,7 @@ export default function PlaygroundPage() {
 
       <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="border-line px-6 py-6 xl:border-r">
-          {/* `isPending`, not `isLoading`: a list paused while the gateway is unreachable is still waiting. */}
+          {/* `isPending`, not `isLoading`: a list that has not arrived is still waiting, never an empty one. */}
           {tenantsQuery.isPending ? (
             <LoadingRows rows={4} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
@@ -157,7 +157,7 @@ function PlaygroundResponseCard({
     },
     enabled: lookupEnabled,
   });
-  // `isPending`, not `isLoading`: a lookup paused while the gateway is unreachable is still waiting.
+  // `isPending`, not `isLoading`: a lookup that has not answered is still waiting.
   // A disabled one (no request yet) is pending forever, so it only counts once it can run.
   const waitingForLedger = lookupEnabled && recordedOutcomeQuery.isPending;
 

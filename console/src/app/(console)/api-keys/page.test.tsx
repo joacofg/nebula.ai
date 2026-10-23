@@ -1,4 +1,3 @@
-import { onlineManager } from "@tanstack/react-query";
 import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -59,20 +58,13 @@ describe("api keys page", () => {
     expect(await screen.findByText("Keys unavailable.")).toBeInTheDocument();
   });
 
-  it("keeps loading, and does not claim there are no keys, while the gateway cannot be reached", async () => {
-    vi.mocked(listApiKeys).mockClear();
-    onlineManager.setOnline(false);
-    try {
-      renderWithProviders(<ApiKeysPage />);
-      // Offline, TanStack pauses a query that has no data: not loading, not failed, just waiting.
-      await new Promise((resolve) => setTimeout(resolve, 50));
+  it("keeps loading, and does not claim there are no keys, while the list has not arrived", async () => {
+    vi.mocked(listApiKeys).mockReturnValue(new Promise<never>(() => {}));
+    renderWithProviders(<ApiKeysPage />);
+    await waitFor(() => expect(listApiKeys).toHaveBeenCalled());
 
-      expect(listApiKeys).not.toHaveBeenCalled();
-      expect(screen.getByRole("status", { name: "Cargando claves" })).toBeInTheDocument();
-      expect(screen.queryByText("Todavía no hay claves.")).not.toBeInTheDocument();
-    } finally {
-      onlineManager.setOnline(true);
-    }
+    expect(screen.getByRole("status", { name: "Cargando claves" })).toBeInTheDocument();
+    expect(screen.queryByText("Todavía no hay claves.")).not.toBeInTheDocument();
   });
 });
 
