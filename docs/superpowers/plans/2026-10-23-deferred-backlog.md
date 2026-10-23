@@ -174,8 +174,8 @@ touch `labels.ts`, three components and one hook, plus test fixtures. One task p
 
 ### Task 7: cache re-init in the background (PR 2 deferred)
 
-> **Dropped from PR 4.** The frozen cache report pins `semantic_cache_service.py` by hash (see the spec's Dropped
-> section). Land this task after the cache-eval rerun.
+> **Moved out of PR 4.** The frozen cache report pins `semantic_cache_service.py` by hash. A follow-up PR implements the
+> task as a subclass (`services/semantic_cache_reinit.py`) and leaves the pinned file untouched.
 
 **Files:**
 - Modify: `src/nebula/services/semantic_cache_service.py` (`_retry_initialize` schedules `asyncio.create_task(self.initialize())` into `self._init_task` when none is running and the 30 s throttle allows; it never awaits it; `close()` cancels and awaits a pending task)

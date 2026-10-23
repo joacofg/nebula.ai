@@ -79,11 +79,11 @@ failure. No paid API calls (premium runs use `NEBULA_PREMIUM_PROVIDER=mock`).
   `CreateApiKeyDialog` instances get distinct input ids (`useId`).
 
 ## Dropped (with reason)
-- **Cache re-init in the background (deferred, not abandoned):** the pre-registered cache measurement
-  (`benchmarks/cache/v1/report.json`) pins `semantic_cache_service.py` by SHA-256, and a test fails when the file
-  changes. The report is frozen until Joaquín labels the cache sets and reruns `make cache-eval`, which records new
-  hashes. Land this change after that rerun. Until then a cache outage costs at most one inline `initialize()` per
-  30 s, because of the existing throttle.
+- **Cache re-init in the background: moved to a follow-up PR, not dropped.** The pre-registered cache measurement
+  (`benchmarks/cache/v1/report.json`) pins `semantic_cache_service.py` by SHA-256, so that file cannot change. The
+  follow-up PR adds a subclass in `services/semantic_cache_reinit.py` that the gateway container uses. It runs the
+  retry as one background task under the same 30 s throttle, and `close()` cancels it. The base class, which the
+  replay uses, stays byte-identical.
 - **TIERS vs ROUTES casing ("Caché" / "caché"):** the split is deliberate (routes are sentence-case labels, tiers are
   the thesis terms; the comment in `labels.ts` says so). Either way of unifying changes figure 10.7's Ruta value or
   figure 11.1's tier badge.
