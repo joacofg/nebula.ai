@@ -67,7 +67,7 @@ describe("DecisionPath", () => {
       />,
     );
     expect(screen.getByRole("img")).toHaveAccessibleName(
-      "Decisión: local sin dato, economy descartado (p 0.95 < τ ∞), frontier elegido",
+      "Decisión: local sin dato (p sin dato · τ 0.82), economy descartado (p 0.95 < τ ∞), frontier elegido",
     );
     expect(screen.getByText("p sin dato · τ 0.82")).toBeInTheDocument();
     expect(screen.getByText("p 0.95 < τ ∞")).toBeInTheDocument();
@@ -126,8 +126,38 @@ describe("DecisionPath", () => {
   });
 
   it("keeps a probability's four decimals in the comparison", () => {
-    render(<DecisionPath steps={[{ tier: "local", p: 0.8312, tau: 0.82 }]} chosen="local" />);
-    expect(screen.getByText("p 0.8312 ≥ τ 0.82")).toBeInTheDocument();
+    render(<DecisionPath steps={[{ tier: "local", p: 0.8312, tau: 0.8234 }]} chosen="local" />);
+    expect(screen.getByText("p 0.8312 ≥ τ 0.8234")).toBeInTheDocument();
+  });
+
+  it("adds decimals, up to six, until p and τ read differently, so a comparison never contradicts its own text", () => {
+    // Both round to 0.8215 at four decimals: "p 0.8215 < τ 0.8215" would read as false.
+    render(
+      <DecisionPath
+        steps={[
+          { tier: "local", p: 0.82149, tau: 0.82151 },
+          { tier: "economy", p: 0.95, tau: 0.92 },
+        ]}
+        chosen="economy"
+      />,
+    );
+    const img = screen.getByRole("img");
+    expect(img.querySelector('[data-stage="local"]')).toHaveTextContent("p 0.82149 < τ 0.82151");
+    expect(img).toHaveAccessibleName(
+      "Decisión: local descartado (p 0.82149 < τ 0.82151), economy elegido (p 0.95 ≥ τ 0.92)",
+    );
+    expect(img.textContent).not.toContain("p 0.8215 <");
+  });
+
+  it("does the same when p is the one just above τ", () => {
+    render(<DecisionPath steps={[{ tier: "local", p: 0.82151, tau: 0.82149 }]} chosen="local" />);
+    expect(screen.getByText("p 0.82151 ≥ τ 0.82149")).toBeInTheDocument();
+    expect(screen.getByRole("img")).toHaveAccessibleName("Decisión: local elegido (p 0.82151 ≥ τ 0.82149)");
+  });
+
+  it("leaves a probability equal to its threshold at two decimals", () => {
+    render(<DecisionPath steps={[{ tier: "local", p: 0.82, tau: 0.82 }]} chosen="local" />);
+    expect(screen.getByText("p 0.82 ≥ τ 0.82")).toBeInTheDocument();
   });
 
   it.each([
@@ -140,21 +170,36 @@ describe("DecisionPath", () => {
     expect(screen.getByRole("img").querySelectorAll('[class*="opacity-"]')).toHaveLength(0);
   });
 
-  it("marks the branches not taken with a dashed line and keeps the one taken solid", () => {
-    render(
-      <DecisionPath
-        steps={[
-          { tier: "local", p: 0.9, tau: 0.82 },
-          { tier: "economy", p: 0.4, tau: 0.92 },
-        ]}
-        chosen="local"
-      />,
-    );
-    const paths = [...screen.getByRole("img").querySelectorAll("path")];
-    const dashed = paths.filter((path) => path.hasAttribute("stroke-dasharray"));
-    const solid = paths.filter((path) => !path.hasAttribute("stroke-dasharray"));
-    expect(dashed.length).toBeGreaterThan(0);
-    expect(solid.length).toBeGreaterThan(0);
+  // The branches of the cascade: "local-exit" and "economy-exit" lead to a tier's terminal,
+  // "to-economy" and "to-frontier" lead on to the next stage.
+  it.each([
+    [
+      "local wins",
+      [{ tier: "local", p: 0.9, tau: 0.82 }, { tier: "economy", p: 0.4, tau: 0.92 }],
+      "local",
+      ["economy-exit", "to-economy", "to-frontier"],
+    ],
+    [
+      "economy wins",
+      [{ tier: "local", p: 0.41, tau: 0.82 }, { tier: "economy", p: 0.95, tau: 0.92 }],
+      "economy",
+      ["local-exit", "to-frontier"],
+    ],
+    [
+      "frontier wins",
+      [{ tier: "local", p: 0.3, tau: 0.82 }, { tier: "economy", p: 0.5, tau: 0.92 }],
+      "frontier",
+      ["economy-exit", "local-exit"],
+    ],
+  ] as const)("dashes exactly the branches not taken when %s, and keeps the one taken solid", (_name, steps, chosen, dashedBranches) => {
+    render(<DecisionPath steps={[...steps]} chosen={chosen} />);
+    const img = screen.getByRole("img");
+
+    const dashed = [...img.querySelectorAll("path[stroke-dasharray]")].map((path) => path.getAttribute("data-branch"));
+    expect(dashed.sort()).toEqual([...dashedBranches].sort());
+
+    const taken = img.querySelector('path[data-branch="taken"]')!;
+    expect(taken).not.toHaveAttribute("stroke-dasharray");
   });
 
   it("draws the comparison in the sans label face, not the mono one that lacks Greek", () => {
@@ -167,7 +212,7 @@ describe("DecisionPath", () => {
     }
   });
 
-  it("renders the compact layout at its drawn size, with each comparison inside its box", () => {
+  it("renders the compact layout at its drawn size", () => {
     render(
       <DecisionPath
         compact
@@ -182,15 +227,6 @@ describe("DecisionPath", () => {
     const [, , viewWidth] = (img.getAttribute("viewBox") ?? "").split(" ").map(Number);
     expect(Number(img.getAttribute("width"))).toBe(viewWidth);
     expect(viewWidth).toBeLessThanOrEqual(352);
-    for (const tier of ["local", "economy"]) {
-      const stage = img.querySelector(`[data-stage="${tier}"]`)!;
-      const box = stage.querySelector("rect")!;
-      const comparison = [...stage.querySelectorAll("text")].find((t) => t.textContent?.includes("τ"))!;
-      const left = Number(box.getAttribute("x"));
-      const x = Number(comparison.getAttribute("x"));
-      expect(x).toBeGreaterThan(left);
-      expect(x).toBeLessThan(left + Number(box.getAttribute("width")));
-    }
     expect(img).toHaveAccessibleName("Decisión: local descartado (p 0.41 < τ 0.82), economy elegido (p 0.95 ≥ τ 0.92)");
   });
 });

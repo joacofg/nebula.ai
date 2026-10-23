@@ -10,7 +10,7 @@ import { PageHeader } from "@/components/system/page-header";
 import { EmptyState, ErrorAlert, errorMessage, LoadingRows } from "@/components/system/state";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { PlaygroundForm } from "@/components/playground/playground-form";
-import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
+import { PlaygroundMetadata, type ResponseFacts } from "@/components/playground/playground-metadata";
 import { PlaygroundRecordedOutcome } from "@/components/playground/playground-recorded-outcome";
 import { PlaygroundResponse } from "@/components/playground/playground-response";
 import { routingModeLabel } from "@/components/system/labels";
@@ -67,7 +67,10 @@ export default function PlaygroundPage() {
         title="Playground"
         cells={[
           { label: "Tenant", value: tenant?.name ?? "—" },
-          { label: "Objetivo", value: policy ? formatTarget(policy.routing_quality_target) : "—" },
+          {
+            label: "Objetivo",
+            value: typeof policy?.routing_quality_target === "number" ? formatTarget(policy.routing_quality_target) : "—",
+          },
           { label: "Modo de ruteo", value: policy ? routingModeLabel(policy.routing_mode_default) : "—" },
         ]}
       />
@@ -99,13 +102,9 @@ export default function PlaygroundPage() {
               onSelectedTenantIdChange={setTenantId}
               onModelChange={setModel}
               onPromptChange={setPrompt}
-              onSubmit={async () => {
-                await mutation.mutateAsync({
-                  tenantId: selectedTenantId,
-                  model,
-                  prompt,
-                });
-              }}
+              // `mutate` never rejects: a request that cannot be sent lands in `mutation.error`,
+              // which the result card shows.
+              onSubmit={() => mutation.mutate({ tenantId: selectedTenantId, model, prompt })}
             />
           )}
         </div>
@@ -121,6 +120,17 @@ export default function PlaygroundPage() {
       </div>
     </section>
   );
+}
+
+function responseFacts(result: PlaygroundCompletionResult): ResponseFacts {
+  return {
+    routeTarget: result.routeTarget,
+    routeReason: result.routeReason,
+    routeTier: result.routeTier ?? "",
+    provider: result.provider,
+    cacheHit: result.cacheHit,
+    fallbackUsed: result.fallbackUsed,
+  };
 }
 
 function PlaygroundResponseCard({
@@ -187,6 +197,10 @@ function PlaygroundResponseCard({
         tenantId={result.tenantId}
         policyMode={result.policyMode}
         policyOutcome={result.policyOutcome}
+        // The ledger block records the routing facts once. Without a ledger record (the lookup
+        // failed, or found nothing) the headers' copy keeps the result from coming back empty;
+        // while the lookup runs it waits, so the facts never show in both places.
+        response={recordedOutcomeQuery.data || recordedOutcomeQuery.isLoading ? undefined : responseFacts(result)}
       />
     </div>
   );

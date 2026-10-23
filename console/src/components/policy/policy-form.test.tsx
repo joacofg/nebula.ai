@@ -265,7 +265,7 @@ describe("policy-form", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 
     const row = within(screen.getByText("req-1").closest("li") as HTMLElement);
-    expect(row.getByText(/política ninguna → Solo premium, denegado/)).toBeInTheDocument();
+    expect(row.getByText(/política Automático → Solo premium, denegado/)).toBeInTheDocument();
     expect(row.queryByText(/routing_mode|denied=|Request exceeds/)).not.toBeInTheDocument();
   });
 

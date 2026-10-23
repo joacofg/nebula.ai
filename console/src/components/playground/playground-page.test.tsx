@@ -96,6 +96,17 @@ describe("playground-page", () => {
     expect(within(header).queryByText("Sesión")).not.toBeInTheDocument();
   });
 
+  it("shows a dash for a target the policy does not carry, without throwing", async () => {
+    adminApi.getTenantPolicy.mockResolvedValue({ routing_mode_default: "local_only" });
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+
+    const header = (await screen.findByRole("heading", { level: 1, name: "Playground" })).closest("header")!;
+    expect(await within(header).findByText("Solo local")).toBeInTheDocument();
+    expect(within(header).getByText("Objetivo")).toBeInTheDocument();
+    expect(within(header).getAllByText("—")).toHaveLength(1);
+    expect(within(header).getByText("Default Workspace")).toBeInTheDocument();
+  });
+
   it("shows a dash for the target and the mode while the policy is not known", async () => {
     adminApi.getTenantPolicy.mockRejectedValue(new Error("No se pudo conectar con el gateway."));
     renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
@@ -112,6 +123,10 @@ describe("playground-page", () => {
 
     expect(await screen.findByText("No hay tenants.")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Crear tenant" })).toHaveAttribute("href", "/tenants");
+    // No tenant, no policy to ask for: nothing is sent with an undefined tenant.
+    const header = screen.getByRole("heading", { level: 1, name: "Playground" }).closest("header")!;
+    expect(within(header).getAllByText("—")).toHaveLength(3);
+    expect(adminApi.getTenantPolicy).not.toHaveBeenCalled();
   });
 
   beforeEach(() => {
@@ -351,7 +366,8 @@ describe("playground-page", () => {
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();
     expect(screen.getAllByText("fallback por error local")).toHaveLength(1);
-    expect(screen.getAllByText("allowed")).toHaveLength(1);
+    expect(screen.getByRole("group", { name: "Resultado de política" })).toHaveTextContent("Automático");
+    expect(screen.queryByText("allowed")).not.toBeInTheDocument();
     await waitFor(() => {
       expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-failed-123");
     });
@@ -439,6 +455,92 @@ describe("playground-page", () => {
     expect(screen.queryByText(/21345/)).not.toBeInTheDocument();
     // What only the live response carries stays in the folded detail.
     expect(screen.getByRole("group", { name: "Request ID" })).toHaveTextContent("req-once");
+    // With the ledger record, the facts are the ledger block's and the detail does not repeat them.
+    const detail = within(screen.getByText("Detalle de la respuesta").closest("details")!);
+    const ledger = within(screen.getByRole("region", { name: "Registro en el ledger" }));
+    for (const fact of ["Ruta", "Motivo", "Nivel", "Proveedor", "Caché", "Fallback"]) {
+      expect(ledger.getByRole("group", { name: fact }), fact).toBeInTheDocument();
+      expect(detail.queryByRole("group", { name: fact }), fact).not.toBeInTheDocument();
+    }
+    // The policy rows are labels, never the gateway's codes.
+    expect(detail.getByRole("group", { name: "Modo de política" })).toHaveTextContent("Automático");
+    expect(detail.getByRole("group", { name: "Resultado de política" })).toHaveTextContent("Automático");
+  });
+
+  it.each([
+    ["the ledger lookup fails", () => adminApi.getUsageLedgerEntry.mockRejectedValue(new Error("No se pudo leer el ledger."))],
+    ["the ledger has no record of the request", () => adminApi.getUsageLedgerEntry.mockResolvedValue(null)],
+  ])("falls back to the facts of the response headers, each once, when %s", async (_name, arrange) => {
+    const user = userEvent.setup();
+    arrange();
+    adminApi.createPlaygroundCompletion.mockResolvedValue(
+      completion({
+        requestId: "req-headers",
+        routeTarget: "premium",
+        routeReason: "learned_router",
+        routeTier: "economy",
+        provider: "openai-compatible",
+        fallbackUsed: true,
+        policyMode: "premium_only",
+        policyOutcome: "routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail.",
+      }),
+    );
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+    await sendPrompt(user, "No ledger record");
+    expect(await screen.findByText("A slow answer")).toBeInTheDocument();
+    await waitFor(() => expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-headers"));
+    await waitFor(() => expect(screen.queryByRole("status", { name: "Esperando el registro del ledger" })).not.toBeInTheDocument());
+
+    expect(screen.queryByRole("heading", { name: "Registro en el ledger" })).not.toBeInTheDocument();
+    for (const fact of ["Ruta", "Motivo", "Nivel", "Proveedor", "Caché", "Fallback"]) {
+      expect(screen.getAllByRole("group", { name: fact }), fact).toHaveLength(1);
+    }
+    expect(screen.getByRole("group", { name: "Ruta" })).toHaveTextContent("Premium");
+    expect(screen.getByRole("group", { name: "Motivo" })).toHaveTextContent("router aprendido");
+    expect(screen.getByRole("group", { name: "Nivel" })).toHaveTextContent("economy");
+    expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("sí");
+    expect(screen.getByRole("group", { name: "Resultado de política" })).toHaveTextContent("Solo premium, denegado");
+    expect(screen.queryByText(/routing_mode|denied=|premium_only/)).not.toBeInTheDocument();
+  });
+
+  it("waits for the ledger record before showing the routing facts, then shows them once in its block", async () => {
+    const user = userEvent.setup();
+    const lookup = deferred<Awaited<ReturnType<typeof adminApi.getUsageLedgerEntry>>>();
+    adminApi.getUsageLedgerEntry.mockReturnValue(lookup.promise);
+    adminApi.createPlaygroundCompletion.mockResolvedValue(completion({ requestId: "req-late" }));
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+    await sendPrompt(user, "Slow ledger");
+    expect(await screen.findByRole("status", { name: "Esperando el registro del ledger" })).toBeInTheDocument();
+    // Not the headers' copy now, which the ledger block would repeat in a moment.
+    for (const fact of ["Ruta", "Nivel", "Caché"]) {
+      expect(screen.queryByRole("group", { name: fact }), fact).not.toBeInTheDocument();
+    }
+
+    lookup.resolve({
+      request_id: "req-late",
+      tenant_id: "default",
+      requested_model: "nebula-auto",
+      final_route_target: "local",
+      final_provider: "ollama",
+      fallback_used: false,
+      cache_hit: false,
+      response_model: "qwen2.5",
+      prompt_tokens: 5,
+      completion_tokens: 5,
+      total_tokens: 10,
+      estimated_cost: 0,
+      latency_ms: 900,
+      timestamp: "2026-09-30T12:00:00Z",
+      terminal_status: "completed",
+      route_reason: "learned_router",
+      policy_outcome: "default",
+    });
+    expect(await screen.findByRole("region", { name: "Registro en el ledger" })).toBeInTheDocument();
+    for (const fact of ["Ruta", "Motivo", "Nivel", "Proveedor", "Caché", "Fallback", "Latencia"]) {
+      expect(screen.getAllByRole("group", { name: fact }), fact).toHaveLength(1);
+    }
   });
 
   it("shows a request that could not be sent and leaves no rejection unhandled", async () => {

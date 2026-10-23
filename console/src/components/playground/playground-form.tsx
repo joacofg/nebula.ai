@@ -27,7 +27,8 @@ type PlaygroundFormProps = {
   onSelectedTenantIdChange: (tenantId: string) => void;
   onModelChange: (model: string) => void;
   onPromptChange: (prompt: string) => void;
-  onSubmit: () => Promise<void>;
+  /** Sends the prompt. It reports its own failures: the form never awaits it, so it must not reject. */
+  onSubmit: () => void;
 };
 
 export function PlaygroundForm({
@@ -48,17 +49,12 @@ export function PlaygroundForm({
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={async (event) => {
+      onSubmit={(event) => {
         event.preventDefault();
         if (submitDisabled) {
           return;
         }
-        try {
-          await onSubmit();
-        } catch {
-          // A request that cannot be sent is shown by the caller, in the result card. Nothing here
-          // reads the rejection, so it must not escape as an unhandled one.
-        }
+        onSubmit();
       }}
     >
       {sessionMissing ? (

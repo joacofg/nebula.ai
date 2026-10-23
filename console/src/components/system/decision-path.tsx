@@ -27,9 +27,9 @@ const SWATCH: Record<string, string> = {
   denied: "fill-danger",
 };
 
-/** Two to four decimals: 0.9 → "0.90", 0.8312 → "0.8312". */
-export function formatProb(value: number) {
-  const fixed = value.toFixed(4).replace(/0+$/, "");
+/** Two to four decimals (`maxDecimals`): 0.9 → "0.90", 0.8312 → "0.8312". */
+export function formatProb(value: number, maxDecimals = 4) {
+  const fixed = value.toFixed(maxDecimals).replace(/0+$/, "");
   const [whole, decimals = ""] = fixed.split(".");
   return `${whole}.${decimals.padEnd(2, "0")}`;
 }
@@ -38,23 +38,36 @@ function clears(step: DecisionStep) {
   return step.p !== null && step.tau !== null && step.p >= step.tau;
 }
 
-function formatTau(step: DecisionStep) {
-  return step.tau === null ? "∞" : formatProb(step.tau);
+/** p and τ written to the same number of decimals, at least as many as it takes to tell them apart (six at most). */
+function formatPair(p: number, tau: number): [string, string] {
+  let decimals = 4;
+  while (decimals < 6 && p !== tau && formatProb(p, decimals) === formatProb(tau, decimals)) {
+    decimals += 1;
+  }
+  return [formatProb(p, decimals), formatProb(tau, decimals)];
 }
 
-/** What a step compared, as the figure and its text alternative both write it: "p 0.82 ≥ τ 0.75". */
+/**
+ * What a step compared, as the figure and its text alternative both write it: "p 0.82 ≥ τ 0.75".
+ * Two values that round to the same text are shown with more decimals, so a "<" never sits between
+ * two equal-looking numbers.
+ */
 function comparison(step: DecisionStep) {
   if (step.p === null) {
-    return `p sin dato · τ ${formatTau(step)}`;
+    return `p sin dato · τ ${step.tau === null ? "∞" : formatProb(step.tau)}`;
   }
-  return `p ${formatProb(step.p)} ${clears(step) ? "≥" : "<"} τ ${formatTau(step)}`;
+  if (step.tau === null) {
+    return `p ${formatProb(step.p)} < τ ∞`;
+  }
+  const [p, tau] = formatPair(step.p, step.tau);
+  return `p ${p} ${clears(step) ? "≥" : "<"} τ ${tau}`;
 }
 
 function describe(steps: DecisionStep[], chosen: DecisionTier, exitRow: number) {
   const evaluated = steps.filter((_, i) => i <= exitRow);
   const parts = evaluated.map((step) => {
     if (step.p === null) {
-      return `${step.tier} sin dato`;
+      return `${step.tier} sin dato (${comparison(step)})`;
     }
     return clears(step) ? `${step.tier} elegido (${comparison(step)})` : `${step.tier} descartado (${comparison(step)})`;
   });
@@ -115,21 +128,22 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
   const boxX = (i: number) => g.boxX0 + i * g.stepX;
   const chosenRow = TIERS.indexOf(chosen as (typeof TIERS)[number]);
 
+  // The branch taken is one inked path (it traces itself); each branch not taken is its own dashed one.
   const ink: string[] = [`M${g.startX} ${cy(0)} H${boxX(0)}`];
-  const faint: string[] = [];
+  const dashed: { branch: string; d: string }[] = [];
   for (let i = 0; i < 2; i += 1) {
     const x = boxX(i);
     const into = i + 1 < 2 ? boxX(i + 1) : g.endX;
-    const drop = `M${x + g.boxW / 2} ${cy(i) + g.boxH / 2} V${cy(i + 1)} H${into}`;
-    const across = `M${x + g.boxW} ${cy(i)} H${g.endX}`;
+    const drop = { branch: `to-${TIERS[i + 1]}`, d: `M${x + g.boxW / 2} ${cy(i) + g.boxH / 2} V${cy(i + 1)} H${into}` };
+    const across = { branch: `${TIERS[i]}-exit`, d: `M${x + g.boxW} ${cy(i)} H${g.endX}` };
     if (i < exitRow) {
-      ink.push(drop);
-      faint.push(across);
+      ink.push(drop.d);
+      dashed.push(across);
     } else if (i === exitRow) {
-      ink.push(across);
-      faint.push(drop);
+      ink.push(across.d);
+      dashed.push(drop);
     } else {
-      faint.push(drop, across);
+      dashed.push(drop, across);
     }
   }
   return (
@@ -140,7 +154,9 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
       width={compact ? g.width : undefined}
       className={cn("block h-auto overflow-visible", compact ? "max-w-full" : "w-full max-w-[600px]", className)}
     >
-      <path d={faint.join(" ")} fill="none" strokeWidth={1} strokeDasharray="4 3" className="stroke-ink-3" />
+      {dashed.map(({ branch, d }) => (
+        <path key={branch} data-branch={branch} d={d} fill="none" strokeWidth={1} strokeDasharray="4 3" className="stroke-ink-3" />
+      ))}
       <circle cx={g.startX} cy={cy(0)} r={4} className="fill-ink" />
       {steps.slice(0, 2).map((step, i) => {
         const x = boxX(i);
@@ -168,7 +184,7 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
           </g>
         );
       })}
-      <path d={ink.join(" ")} pathLength={1} fill="none" strokeWidth={1.5} className={cn("stroke-ink", trace ? "decision-trace" : undefined)} />
+      <path data-branch="taken" d={ink.join(" ")} pathLength={1} fill="none" strokeWidth={1.5} className={cn("stroke-ink", trace ? "decision-trace" : undefined)} />
       {TIERS.map((tier, row) => {
         const isChosen = row === chosenRow || (chosenRow === -1 && row === exitRow);
         const reached = row === exitRow;

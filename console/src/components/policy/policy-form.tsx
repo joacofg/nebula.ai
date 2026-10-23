@@ -25,6 +25,7 @@ import {
 import {
   approximationNoteLabel,
   NO_SCORE_LABEL,
+  policyOutcomeLabel,
   reasonLabel,
   routeLabel,
   routingModeLabel,
@@ -152,22 +153,6 @@ function formatRoutingState(
 
   const name = modeLabel ?? NO_SCORE_LABEL;
   return detail.length > 0 ? `${name} (${detail})` : name;
-}
-
-/**
- * A policy outcome ("routing_mode=premium_only;denied=…;outcome_evidence=…") as the operator reads
- * it: the routing mode and whether it denied. The rest is the gateway's bookkeeping, never shown.
- */
-function policyOutcomeLabel(outcome: string | null) {
-  const parts: string[] = [];
-  for (const part of (outcome ?? "").split(";")) {
-    if (part.startsWith("routing_mode=")) {
-      parts.push(routingModeLabel(part.slice("routing_mode=".length)));
-    } else if (part.startsWith("denied=")) {
-      parts.push("denegado");
-    }
-  }
-  return parts.length > 0 ? parts.join(", ") : "ninguna";
 }
 
 function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {

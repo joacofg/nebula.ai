@@ -15,6 +15,7 @@ import {
   minimizationLabel,
   NO_SCORE_LABEL,
   plural,
+  policyOutcomeLabel,
   reasonLabel,
   retentionWindowLabel,
   routeLabel,
@@ -125,6 +126,40 @@ describe("routingModeLabel", () => {
 
   it("returns an unknown mode as it came", () => {
     expect(routingModeLabel("round_robin")).toBe("round_robin");
+  });
+});
+
+describe("policyOutcomeLabel", () => {
+  it.each([
+    ["routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail.", "Solo premium, denegado"],
+    ["routing_mode=local_only;fallback=disabled;outcome_evidence=sufficient(route_mode=calibrated)", "Solo local"],
+    ["routing_mode=auto;soft_budget=exceeded", "Automático"],
+  ])("reads %s as %s", (outcome, label) => {
+    expect(policyOutcomeLabel(outcome)).toBe(label);
+  });
+
+  it("reads a composite without a routing mode as Automático, because the gateway omits the mode for auto", () => {
+    expect(policyOutcomeLabel("default")).toBe("Automático");
+    expect(policyOutcomeLabel("soft_budget=exceeded;budget_action=downgraded_to_local")).toBe("Automático");
+    expect(policyOutcomeLabel("denied=Request exceeds the tenant premium spend guardrail.")).toBe("Automático, denegado");
+  });
+
+  it("never shows the gateway's bookkeeping", () => {
+    const label = policyOutcomeLabel(
+      "routing_mode=local_only;calibrated_routing=disabled;cache=disabled;hard_budget=exceeded(limit_usd=1,spent_usd=2,enforcement=deny);outcome_evidence=degraded(eligible=1)",
+    );
+    expect(label).toBe("Solo local");
+  });
+
+  it("returns an unknown routing mode as it came", () => {
+    expect(policyOutcomeLabel("routing_mode=round_robin")).toBe("round_robin");
+  });
+
+  it("shows a dash when there is no outcome to read, never an empty cell", () => {
+    expect(policyOutcomeLabel("")).toBe("—");
+    expect(policyOutcomeLabel("   ")).toBe("—");
+    expect(policyOutcomeLabel(null)).toBe("—");
+    expect(policyOutcomeLabel(undefined)).toBe("—");
   });
 });
 

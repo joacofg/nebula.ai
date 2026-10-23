@@ -73,40 +73,6 @@ describe("playground-form", () => {
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it("does not let a submit that rejects escape as an unhandled rejection", async () => {
-    const user = userEvent.setup();
-    const unhandled = vi.fn();
-    process.on("unhandledRejection", unhandled);
-    try {
-      const onSubmit = vi.fn().mockRejectedValue(new Error("No se pudo conectar con el gateway."));
-
-      renderWithProviders(
-        <PlaygroundForm
-          tenants={tenants}
-          selectedTenantId="default"
-          model="nebula-auto"
-          prompt="The gateway is down"
-          disabled={false}
-          isSubmitting={false}
-          sessionMissing={false}
-          onSelectedTenantIdChange={vi.fn()}
-          onModelChange={vi.fn()}
-          onPromptChange={vi.fn()}
-          onSubmit={onSubmit}
-        />,
-      );
-
-      await user.click(screen.getByRole("button", { name: "Enviar" }));
-      expect(onSubmit).toHaveBeenCalledTimes(1);
-      // Node reports an unhandled rejection once the microtask queue drains: wait one macrotask.
-      await new Promise((resolve) => setTimeout(resolve, 0));
-      expect(unhandled).not.toHaveBeenCalled();
-      expect(screen.getByRole("button", { name: "Enviar" })).toBeEnabled();
-    } finally {
-      process.off("unhandledRejection", unhandled);
-    }
-  });
-
   it("loads an example prompt without sending it", async () => {
     const user = userEvent.setup();
     const onPromptChange = vi.fn();

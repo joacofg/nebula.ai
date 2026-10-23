@@ -194,6 +194,28 @@ export function routingModeLabel(mode: string | null | undefined) {
   return lookup(ROUTING_MODES, mode);
 }
 
+/**
+ * A policy outcome ("routing_mode=premium_only;denied=…;outcome_evidence=…") as the operator reads
+ * it: the routing mode and whether it denied. The rest is the gateway's bookkeeping, never shown.
+ * The gateway leaves `routing_mode=` out for auto, so a composite without it is "Automático"; an
+ * empty outcome is no information, a dash.
+ */
+export function policyOutcomeLabel(outcome: string | null | undefined) {
+  if (!outcome?.trim()) {
+    return "—";
+  }
+  let mode = routingModeLabel("auto");
+  let denied = false;
+  for (const part of outcome.split(";")) {
+    if (part.startsWith("routing_mode=")) {
+      mode = routingModeLabel(part.slice("routing_mode=".length));
+    } else if (part.startsWith("denied=")) {
+      denied = true;
+    }
+  }
+  return denied ? `${mode}, denegado` : mode;
+}
+
 /** What decides the tier: the learned router or the complexity heuristic. */
 export function routerLabel(name: string | null | undefined) {
   return lookup(ROUTERS, name);
