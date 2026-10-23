@@ -22,6 +22,9 @@ import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
 import { useSelectedTenant } from "@/lib/selected-tenant";
 
+/** Recent ledger rows a simulation compares against, and the most changed rows the gateway returns. */
+const SIMULATION_WINDOW = 50;
+
 export default function PolicyPage() {
   const queryClient = useQueryClient();
   const { adminKey } = useAdminSession();
@@ -70,10 +73,12 @@ export default function PolicyPage() {
       if (!adminKey) {
         throw new Error("Falta la sesión de admin.");
       }
+      // Every changed row of the window comes back (the gateway returns at most 50 changed rows),
+      // so the preview's headline counts all of them; the preview lists the first few.
       return simulateTenantPolicy(adminKey, selectedTenantId, {
         candidate_policy: payload,
-        limit: 50,
-        changed_sample_limit: 5,
+        limit: SIMULATION_WINDOW,
+        changed_sample_limit: SIMULATION_WINDOW,
       });
     },
     onSuccess: (result) => {

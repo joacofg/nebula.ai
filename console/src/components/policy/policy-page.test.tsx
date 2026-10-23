@@ -273,7 +273,8 @@ describe("policy-page", () => {
             semantic_cache_max_entry_age_hours: 48,
           }),
           limit: 50,
-          changed_sample_limit: 5,
+          // Every changed row of the window comes back, so the headline counts all of them.
+          changed_sample_limit: 50,
         }),
       );
     });

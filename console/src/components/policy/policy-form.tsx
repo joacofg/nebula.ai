@@ -223,6 +223,9 @@ function tierCountItems(summary: PolicySimulationOutcomeCounts): ReadoutItem[] {
   ];
 }
 
+/** The changed requests the preview lists; the headline counts all of them. */
+const CHANGED_LIST_LIMIT = 5;
+
 function getDecisionSummary(simulationResult: PolicySimulationResponse) {
   const { summary, window, changed_requests: changedRequests } = simulationResult;
   const changedCount = changedRequests.length;
@@ -267,10 +270,18 @@ function getDecisionSummary(simulationResult: PolicySimulationResponse) {
       ? consequenceParts.join("; ")
       : `${changedCount} ${changedCount === 1 ? "pedido cambiaría" : "pedidos cambiarían"}`;
 
+  // The gateway returns at most `changed_sample_limit` changed requests. When it hit that cap,
+  // the list is a sample and the total is only known to be at least the larger count.
+  const truncated = changedCount >= window.changed_sample_limit && changedCount < summary.evaluated_rows;
+  const atLeast = Math.max(changedCount, summary.changed_routes, summary.newly_denied);
+  const title = truncated
+    ? `Este borrador cambiaría al menos ${atLeast} ${atLeast === 1 ? "pedido" : "pedidos"} de la muestra.`
+    : `Este borrador cambiaría ${changedCount} ${changedCount === 1 ? "pedido" : "pedidos"} de la muestra.`;
+
   return {
     tone: summary.newly_denied > 0 ? ("rose" as const) : ("sky" as const),
     badge: summary.newly_denied > 0 ? "Revisar antes de guardar" : "Cambia resultados",
-    title: `Este borrador cambiaría ${changedCount} ${changedCount === 1 ? "pedido" : "pedidos"} de la muestra.`,
+    title,
     body: `${consequenceLabel.charAt(0).toUpperCase()}${consequenceLabel.slice(1)}.`,
   };
 }
@@ -753,10 +764,12 @@ export function PolicyForm({
                 ) : (
                   <section aria-labelledby="changed-sample-heading" className="flex flex-col gap-2">
                     <h3 id="changed-sample-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
-                      Pedidos que cambian
+                      {simulationResult.changed_requests.length > CHANGED_LIST_LIMIT
+                        ? `Pedidos que cambian · ${CHANGED_LIST_LIMIT} de ${simulationResult.changed_requests.length}`
+                        : "Pedidos que cambian"}
                     </h3>
                     <ul className="m-0 flex list-none flex-col divide-y divide-line border-y border-line p-0">
-                      {simulationResult.changed_requests.map((change) => (
+                      {simulationResult.changed_requests.slice(0, CHANGED_LIST_LIMIT).map((change) => (
                         <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
                           <div className="flex flex-wrap items-center gap-2 text-sm">
                             <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>

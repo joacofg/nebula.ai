@@ -261,6 +261,42 @@ describe("policy-form", () => {
     expect(screen.getByRole("button", { name: "Guardar política" })).toBeInTheDocument();
   });
 
+  it("counts every changed request in the headline and lists the first five of them", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    const changed = Array.from({ length: 7 }, (_, index) => ({ ...row, request_id: `req-${index + 1}` }));
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        window: { ...baseSimulationResult.window, changed_sample_limit: 50, returned_rows: 10 },
+        summary: { ...baseSimulationResult.summary, changed_routes: 7, newly_denied: 0 },
+        changed_requests: changed,
+      },
+    });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByText("Este borrador cambiaría 7 pedidos de la muestra.")).toBeInTheDocument();
+    expect(preview.getByRole("heading", { name: "Pedidos que cambian · 5 de 7" })).toBeInTheDocument();
+    expect(preview.getByText("req-5")).toBeInTheDocument();
+    expect(preview.queryByText("req-6")).not.toBeInTheDocument();
+  });
+
+  it("says 'al menos' when the gateway cut the changed requests at the sample limit", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        // 41 rows evaluated, 19 routes change, but only 5 changed requests came back.
+        window: { ...baseSimulationResult.window, changed_sample_limit: 5, returned_rows: 41 },
+        summary: { ...baseSimulationResult.summary, evaluated_rows: 41, changed_routes: 19, newly_denied: 0 },
+        changed_requests: Array.from({ length: 5 }, (_, index) => ({ ...row, request_id: `req-${index + 1}` })),
+      },
+    });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByText("Este borrador cambiaría al menos 19 pedidos de la muestra.")).toBeInTheDocument();
+    expect(preview.queryByText("Este borrador cambiaría 5 pedidos de la muestra.")).not.toBeInTheDocument();
+  });
+
   it("writes the policy outcome of a changed request in Spanish, never its raw text", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 
