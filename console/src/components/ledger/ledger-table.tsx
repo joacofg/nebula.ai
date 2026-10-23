@@ -89,16 +89,18 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
 
   return (
     <div className="max-h-[620px] overflow-auto">
-      <table className="w-full min-w-[812px] table-fixed border-collapse text-sm" aria-label="Ledger de pedidos">
+      {/* Fixed columns sized to their content ("23/10 14:05:03", "USD 0.0000", "completado"), so at
+          1440 px the table fits its 776 px cell and Modelo keeps room for "openai/gpt-4.1". */}
+      <table className="w-full min-w-[760px] table-fixed border-collapse text-sm" aria-label="Ledger de pedidos">
         <colgroup>
-          <col className="w-[136px]" />
-          <col className="w-[104px]" />
-          <col className="w-[104px]" />
+          <col className="w-[126px]" />
+          <col className="w-[88px]" />
+          <col className="w-[96px]" />
           <col />
           <col className="w-[68px]" />
-          <col className="w-[104px]" />
+          <col className="w-[96px]" />
           <col className="w-[76px]" />
-          <col className="w-[132px]" />
+          <col className="w-[96px]" />
         </colgroup>
         <thead>
           <tr className="sticky top-0 z-10 border-b border-line-strong bg-surface shadow-[inset_0_-1px_0_var(--color-line-strong)]">
