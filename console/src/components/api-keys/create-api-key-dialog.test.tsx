@@ -4,27 +4,9 @@ import { describe, expect, it, vi } from "vitest";
 
 import { CreateApiKeyDialog } from "@/components/api-keys/create-api-key-dialog";
 import { renderWithProviders } from "@/test/render";
+import { TENANT_A } from "@/test/tenants";
 
-const TENANTS = [
-  {
-    id: "tenant-a",
-    name: "Tenant A",
-    description: "Primary",
-    metadata: {},
-    active: true,
-    created_at: "2026-03-16T12:00:00Z",
-    updated_at: "2026-03-16T12:00:00Z",
-  },
-  {
-    id: "tenant-b",
-    name: "Tenant B",
-    description: "Secondary",
-    metadata: {},
-    active: true,
-    created_at: "2026-03-16T12:00:00Z",
-    updated_at: "2026-03-16T12:00:00Z",
-  },
-];
+const TENANTS = [TENANT_A, { ...TENANT_A, id: "tenant-b", name: "Tenant B", description: "Secondary" }];
 
 describe("create-api-key-dialog", () => {
   it("titles the dialog and explains the tenant header in one line", () => {
@@ -160,6 +142,31 @@ describe("create-api-key-dialog", () => {
     const hint = /Con más de uno y sin tenant por defecto, los pedidos envían X-Nebula-Tenant-ID/;
     expect(screen.getByRole("group", { name: "Tenants permitidos" })).toHaveAccessibleDescription(hint);
     expect(screen.getByLabelText("Tenant por defecto")).toHaveAccessibleDescription(hint);
+  });
+});
+
+describe("create-api-key-dialog ids", () => {
+  it("renders two dialogs with distinct input ids", () => {
+    renderWithProviders(
+      <>
+        {[0, 1].map((index) => (
+          <CreateApiKeyDialog
+            key={index}
+            open
+            tenants={TENANTS}
+            selectedTenantId="tenant-a"
+            isSaving={false}
+            onClose={vi.fn()}
+            onSubmit={vi.fn().mockResolvedValue(undefined)}
+          />
+        ))}
+      </>,
+    );
+
+    expect(screen.getAllByRole("dialog", { hidden: true })).toHaveLength(2);
+    const ids = Array.from(document.querySelectorAll("[id]")).map((element) => element.id);
+    expect(ids.length).toBeGreaterThan(0);
+    expect(new Set(ids).size).toBe(ids.length);
   });
 });
 

@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from math import ceil
 from typing import Literal
 
 from fastapi import HTTPException, status
+from starlette.concurrency import run_in_threadpool
 
 from nebula.benchmarking.pricing import PricingCatalog
 from nebula.core.config import Settings
@@ -84,10 +87,15 @@ class PolicyService:
         settings: Settings,
         store: GovernanceStore,
         pricing: PricingCatalog,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.settings = settings
         self.store = store
         self.pricing = pricing
+        self._clock = clock
+        # {tenant_id: (expires_at, summary)}. The summary only adjusts the reported score, never the chosen
+        # target, so reusing it for a few seconds changes no route.
+        self._evidence_memo: dict[str, tuple[float, CalibrationEvidenceSummary]] = {}
 
     async def resolve(
         self,
@@ -159,11 +167,12 @@ class PolicyService:
         before_timestamp: datetime | None = None,
         evidence_summary_override: CalibrationEvidenceSummary | None = None,
         prompt_embedding: list[float] | None = None,
+        tenant_spend_total: float | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
         evidence_summary = evidence_summary_override
         if evidence_summary is None and replay_context is None:
-            evidence_summary = self.store.summarize_calibration_evidence(tenant_id=tenant_context.tenant.id)
+            evidence_summary = await self._read_evidence_summary(tenant_context.tenant.id)
         if replay_context is not None:
             route_decision = await router_service.choose_target_for_replay(
                 request,
@@ -181,12 +190,35 @@ class PolicyService:
                 evidence_summary=evidence_summary,
                 prompt_embedding=prompt_embedding,
             )
+        if tenant_spend_total is None:
+            tenant_spend_total = await self.read_tenant_spend(
+                tenant_context.tenant.id, before_timestamp=before_timestamp
+            )
         return self.evaluate_decision(
             request=request,
             tenant_context=tenant_context,
             route_decision=route_decision,
             before_timestamp=before_timestamp,
             evidence_summary=evidence_summary,
+            tenant_spend_total=tenant_spend_total,
+        )
+
+    async def _read_evidence_summary(self, tenant_id: str) -> CalibrationEvidenceSummary:
+        """The tenant's outcome-evidence summary, memoized for the configured TTL and read off the event loop."""
+        ttl = self.settings.evidence_summary_ttl_seconds
+        if ttl > 0:
+            cached = self._evidence_memo.get(tenant_id)
+            if cached is not None and self._clock() < cached[0]:
+                return cached[1]
+        summary = await run_in_threadpool(self.store.summarize_calibration_evidence, tenant_id=tenant_id)
+        if ttl > 0:
+            self._evidence_memo[tenant_id] = (self._clock() + ttl, summary)
+        return summary
+
+    async def read_tenant_spend(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
+        """The tenant's spend, read off the event loop (the store is synchronous SQLAlchemy)."""
+        return await run_in_threadpool(
+            self.store.tenant_spend_total, tenant_id, before_timestamp=before_timestamp
         )
 
     def evaluate_decision(
@@ -197,6 +229,7 @@ class PolicyService:
         route_decision: RouteDecision,
         before_timestamp: datetime | None = None,
         evidence_summary: CalibrationEvidenceSummary | None = None,
+        tenant_spend_total: float | None = None,
     ) -> PolicyEvaluation:
         """Apply the tenant's guardrails to a route decision that is already made.
 
@@ -204,6 +237,9 @@ class PolicyService:
         with the learned router's re-decision of a ledger row, so both meet the same
         guardrails (calibrated routing off, explicit-model conflicts, allowed premium models
         with the economy-to-frontier escalation, the per-request cap and the hard budget).
+
+        Callers on the event loop pass `tenant_spend_total` (read off the loop with
+        `read_tenant_spend`); without it this reads the store itself, which blocks.
         """
         policy = tenant_context.policy
         calibrated_routing_gated = False
@@ -222,10 +258,11 @@ class PolicyService:
             routing_mode=policy.routing_mode_default,
         )
 
-        tenant_spend_total = self.store.tenant_spend_total(
-            tenant_context.tenant.id,
-            before_timestamp=before_timestamp,
-        )
+        if tenant_spend_total is None:
+            tenant_spend_total = self.store.tenant_spend_total(
+                tenant_context.tenant.id,
+                before_timestamp=before_timestamp,
+            )
 
         soft_budget_exceeded = False
         if policy.soft_budget_usd is not None:

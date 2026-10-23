@@ -15,6 +15,16 @@ const FALLBACK_TARGET = 0.95;
 type Pick = { tenantId: string | null; value: number };
 type Shown = { ready: boolean; target: number };
 
+// Distributes over the mutation result's union, so `isSuccess` still narrows `data` and `variables`.
+type WithoutMutateAsync<T> = T extends unknown ? Omit<T, "mutateAsync"> : never;
+
+/** A mutation result without `mutateAsync`, so its only way to save is the guarded `mutate`. */
+function omitMutateAsync<T extends { mutateAsync: unknown }>(result: T): WithoutMutateAsync<T> {
+  const rest: Partial<T> = { ...result };
+  delete rest.mutateAsync;
+  return rest as WithoutMutateAsync<T>;
+}
+
 /**
  * The quality target being explored for the selected tenant, and the way to apply it.
  *
@@ -96,9 +106,12 @@ export function useTenantTarget(adminKey: string) {
       setPick({ tenantId, value });
       apply.reset();
     },
-    /** The save; `mutate` does nothing while settling, when `target` may be the last tenant's. */
+    /**
+     * The save; `mutate` does nothing while settling, when `target` may be the last tenant's.
+     * `mutateAsync` is left out on purpose: it would save without that guard.
+     */
     apply: {
-      ...apply,
+      ...omitMutateAsync(apply),
       mutate: (...args: Parameters<typeof apply.mutate>) => {
         if (!settled) {
           return;

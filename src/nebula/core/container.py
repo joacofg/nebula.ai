@@ -2,7 +2,7 @@ import logging
 from pathlib import Path
 
 from nebula.benchmarking.pricing import PricingCatalog
-from nebula.core.config import Settings
+from nebula.core.config import Settings, same_embedding_model
 from nebula.db.session import create_session_factory
 from nebula.providers.mock_premium import MockPremiumProvider
 from nebula.providers.ollama import OllamaProvider
@@ -109,7 +109,7 @@ class ServiceContainer:
             return None
         # Enabled but missing or invalid is a deployment error: fail at startup, not per request.
         learned = LearnedRouterModel.from_file(self.settings.learned_router_path)
-        if learned.embedding_model != self.settings.embedding_model:
+        if not same_embedding_model(learned.embedding_model, self.settings.embedding_model):
             # Trained on another model's vectors, it would score this model's as noise. The
             # gateway still serves, with heuristic routing, so the error is logged, not raised.
             logger.error(

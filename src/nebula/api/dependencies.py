@@ -3,6 +3,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import Header, HTTPException, Request, Response, status
+from starlette.concurrency import run_in_threadpool
 
 from nebula.core.container import ServiceContainer
 from nebula.models.governance import UsageLedgerRecord
@@ -54,8 +55,8 @@ def require_admin(
 logger = logging.getLogger(__name__)
 
 
-def _record_rejection(container: ServiceContainer, record: UsageLedgerRecord) -> None:
-    container.governance_store.record_usage(record)
+async def _record_rejection(container: ServiceContainer, record: UsageLedgerRecord) -> None:
+    await run_in_threadpool(container.governance_store.record_usage, record)
 
 
 def _rate_limit_headers(result) -> dict[str, str]:
@@ -100,7 +101,7 @@ async def enforce_rate_limit(
         pass
     request_id = getattr(request.state, "request_id", None) or f"req-{uuid4().hex}"
     try:
-        _record_rejection(container, UsageLedgerRecord(
+        await _record_rejection(container, UsageLedgerRecord(
             request_id=request_id,
             tenant_id=tenant_id,
             requested_model=requested_model,

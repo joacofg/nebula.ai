@@ -21,7 +21,7 @@ const mockEntry: UsageLedgerRecord = {
   latency_ms: 82,
   timestamp: "2026-03-17T01:02:03Z",
   terminal_status: "completed",
-  route_reason: "embeddings_request",
+  route_reason: "embeddings_direct",
   policy_outcome: "allowed",
   route_signals: null,
   message_type: "embeddings",
@@ -171,6 +171,58 @@ describe("ledger-request-detail", () => {
     expect(screen.getByRole("img", { name: /economy elegido \(p 0\.95 ≥ τ 0\.92\)/ })).toBeInTheDocument();
     // The detail column is narrow: the path is drawn 1:1 so its labels stay legible.
     expect(screen.getByRole("img", { name: /economy elegido/ })).toHaveAttribute("width");
+  });
+
+  it("names the tier that served a fallback row, not the one the router chose", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "premium",
+          response_model: "anthropic/claude-sonnet-4.5",
+          fallback_used: true,
+          route_reason: "local_provider_error_fallback",
+          route_signals: {
+            tier: "local",
+            p_local: 0.9,
+            p_economy: 0.95,
+            quality_target: 0.95,
+            operating_point: { tau_local: 0.82, tau_economy: 0.92 },
+            learned_router: "v1",
+          },
+        }}
+      />,
+    );
+    const heading = screen.getByRole("heading", { name: "Por qué este nivel" });
+    expect(heading.parentElement).toHaveTextContent("frontier");
+    expect(
+      screen.getByText("Se sirvió con frontier por un fallback; el router había elegido local."),
+    ).toBeInTheDocument();
+  });
+
+  it("falls back to the row's own tier for the badge on a legacy learned row without signals.tier", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "premium",
+          response_model: "anthropic/claude-haiku-4.5",
+          route_reason: "learned_router",
+          route_signals: {
+            // No `tier`: the row is older than that signal. Its economy model identifies the tier.
+            economy_model: "anthropic/claude-haiku-4.5",
+            p_local: 0.1,
+            p_economy: 0.2,
+            quality_target: 0.95,
+            operating_point: { tau_local: 0.82, tau_economy: 0.92 },
+            learned_router: "v1",
+          },
+        }}
+      />,
+    );
+    const header = screen.getByRole("heading", { name: "Por qué este nivel" }).parentElement;
+    expect(header).toHaveTextContent("economy");
+    expect(header).not.toHaveTextContent("frontier");
   });
 
   it("renders the heuristic inspection with its additive score", () => {

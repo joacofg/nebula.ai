@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from starlette.concurrency import run_in_threadpool
+
 from nebula.models.governance import (
     CalibrationEvidenceSummary,
     PolicySimulationChangedRequest,
@@ -22,6 +24,18 @@ from nebula.services.router_service import ReplayRouteContext, RouteDecision, Ro
 
 TIERS = ("local", "economy", "frontier")
 
+# Route reasons of a decision no router made: the request named a model, the candidate pins the
+# routing mode, or calibrated routing is off. Such a row is the policy's, not the heuristic's.
+POLICY_DECIDED_REASONS = frozenset(
+    {
+        "explicit_local_model",
+        "explicit_premium_model",
+        "policy_local_only",
+        "policy_premium_only",
+        "calibrated_routing_disabled",
+    }
+)
+
 # (code, text): clients word the notes by code; the text stays for API clients that show it.
 APPROXIMATION_NOTES = (
     (
@@ -39,9 +53,8 @@ APPROXIMATION_NOTES = (
 )
 HEURISTIC_FALLBACK_NOTE = (
     "heuristic_fallback_rows",
-    "Rows without stored learned-router probabilities for the loaded artifact, or that the "
-    "candidate policy keeps off the learned router, are replayed with the token-complexity "
-    "heuristic.",
+    "Rows without stored learned-router probabilities for the loaded artifact are replayed with "
+    "the token-complexity heuristic.",
 )
 CACHE_ROWS_HELD_NOTE = (
     "cache_rows_held",
@@ -91,7 +104,8 @@ class PolicySimulationService:
         tenant_context: AuthenticatedTenantContext,
         payload: PolicySimulationRequest,
     ) -> PolicySimulationResponse:
-        records = self.governance_store.list_usage_records(
+        records = await run_in_threadpool(
+            self.governance_store.list_usage_records,
             tenant_id=tenant_context.tenant.id,
             from_timestamp=payload.from_timestamp,
             to_timestamp=payload.to_timestamp,
@@ -107,11 +121,23 @@ class PolicySimulationService:
         ]
 
         replay_inputs = [self._build_replay_input(record) for record in records]
-        calibration_summary = self.governance_store.summarize_calibration_evidence(
+        calibration_summary = await run_in_threadpool(
+            self.governance_store.summarize_calibration_evidence,
             tenant_id=tenant_context.tenant.id,
             from_timestamp=payload.from_timestamp,
             to_timestamp=payload.to_timestamp,
             limit=payload.limit,
+        )
+        # Each row is judged against the spend before it, so the guardrails see the hard budget run
+        # out part way through the window: one pass for all rows instead of a query per row.
+        spend_before_rows = (
+            await run_in_threadpool(
+                self.governance_store.tenant_spend_before,
+                tenant_context.tenant.id,
+                [record.timestamp for record in records],
+            )
+            if records
+            else []
         )
         changed: list[PolicySimulationChangedRequest] = []
         evaluated_count = 0
@@ -124,6 +150,7 @@ class PolicySimulationService:
         decision_source_counts: dict[SimulationDecisionSource, int] = {
             "learned_router": 0,
             "heuristic": 0,
+            "policy": 0,
         }
         cache_rows = 0
 
@@ -133,7 +160,7 @@ class PolicySimulationService:
             policy=payload.candidate_policy,
         )
 
-        for replay_input in replay_inputs:
+        for replay_input, spend_before in zip(replay_inputs, spend_before_rows, strict=True):
             evaluated_count += 1
             if self._held_by_cache(replay_input.record, payload.candidate_policy):
                 # Live, routing resolves first and the cache lookup is scoped to the chosen tier.
@@ -159,6 +186,7 @@ class PolicySimulationService:
                     route_decision=learned_decision,
                     before_timestamp=replay_input.record.timestamp,
                     evidence_summary=calibration_summary,
+                    tenant_spend_total=spend_before,
                 )
             else:
                 decision_source = "heuristic"
@@ -169,7 +197,10 @@ class PolicySimulationService:
                     replay_context=replay_input.replay_context,
                     before_timestamp=replay_input.record.timestamp,
                     evidence_summary_override=calibration_summary,
+                    tenant_spend_total=spend_before,
                 )
+                if evaluation.route_decision.reason in POLICY_DECIDED_REASONS:
+                    decision_source = "policy"
             decision_source_counts[decision_source] += 1
 
             simulated_target = self._simulation_target(evaluation)
@@ -248,6 +279,7 @@ class PolicySimulationService:
                 simulated_tier_counts=simulated_tier_counts,
                 learned_router_rows=decision_source_counts["learned_router"],
                 heuristic_rows=decision_source_counts["heuristic"],
+                policy_rows=decision_source_counts["policy"],
                 cache_rows=cache_rows,
             ),
             calibration_summary=calibration_summary,

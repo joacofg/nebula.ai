@@ -29,6 +29,7 @@ import {
   suppressedFieldLabel,
   tierLabel,
   insightLevelLabel,
+  languageLabel,
   recommendationCategoryLabel,
   recommendationEvidenceLabel,
 } from "@/components/system/labels";
@@ -61,6 +62,8 @@ describe("labels", () => {
     expect(reasonLabel("degraded_replay_signals")).toBe("señales incompletas");
     expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
     expect(reasonLabel("rate_limited")).toBe("límite de pedidos");
+    expect(reasonLabel("embeddings_request")).toBe("pedido de embeddings");
+    expect(reasonLabel("denied_request")).toBe("pedido denegado");
   });
 
   it("names the heuristic the same way as a reason and as a router", () => {
@@ -96,6 +99,7 @@ describe("every label function", () => {
     ["enforcementLabel", enforcementLabel],
     ["complexityLabel", complexityLabel],
     ["tierLabel", tierLabel],
+    ["languageLabel", languageLabel],
     ["insightLevelLabel", insightLevelLabel],
     ["recommendationCategoryLabel", recommendationCategoryLabel],
     ["recommendationEvidenceLabel", recommendationEvidenceLabel],
@@ -415,7 +419,7 @@ describe("approximationNoteLabel", () => {
     ["ledger_metadata_replay", "Se usan los metadatos guardados en el ledger, no el texto de los pedidos."],
     ["token_count_approximation", "Sin señales completas, la complejidad se aproxima con los tokens guardados."],
     ["pricing_estimate", "El costo usa los precios actuales; no se llama a ningún proveedor."],
-    ["heuristic_fallback_rows", "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística."],
+    ["heuristic_fallback_rows", "Los pedidos sin probabilidades guardadas del router cargado usan la heurística."],
     ["cache_rows_held", "Los pedidos que respondió la caché siguen en caché: se asume que la respuesta guardada sirve al nivel que elegiría el borrador."],
   ])("words %s in Spanish", (code, label) => {
     expect(approximationNoteLabel(code, "English text from the API")).toBe(label);
@@ -437,5 +441,18 @@ describe("approximationNoteLabel", () => {
 describe("the reason a tenant's automatic routing is off", () => {
   it("is named like the Policy checkbox that turns it off", () => {
     expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
+  });
+});
+
+describe("languageLabel", () => {
+  it.each([
+    ["es", "Español"],
+    ["en", "Inglés"],
+  ])("labels %s as %s", (code, label) => {
+    expect(languageLabel(code)).toBe(label);
+  });
+
+  it("returns an unknown language code as it came", () => {
+    expect(languageLabel("pt")).toBe("pt");
   });
 });

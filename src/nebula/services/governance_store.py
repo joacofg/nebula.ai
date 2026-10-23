@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import math
 import secrets
+from bisect import bisect_left
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from sqlalchemy import and_, delete, func, inspect, or_, select
+from sqlalchemy import ColumnElement, and_, delete, func, inspect, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -75,6 +78,10 @@ class StoredApiKey:
             created_at=self.created_at,
             updated_at=self.updated_at,
         )
+
+
+# Rows written when a request was turned away before routing (route_signals is None by design).
+_CALIBRATION_DENIED_TERMINAL_STATUSES = frozenset({"policy_denied", "rate_limited"})
 
 
 class GovernanceStore:
@@ -557,6 +564,15 @@ class GovernanceStore:
             degraded_reasons=self._reason_counts(degraded_counter),
         )
 
+    # A stream the client abandoned still spent the premium tokens it streamed.
+    _SPEND_TERMINAL_STATUSES = ("completed", "fallback_completed", "cache_hit", "client_disconnected")
+
+    def _spend_filters(self, tenant_id: str) -> tuple[ColumnElement[bool], ...]:
+        return (
+            UsageLedgerModel.tenant_id == tenant_id,
+            UsageLedgerModel.terminal_status.in_(self._SPEND_TERMINAL_STATUSES),
+        )
+
     def tenant_spend_total(
         self,
         tenant_id: str,
@@ -565,16 +581,61 @@ class GovernanceStore:
     ) -> float:
         with self._session() as session:
             stmt = select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
-                UsageLedgerModel.tenant_id == tenant_id,
-                # A stream the client abandoned still spent the premium tokens it streamed.
-                UsageLedgerModel.terminal_status.in_(
-                    ["completed", "fallback_completed", "cache_hit", "client_disconnected"]
-                ),
+                *self._spend_filters(tenant_id)
             )
             if before_timestamp is not None:
                 stmt = stmt.where(UsageLedgerModel.timestamp < before_timestamp)
             total = session.scalar(stmt)
             return float(total or 0.0)
+
+    def tenant_spend_before(self, tenant_id: str, timestamps: Sequence[datetime]) -> list[float]:
+        """`tenant_spend_total(tenant_id, before_timestamp=t)` for every `t`, in input order.
+
+        One query however many timestamps: the tenant's spend rows before the latest one, in
+        timestamp order. Each timestamp reads the running total of the rows before it, found with
+        a binary search. The comparison is strictly before, like the per-timestamp query, and
+        timestamps are compared in UTC (a naive one is UTC, an aware one is converted; the gateway
+        writes UTC). The running total is exactly rounded (Shewchuk partials, the `math.fsum`
+        recipe), which matches SQLite's compensated SUM (0 mismatches in 3,000 random sequences)
+        for the per-timestamp query: a plain running `+=` drifts from it in the last bit, and
+        that flips a `>=` budget check at the limit.
+        """
+        if not timestamps:
+            return []
+        bounds = [self._normalize_comparable_datetime(at) for at in timestamps]
+        with self._session() as session:
+            rows = session.execute(
+                select(UsageLedgerModel.timestamp, UsageLedgerModel.estimated_cost)
+                .where(*self._spend_filters(tenant_id), UsageLedgerModel.timestamp < max(bounds))
+                .order_by(UsageLedgerModel.timestamp)
+            ).all()
+        row_times = [self._normalize_comparable_datetime(row_time) for row_time, _ in rows]
+        # How many rows precede each timestamp, and so which running totals are read.
+        row_counts = [bisect_left(row_times, bound) for bound in bounds]
+        wanted = set(row_counts)
+        spent_before: dict[int, float] = {}
+        partials: list[float] = []
+        for count in range(len(rows) + 1):
+            if count in wanted:
+                spent_before[count] = math.fsum(partials)
+            if count < len(rows):
+                self._add_exactly(partials, float(rows[count][1] or 0.0))
+        return [spent_before[count] for count in row_counts]
+
+    @staticmethod
+    def _add_exactly(partials: list[float], value: float) -> None:
+        """Add `value` to a non-overlapping partials list; `math.fsum(partials)` is the exact total."""
+        kept = 0
+        for partial in partials:
+            if abs(value) < abs(partial):
+                value, partial = partial, value
+            high = value + partial
+            low = partial - (high - value)
+            if low:
+                partials[kept] = low
+                kept += 1
+            value = high
+        partials[kept:] = [value]
 
     def health_status(self) -> dict[str, object]:
         try:
@@ -739,7 +800,16 @@ class GovernanceStore:
         return self.session_factory()
 
     def _calibration_excluded_reason(self, record: UsageLedgerRecord) -> str | None:
-        return self._CALIBRATION_EXCLUDED_ROUTE_REASONS.get(record.route_reason or "")
+        # Embeddings and denied requests never ran through the router, so they carry no route signals; they
+        # are neither evidence nor degradation.
+        if record.message_type == "embeddings":
+            return "embeddings_request"
+        reason = self._CALIBRATION_EXCLUDED_ROUTE_REASONS.get(record.route_reason or "")
+        if reason is not None:
+            return reason
+        if record.terminal_status in _CALIBRATION_DENIED_TERMINAL_STATUSES:
+            return "denied_request"
+        return None
 
     def _calibration_gated_reason(self, record: UsageLedgerRecord) -> str | None:
         return self._CALIBRATION_GATED_ROUTE_REASONS.get(record.route_reason or "")

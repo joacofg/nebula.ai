@@ -39,6 +39,50 @@ describe("admin proxy", () => {
     expect(String(fetchMock.mock.calls[0][0])).toContain("/v1/admin/tenants?x=1");
   });
 
+  it("forwards the method, body and admin key, and drops hop-by-hop request headers", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const body = JSON.stringify({ name: "Tenant A" });
+
+    await POST(
+      new NextRequest("http://console.test/api/admin/tenants", {
+        method: "POST",
+        headers: {
+          "X-Nebula-Admin-Key": ADMIN_KEY,
+          "Content-Type": "application/json",
+          Connection: "keep-alive",
+          "Keep-Alive": "timeout=5",
+        },
+        body,
+      }),
+      context("tenants"),
+    );
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    const headers = init.headers as Headers;
+    expect(init.method).toBe("POST");
+    expect(init.body).toBe(body);
+    expect(headers.get("X-Nebula-Admin-Key")).toBe(ADMIN_KEY);
+    expect(headers.get("Content-Type")).toBe("application/json");
+    expect(headers.has("connection")).toBe(false);
+    expect(headers.has("keep-alive")).toBe(false);
+  });
+
+  it("sends a GET without a body", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("{}", { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await GET(
+      new NextRequest("http://console.test/api/admin/tenants", { headers: { "X-Nebula-Admin-Key": ADMIN_KEY } }),
+      context("tenants"),
+    );
+
+    const init = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(init.method).toBe("GET");
+    expect(init.body).toBeUndefined();
+    expect((init.headers as Headers).get("X-Nebula-Admin-Key")).toBe(ADMIN_KEY);
+  });
+
   it("answers 503 gateway_unreachable when the gateway cannot be reached", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("fetch failed")));
 

@@ -19,6 +19,7 @@ import ApiKeysPage from "@/app/(console)/api-keys/page";
 import { createApiKey, listApiKeys, listTenants, revokeApiKey } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { renderWithProviders } from "@/test/render";
+import { TENANT_A } from "@/test/tenants";
 
 beforeEach(() => {
   vi.mocked(useAdminSession).mockReturnValue({
@@ -70,17 +71,7 @@ describe("api keys page", () => {
 
 describe("api keys page create flow", () => {
   it("keeps the dialog open and shows why creating a key failed", async () => {
-    vi.mocked(listTenants).mockResolvedValue([
-      {
-        id: "tenant-a",
-        name: "Tenant A",
-        description: "",
-        metadata: {},
-        active: true,
-        created_at: "2026-09-30T12:00:00Z",
-        updated_at: "2026-09-30T12:00:00Z",
-      },
-    ]);
+    vi.mocked(listTenants).mockResolvedValue([{ ...TENANT_A, description: "" }]);
     vi.mocked(createApiKey).mockRejectedValue(new Error("Revisar los campos: name."));
     const user = userEvent.setup();
     renderWithProviders(<ApiKeysPage />);

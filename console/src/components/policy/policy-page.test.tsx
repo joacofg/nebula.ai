@@ -6,6 +6,7 @@ import PolicyPage from "@/app/(console)/policy/page";
 import * as adminApi from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
 import { createTestQueryClient, renderWithProviders } from "@/test/render";
+import { TENANT_A } from "@/test/tenants";
 
 vi.mock("@/lib/admin-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/admin-api")>("@/lib/admin-api");
@@ -33,24 +34,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   listTenantsMock.mockResolvedValue([
-    {
-      id: "tenant-a",
-      name: "Tenant A",
-      description: null,
-      metadata: {},
-      active: true,
-      created_at: "2026-03-27T00:00:00Z",
-      updated_at: "2026-03-27T00:00:00Z",
-    },
-    {
-      id: "tenant-b",
-      name: "Tenant B",
-      description: null,
-      metadata: {},
-      active: true,
-      created_at: "2026-03-28T00:00:00Z",
-      updated_at: "2026-03-28T00:00:00Z",
-    },
+    { ...TENANT_A, description: null },
+    { ...TENANT_A, id: "tenant-b", name: "Tenant B", description: null },
   ]);
   getTenantPolicyMock.mockImplementation(async (_adminKey, tenantId) => ({
     routing_mode_default: tenantId === "tenant-b" ? "local_only" : "auto",

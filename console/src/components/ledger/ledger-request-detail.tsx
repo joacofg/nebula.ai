@@ -1,5 +1,6 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
+import { rowTier } from "@/components/ledger/ledger-table";
 import { formatTimestamp } from "@/components/observability/format";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
@@ -217,7 +218,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
       </div>
 
       {signals || entry.route_reason === "cache_hit" ? (
-        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} compact />
+        <PlaygroundDecision entry={entry} routeTier={rowTier(entry)} compact />
       ) : null}
 
       <Readout items={ledgerReadout(entry)} />

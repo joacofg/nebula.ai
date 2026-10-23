@@ -4,6 +4,7 @@ import {
   plural,
   recommendationCategoryLabel,
   recommendationEvidenceLabel,
+  routingModeLabel,
   runtimeStatusLabel,
 } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
@@ -43,9 +44,18 @@ const COPY: Record<string, Copy> = {
   },
 };
 
-/** An evidence value as text: the cache's runtime status in Spanish, a percentage with its space ("16 %"). */
+/**
+ * An evidence value as text: the cache's runtime status and the default routing mode in Spanish,
+ * anything else as a percentage with its space ("16 %").
+ */
 function evidenceValue(label: string, value: string) {
-  return label === "cache_runtime_status" ? runtimeStatusLabel(value) : formatPercentText(value);
+  if (label === "cache_runtime_status") {
+    return runtimeStatusLabel(value);
+  }
+  if (label === "routing_mode_default") {
+    return routingModeLabel(value);
+  }
+  return formatPercentText(value);
 }
 
 export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {

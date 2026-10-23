@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -197,6 +198,61 @@ async def test_a_failed_cache_sweep_is_logged_and_leaves_the_ledger_cleanup_ok(
     assert result["status"] == "ok"
     assert result["deleted_count"] == 1
     assert "Qdrant went away" in caplog.text
+
+
+class _QdrantThatCannotDeleteForTenant:
+    """Fails the delete aimed at one tenant and lets every other tenant's through."""
+
+    def __init__(self, cache: SemanticCacheService, failing_tenant_id: str) -> None:
+        self._client = cache.client
+        self._failing_tenant_id = failing_tenant_id
+
+    def __getattr__(self, name: str):
+        return getattr(self._client, name)
+
+    async def delete(self, **kwargs) -> None:
+        conditions = kwargs["points_selector"].filter.must
+        tenant_id = next(c.match.value for c in conditions if c.key == "tenant_id")
+        if tenant_id == self._failing_tenant_id:
+            raise ConnectionError("Qdrant went away")
+        await self._client.delete(**kwargs)
+
+
+@pytest.mark.asyncio
+@pytest.mark.filterwarnings("ignore:Payload indexes have no effect")
+async def test_retention_sweep_continues_after_one_tenant_fails(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with configured_app(NEBULA_EMBEDDING_DIMENSIONS="3") as app:
+        async with app.router.lifespan_context(app):
+            store = app.state.container.governance_store
+            store.create_tenant(
+                tenant_id="short-lived",
+                name="Short-lived",
+                description=None,
+                metadata={},
+                active=True,
+                policy=store.default_policy().model_copy(
+                    update={"semantic_cache_max_entry_age_hours": 1}
+                ),
+            )
+            cache = await _cache_with_an_answer_per_tenant(app, ["default", "short-lived"])
+            real_client = cache.client
+            # Tenants sweep in id order, so "default" fails first and "short-lived" comes after.
+            cache.client = _QdrantThatCannotDeleteForTenant(cache, "default")
+            with caplog.at_level(logging.ERROR):
+                result = await app.state.container.retention_lifecycle_service.run_cleanup_once(
+                    now=datetime.now(UTC) + timedelta(hours=2)
+                )
+            cache.client = real_client
+            answer = await _cached_answer(cache, "short-lived")
+
+    assert result["status"] == "ok"
+    assert answer is None
+    # The JSON formatter drops `extra`, so the tenant id has to be in the rendered message.
+    failures = [r.getMessage() for r in caplog.records if "retention_sweep_failed" in r.getMessage()]
+    assert len(failures) == 1
+    assert "tenant_id=default" in failures[0]
 
 
 @pytest.mark.asyncio

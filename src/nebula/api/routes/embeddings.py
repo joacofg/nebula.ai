@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from starlette.concurrency import run_in_threadpool
 
 from nebula.api.dependencies import enforce_rate_limit, get_embeddings_service, get_tenant_context
 from nebula.core.container import ServiceContainer
@@ -38,7 +39,7 @@ async def create_embeddings(
     try:
         result = await service.create_embeddings(model=payload.model, input=payload.input)
     except EmbeddingsValidationError as exc:
-        _record_usage(
+        await _record_usage(
             container=container,
             tenant_context=tenant_context,
             request_id=request_id,
@@ -53,7 +54,7 @@ async def create_embeddings(
             detail=str(exc),
         ) from exc
     except EmbeddingsUpstreamError as exc:
-        _record_usage(
+        await _record_usage(
             container=container,
             tenant_context=tenant_context,
             request_id=request_id,
@@ -68,7 +69,7 @@ async def create_embeddings(
             detail=str(exc),
         ) from exc
     except EmbeddingsEmptyResultError as exc:
-        _record_usage(
+        await _record_usage(
             container=container,
             tenant_context=tenant_context,
             request_id=request_id,
@@ -83,7 +84,7 @@ async def create_embeddings(
             detail=str(exc),
         ) from exc
 
-    _record_usage(
+    await _record_usage(
         container=container,
         tenant_context=tenant_context,
         request_id=request_id,
@@ -108,7 +109,7 @@ async def create_embeddings(
     )
 
 
-def _record_usage(
+async def _record_usage(
     *,
     container: ServiceContainer,
     tenant_context: AuthenticatedTenantContext,
@@ -119,25 +120,24 @@ def _record_usage(
     route_reason: str,
     policy_outcome: str,
 ) -> None:
-    container.governance_store.record_usage(
-        UsageLedgerRecord(
-            request_id=request_id or f"req-{uuid4().hex}",
-            tenant_id=tenant_context.tenant.id,
-            requested_model=requested_model,
-            final_route_target="embeddings",
-            final_provider="ollama",
-            fallback_used=False,
-            cache_hit=False,
-            response_model=response_model,
-            prompt_tokens=0,
-            completion_tokens=0,
-            total_tokens=0,
-            estimated_cost=0.0,
-            latency_ms=None,
-            timestamp=datetime.now(UTC),
-            terminal_status=terminal_status,
-            route_reason=route_reason,
-            policy_outcome=policy_outcome,
-            message_type="embeddings",
-        )
+    record = UsageLedgerRecord(
+        request_id=request_id or f"req-{uuid4().hex}",
+        tenant_id=tenant_context.tenant.id,
+        requested_model=requested_model,
+        final_route_target="embeddings",
+        final_provider="ollama",
+        fallback_used=False,
+        cache_hit=False,
+        response_model=response_model,
+        prompt_tokens=0,
+        completion_tokens=0,
+        total_tokens=0,
+        estimated_cost=0.0,
+        latency_ms=None,
+        timestamp=datetime.now(UTC),
+        terminal_status=terminal_status,
+        route_reason=route_reason,
+        policy_outcome=policy_outcome,
+        message_type="embeddings",
     )
+    await run_in_threadpool(container.governance_store.record_usage, record)

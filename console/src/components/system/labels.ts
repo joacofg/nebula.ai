@@ -15,7 +15,6 @@ const ROUTE_REASONS: Record<string, string> = {
   local_provider_error_fallback_blocked: "fallback bloqueado por política",
   policy_local_only: "política: solo local",
   policy_premium_only: "política: solo premium",
-  embeddings_request: "embeddings",
   embeddings_direct: "embeddings directos",
   embeddings_validation_error: "embeddings: pedido inválido",
   embeddings_upstream_error: "embeddings: error del proveedor",
@@ -30,6 +29,8 @@ const ROUTE_REASONS: Record<string, string> = {
   policy_forced_routing: "ruteo forzado por la política",
   missing_route_signals: "sin señales de ruteo",
   degraded_replay_signals: "señales incompletas",
+  embeddings_request: "pedido de embeddings",
+  denied_request: "pedido denegado",
 };
 
 const STATUSES: Record<string, string> = {
@@ -66,6 +67,12 @@ const ROUTING_MODES: Record<string, string> = {
   premium_only: "Solo premium",
 };
 
+// The languages the router evaluation reports its per-language figures for.
+const LANGUAGES: Record<string, string> = {
+  es: "Español",
+  en: "Inglés",
+};
+
 const ROUTERS: Record<string, string> = {
   learned_router: "Router aprendido",
   token_complexity: "Heurística por complejidad",
@@ -92,7 +99,7 @@ const APPROXIMATION_NOTES: Record<string, string> = {
   token_count_approximation: "Sin señales completas, la complejidad se aproxima con los tokens guardados.",
   pricing_estimate: "El costo usa los precios actuales; no se llama a ningún proveedor.",
   heuristic_fallback_rows:
-    "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+    "Los pedidos sin probabilidades guardadas del router cargado usan la heurística.",
   cache_rows_held:
     "Los pedidos que respondió la caché siguen en caché: se asume que la respuesta guardada sirve al nivel que elegiría el borrador.",
 };
@@ -232,6 +239,11 @@ export function routeLabel(code: string | null | undefined) {
 /** The level a request was served at: local / economy / frontier / caché / denegado. */
 export function tierLabel(code: string | null | undefined) {
   return lookup(TIERS, code);
+}
+
+/** The language of an evaluation figure: Español / Inglés. */
+export function languageLabel(code: string | null | undefined) {
+  return lookup(LANGUAGES, code);
 }
 
 /** The tenant's routing mode default: auto / local_only / premium_only. */

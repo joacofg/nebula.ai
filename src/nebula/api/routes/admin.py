@@ -4,6 +4,7 @@ from datetime import datetime
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from starlette.concurrency import run_in_threadpool
 
 from nebula.api.dependencies import require_admin
 from nebula.api.routes.chat import _nebula_headers
@@ -38,22 +39,38 @@ from nebula.services.learned_router import Tier
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 
+# Handlers that await nothing are plain `def`: FastAPI runs those in its threadpool, so the
+# synchronous governance store never blocks the event loop. The three handlers below that do
+# await something stay `async def` and push their store reads through `run_in_threadpool`.
+def _tenant_context(container: ServiceContainer, tenant_id: str) -> AuthenticatedTenantContext:
+    """The tenant with its policy and the operator key, or the 404."""
+    store = container.governance_store
+    tenant = store.get_tenant(tenant_id)
+    if tenant is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
+    return AuthenticatedTenantContext(
+        tenant=tenant,
+        api_key=store.operator_api_key(),
+        policy=store.get_policy(tenant_id),
+    )
+
+
 @router.get("/session", response_model=AdminSessionStatus)
-async def get_admin_session(
+def get_admin_session(
     container: ServiceContainer = Depends(require_admin),
 ) -> AdminSessionStatus:
     return AdminSessionStatus(status="ok")
 
 
 @router.get("/tenants", response_model=list[TenantRecord])
-async def list_tenants(
+def list_tenants(
     container: ServiceContainer = Depends(require_admin),
 ) -> list[TenantRecord]:
     return container.governance_store.list_tenants()
 
 
 @router.post("/tenants", response_model=TenantRecord, status_code=status.HTTP_201_CREATED)
-async def create_tenant(
+def create_tenant(
     payload: TenantCreateRequest,
     container: ServiceContainer = Depends(require_admin),
 ) -> TenantRecord:
@@ -71,7 +88,7 @@ async def create_tenant(
 
 
 @router.get("/tenants/{tenant_id}", response_model=TenantRecord)
-async def get_tenant(
+def get_tenant(
     tenant_id: str,
     container: ServiceContainer = Depends(require_admin),
 ) -> TenantRecord:
@@ -82,7 +99,7 @@ async def get_tenant(
 
 
 @router.patch("/tenants/{tenant_id}", response_model=TenantRecord)
-async def update_tenant(
+def update_tenant(
     tenant_id: str,
     payload: TenantUpdateRequest,
     container: ServiceContainer = Depends(require_admin),
@@ -100,7 +117,7 @@ async def update_tenant(
 
 
 @router.get("/tenants/{tenant_id}/policy", response_model=TenantPolicy)
-async def get_tenant_policy(
+def get_tenant_policy(
     tenant_id: str,
     container: ServiceContainer = Depends(require_admin),
 ) -> TenantPolicy:
@@ -110,7 +127,7 @@ async def get_tenant_policy(
 
 
 @router.put("/tenants/{tenant_id}/policy", response_model=TenantPolicy)
-async def upsert_tenant_policy(
+def upsert_tenant_policy(
     tenant_id: str,
     payload: TenantPolicy,
     container: ServiceContainer = Depends(require_admin),
@@ -125,14 +142,7 @@ async def get_tenant_recommendations(
     tenant_id: str,
     container: ServiceContainer = Depends(require_admin),
 ) -> RecommendationBundle:
-    tenant = container.governance_store.get_tenant(tenant_id)
-    if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
-    tenant_context = AuthenticatedTenantContext(
-        tenant=tenant,
-        api_key=container.governance_store.operator_api_key(),
-        policy=container.governance_store.get_policy(tenant_id),
-    )
+    tenant_context = await run_in_threadpool(_tenant_context, container, tenant_id)
     return await container.recommendation_service.build_summary(tenant_context=tenant_context)
 
 
@@ -142,9 +152,7 @@ async def simulate_tenant_policy(
     payload: PolicySimulationRequest,
     container: ServiceContainer = Depends(require_admin),
 ) -> PolicySimulationResponse:
-    tenant = container.governance_store.get_tenant(tenant_id)
-    if tenant is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Tenant not found.")
+    tenant_context = await run_in_threadpool(_tenant_context, container, tenant_id)
     if payload.to_timestamp is not None and payload.from_timestamp is not None:
         if payload.from_timestamp > payload.to_timestamp:
             raise HTTPException(
@@ -153,17 +161,13 @@ async def simulate_tenant_policy(
             )
 
     return await container.policy_simulation_service.simulate(
-        tenant_context=AuthenticatedTenantContext(
-            tenant=tenant,
-            api_key=container.governance_store.operator_api_key(),
-            policy=container.governance_store.get_policy(tenant_id),
-        ),
+        tenant_context=tenant_context,
         payload=payload,
     )
 
 
 @router.get("/policy/options", response_model=PolicyOptionsResponse)
-async def get_policy_options(
+def get_policy_options(
     container: ServiceContainer = Depends(require_admin),
 ) -> PolicyOptionsResponse:
     return PolicyOptionsResponse(
@@ -192,7 +196,7 @@ async def get_policy_options(
 
 
 @router.get("/evaluation/router")
-async def get_router_evaluation(
+def get_router_evaluation(
     container: ServiceContainer = Depends(require_admin),
 ) -> Response:
     """The learned router's out-of-fold replay: read-only, no model is called."""
@@ -206,7 +210,7 @@ async def get_router_evaluation(
 
 
 @router.get("/api-keys", response_model=list[ApiKeyRecord])
-async def list_api_keys(
+def list_api_keys(
     tenant_id: str | None = Query(default=None),
     container: ServiceContainer = Depends(require_admin),
 ) -> list[ApiKeyRecord]:
@@ -214,7 +218,7 @@ async def list_api_keys(
 
 
 @router.post("/api-keys", response_model=ApiKeyCreateResponse, status_code=status.HTTP_201_CREATED)
-async def create_api_key(
+def create_api_key(
     payload: ApiKeyCreateRequest,
     container: ServiceContainer = Depends(require_admin),
 ) -> ApiKeyCreateResponse:
@@ -237,7 +241,7 @@ async def create_api_key(
 
 
 @router.post("/api-keys/{api_key_id}/revoke", response_model=ApiKeyRecord)
-async def revoke_api_key(
+def revoke_api_key(
     api_key_id: str,
     container: ServiceContainer = Depends(require_admin),
 ) -> ApiKeyRecord:
@@ -248,7 +252,7 @@ async def revoke_api_key(
 
 
 @router.get("/usage/ledger", response_model=list[UsageLedgerRecord])
-async def list_usage_ledger(
+def list_usage_ledger(
     request_id: str | None = Query(default=None),
     tenant_id: str | None = Query(default=None),
     terminal_status: str | None = Query(default=None),
@@ -284,7 +288,9 @@ async def create_playground_completion(
             detail="Playground only supports non-streaming requests.",
         )
 
-    tenant_context = container.auth_service.resolve_playground_context(payload.tenant_id)
+    tenant_context = await run_in_threadpool(
+        container.auth_service.resolve_playground_context, payload.tenant_id
+    )
     request_id = getattr(request.state, "request_id", None)
     completion_envelope = await container.chat_service.create_completion_with_metadata(
         ChatCompletionRequest.model_validate(payload.model_dump(exclude={"tenant_id"})),

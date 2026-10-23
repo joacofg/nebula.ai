@@ -1,6 +1,6 @@
 import { DecisionPath, formatProb, type DecisionStep } from "@/components/system/decision-path";
 import { Figure } from "@/components/system/figure";
-import { complexityLabel, routerLabel } from "@/components/system/labels";
+import { complexityLabel, routerLabel, tierLabel } from "@/components/system/labels";
 import { TierBadge } from "@/components/system/tier-badge";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
@@ -81,11 +81,16 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
   const clearsEconomy = tauEconomy !== null && pEconomy !== null && pEconomy >= tauEconomy;
 
   const computed = clearsLocal ? "local" : clearsEconomy ? "economy" : "frontier";
-  const tier = typeof signals.tier === "string" ? signals.tier : routeTier || computed;
+  // On a fallback row `signals.tier` is still the router's own pick (the local model failed and
+  // premium answered), so the tier that served it is the one the caller passes in.
+  const served = fallback && routeTier ? routeTier : null;
+  const tier = served ?? (typeof signals.tier === "string" ? signals.tier : routeTier || computed);
   const note =
-    computed === "economy" && tier === "frontier"
-      ? "El router eligió economy, pero sin modelo economy configurado el gateway lo sirvió con frontier."
-      : null;
+    served !== null && served !== computed
+      ? `Se sirvió con ${tierLabel(served)} por un fallback; el router había elegido ${tierLabel(computed)}.`
+      : computed === "economy" && tier === "frontier"
+        ? "El router eligió economy, pero sin modelo economy configurado el gateway lo sirvió con frontier."
+        : null;
 
   const path: DecisionStep[] = [
     { tier: "local", p: pLocal, tau: tauLocal },

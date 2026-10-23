@@ -15,6 +15,10 @@ class JsonFormatter(logging.Formatter):
             "message": record.getMessage(),
             "request_id": getattr(record, "request_id", request_id_context.get()),
         }
+        if record.exc_info and record.exc_info[0] is not None:
+            payload["exc_info"] = self.formatException(record.exc_info)
+        if record.stack_info:
+            payload["stack_info"] = self.formatStack(record.stack_info)
         return json.dumps(payload, ensure_ascii=True)
 
 

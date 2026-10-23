@@ -13,7 +13,7 @@ from tests.support import (
 
 
 def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             local_provider = StubProvider(
@@ -137,7 +137,7 @@ def test_response_headers_cover_local_premium_cache_and_fallback() -> None:
 
 
 def test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_parity() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             local_provider = StubProvider(
@@ -223,7 +223,7 @@ def test_response_headers_expose_outcome_grounded_route_mode_and_header_ledger_p
 
 
 def test_denied_and_fallback_blocked_paths_expose_nebula_metadata_headers() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             container.governance_store.upsert_policy(

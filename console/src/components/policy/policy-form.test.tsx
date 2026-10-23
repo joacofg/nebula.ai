@@ -471,6 +471,39 @@ describe("policy-form", () => {
     expect(screen.getByText("Pedidos evaluados")).toBeInTheDocument();
   });
 
+  it.each([
+    ["without cache rows", {}, "7 con el router aprendido · 3 con la heurística · 4 por la política"],
+    [
+      "before the cache clause",
+      { cache_rows: 6 },
+      "7 con el router aprendido · 3 con la heurística · 4 por la política · 6 siguen en caché",
+    ],
+  ])("adds the rows the policy decided %s", (_name, extra, text) => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: { ...baseSimulationResult.summary, policy_rows: 4, ...extra },
+      },
+    });
+
+    expect(screen.getByText(text)).toBeInTheDocument();
+  });
+
+  it.each([
+    ["is zero", { policy_rows: 0 }],
+    ["is absent", {}],
+  ])("keeps the decision sources text as it was when the policy count %s", (_name, extra) => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: { ...baseSimulationResult.summary, ...extra },
+      },
+    });
+
+    expect(screen.getByText("7 con el router aprendido · 3 con la heurística")).toBeInTheDocument();
+    expect(screen.queryByText(/por la política/)).not.toBeInTheDocument();
+  });
+
   it("adds the cache hits the draft keeps, and their row reads the same before and after", () => {
     renderPolicyForm({
       simulationResult: {
@@ -546,7 +579,7 @@ describe("policy-form", () => {
     expect(notes.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos.")).toBeInTheDocument();
     expect(
       notes.getByText(
-        "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+        "Los pedidos sin probabilidades guardadas del router cargado usan la heurística.",
       ),
     ).toBeInTheDocument();
     expect(notes.queryByText(/Replay uses/)).not.toBeInTheDocument();

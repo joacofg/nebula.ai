@@ -17,6 +17,7 @@ from nebula.models.governance import (
     CalibrationEvidenceSummary,
     CalibrationReasonCount,
     PolicySimulationRequest,
+    PolicySimulationResponse,
     RecommendationBundle,
     TenantPolicy,
     TenantRecord,
@@ -477,12 +478,18 @@ class RuntimePolicyStore:
         self.spend_total = spend_total
         self.evidence_summary = evidence_summary
         self.calls: list[tuple[str, datetime | None]] = []
+        self.spend_before_calls: list[tuple[str, list[datetime]]] = []
         self.evidence_summary_calls: list[str] = []
 
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
         self.calls.append((tenant_id, before_timestamp))
         return self.spend_total
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        assert tenant_id == "default"
+        self.spend_before_calls.append((tenant_id, list(timestamps)))
+        return [self.spend_total for _ in timestamps]
 
     def summarize_calibration_evidence(self, *, tenant_id: str) -> CalibrationEvidenceSummary:
         assert tenant_id == "default"
@@ -797,7 +804,7 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
         ),
     )
 
-    assert store.calls == [("default", now)]
+    assert store.spend_before_calls == [("default", [now])]
     assert response.summary.evaluated_rows == 1
     assert response.summary.changed_routes == 1
     changed = response.changed_requests[0]
@@ -813,6 +820,86 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
     assert changed.simulated_degraded_routing is False
     assert changed.simulated_route_score == 1.0
     assert "hard_budget=exceeded" in (changed.simulated_policy_outcome or "")
+
+
+class _CountingSpendStore(FakeSimulationGovernanceStore):
+    """Spend is the premium cost of the rows before a timestamp; reads are counted by method."""
+
+    def __init__(self, records: list[UsageLedgerRecord]) -> None:
+        super().__init__(records)
+        self.total_calls = 0
+        self.before_calls = 0
+
+    def _spent_before(self, at: datetime) -> float:
+        return sum(row.estimated_cost or 0.0 for row in self.records if row.timestamp < at)
+
+    def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
+        self.total_calls += 1
+        assert before_timestamp is not None
+        return self._spent_before(before_timestamp)
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        self.before_calls += 1
+        return [self._spent_before(at) for at in timestamps]
+
+
+class _PerRowSpendStore(_CountingSpendStore):
+    """The reference: the batch answer is the per-row query asked once per timestamp."""
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        return [self.tenant_spend_total(tenant_id, before_timestamp=at) for at in timestamps]
+
+
+@pytest.mark.asyncio
+async def test_simulation_queries_spend_once() -> None:
+    settings = Settings()
+    start = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-{index:02d}",
+            timestamp=start + timedelta(minutes=index),
+            final_route_target="premium",
+            estimated_cost=0.5,
+            prompt_tokens=800,
+            completion_tokens=256,
+            route_signals={"token_count": 900, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(20)
+    ]
+
+    async def simulate(store: _CountingSpendStore) -> PolicySimulationResponse:
+        service = PolicySimulationService(
+            governance_store=store,
+            router_service=RouterService(settings),
+            policy_service=PolicyService(
+                settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")
+            ),
+        )
+        return await service.simulate(
+            tenant_context=tenant_context(),
+            payload=PolicySimulationRequest(
+                candidate_policy=TenantPolicy(
+                    hard_budget_limit_usd=5.0, hard_budget_enforcement="downgrade"
+                ),
+                limit=200,
+                changed_sample_limit=50,
+            ),
+        )
+
+    batched_store = _CountingSpendStore(records)
+    reference_store = _PerRowSpendStore(records)
+    batched = await simulate(batched_store)
+    reference = await simulate(reference_store)
+
+    assert (batched_store.total_calls, batched_store.before_calls) == (0, 1)
+    assert reference_store.total_calls == 20
+    # The budget runs out half way through the window, so the spend is what decides the rows.
+    assert batched.summary.evaluated_rows == 20
+    assert batched.summary.changed_routes == 10
+    # The calibration summary is stamped with the wall clock of each run.
+    assert batched.model_dump(exclude={"calibration_summary"}) == reference.model_dump(
+        exclude={"calibration_summary"}
+    )
 
 
 @pytest.mark.asyncio
@@ -877,6 +964,143 @@ async def test_governance_store_calibration_summary_reports_thin_evidence_and_ex
     assert summary.excluded_request_count == 2
     assert summary.gated_request_count == 0
     assert summary.degraded_request_count == 0
+
+
+def _sufficient_records(now: datetime) -> list[UsageLedgerRecord]:
+    return [
+        _ledger_record(
+            request_id=f"req-sufficient-{index}",
+            timestamp=now.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 600, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_rows_are_excluded_not_degraded() -> None:
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.append(
+        _ledger_record(
+            request_id="req-embeddings",
+            timestamp=now.replace(microsecond=50),
+            route_reason="embeddings",
+            route_signals=None,
+            message_type="embeddings",
+        )
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "sufficient"
+    assert summary.degraded_request_count == 0
+    assert summary.excluded_request_count == 1
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="embeddings_request", count=1)]
+
+
+@pytest.mark.asyncio
+async def test_denied_rows_are_excluded_not_degraded() -> None:
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.extend(
+        [
+            _ledger_record(
+                request_id="req-policy-denied",
+                timestamp=now.replace(microsecond=50),
+                terminal_status="policy_denied",
+                route_reason="policy_denied",
+                route_signals=None,
+            ),
+            _ledger_record(
+                request_id="req-rate-limited",
+                timestamp=now.replace(microsecond=51),
+                terminal_status="rate_limited",
+                route_reason="token_complexity",
+                route_signals=None,
+            ),
+        ]
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "sufficient"
+    assert summary.degraded_request_count == 0
+    assert summary.excluded_request_count == 2
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="denied_request", count=2)]
+
+
+@pytest.mark.asyncio
+async def test_a_denied_row_is_excluded_even_when_its_reason_is_calibrated_routing_disabled() -> None:
+    # Exclusion is checked before gating: a denied row never ran through the router, so the
+    # routing-disabled reason it carries must not count it as gated.
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.append(
+        _ledger_record(
+            request_id="req-denied-while-gated",
+            timestamp=now.replace(microsecond=52),
+            terminal_status="policy_denied",
+            route_reason="calibrated_routing_disabled",
+            route_signals=None,
+        )
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.excluded_request_count == 1
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="denied_request", count=1)]
+    assert summary.gated_request_count == 0
+    assert summary.gated_reasons == []
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+async def _resolve_for_default(policy_service: PolicyService, settings: Settings) -> None:
+    await policy_service.resolve(
+        prompt="simple request",
+        request=ChatCompletionRequest(model="nebula-auto", messages=[{"role": "user", "content": "simple request"}]),
+        tenant_context=tenant_context(),
+        router_service=RouterService(settings),
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_summary_is_reused_within_ttl() -> None:
+    settings = Settings()
+    store = RuntimePolicyStore()
+    clock = _FakeClock()
+    policy_service = PolicyService(
+        settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"), clock=clock
+    )
+
+    await _resolve_for_default(policy_service, settings)
+    await _resolve_for_default(policy_service, settings)
+    assert store.evidence_summary_calls == ["default"]
+
+    clock.now = 31.0
+    await _resolve_for_default(policy_service, settings)
+    assert store.evidence_summary_calls == ["default", "default"]
+
+
+@pytest.mark.asyncio
+async def test_evidence_summary_ttl_zero_recomputes_every_request() -> None:
+    settings = Settings(NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS=0)
+    store = RuntimePolicyStore()
+    policy_service = PolicyService(
+        settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"), clock=_FakeClock()
+    )
+
+    await _resolve_for_default(policy_service, settings)
+    await _resolve_for_default(policy_service, settings)
+
+    assert store.evidence_summary_calls == ["default", "default"]
 
 
 @pytest.mark.asyncio
@@ -1223,6 +1447,7 @@ def _ledger_record(
     route_reason: str = "token_complexity",
     policy_outcome: str = "default",
     route_signals: dict | None = None,
+    message_type: str = "chat",
 ) -> UsageLedgerRecord:
     total_tokens = prompt_tokens + completion_tokens
     return UsageLedgerRecord(
@@ -1244,6 +1469,7 @@ def _ledger_record(
         route_reason=route_reason,
         policy_outcome=policy_outcome,
         route_signals=route_signals,
+        message_type=message_type,  # type: ignore[arg-type]
     )
 
 

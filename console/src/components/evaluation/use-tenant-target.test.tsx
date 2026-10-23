@@ -94,6 +94,14 @@ describe("useTenantTarget", () => {
     expect(result.current.currentTarget).toBe(0.9);
   });
 
+  it("does not expose mutateAsync, which would skip the settling guard on mutate", async () => {
+    const { result } = setup();
+
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    expect("mutateAsync" in result.current.apply).toBe(false);
+    expect(typeof result.current.apply.mutate).toBe("function");
+  });
+
   it("is ready at 0.95 without a request when there are no tenants", async () => {
     adminApi.listTenants.mockResolvedValue([]);
     const { result } = setup();

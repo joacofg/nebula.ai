@@ -4,31 +4,14 @@ import { describe, expect, it, vi } from "vitest";
 
 import { TenantEditorDrawer } from "@/components/tenants/tenant-editor-drawer";
 import { renderWithProviders } from "@/test/render";
-
-const TENANT_A = {
-  id: "tenant-a",
-  name: "Tenant A",
-  description: "Primary",
-  metadata: {},
-  active: true,
-  created_at: "2026-03-16T12:00:00Z",
-  updated_at: "2026-03-16T12:00:00Z",
-};
+import { TENANT_A } from "@/test/tenants";
 
 describe("tenant-editor-drawer", () => {
   it("keeps id readOnly during edit", () => {
     renderWithProviders(
       <TenantEditorDrawer
         mode="edit"
-        tenant={{
-          id: "tenant-a",
-          name: "Tenant A",
-          description: "Primary",
-          metadata: { tier: "gold" },
-          active: true,
-          created_at: "2026-03-16T12:00:00Z",
-          updated_at: "2026-03-16T12:00:00Z",
-        }}
+        tenant={{ ...TENANT_A, metadata: { tier: "gold" } }}
         isSaving={false}
         onClose={vi.fn()}
         onSubmit={vi.fn().mockResolvedValue(undefined)}

@@ -45,6 +45,9 @@ class CompletionChunk:
     delta: str
     model: str
     finish_reason: str | None = None
+    # Token counts the provider reported: on the finish chunk or on a usage-only chunk (empty
+    # delta, no finish_reason) that follows it.
+    usage: CompletionUsage | None = None
 
 
 class CompletionProvider(Protocol):

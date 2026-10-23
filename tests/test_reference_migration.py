@@ -35,7 +35,7 @@ MIGRATED_CHAT_COMPLETIONS_REQUEST = {
 
 
 def test_reference_migration_proves_public_headers_and_usage_ledger_correlation() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             _mount_runtime(
