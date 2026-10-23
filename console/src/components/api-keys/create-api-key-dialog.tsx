@@ -35,6 +35,8 @@ export function CreateApiKeyDialog({
   const [allowedTenantIds, setAllowedTenantIds] = useState<string[]>(initialTenant ? [initialTenant] : []);
   const [error, setError] = useState<string | null>(null);
   const tenantHintId = useId();
+  const nameInputId = useId();
+  const tenantSelectId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -87,18 +89,18 @@ export function CreateApiKeyDialog({
           {error ? <ErrorAlert error={error} fallback="No se pudo crear la clave." /> : null}
 
           <div>
-            <label className="field-label" htmlFor="api-key-name">
+            <label className="field-label" htmlFor={nameInputId}>
               Nombre
             </label>
-            <input id="api-key-name" className="field-input" value={name} onChange={(event) => setName(event.target.value)} />
+            <input id={nameInputId} className="field-input" value={name} onChange={(event) => setName(event.target.value)} />
           </div>
 
           <div>
-            <label className="field-label" htmlFor="tenant-id">
+            <label className="field-label" htmlFor={tenantSelectId}>
               Tenant por defecto
             </label>
             <select
-              id="tenant-id"
+              id={tenantSelectId}
               className="field-input"
               aria-describedby={tenantHintId}
               value={tenantId ?? ""}

@@ -16,6 +16,7 @@ import ConsoleLayout from "@/app/(console)/layout";
 import { AdminLoginForm } from "@/components/auth/admin-login-form";
 import { AdminSessionProvider } from "@/lib/admin-session-provider";
 import { useSelectedTenant } from "@/lib/selected-tenant";
+import { TENANT_A } from "@/test/tenants";
 
 /** The layout alone: it must bring the selected-tenant provider itself. */
 function renderLayout(children: ReactNode, adminKey: string | null) {
@@ -70,17 +71,7 @@ describe("console layout", () => {
 
   it("gives its pages the selected tenant", () => {
     function Page() {
-      const { tenantId } = useSelectedTenant([
-        {
-          id: "tenant-a",
-          name: "Tenant A",
-          description: null,
-          metadata: {},
-          active: true,
-          created_at: "2026-03-16T12:00:00Z",
-          updated_at: "2026-03-16T12:00:00Z",
-        },
-      ]);
+      const { tenantId } = useSelectedTenant([{ ...TENANT_A, description: null }]);
       return <p>{`tenant: ${tenantId}`}</p>;
     }
     renderLayout(<Page />, "admin-key");

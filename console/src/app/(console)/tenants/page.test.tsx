@@ -22,19 +22,11 @@ import TenantsPage from "@/app/(console)/tenants/page";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { createTenant, listTenants, updateTenant } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
+import { TENANT_A } from "@/test/tenants";
 
 const mockedUseAdminSession = vi.mocked(useAdminSession);
 const mockedListTenants = vi.mocked(listTenants);
 
-const TENANT_A = {
-  id: "tenant-a",
-  name: "Tenant A",
-  description: "Primary tenant",
-  metadata: {},
-  active: true,
-  created_at: "2026-03-16T12:00:00Z",
-  updated_at: "2026-03-16T12:00:00Z",
-};
 const TENANT_B = { ...TENANT_A, id: "tenant-b", name: "Tenant B", description: "Second tenant" };
 
 beforeEach(() => {
