@@ -150,7 +150,7 @@ compara el borrador con el tráfico reciente del ledger y nada se guarda sin una
 ![Figura 10.3](figuras/consola-politica.png)
 
 **Figura 10.3.** Edición de la política del tenant en la consola: objetivo de calidad, límite de
-pedidos por minuto y vista previa del borrador.
+pedidos por minuto y vista previa de un borrador con objetivo 0.95 frente al tráfico reciente.
 
 ## 10.3 Modelo de procesos
 
