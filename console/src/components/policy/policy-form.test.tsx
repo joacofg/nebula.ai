@@ -297,6 +297,29 @@ describe("policy-form", () => {
     expect(preview.queryByText("Este borrador cambiaría 5 pedidos de la muestra.")).not.toBeInTheDocument();
   });
 
+  it("leaves out the routing parity when the draft decides the row the same way", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        changed_requests: [
+          {
+            ...row,
+            request_id: "req-same-parity",
+            simulated_route_mode: row.baseline_route_mode,
+            simulated_calibrated_routing: row.baseline_calibrated_routing,
+            simulated_degraded_routing: row.baseline_degraded_routing,
+            simulated_route_score: row.baseline_route_score,
+            simulated_route_reason: row.baseline_route_reason,
+          },
+        ],
+      },
+    });
+
+    const changed = within(screen.getByText("req-same-parity").closest("li") as HTMLElement);
+    expect(changed.queryByText(/paridad de ruteo/)).not.toBeInTheDocument();
+  });
+
   it("writes the policy outcome of a changed request in Spanish, never its raw text", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 
@@ -746,7 +769,8 @@ describe("policy-form", () => {
     // Both outcomes carry only evidence notes: nothing a reader could compare, and no raw text.
     expect(screen.queryByText(/outcome_evidence/)).not.toBeInTheDocument();
     expect(screen.queryByText(/(^|· )política /)).not.toBeInTheDocument();
-    expect(screen.getByText("paridad de ruteo: sin puntaje → sin puntaje")).toBeInTheDocument();
+    // Unscored on both sides is no difference to read: the parity clause is left out.
+    expect(screen.queryByText(/paridad de ruteo/)).not.toBeInTheDocument();
   });
 
   it("writes the routing parity in Spanish for every state it can be in", () => {

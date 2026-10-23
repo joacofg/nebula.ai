@@ -187,20 +187,23 @@ function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
   return highlights.join(" · ");
 }
 
+/** "paridad de ruteo: A → B", or null when the draft scores the row the same way (nothing to read). */
 function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
-  return `paridad de ruteo: ${formatRoutingState(
+  const baseline = formatRoutingState(
     change.baseline_route_mode,
     change.baseline_calibrated_routing,
     change.baseline_degraded_routing,
     change.baseline_route_score,
     change.baseline_route_reason,
-  )} → ${formatRoutingState(
+  );
+  const simulated = formatRoutingState(
     change.simulated_route_mode,
     change.simulated_calibrated_routing,
     change.simulated_degraded_routing,
     change.simulated_route_score,
     change.simulated_route_reason,
-  )}`;
+  );
+  return baseline === simulated ? null : `paridad de ruteo: ${baseline} → ${simulated}`;
 }
 
 /**
@@ -770,21 +773,24 @@ export function PolicyForm({
                         : "Pedidos que cambian"}
                     </h3>
                     <ul className="m-0 flex list-none flex-col divide-y divide-line border-y border-line p-0">
-                      {simulationResult.changed_requests.slice(0, CHANGED_LIST_LIMIT).map((change) => (
-                        <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>
-                            <span className="font-mono text-[12px] text-ink-3">{change.requested_model}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm font-medium text-ink">
-                            <span>{routeLabel(change.baseline_route_target)}</span>
-                            <ArrowRight aria-hidden className="size-3.5 text-ink-3" />
-                            <span>{routeLabel(change.simulated_route_target)}</span>
-                          </div>
-                          <p className="m-0 text-[13px] text-ink-2">{renderChangedRequestSummary(change)}</p>
-                          <p className="m-0 text-[12px] text-ink-3">{renderChangedRequestParity(change)}</p>
-                        </li>
-                      ))}
+                      {simulationResult.changed_requests.slice(0, CHANGED_LIST_LIMIT).map((change) => {
+                        const parity = renderChangedRequestParity(change);
+                        return (
+                          <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>
+                              <span className="font-mono text-[12px] text-ink-3">{change.requested_model}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                              <span>{routeLabel(change.baseline_route_target)}</span>
+                              <ArrowRight aria-hidden className="size-3.5 text-ink-3" />
+                              <span>{routeLabel(change.simulated_route_target)}</span>
+                            </div>
+                            <p className="m-0 text-[13px] text-ink-2">{renderChangedRequestSummary(change)}</p>
+                            {parity ? <p className="m-0 text-[12px] text-ink-3">{parity}</p> : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </section>
                 )}
