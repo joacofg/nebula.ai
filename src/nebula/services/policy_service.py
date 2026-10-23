@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from math import ceil
@@ -85,10 +87,15 @@ class PolicyService:
         settings: Settings,
         store: GovernanceStore,
         pricing: PricingCatalog,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         self.settings = settings
         self.store = store
         self.pricing = pricing
+        self._clock = clock
+        # {tenant_id: (expires_at, summary)}. The summary only adjusts the reported score, never the chosen
+        # target, so reusing it for a few seconds changes no route.
+        self._evidence_memo: dict[str, tuple[float, CalibrationEvidenceSummary]] = {}
 
     async def resolve(
         self,
@@ -164,9 +171,7 @@ class PolicyService:
         policy = tenant_context.policy
         evidence_summary = evidence_summary_override
         if evidence_summary is None and replay_context is None:
-            evidence_summary = await run_in_threadpool(
-                self.store.summarize_calibration_evidence, tenant_id=tenant_context.tenant.id
-            )
+            evidence_summary = await self._read_evidence_summary(tenant_context.tenant.id)
         if replay_context is not None:
             route_decision = await router_service.choose_target_for_replay(
                 request,
@@ -195,6 +200,18 @@ class PolicyService:
             evidence_summary=evidence_summary,
             tenant_spend_total=tenant_spend_total,
         )
+
+    async def _read_evidence_summary(self, tenant_id: str) -> CalibrationEvidenceSummary:
+        """The tenant's outcome-evidence summary, memoized for the configured TTL and read off the event loop."""
+        ttl = self.settings.evidence_summary_ttl_seconds
+        if ttl > 0:
+            cached = self._evidence_memo.get(tenant_id)
+            if cached is not None and self._clock() < cached[0]:
+                return cached[1]
+        summary = await run_in_threadpool(self.store.summarize_calibration_evidence, tenant_id=tenant_id)
+        if ttl > 0:
+            self._evidence_memo[tenant_id] = (self._clock() + ttl, summary)
+        return summary
 
     async def read_tenant_spend(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         """The tenant's spend, read off the event loop (the store is synchronous SQLAlchemy)."""

@@ -379,7 +379,7 @@ async def test_a_tenant_over_its_hard_budget_still_gets_its_cached_answer(
 async def test_a_tenant_over_its_hard_budget_without_a_cached_answer_is_denied_as_before(
     stream: bool, budget_usd: str
 ) -> None:
-    async with _gateway() as gateway:
+    async with _gateway(NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as gateway:
         await _cache_a_frontier_answer_then_exhaust_the_budget(gateway, stream=stream)
         denied = await gateway.post(UNCACHED, stream=stream)
         (row,) = gateway.rows_of(denied)

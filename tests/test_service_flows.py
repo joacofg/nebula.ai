@@ -879,6 +879,119 @@ async def test_governance_store_calibration_summary_reports_thin_evidence_and_ex
     assert summary.degraded_request_count == 0
 
 
+def _sufficient_records(now: datetime) -> list[UsageLedgerRecord]:
+    return [
+        _ledger_record(
+            request_id=f"req-sufficient-{index}",
+            timestamp=now.replace(microsecond=index),
+            route_signals={"route_mode": "calibrated", "token_count": 600, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(5)
+    ]
+
+
+@pytest.mark.asyncio
+async def test_embeddings_rows_are_excluded_not_degraded() -> None:
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.append(
+        _ledger_record(
+            request_id="req-embeddings",
+            timestamp=now.replace(microsecond=50),
+            route_reason="embeddings",
+            route_signals=None,
+            message_type="embeddings",
+        )
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "sufficient"
+    assert summary.degraded_request_count == 0
+    assert summary.excluded_request_count == 1
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="embeddings_request", count=1)]
+
+
+@pytest.mark.asyncio
+async def test_denied_rows_are_excluded_not_degraded() -> None:
+    now = datetime.now(UTC)
+    records = _sufficient_records(now)
+    records.extend(
+        [
+            _ledger_record(
+                request_id="req-policy-denied",
+                timestamp=now.replace(microsecond=50),
+                terminal_status="policy_denied",
+                route_reason="policy_denied",
+                route_signals=None,
+            ),
+            _ledger_record(
+                request_id="req-rate-limited",
+                timestamp=now.replace(microsecond=51),
+                terminal_status="rate_limited",
+                route_reason="token_complexity",
+                route_signals=None,
+            ),
+        ]
+    )
+
+    summary = FakeSimulationGovernanceStore(records).summarize_calibration_evidence(tenant_id="default", now=now)
+
+    assert summary.state == "sufficient"
+    assert summary.degraded_request_count == 0
+    assert summary.excluded_request_count == 2
+    assert summary.excluded_reasons == [CalibrationReasonCount(reason="denied_request", count=2)]
+
+
+class _FakeClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+
+    def __call__(self) -> float:
+        return self.now
+
+
+async def _resolve_for_default(policy_service: PolicyService, settings: Settings) -> None:
+    await policy_service.resolve(
+        prompt="simple request",
+        request=ChatCompletionRequest(model="nebula-auto", messages=[{"role": "user", "content": "simple request"}]),
+        tenant_context=tenant_context(),
+        router_service=RouterService(settings),
+    )
+
+
+@pytest.mark.asyncio
+async def test_evidence_summary_is_reused_within_ttl() -> None:
+    settings = Settings()
+    store = RuntimePolicyStore()
+    clock = _FakeClock()
+    policy_service = PolicyService(
+        settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"), clock=clock
+    )
+
+    await _resolve_for_default(policy_service, settings)
+    await _resolve_for_default(policy_service, settings)
+    assert store.evidence_summary_calls == ["default"]
+
+    clock.now = 31.0
+    await _resolve_for_default(policy_service, settings)
+    assert store.evidence_summary_calls == ["default", "default"]
+
+
+@pytest.mark.asyncio
+async def test_evidence_summary_ttl_zero_recomputes_every_request() -> None:
+    settings = Settings(NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS=0)
+    store = RuntimePolicyStore()
+    policy_service = PolicyService(
+        settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json"), clock=_FakeClock()
+    )
+
+    await _resolve_for_default(policy_service, settings)
+    await _resolve_for_default(policy_service, settings)
+
+    assert store.evidence_summary_calls == ["default", "default"]
+
+
 @pytest.mark.asyncio
 async def test_governance_store_calibration_summary_reports_degraded_state_precedence_over_sufficient() -> None:
     now = datetime.now(UTC)
@@ -1223,6 +1336,7 @@ def _ledger_record(
     route_reason: str = "token_complexity",
     policy_outcome: str = "default",
     route_signals: dict | None = None,
+    message_type: str = "chat",
 ) -> UsageLedgerRecord:
     total_tokens = prompt_tokens + completion_tokens
     return UsageLedgerRecord(
@@ -1244,6 +1358,7 @@ def _ledger_record(
         route_reason=route_reason,
         policy_outcome=policy_outcome,
         route_signals=route_signals,
+        message_type=message_type,  # type: ignore[arg-type]
     )
 
 

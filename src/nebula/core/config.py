@@ -50,6 +50,8 @@ class Settings(BaseSettings):
     premium_base_url: str | None = Field(default=None, alias="NEBULA_PREMIUM_BASE_URL")
     premium_api_key: str | None = Field(default=None, alias="NEBULA_PREMIUM_API_KEY")
     enable_metrics: bool = Field(default=True, alias="NEBULA_ENABLE_METRICS")
+    # How long PolicyService reuses a tenant's outcome-evidence summary; 0 recomputes on every request.
+    evidence_summary_ttl_seconds: float = Field(default=30, ge=0, alias="NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS")
     data_store_path: str = Field(default=".nebula/nebula.db", alias="NEBULA_DATA_STORE_PATH")
     admin_api_key: str = Field(default="nebula-admin-key", alias="NEBULA_ADMIN_API_KEY")
     bootstrap_tenant_id: str = Field(default="default", alias="NEBULA_BOOTSTRAP_TENANT_ID")

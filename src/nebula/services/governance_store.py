@@ -77,6 +77,10 @@ class StoredApiKey:
         )
 
 
+# Rows written when a request was turned away before routing (route_signals is None by design).
+_CALIBRATION_DENIED_TERMINAL_STATUSES = frozenset({"policy_denied", "rate_limited"})
+
+
 class GovernanceStore:
     CALIBRATION_THIN_REQUEST_THRESHOLD = 5
     CALIBRATION_STALENESS_THRESHOLD_HOURS = 24
@@ -739,7 +743,16 @@ class GovernanceStore:
         return self.session_factory()
 
     def _calibration_excluded_reason(self, record: UsageLedgerRecord) -> str | None:
-        return self._CALIBRATION_EXCLUDED_ROUTE_REASONS.get(record.route_reason or "")
+        # Embeddings and denied requests never ran through the router, so they carry no route signals; they
+        # are neither evidence nor degradation.
+        if record.message_type == "embeddings":
+            return "embeddings_request"
+        reason = self._CALIBRATION_EXCLUDED_ROUTE_REASONS.get(record.route_reason or "")
+        if reason is not None:
+            return reason
+        if record.terminal_status in _CALIBRATION_DENIED_TERMINAL_STATUSES:
+            return "denied_request"
+        return None
 
     def _calibration_gated_reason(self, record: UsageLedgerRecord) -> str | None:
         return self._CALIBRATION_GATED_ROUTE_REASONS.get(record.route_reason or "")

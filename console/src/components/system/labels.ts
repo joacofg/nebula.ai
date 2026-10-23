@@ -15,7 +15,6 @@ const ROUTE_REASONS: Record<string, string> = {
   local_provider_error_fallback_blocked: "fallback bloqueado por política",
   policy_local_only: "política: solo local",
   policy_premium_only: "política: solo premium",
-  embeddings_request: "embeddings",
   embeddings_direct: "embeddings directos",
   embeddings_validation_error: "embeddings: pedido inválido",
   embeddings_upstream_error: "embeddings: error del proveedor",
@@ -30,6 +29,8 @@ const ROUTE_REASONS: Record<string, string> = {
   policy_forced_routing: "ruteo forzado por la política",
   missing_route_signals: "sin señales de ruteo",
   degraded_replay_signals: "señales incompletas",
+  embeddings_request: "pedido de embeddings",
+  denied_request: "pedido denegado",
 };
 
 const STATUSES: Record<string, string> = {

@@ -163,7 +163,7 @@ def test_chat_completions_persist_governed_ledger_markers_from_tenant_policy() -
 
 
 def test_chat_completions_outcome_grounded_request_persists_matching_route_signals() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             container.local_provider = StubProvider(
@@ -265,7 +265,7 @@ def test_chat_completions_outcome_grounded_request_persists_matching_route_signa
 
 
 def test_chat_completions_outcome_grounded_policy_denial_persists_evidence_state_without_route_signals() -> None:
-    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock", NEBULA_EVIDENCE_SUMMARY_TTL_SECONDS="0") as app:
         with TestClient(app) as client:
             container = app.state.container
             container.local_provider = StubProvider(

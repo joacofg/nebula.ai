@@ -61,6 +61,8 @@ describe("labels", () => {
     expect(reasonLabel("degraded_replay_signals")).toBe("señales incompletas");
     expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
     expect(reasonLabel("rate_limited")).toBe("límite de pedidos");
+    expect(reasonLabel("embeddings_request")).toBe("pedido de embeddings");
+    expect(reasonLabel("denied_request")).toBe("pedido denegado");
   });
 
   it("names the heuristic the same way as a reason and as a router", () => {
