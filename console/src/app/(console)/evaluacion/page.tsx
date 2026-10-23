@@ -159,10 +159,13 @@ function EvaluationBody({ replay, tenantTarget }: { replay: RouterReplay; tenant
               },
               ...langs.map(([lang, figure]) => ({
                 label: `${LANG_LABELS[lang] ?? lang} · ${figure.n} pedidos`,
-                // Two figures with their units must stay on one line in the 380 px panel.
+                // Two figures with their units stay on one line in the 380 px panel; on a phone they
+                // wrap between the figures, never inside one.
                 value: (
-                  <span className="whitespace-nowrap text-sm font-medium">
-                    {`calidad ${formatQuality(figure.quality)} · ${formatUsdPer1000(figure.costPerPrompt)}`}
+                  <span className="text-sm font-medium xl:whitespace-nowrap">
+                    <span className="whitespace-nowrap">{`calidad ${formatQuality(figure.quality)}`}</span>
+                    {" · "}
+                    <span className="whitespace-nowrap">{formatUsdPer1000(figure.costPerPrompt)}</span>
                   </span>
                 ),
               })),
