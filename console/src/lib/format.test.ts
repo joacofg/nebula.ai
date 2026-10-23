@@ -5,9 +5,24 @@ import {
   formatDateTimeShort,
   formatUsd,
   formatUsdPer1000,
+  formatPercentText,
   formatUsdText,
   localInputToIso,
 } from "@/lib/format";
+
+describe("formatPercentText", () => {
+  it("writes a percentage the gateway wrote as text with the thesis's space: 15 %", () => {
+    expect(formatPercentText("15%")).toBe("15 %");
+    expect(formatPercentText("0%")).toBe("0 %");
+    expect(formatPercentText("12.5%")).toBe("12.5 %");
+  });
+
+  it("leaves a value already spaced, or with no percentage, as it came", () => {
+    expect(formatPercentText("15 %")).toBe("15 %");
+    expect(formatPercentText("0.90")).toBe("0.90");
+    expect(formatPercentText("n/a")).toBe("n/a");
+  });
+});
 
 describe("formatUsd", () => {
   it("writes USD with two decimals by default, like the thesis", () => {

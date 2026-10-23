@@ -29,7 +29,8 @@ describe("Recommendations", () => {
     expect(screen.queryByText(/Review semantic cache tuning/)).not.toBeInTheDocument();
     expect(screen.queryByText(/The cache is enabled/)).not.toBeInTheDocument();
     expect(screen.queryByText(/Review the maximum entry age/)).not.toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Tasa de aciertos" })).toHaveTextContent("16%");
+    // The gateway writes "16%"; the console writes numbers like the thesis ("31 %").
+    expect(screen.getByRole("group", { name: "Tasa de aciertos" })).toHaveTextContent("16 %");
     expect(screen.getByRole("group", { name: "Umbral de similitud" })).toHaveTextContent("0.90");
   });
 

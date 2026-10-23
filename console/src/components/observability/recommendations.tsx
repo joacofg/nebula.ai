@@ -3,6 +3,7 @@ import type { RecommendationBundle } from "@/lib/admin-api";
 import { plural } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
+import { formatPercentText } from "@/lib/format";
 
 const CATEGORY: Record<string, string> = { policy: "política", cache: "caché", info: "info" };
 
@@ -84,7 +85,7 @@ export function Recommendations({ bundle }: { bundle: RecommendationBundle }) {
                 <Readout
                   items={item.evidence.map((e) => ({
                     label: EVIDENCE[e.label] ?? e.label,
-                    value: <span className="text-sm">{e.value}</span>,
+                    value: <span className="text-sm">{formatPercentText(e.value)}</span>,
                   }))}
                 />
               ) : null}

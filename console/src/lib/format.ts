@@ -25,6 +25,14 @@ export function formatUsdText(amount: string, digits = 4): string {
   return amount.trim() !== "" && Number.isFinite(value) ? formatUsd(value, digits) : `USD ${amount}`;
 }
 
+/**
+ * A percentage the gateway wrote into a text ("15%", Python's `:.0%`), with the space the thesis
+ * puts before the sign: "15 %". Any other text stays as written.
+ */
+export function formatPercentText(text: string): string {
+  return text.replace(/(\d)%/g, "$1 %");
+}
+
 // A trailing "Z" or UTC offset: the timestamp names its own zone.
 const HAS_ZONE = /(?:[zZ]|[+-]\d{2}(?::?\d{2})?)$/;
 
