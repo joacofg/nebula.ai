@@ -17,6 +17,19 @@ MAX_REQUEST_ID_LENGTH = 128
 UNMATCHED_PATH = "unmatched"
 
 
+def _mount_path(request: Request) -> str | None:
+    """The path of the mounted app that served the request ("/metrics"), if one did.
+
+    A Mount leaves no `route` in the scope, but it extends the scope's `root_path` beyond the
+    app's own (`app_root_path`, which a proxy prefix may have set). A real 404 leaves both equal.
+    """
+    app_root = request.scope.get("app_root_path")
+    root = request.scope.get("root_path", "")
+    if app_root is None or len(root) <= len(app_root) or not root.startswith(app_root):
+        return None
+    return root[len(app_root) :]
+
+
 def route_template(request: Request) -> str:
     """The matched route's template ("/v1/admin/tenants/{tenant_id}"), never the raw path.
 
@@ -27,7 +40,7 @@ def route_template(request: Request) -> str:
     route = request.scope.get("route")
     template = getattr(route, "path", None)
     if not template:
-        return UNMATCHED_PATH
+        return _mount_path(request) or UNMATCHED_PATH
     # Newer FastAPI reports an included router's route without the `include_router` prefix, so
     # the prefix is whatever precedes the route's own path in the request path.
     path_format = getattr(route, "path_format", None)
