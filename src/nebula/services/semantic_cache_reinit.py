@@ -3,14 +3,17 @@
 `SemanticCacheService` retries a disabled cache inline, at most every 30 s, so the request that
 triggers the retry waits for several Qdrant round trips. The gateway uses this subclass instead:
 the retry runs as one background task and the triggering request answers as a disabled cache.
+A health check made while the retry runs still reports the last attempt's state.
+
 The base class keeps its inline retry because the pre-registered cache measurement
-(`benchmarks/cache/v1`) pins its source by hash and replays with it.
+(`benchmarks/cache/v1`) pins its source by hash and replays with it. This subclass overrides the
+base's private `_retry_initialize` and reads `_last_initialize_at` and `_clock`; that same hash
+pin (`tests/test_cache_eval.py`) fails if the base ever changes them.
 """
 
 from __future__ import annotations
 
 import asyncio
-import contextlib
 
 from nebula.services.semantic_cache_service import (
     REINITIALIZE_INTERVAL_SECONDS,
@@ -31,7 +34,7 @@ class BackgroundReinitSemanticCacheService(SemanticCacheService):
         last = self._last_initialize_at
         if last is not None and self._clock() - last < REINITIALIZE_INTERVAL_SECONDS:
             return
-        # Stamped here, not only in initialize(), so the throttle holds before the task first runs.
+        # A retry cancelled before it runs still counts against the throttle.
         self._last_initialize_at = self._clock()
         self._reinit_task = asyncio.create_task(self._reinitialize())
 
@@ -46,14 +49,14 @@ class BackgroundReinitSemanticCacheService(SemanticCacheService):
             logger.info("semantic_cache_recovered")
 
     async def settle(self) -> None:
-        """Wait for a background retry in flight, if any."""
+        """For tests: wait until a background retry in flight, if any, has finished."""
         if self._reinit_task is not None:
-            await self._reinit_task
+            await asyncio.wait({self._reinit_task})
 
     async def close(self) -> None:
         task = self._reinit_task
         if task is not None and not task.done():
             task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await task
+            # wait(), not await task: a cancellation of close() itself still propagates.
+            await asyncio.wait({task})
         await super().close()

@@ -22,7 +22,7 @@ class FakeEmbeddings:
 
 
 class SlowQdrant(LateQdrant):
-    """A late Qdrant that, once up, holds every call until `release` is set."""
+    """A late Qdrant that, once up, holds every call but close() until `release` is set."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -33,7 +33,7 @@ class SlowQdrant(LateQdrant):
         call = super().__getattr__(name)
 
         async def slow(*args, **kwargs):
-            if self.up:
+            if self.up and name != "close":
                 await self.release.wait()
             return await call(*args, **kwargs)
 
@@ -164,14 +164,15 @@ async def test_close_cancels_a_pending_initialize() -> None:
     qdrant = SlowQdrant()
     service, _, clock = await _started_before_qdrant(qdrant)
     clock.now += 30.0
-    await _lookup(service)
+    await asyncio.wait_for(_lookup(service), timeout=1.0)
     task = service._reinit_task
     assert task is not None and not task.done()
 
-    qdrant.release.set()  # let the client's own close() through
-    await service.close()
+    # The retry is still held by Qdrant: close() can only return by cancelling it.
+    await asyncio.wait_for(service.close(), timeout=1.0)
 
-    assert task.cancelled() or task.done()
+    assert task.cancelled()
+    assert not service.enabled
 
 
 def test_the_gateway_uses_the_background_reinit_cache() -> None:
