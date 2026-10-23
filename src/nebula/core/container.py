@@ -23,7 +23,7 @@ from nebula.services.recommendation_service import RecommendationService
 from nebula.services.retention_lifecycle_service import RetentionLifecycleService
 from nebula.services.router_service import RouterService
 from nebula.services.runtime_health_service import RuntimeHealthService
-from nebula.services.semantic_cache_service import SemanticCacheService
+from nebula.services.semantic_cache_reinit import BackgroundReinitSemanticCacheService
 from nebula.services.rate_limiter import RateLimiter
 
 logger = logging.getLogger(__name__)
@@ -59,7 +59,7 @@ class ServiceContainer:
             local_provider=self.local_provider,
             premium_provider=self.premium_provider,
         )
-        self.cache_service = SemanticCacheService(
+        self.cache_service = BackgroundReinitSemanticCacheService(
             settings=settings,
             embeddings_service=self.embeddings_service,
             embed_timeout=REQUEST_PATH_EMBED_TIMEOUT_SECONDS,

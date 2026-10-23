@@ -110,7 +110,7 @@ hipótesis.
 ### 11.2.2 Casos de prueba
 
 La Tabla 11.3 resume los casos de prueba. La tabla completa, con la entrada y el test o reporte
-que respalda cada caso, está en el Anexo A. La suite automática tiene 937 pruebas del backend (pytest) y 713 de la consola (Vitest), todas en verde en la última corrida (23 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
+que respalda cada caso, está en el Anexo A. La suite automática tiene 944 pruebas del backend (pytest) y 713 de la consola (Vitest), todas en verde en la última corrida (23 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
 
 **Tabla 11.3.** Casos de prueba (P = pasó, F = falló).
 

@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from nebula.models.resilience import DependencyHealthReason, build_dependency_health
 from nebula.providers.base import CompletionResult
 from nebula.services.premium_provider_health_service import PremiumProviderHealthService
-from nebula.services.semantic_cache_service import SemanticCacheService
+from nebula.services.semantic_cache_reinit import BackgroundReinitSemanticCacheService
 from tests.support import (
     FakeCacheService,
     FakeClock,
@@ -319,7 +319,7 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         container = app.state.container
         qdrant, clock = LateQdrant(), FakeClock()
         embeddings = FixedVectorEmbeddings([1.0] * container.settings.embedding_dimensions)
-        cache = SemanticCacheService(
+        cache = BackgroundReinitSemanticCacheService(
             settings=container.settings, embeddings_service=embeddings, client=qdrant, clock=clock
         )
         await cache.initialize()  # at startup, before Qdrant is up
@@ -344,7 +344,8 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         health_while_down = await cache_health()
         qdrant.up = True
         clock.now += 30.0
-        recovering = await chat()  # retries initialization, then looks up
+        recovering = await chat()  # starts the retry in the background; answers without the cache
+        await cache.settle()
         storing = await chat()
         hit = await chat()
         health_after = await cache_health()
@@ -358,10 +359,10 @@ async def test_a_qdrant_that_starts_after_the_gateway_is_picked_up_without_a_res
         "false",
     ]
     assert hit.headers["X-Nebula-Cache-Hit"] == "true"
-    assert counted == {"disabled": 1, "no_candidate": 2, "hit": 1}
-    # A disabled cache costs no embedding. The lookup that re-enables it embeds on its own and
-    # has no vector to store its answer under; the next request embeds once and stores it.
-    assert embeddings.calls == ["hola", "hola", "hola"]
+    assert counted == {"disabled": 2, "no_candidate": 1, "hit": 1}
+    # A disabled cache costs no embedding, including the request that starts the retry; once it
+    # is back, the next request embeds once and stores its answer, and the one after hits.
+    assert embeddings.calls == ["hola", "hola"]
 
 
 @pytest.mark.asyncio
