@@ -112,6 +112,8 @@ describe("api-keys-page api-key-table", () => {
     expect(headers).toEqual(["Nombre", "Prefijo", "Alcance", "Estado", "Creada", "Acciones"]);
     const prefix = screen.getByText("nbk_a1b2");
     expect(prefix.closest("td")).toBe(within(prefix.closest("tr") as HTMLElement).getAllByRole("cell")[1]);
+    // The cell is narrow and truncates, so the whole prefix stays one hover away.
+    expect(prefix.closest("td")).toHaveAttribute("title", "nbk_a1b2");
   });
 
   it("keeps revoked records visible", () => {

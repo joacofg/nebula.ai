@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -36,9 +36,28 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
     }
   }, [visible]);
 
+  // The key on screen right now; a copy only confirms itself if it is still the one being shown
+  // when the clipboard answers.
+  const shownKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    shownKeyRef.current = visible ? apiKey : null;
+    return () => {
+      shownKeyRef.current = null;
+    };
+  }, [visible, apiKey]);
+
   async function handleCopy() {
-    await navigator.clipboard.writeText(revealedApiKey);
-    setCopied(true);
+    const key = revealedApiKey;
+    try {
+      await navigator.clipboard.writeText(key);
+    } catch {
+      // No clipboard API (plain HTTP on a LAN) or the browser refused: stay on "Copiar", and the
+      // key remains on screen to select by hand.
+      return;
+    }
+    if (shownKeyRef.current === key) {
+      setCopied(true);
+    }
   }
 
   return (

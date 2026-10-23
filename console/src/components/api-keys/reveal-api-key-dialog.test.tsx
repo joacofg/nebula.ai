@@ -91,6 +91,96 @@ describe("reveal-api-key-dialog", () => {
     });
   });
 
+  describe("a copy that fails", () => {
+    function watchUnhandledRejections() {
+      const seen: unknown[] = [];
+      const onRejection = (reason: unknown) => {
+        seen.push(reason);
+      };
+      process.on("unhandledRejection", onRejection);
+      return { seen, stop: () => process.off("unhandledRejection", onRejection) };
+    }
+
+    // Node reports an unhandled rejection once the microtask queue has drained, so wait a macrotask.
+    async function settle() {
+      await act(async () => {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+      });
+    }
+
+    async function clickCopy() {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copiar" }));
+      });
+    }
+
+    it("leaves Copiar and no unhandled rejection when the clipboard refuses the write", async () => {
+      vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new DOMException("denied", "NotAllowedError"));
+      const rejections = watchUnhandledRejections();
+      renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={vi.fn()} />);
+
+      await clickCopy();
+      await settle();
+      rejections.stop();
+
+      expect(rejections.seen).toEqual([]);
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+      expect(screen.getByText("nbk_secret")).toBeInTheDocument();
+    });
+
+    it("leaves Copiar and no unhandled rejection when there is no clipboard API (plain HTTP)", async () => {
+      Object.assign(navigator, { clipboard: undefined });
+      const rejections = watchUnhandledRejections();
+      renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={vi.fn()} />);
+
+      await clickCopy();
+      await settle();
+      rejections.stop();
+
+      expect(rejections.seen).toEqual([]);
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+      expect(screen.getByText("nbk_secret")).toBeInTheDocument();
+    });
+
+    it("does not mark a copy that resolves after the dialog closed", async () => {
+      let finishWrite: () => void = () => undefined;
+      vi.mocked(navigator.clipboard.writeText).mockImplementationOnce(
+        () => new Promise<void>((resolve) => (finishWrite = resolve)),
+      );
+      const { rerender } = renderWithProviders(<RevealApiKeyDialog apiKey="nbk_first" open onClose={vi.fn()} />);
+
+      await clickCopy();
+      rerender(<RevealApiKeyDialog apiKey={null} open={false} onClose={vi.fn()} />);
+      await act(async () => {
+        finishWrite();
+      });
+      rerender(<RevealApiKeyDialog apiKey="nbk_first" open onClose={vi.fn()} />);
+
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+    });
+
+    it("does not mark a copy of the previous key once another key is shown", async () => {
+      let finishWrite: () => void = () => undefined;
+      vi.mocked(navigator.clipboard.writeText).mockImplementationOnce(
+        () => new Promise<void>((resolve) => (finishWrite = resolve)),
+      );
+      const { rerender } = renderWithProviders(<RevealApiKeyDialog apiKey="nbk_first" open onClose={vi.fn()} />);
+
+      await clickCopy();
+      rerender(<RevealApiKeyDialog apiKey={null} open={false} onClose={vi.fn()} />);
+      rerender(<RevealApiKeyDialog apiKey="nbk_second" open onClose={vi.fn()} />);
+      await act(async () => {
+        finishWrite();
+      });
+
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+    });
+  });
+
   it("has exactly one Cerrar button, and it closes the dialog", async () => {
     const onClose = vi.fn();
     renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={onClose} />);

@@ -60,7 +60,12 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
                     {apiKey.name}
                   </span>
                 </td>
-                <td className={`px-3 py-2.5 font-mono text-[12px] ${revoked ? "text-ink-3" : "text-ink-2"}`}>{apiKey.key_prefix}</td>
+                <td
+                  className={`truncate px-3 py-2.5 font-mono text-[12px] ${revoked ? "text-ink-3" : "text-ink-2"}`}
+                  title={apiKey.key_prefix}
+                >
+                  {apiKey.key_prefix}
+                </td>
                 <td className="px-3 py-2.5">
                   <div className="truncate font-medium text-ink" title={`${scope.title}. ${scope.detail}`}>
                     {scope.title}
