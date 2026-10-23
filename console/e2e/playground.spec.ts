@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test("operator can submit a playground prompt and see metadata plus recorded outcome", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
   });
@@ -125,8 +128,8 @@ test("operator can submit a playground prompt and see metadata plus recorded out
   await page.getByLabel("Clave de admin").fill("nb-admin-valid");
   await page.getByRole("button", { name: "Entrar" }).click();
 
-  await expect(page.getByRole("link", { name: "Playground" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByRole("link", { name: "Playground", exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Playground", exact: true }).click();
   await expect(page).toHaveURL(/\/playground$/, { timeout: 30_000 });
 
   await expect(page.getByRole("combobox").first()).toHaveValue("default");

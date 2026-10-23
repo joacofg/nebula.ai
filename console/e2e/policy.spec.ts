@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test.setTimeout(60_000);
 
 test("operator can update tenant policy from the console", async ({ page }) => {
+  await mockEvaluationLanding(page);
   const tenants = [
     {
       id: "default",

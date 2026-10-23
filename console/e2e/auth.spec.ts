@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test("operator can sign in and land on the evaluation page", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/tenants", async (route) => {
     await route.fulfill({
       status: 200,
@@ -43,6 +46,7 @@ test("operator can sign in and land on the evaluation page", async ({ page }) =>
 });
 
 test("refresh clears the in-memory admin session", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/tenants", async (route) => {
     await route.fulfill({
       status: 200,

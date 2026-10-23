@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test("operator can create, edit, and keep an inactive tenant visible", async ({ page }) => {
+  await mockEvaluationLanding(page);
   const tenants = [
     {
       id: "default",
@@ -64,6 +67,7 @@ test("operator can create, edit, and keep an inactive tenant visible", async ({ 
   await page.getByLabel("Descripción").fill("Updated description");
   await page.getByRole("checkbox", { name: "Activo" }).uncheck();
   await page.getByRole("button", { name: "Guardar tenant" }).click();
+  await expect(page.getByRole("status").filter({ hasText: "Tenant guardado." })).toBeVisible();
 
   await page.getByRole("combobox").selectOption("inactive");
   await expect(page.getByRole("table", { name: "Tenants" }).getByText("Updated description")).toBeVisible();

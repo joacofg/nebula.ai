@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test.setTimeout(60_000);
 
 test("operator can create, reveal once, and revoke an API key", async ({ page }) => {
+  await mockEvaluationLanding(page);
   const tenants = [
     {
       id: "default",

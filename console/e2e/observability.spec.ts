@@ -1,9 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 // The console shows moments in the operator's local time; pin the zone so the reading is fixed.
 test.use({ timezoneId: "America/Argentina/Buenos_Aires" });
 
 test("operator can inspect request-first outage and recovery truth on observability", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
   });
