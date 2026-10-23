@@ -387,6 +387,25 @@ async def test_a_learned_redecision_reports_the_routing_parity_of_the_live_route
     assert changed.baseline_route_score == changed.simulated_route_score == 0.38
 
 
+async def test_an_economy_pick_without_an_economy_model_is_simulated_as_frontier() -> None:
+    # The 0.9 target picks economy for these probabilities; no economy model is configured.
+    assert tier_for(0.62, 0.91, MODEL.operating_point(0.9)) == "economy"
+    row = _row(
+        "req-learned",
+        route_signals=_learned_signals(0.62, 0.91),
+        # A recorded cost no estimate reproduces, so the row shows up among the changed ones.
+        estimated_cost=0.05,
+    )
+
+    response = await _simulate([row], TenantPolicy(routing_quality_target=0.9), economy_model=None)
+
+    [changed] = response.changed_requests
+    assert changed.decision_source == "learned_router"
+    assert changed.simulated_tier == "frontier"
+    assert changed.simulated_estimated_cost == pytest.approx(_cost(FRONTIER_MODEL))
+    assert response.summary.simulated_tier_counts == _counts(frontier=1)
+
+
 def _strict_row(request_id: str, **overrides) -> UsageLedgerRecord:
     # Strict evidence minimization drops every route signal before the row is stored.
     return _row(request_id, route_signals=None, **overrides).model_copy(
@@ -424,6 +443,21 @@ def _strict_row(request_id: str, **overrides) -> UsageLedgerRecord:
             MODEL,
             "token_complexity",
             id="p-economy-not-a-number",
+        ),
+        pytest.param(
+            # Outside [0, 1] a stored probability is corrupt: nothing to re-decide from.
+            _row("req-corrupt", route_signals=_learned_signals(1.5, 0.91)),
+            TenantPolicy(),
+            MODEL,
+            "token_complexity",
+            id="p-local-out-of-range",
+        ),
+        pytest.param(
+            _row("req-corrupt-economy", route_signals=_learned_signals(0.62, -0.01)),
+            TenantPolicy(),
+            MODEL,
+            "token_complexity",
+            id="p-economy-out-of-range",
         ),
         pytest.param(
             _strict_row("req-strict"),
@@ -686,6 +720,53 @@ async def test_candidate_guardrails_apply_to_learned_rows(
         changed.simulated_tier,
     ) == expected
     assert changed.decision_source == expected_source
-    if expected_target != "denied":  # a denied row keeps the projected cost it was denied for
-        expected_cost = _cost(FRONTIER_MODEL) if expected_tier == "frontier" else 0.0
-        assert changed.simulated_estimated_cost == pytest.approx(expected_cost)
+    # A denied request costs nothing, whichever guardrail denied it.
+    expected_cost = _cost(FRONTIER_MODEL) if expected_tier == "frontier" else 0.0
+    assert changed.simulated_estimated_cost == pytest.approx(expected_cost)
+    assert response.summary.simulated_premium_cost == pytest.approx(expected_cost)
+
+
+CAP_DENIAL = "denied=Request exceeds the tenant premium spend guardrail."
+
+
+@pytest.mark.parametrize(
+    "row",
+    [
+        pytest.param(
+            # Frontier at the 0.95 target, as when it was recorded.
+            _row(
+                "req-learned-denied",
+                route_signals=_learned_signals(0.62, 0.91),
+                final_route_target="denied",
+                response_model=None,
+                terminal_status="policy_denied",
+            ),
+            id="learned-row",
+        ),
+        pytest.param(
+            # A live denial stores no route signals; an explicit model keeps it premium.
+            _row(
+                "req-heuristic-denied",
+                route_signals=None,
+                requested_model=FRONTIER_MODEL,
+                final_route_target="denied",
+                response_model=None,
+                route_reason="explicit_premium_model",
+                terminal_status="policy_denied",
+            ),
+            id="heuristic-row",
+        ),
+    ],
+)
+async def test_a_row_denied_in_the_baseline_and_the_candidate_is_unchanged(
+    row: UsageLedgerRecord,
+) -> None:
+    row = row.model_copy(update={"policy_outcome": CAP_DENIAL})
+    candidate = TenantPolicy(max_premium_cost_per_request=0.000001)
+
+    response = await _simulate([row], candidate)
+
+    assert response.changed_requests == []
+    assert response.summary.newly_denied == 0
+    assert response.summary.simulated_premium_cost == 0.0
+    assert response.summary.premium_cost_delta == 0.0

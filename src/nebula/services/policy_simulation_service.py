@@ -152,7 +152,7 @@ class PolicySimulationService:
 
             simulated_target = self._simulation_target(evaluation)
             simulated_denied = evaluation.denied
-            simulated_cost = evaluation.projected_premium_cost or 0.0
+            simulated_cost = self._simulated_cost(evaluation)
             simulated_premium_cost_total += simulated_cost
             baseline_tier = self._baseline_tier(replay_input.record)
             simulated_tier = self._simulated_tier(evaluation)
@@ -271,11 +271,12 @@ class PolicySimulationService:
     @staticmethod
     def _is_probability(value: object) -> bool:
         # Rows recorded before the probabilities were stored unrounded hold four decimals:
-        # still numbers, still re-decided.
+        # still numbers, still re-decided. Outside [0, 1] the stored value is corrupt.
         return (
             isinstance(value, int | float)
             and not isinstance(value, bool)
             and math.isfinite(value)
+            and 0.0 <= value <= 1.0
         )
 
     def _build_replay_input(self, record: UsageLedgerRecord) -> SimulationReplayInput:
@@ -366,6 +367,14 @@ class PolicySimulationService:
         economy_model = self.router_service.settings.economy_model
         return "economy" if economy_model and model == economy_model else "frontier"
 
+    @staticmethod
+    def _simulated_cost(evaluation: PolicyEvaluation) -> float:
+        # The per-request cap and a hard-budget deny keep the projected cost they denied for;
+        # a denied request runs nowhere and costs nothing.
+        if evaluation.denied:
+            return 0.0
+        return evaluation.projected_premium_cost or 0.0
+
     def _record_changed(
         self,
         record: UsageLedgerRecord,
@@ -380,7 +389,7 @@ class PolicySimulationService:
         ) != self._policy_outcome_without_evidence(evaluation.policy_outcome):
             return True
         baseline_cost = (record.estimated_cost or 0.0) if baseline_target == "premium" else 0.0
-        simulated_cost = evaluation.projected_premium_cost or 0.0
+        simulated_cost = self._simulated_cost(evaluation)
         if round(baseline_cost, 8) != round(simulated_cost, 8):
             return True
         return False
