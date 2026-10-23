@@ -5,6 +5,7 @@ import { PlaygroundDecision } from "@/components/playground/playground-decision"
 import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
 import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
+import { formatUsd } from "@/lib/format";
 
 type RouteSignals = Record<string, unknown>;
 
@@ -16,6 +17,12 @@ type Section = { title: string; summary: string | null; items: ReadoutItem[] };
 
 function orDash(value: string | null | undefined) {
   return value && value.length > 0 ? value : "—";
+}
+
+/** An amount the gateway wrote into the policy outcome as text; anything unparseable stays as written. */
+function usdFromOutcome(amount: string) {
+  const value = Number(amount);
+  return amount.trim() !== "" && Number.isFinite(value) ? formatUsd(value, 4) : `USD ${amount}`;
 }
 
 function yesNo(value: boolean) {
@@ -45,8 +52,8 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
   if (hard) {
     const [, limitUsd, spentUsd, enforcement] = hard;
     summary = "Presupuesto duro alcanzado";
-    items.push({ label: "Gastado al decidir", value: `USD ${spentUsd}` });
-    items.push({ label: "Límite duro", value: `USD ${limitUsd}` });
+    items.push({ label: "Gastado al decidir", value: usdFromOutcome(spentUsd) });
+    items.push({ label: "Límite duro", value: usdFromOutcome(limitUsd) });
     items.push({ label: "Aplicación", value: titleCaseToken(enforcement) });
   }
   if (policyOutcome.includes("budget_action=downgraded_to_local")) {
@@ -63,10 +70,10 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
     const spent = policyOutcome.match(/spent_usd=([^,)]+)/);
     const limit = policyOutcome.match(/limit_usd=([^)]+)/);
     if (spent) {
-      items.push({ label: "Gastado al decidir", value: `USD ${spent[1]}` });
+      items.push({ label: "Gastado al decidir", value: usdFromOutcome(spent[1]) });
     }
     if (limit) {
-      items.push({ label: "Límite duro", value: `USD ${limit[1]}` });
+      items.push({ label: "Límite duro", value: usdFromOutcome(limit[1]) });
     }
   }
   if (policyOutcome.includes("soft_budget=exceeded")) {
@@ -175,7 +182,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
       </div>
 
       {signals || entry.route_reason === "cache_hit" ? (
-        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} figureNumber={1} compact />
+        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} compact />
       ) : null}
 
       <Readout items={ledgerReadout(entry)} />

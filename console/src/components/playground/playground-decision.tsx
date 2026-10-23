@@ -1,4 +1,4 @@
-import { DecisionPath, type DecisionStep } from "@/components/system/decision-path";
+import { DecisionPath, formatProb, type DecisionStep } from "@/components/system/decision-path";
 import { Figure } from "@/components/system/figure";
 import { TierBadge } from "@/components/system/tier-badge";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
@@ -7,8 +7,6 @@ type PlaygroundDecisionProps = {
   entry: UsageLedgerRecord;
   /** `X-Nebula-Route-Tier` from the live response; empty when the gateway sent none. */
   routeTier: string;
-  /** Figure number for the decision path caption on the page that shows it. */
-  figureNumber?: number;
   /** Narrow column (the ledger detail): draw the path in its compact layout. */
   compact?: boolean;
 };
@@ -36,13 +34,6 @@ const EMBEDDING_STATUSES = new Set(["embedding_unavailable", "embedding_dimensio
 
 function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-/** Up to four decimals, never fewer than two: 0.9 → "0.90", 0.8312 → "0.8312". */
-function formatProb(value: number) {
-  const fixed = value.toFixed(4).replace(/0+$/, "");
-  const [whole, decimals = ""] = fixed.split(".");
-  return `${whole}.${decimals.padEnd(2, "0")}`;
 }
 
 function formatMaybe(value: number | null) {
@@ -139,7 +130,7 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
   return { kind: "learned", tier, computed, version, steps, path, context, note, fallback };
 }
 
-export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact = false }: PlaygroundDecisionProps) {
+export function PlaygroundDecision({ entry, routeTier, compact = false }: PlaygroundDecisionProps) {
   const explanation = explainDecision(entry, routeTier);
 
   return (
@@ -159,7 +150,7 @@ export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact
         </p>
       ) : explanation.kind === "learned" ? (
         <>
-          <Figure number={figureNumber} caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
+          <Figure caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
             <DecisionPath steps={explanation.path} chosen={explanation.computed} animate compact={compact} />
           </Figure>
           {explanation.note ? <p className="m-0 text-sm text-warn">{explanation.note}</p> : null}

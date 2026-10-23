@@ -4,9 +4,10 @@ import { useEffect, useRef, useState } from "react";
 
 import { Check, Pause, Play, RotateCcw, SkipForward, X } from "lucide-react";
 
-import { formatQuality, formatUsd1000 } from "@/components/evaluation/format";
+import { formatQuality } from "@/components/evaluation/format";
 import { Readout } from "@/components/system/readout";
 import { TierBadge } from "@/components/system/tier-badge";
+import { formatUsdPer1000 } from "@/lib/format";
 import { routeRow, tierOutcome, type ReplayOperatingPoint, type ReplayRow, type Tier } from "@/lib/router-replay";
 
 const SPEEDS = [1, 10, 100] as const;
@@ -164,7 +165,7 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
       <Readout
         className="max-w-xl"
         items={[
-          { label: "Costo acumulado", value: `${formatUsd1000(avgCost)} / 1000`, detail: "promedio por pedido" },
+          { label: "Costo acumulado", value: formatUsdPer1000(avgCost), detail: "promedio por pedido" },
           { label: "Calidad acumulada", value: formatQuality(quality), detail: "respuestas aceptadas por los jueces" },
         ]}
       />

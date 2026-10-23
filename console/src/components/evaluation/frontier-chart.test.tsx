@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { FrontierChart } from "@/components/evaluation/frontier-chart";
@@ -75,6 +75,24 @@ describe("FrontierChart", () => {
     fireEvent.click(screen.getByRole("button", { name: "Ver tabla" }));
     const table = screen.getByRole("table", { name: "Valores del gráfico" });
     expect(table).toHaveTextContent("todo frontier");
-    expect(table).toHaveTextContent("4.000");
+    expect(within(table).getByRole("columnheader", { name: "Costo por 1000 pedidos" })).toBeInTheDocument();
+    expect(within(table).getByRole("row", { name: /todo frontier/ })).toHaveTextContent("USD 4.000");
+    expect(table).not.toHaveTextContent("$");
+  });
+
+  it("writes every cost as USD, never with a dollar sign", () => {
+    render(
+      <FrontierChart
+        front={paretoFront(routerReplayFixture.operating_points)}
+        random={randomFrontier(routerReplayFixture.baselines)}
+        baselines={routerReplayFixture.baselines}
+        current={{ cost: 0.0025, quality: 1 }}
+      />,
+    );
+
+    expect(
+      screen.getByRole("group", { name: /punto elegido USD 2\.50 por 1000 pedidos, calidad 1\.000/ }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "todo frontier: USD 4.000 / 1000 · calidad 1.000" })).toBeInTheDocument();
   });
 });

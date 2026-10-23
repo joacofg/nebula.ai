@@ -1,17 +1,4 @@
-/** 0.95 → "0.95", 0.955 → "0.955": the same notation as the characteristics table. */
-export function formatTarget(value: number) {
-  return value.toFixed(3).replace(/0$/, "");
-}
-
-export const QUALITY_MIN = 0.75;
-export const QUALITY_MAX = 1;
-export const QUALITY_STEP = 0.005;
-
-/** Slider values are floats: snap them to the 0.005 grid, three decimals. */
-export function snapTarget(value: number) {
-  const clamped = Math.min(QUALITY_MAX, Math.max(QUALITY_MIN, value));
-  return Math.round(Math.round(clamped / QUALITY_STEP) * QUALITY_STEP * 1000) / 1000;
-}
+import { TARGET_MAX, TARGET_MIN, TARGET_STEP, formatTarget, snapTarget } from "@/lib/quality-target";
 
 type QualitySliderProps = {
   value: number;
@@ -32,16 +19,16 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
       <input
         id="quality-target"
         type="range"
-        min={QUALITY_MIN}
-        max={QUALITY_MAX}
-        step={QUALITY_STEP}
+        min={TARGET_MIN}
+        max={TARGET_MAX}
+        step={TARGET_STEP}
         value={value}
         onChange={(event) => onChange(snapTarget(Number(event.target.value)))}
         className="mt-3 w-full cursor-pointer accent-mark"
       />
       <div className="mt-1 flex justify-between font-mono text-xs text-ink-3">
-        <span>{QUALITY_MIN.toFixed(2)}</span>
-        <span>{QUALITY_MAX.toFixed(2)}</span>
+        <span>{formatTarget(TARGET_MIN)}</span>
+        <span>{formatTarget(TARGET_MAX)}</span>
       </div>
     </div>
   );

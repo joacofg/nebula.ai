@@ -9,6 +9,7 @@ import { statusLabel } from "@/components/system/labels";
 import { TierBadge } from "@/components/system/tier-badge";
 import { EmptyState, LoadingRows } from "@/components/system/state";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
+import { formatUsd } from "@/lib/format";
 
 type LedgerTableProps = {
   rows: UsageLedgerRecord[];
@@ -32,7 +33,7 @@ function formatTime(value: string) {
 }
 
 function formatCost(value: number | null) {
-  return value === null ? "—" : value.toFixed(4);
+  return value === null ? "—" : formatUsd(value, 4);
 }
 
 export function formatLatency(value: number | null) {
@@ -89,7 +90,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
           <col className="w-[104px]" />
           <col />
           <col className="w-[68px]" />
-          <col className="w-[76px]" />
+          <col className="w-[104px]" />
           <col className="w-[76px]" />
           <col className="w-[132px]" />
         </colgroup>
@@ -100,7 +101,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
             <th scope="col" className={HEAD}>Nivel</th>
             <th scope="col" className={HEAD}>Modelo</th>
             <th scope="col" className={cn(HEAD, "text-right")}>Tokens</th>
-            <th scope="col" className={cn(HEAD, "text-right")}>USD</th>
+            <th scope="col" className={cn(HEAD, "text-right")}>Costo</th>
             <th scope="col" className={cn(HEAD, "text-right")}>Latencia</th>
             <th scope="col" className={HEAD}>Estado</th>
           </tr>
@@ -134,7 +135,7 @@ export function LedgerTable({ rows, selectedRequestId, onSelectRow, isLoading }:
                   </span>
                 </td>
                 <td className="px-3 py-2 text-right font-medium">{row.total_tokens}</td>
-                <td className="px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
+                <td className="whitespace-nowrap px-3 py-2 text-right font-medium">{formatCost(row.estimated_cost)}</td>
                 <td className="px-3 py-2 text-right font-medium">{formatLatency(row.latency_ms)}</td>
                 <td className="truncate px-3 py-2 font-label text-[13px] text-ink-2" title={row.terminal_status}>
                   {statusLabel(row.terminal_status)}

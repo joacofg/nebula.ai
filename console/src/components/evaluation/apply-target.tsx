@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
-import { formatTarget } from "@/components/evaluation/quality-slider";
+import { formatTarget } from "@/lib/quality-target";
 import { ErrorAlert, errorMessage } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";

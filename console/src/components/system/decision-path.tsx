@@ -28,7 +28,7 @@ const SWATCH: Record<string, string> = {
 };
 
 /** Two to four decimals: 0.9 → "0.90", 0.8312 → "0.8312". */
-function fmt(value: number) {
+export function formatProb(value: number) {
   const fixed = value.toFixed(4).replace(/0+$/, "");
   const [whole, decimals = ""] = fixed.split(".");
   return `${whole}.${decimals.padEnd(2, "0")}`;
@@ -44,10 +44,10 @@ function describe(steps: DecisionStep[], chosen: DecisionTier, exitRow: number) 
     if (step.p === null) {
       return `${step.tier} sin dato`;
     }
-    const tau = step.tau === null ? "∞" : fmt(step.tau);
+    const tau = step.tau === null ? "∞" : formatProb(step.tau);
     return clears(step)
-      ? `${step.tier} elegido (${fmt(step.p)} ≥ ${tau})`
-      : `${step.tier} descartado (${fmt(step.p)} < ${tau})`;
+      ? `${step.tier} elegido (${formatProb(step.p)} ≥ ${tau})`
+      : `${step.tier} descartado (${formatProb(step.p)} < ${tau})`;
   });
   if (!evaluated.some((s) => s.tier === chosen && clears(s))) {
     parts.push(`${tierLabel(chosen)} elegido`);
@@ -136,7 +136,7 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
         const x = boxX(i);
         const evaluated = i <= exitRow;
         const won = i === winnerIndex;
-        const tau = step.tau === null ? "∞" : fmt(step.tau);
+        const tau = step.tau === null ? "∞" : formatProb(step.tau);
         return (
           <g key={step.tier} data-stage={step.tier} data-evaluated={String(evaluated)} className={evaluated ? "" : "opacity-40"}>
             <rect
@@ -148,7 +148,7 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
               strokeWidth={won ? 1.5 : 1}
             />
             <text x={x + g.boxW / 2} y={compact ? cy(i) - 3 : cy(i) + 4.5} textAnchor="middle" className="fill-ink font-label text-[13px]">
-              {step.p === null ? `p ${step.tier} sin dato` : `p ${step.tier} ${fmt(step.p)}`}
+              {step.p === null ? `p ${step.tier} sin dato` : `p ${step.tier} ${formatProb(step.p)}`}
             </text>
             <text
               x={compact ? x + g.boxW / 2 : x + g.boxW + 8}

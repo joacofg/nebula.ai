@@ -14,6 +14,7 @@ import { Readout } from "@/components/system/readout";
 import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { formatUsd } from "@/lib/format";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -94,10 +95,6 @@ function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): T
   };
 }
 
-function formatUsd(value: number) {
-  return `${value < 0 ? "−" : ""}USD ${Math.abs(value).toFixed(4)}`;
-}
-
 function formatRouteScore(score: number | null | undefined) {
   if (score === null || score === undefined) {
     return null;
@@ -156,7 +153,7 @@ function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
     );
   }
   if (costChanged) {
-    highlights.push(`costo ${formatUsd(change.baseline_estimated_cost)} → ${formatUsd(change.simulated_estimated_cost)}`);
+    highlights.push(`costo ${formatUsd(change.baseline_estimated_cost, 4)} → ${formatUsd(change.simulated_estimated_cost, 4)}`);
   }
 
   return highlights.join(" · ");
@@ -212,9 +209,9 @@ function getDecisionSummary(simulationResult: PolicySimulationResponse) {
     );
   }
   if (summary.premium_cost_delta > 0) {
-    consequenceParts.push(`el gasto premium subiría ${formatUsd(summary.premium_cost_delta)}`);
+    consequenceParts.push(`el gasto premium subiría ${formatUsd(summary.premium_cost_delta, 4)}`);
   } else if (summary.premium_cost_delta < 0) {
-    consequenceParts.push(`el gasto premium bajaría ${formatUsd(Math.abs(summary.premium_cost_delta))}`);
+    consequenceParts.push(`el gasto premium bajaría ${formatUsd(Math.abs(summary.premium_cost_delta), 4)}`);
   }
 
   const consequenceLabel =
@@ -584,7 +581,7 @@ export function PolicyForm({
                     { label: "Pedidos evaluados", value: String(simulationResult.summary.evaluated_rows) },
                     { label: "Rutas que cambian", value: String(simulationResult.summary.changed_routes) },
                     { label: "Nuevas denegaciones", value: String(simulationResult.summary.newly_denied) },
-                    { label: "Δ costo premium", value: formatUsd(simulationResult.summary.premium_cost_delta) },
+                    { label: "Δ costo premium", value: formatUsd(simulationResult.summary.premium_cost_delta, 4) },
                   ]}
                 />
                 <p className="m-0 text-[13px] text-ink-3">

@@ -4,6 +4,7 @@ import { formatLatency, rowTier } from "@/components/ledger/ledger-table";
 import { reasonLabel, statusLabel } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { TierBadge } from "@/components/system/tier-badge";
+import { formatUsd } from "@/lib/format";
 
 type PlaygroundRecordedOutcomeProps = {
   entry: UsageLedgerRecord;
@@ -26,7 +27,7 @@ export function ledgerReadout(entry: UsageLedgerRecord) {
     { label: "Nivel", value: <TierBadge tier={rowTier(entry)} /> },
     { label: "Latencia", value: formatLatency(entry.latency_ms) },
     { label: "Modelo", value: <span className="font-mono text-[13px]">{entry.response_model || "—"}</span> },
-    { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : `USD ${entry.estimated_cost.toFixed(4)}` },
+    { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : formatUsd(entry.estimated_cost, 4) },
     { label: "Tokens", value: `${entry.prompt_tokens} + ${entry.completion_tokens} = ${entry.total_tokens}` },
     { label: "Proveedor", value: entry.final_provider || "—" },
     { label: "Ruta", value: entry.final_route_target },

@@ -52,7 +52,7 @@ describe("ledger-table", () => {
     const onSelectRow = vi.fn();
     renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-001" onSelectRow={onSelectRow} isLoading={false} />);
 
-    for (const name of ["Hora", "Pedido", "Nivel", "Modelo", "Tokens", "USD", "Latencia", "Estado"]) {
+    for (const name of ["Hora", "Pedido", "Nivel", "Modelo", "Tokens", "Costo", "Latencia", "Estado"]) {
       expect(screen.getByRole("columnheader", { name })).toBeInTheDocument();
     }
     await userEvent.click(screen.getByRole("row", { name: /req-002/ }));
@@ -66,7 +66,7 @@ describe("ledger-table", () => {
     expect(selected).toHaveTextContent("req-002");
     expect(selected).toHaveTextContent("economy");
     expect(screen.getByRole("row", { name: /req-003/ })).toHaveTextContent("caché");
-    expect(screen.getByRole("row", { name: /req-002/ })).toHaveTextContent("0.0018");
+    expect(screen.getByRole("row", { name: /req-002/ })).toHaveTextContent("USD 0.0018");
   });
 
   it("moves the selection with the arrow keys and selects with Enter", async () => {

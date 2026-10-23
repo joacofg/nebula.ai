@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 
-import { plural, reasonLabel, statusLabel } from "@/components/system/labels";
+import {
+  plural,
+  reasonLabel,
+  routeLabel,
+  routerLabel,
+  routingModeLabel,
+  runtimeStatusLabel,
+  statusLabel,
+} from "@/components/system/labels";
 
 describe("labels", () => {
   it("maps known codes and passes unknown ones through", () => {
@@ -13,8 +21,81 @@ describe("labels", () => {
     expect(statusLabel("client_disconnected")).toBe("cortado por el cliente");
   });
 
+  it("labels the reasons a policy or an embeddings request leaves in the ledger", () => {
+    expect(reasonLabel("policy_local_only")).toBe("política: solo local");
+    expect(reasonLabel("policy_premium_only")).toBe("política: solo premium");
+    expect(reasonLabel("embeddings_direct")).toBe("embeddings directos");
+    expect(reasonLabel("embeddings_validation_error")).toBe("embeddings: pedido inválido");
+    expect(reasonLabel("embeddings_upstream_error")).toBe("embeddings: error del proveedor");
+    expect(reasonLabel("embeddings_empty_result")).toBe("embeddings: resultado vacío");
+    expect(reasonLabel("embeddings_something_new")).toBe("embeddings_something_new");
+  });
+
+  it("names the heuristic the same way as a reason and as a router", () => {
+    expect(reasonLabel("token_complexity")).toBe("heurística por complejidad");
+    expect(routerLabel("token_complexity")).toBe("Heurística por complejidad");
+  });
+
   it("pluralizes", () => {
     expect(plural(1, "recomendación", "recomendaciones")).toBe("1 recomendación");
     expect(plural(3, "recomendación", "recomendaciones")).toBe("3 recomendaciones");
+  });
+});
+
+describe("routeLabel", () => {
+  it.each([
+    ["local", "Local"],
+    ["premium", "Premium"],
+    ["cache", "Caché"],
+    ["denied", "Denegado"],
+    ["embeddings", "Embeddings"],
+  ])("labels %s as %s", (code, label) => {
+    expect(routeLabel(code)).toBe(label);
+  });
+
+  it("returns an unknown route as it came, never an empty cell", () => {
+    expect(routeLabel("something_new")).toBe("something_new");
+  });
+});
+
+describe("routingModeLabel", () => {
+  it.each([
+    ["auto", "Automático"],
+    ["local_only", "Solo local"],
+    ["premium_only", "Solo premium"],
+  ])("labels %s as %s", (mode, label) => {
+    expect(routingModeLabel(mode)).toBe(label);
+  });
+
+  it("returns an unknown mode as it came", () => {
+    expect(routingModeLabel("round_robin")).toBe("round_robin");
+  });
+});
+
+describe("routerLabel", () => {
+  it("names the learned router and the heuristic", () => {
+    expect(routerLabel("learned_router")).toBe("Router aprendido");
+    expect(routerLabel("token_complexity")).toBe("Heurística por complejidad");
+  });
+
+  it("returns an unknown router as it came", () => {
+    expect(routerLabel("v2_experimental")).toBe("v2_experimental");
+  });
+});
+
+describe("runtimeStatusLabel", () => {
+  it.each([
+    ["ready", "Listo"],
+    ["degraded", "Degradado"],
+    ["not_ready", "No listo"],
+    ["recovering", "Recuperándose"],
+    ["disabled", "Desactivado"],
+    ["unknown", "Desconocido"],
+  ])("labels %s as %s", (status, label) => {
+    expect(runtimeStatusLabel(status)).toBe(label);
+  });
+
+  it("returns an unknown status as it came", () => {
+    expect(runtimeStatusLabel("on_fire")).toBe("on_fire");
   });
 });

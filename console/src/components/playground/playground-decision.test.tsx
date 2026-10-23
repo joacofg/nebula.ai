@@ -56,8 +56,7 @@ describe("PlaygroundDecision", () => {
       screen.getByRole("img", { name: "Decisión: local descartado (0.69 < 0.76), economy elegido (0.91 ≥ 0.90)" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Objetivo 0\.90 · router aprendido v1/)).toBeInTheDocument();
-    expect(screen.getByText("Figura 1.")).toBeInTheDocument();
-    expect(panelText(container)).not.toMatch(/NaN|undefined/);
+    expect(panelText(container)).not.toMatch(/Figura|NaN|undefined/);
   });
 
   it("stops at the local step when p_local clears its threshold", () => {

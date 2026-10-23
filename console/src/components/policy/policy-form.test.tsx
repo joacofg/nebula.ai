@@ -231,10 +231,25 @@ describe("policy-form", () => {
     expect(preview.getByText("req-1")).toBeInTheDocument();
     expect(preview.getByText(/ruta local → premium/i)).toBeInTheDocument();
     expect(preview.getByText(/estado completed → policy_denied/i)).toBeInTheDocument();
+    expect(preview.getByText(/costo USD 0\.0000 → USD 0\.1000/)).toBeInTheDocument();
+    expect(preview.getByRole("group", { name: "Δ costo premium" })).toHaveTextContent("USD 0.1000");
     expect(preview.getByText(/paridad de ruteo: auto \(calibrated, score 0\.61\) → premium_only/i)).toBeInTheDocument();
     expect(preview.getByText(/Replay uses stored route signals rather than raw prompt text\./i)).toBeInTheDocument();
     expect(preview.getByText("Comparado contra 2 pedidos recientes. No se guardó nada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar política" })).toBeInTheDocument();
+  });
+
+  it("writes a premium cost that goes down with its sign after USD", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: { ...baseSimulationResult.summary, premium_cost_delta: -0.05 },
+      },
+    });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByRole("group", { name: "Δ costo premium" })).toHaveTextContent("USD −0.0500");
+    expect(preview.getByText(/el gasto premium bajaría USD 0\.0500/)).toBeInTheDocument();
   });
 
   it("keeps unchanged, empty, loading, and failed preview states explicit and non-saving", () => {

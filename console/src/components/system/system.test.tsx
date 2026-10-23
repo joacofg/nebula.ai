@@ -68,15 +68,16 @@ describe("EmptyState and LoadingRows", () => {
 });
 
 describe("Figure", () => {
-  it("numbers the caption", () => {
+  it("renders the caption without a figure number, so a capture can be numbered in the thesis", () => {
     render(
-      <Figure number={1} caption="Calidad en función del costo.">
+      <Figure caption="Calidad en función del costo.">
         <svg />
       </Figure>,
     );
     const figure = screen.getByRole("figure");
-    expect(within(figure).getByText("Figura 1.")).toBeInTheDocument();
     expect(within(figure).getByText("Calidad en función del costo.")).toBeInTheDocument();
+    expect(figure.querySelector("figcaption")).toHaveTextContent("Calidad en función del costo.");
+    expect(figure).not.toHaveTextContent(/Figura/);
   });
 });
 

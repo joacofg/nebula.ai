@@ -19,6 +19,7 @@ import { LedgerTable } from "@/components/ledger/ledger-table";
 import { getTenantRecommendations, listTenants, listUsageLedger, type RecommendationBundle } from "@/lib/admin-api";
 import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
 import { useAdminSession } from "@/lib/admin-session-provider";
+import { formatUsd } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { ErrorAlert } from "@/components/system/state";
 
@@ -117,7 +118,7 @@ export default function ObservabilityPage() {
         cells={[
           { label: "Tenant", value: tenantName },
           { label: "Pedidos", value: ledgerQuery.data ? String(rows.length) : "—" },
-          { label: "Costo", value: ledgerQuery.data ? `USD ${totalCost.toFixed(4)}` : "—" },
+          { label: "Costo", value: ledgerQuery.data ? formatUsd(totalCost, 4) : "—" },
         ]}
       />
       <LedgerFilters

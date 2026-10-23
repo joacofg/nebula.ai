@@ -11,7 +11,6 @@ import {
   formatRange,
   formatShare,
   formatTau,
-  formatUsd1000,
 } from "@/components/evaluation/format";
 import { FrontierChart } from "@/components/evaluation/frontier-chart";
 import { QualitySlider } from "@/components/evaluation/quality-slider";
@@ -23,6 +22,7 @@ import { Readout } from "@/components/system/readout";
 import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { getRouterEvaluation } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
+import { formatUsd } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import {
   evaluate,
@@ -56,7 +56,7 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
         { parameter: "Ahorro vs todo frontier", condition: "cifra anidada", value: formatAhorro(nested.vs_all_frontier), ci: formatRange(nested.vs_all_frontier_ci95), key: true },
         { parameter: "Ahorro vs mezcla aleatoria", condition: "igual calidad", value: formatAhorro(nested.vs_random), ci: formatRange(nested.vs_random_ci95) },
         { parameter: "Calidad lograda", condition: "cifra anidada", value: formatQuality(nested.quality) },
-        { parameter: "Costo", condition: "por 1000 pedidos", value: formatUsd1000(nested.cost) },
+        { parameter: "Costo", condition: "por 1000 pedidos", value: formatUsd(nested.cost * 1000) },
       ]
     : [];
   latency.forEach((l, i) =>
@@ -126,7 +126,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
       ? "ninguna mezcla alcanza esta calidad"
       : randomCost === 0
         ? "la mezcla aleatoria no cuesta nada a esta calidad"
-        : `mezcla a la misma calidad: ${formatUsd1000(randomCost)}`;
+        : `mezcla a la misma calidad: ${formatUsd(randomCost * 1000)}`;
 
   const langs = Object.entries(result.byLang).sort(([a], [b]) => b.localeCompare(a));
 
@@ -134,7 +134,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
     <div className="flex flex-col gap-10 px-6 py-6">
       <div className="grid border border-line xl:grid-cols-[minmax(0,1fr)_380px]">
         <div className="min-w-0 border-line p-4 xl:border-r">
-          <Figure number={1} caption="Calidad en función del costo. Cada vértice es un par de umbrales (τ local, τ economy); arriba a la izquierda es mejor.">
+          <Figure caption="Calidad en función del costo. Cada vértice es un par de umbrales (τ local, τ economy); arriba a la izquierda es mejor.">
             <FrontierChart
               front={front}
               random={random}
@@ -147,7 +147,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
           <QualitySlider value={target} onChange={setTarget} />
           <Readout
             items={[
-              { label: "Costo por 1000 pedidos", value: formatUsd1000(result.costPerPrompt), emphasis: true },
+              { label: "Costo por 1000 pedidos", value: formatUsd(result.costPerPrompt * 1000), emphasis: true },
               { label: "Calidad medida", value: formatQuality(result.quality), emphasis: true },
               { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier) },
               { label: "Ahorro vs mezcla aleatoria", value: formatAhorro(vsRandom), detail: randomDetail },
@@ -157,7 +157,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
               },
               ...langs.map(([lang, figure]) => ({
                 label: `${LANG_LABELS[lang] ?? lang} · ${figure.n}`,
-                value: `${formatQuality(figure.quality)} · ${formatUsd1000(figure.costPerPrompt)}`,
+                value: `${formatQuality(figure.quality)} · ${formatUsd(figure.costPerPrompt * 1000)}`,
               })),
             ]}
           />
@@ -175,7 +175,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
         <h2 id="replay-heading" className="m-0 text-lg font-semibold text-ink">
           Replay acelerado · {replay.rows.length} pedidos, {formatShare(result.share.local)} local
         </h2>
-        <Figure number={2} caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si los jueces aceptaron la respuesta de ese nivel.">
+        <Figure caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si los jueces aceptaron la respuesta de ese nivel.">
           <ReplayFeed rows={replay.rows} order={order} point={point} initialPlaying={initialPlaying} />
         </Figure>
       </section>

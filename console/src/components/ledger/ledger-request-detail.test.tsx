@@ -208,8 +208,8 @@ describe("ledger-request-detail", () => {
     );
     expect(screen.getByText("Premium degradado a local")).toBeInTheDocument();
     expect(group("Acción")).toHaveTextContent("Degradado a local");
-    expect(group("Límite duro")).toHaveTextContent("USD 0.05");
-    expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1");
+    expect(group("Límite duro")).toHaveTextContent("USD 0.0500");
+    expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
     expect(group("Aplicación")).toHaveTextContent("Downgrade");
   });
 
@@ -226,7 +226,8 @@ describe("ledger-request-detail", () => {
     );
     expect(screen.getByText("Pedido premium denegado por presupuesto")).toBeInTheDocument();
     expect(group("Motivo de la denegación")).toHaveTextContent("Tenant hard budget limit reached");
-    expect(group("Límite duro")).toHaveTextContent("USD 0.05");
+    expect(group("Límite duro")).toHaveTextContent("USD 0.0500");
+    expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
     denied.unmount();
 
     renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, policy_outcome: "soft_budget=exceeded" }} />);

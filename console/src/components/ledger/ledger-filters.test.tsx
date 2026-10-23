@@ -41,12 +41,14 @@ describe("ledger-filters", () => {
       expect(screen.getByLabelText(name)).toBeInTheDocument();
     }
     expect(screen.getByRole("option", { name: "Todos los tenants" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "embeddings" })).toBeInTheDocument();
     // Options read in Spanish, like the ledger rows; the values stay the gateway's codes.
     const route = within(screen.getByRole("combobox", { name: "Ruta" }));
     const status = within(screen.getByRole("combobox", { name: "Estado" }));
-    expect(route.getByRole("option", { name: "caché" })).toHaveValue("cache");
-    expect(route.getByRole("option", { name: "denegado" })).toHaveValue("denied");
+    expect(route.getByRole("option", { name: "Local" })).toHaveValue("local");
+    expect(route.getByRole("option", { name: "Premium" })).toHaveValue("premium");
+    expect(route.getByRole("option", { name: "Caché" })).toHaveValue("cache");
+    expect(route.getByRole("option", { name: "Denegado" })).toHaveValue("denied");
+    expect(route.getByRole("option", { name: "Embeddings" })).toHaveValue("embeddings");
     expect(status.getByRole("option", { name: "caché" })).toHaveValue("cache_hit");
     expect(status.getByRole("option", { name: "completado" })).toHaveValue("completed");
     expect(status.getByRole("option", { name: "error del proveedor" })).toHaveValue("provider_error");
