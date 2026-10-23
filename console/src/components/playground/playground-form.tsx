@@ -53,7 +53,12 @@ export function PlaygroundForm({
         if (submitDisabled) {
           return;
         }
-        await onSubmit();
+        try {
+          await onSubmit();
+        } catch {
+          // A request that cannot be sent is shown by the caller, in the result card. Nothing here
+          // reads the rejection, so it must not escape as an unhandled one.
+        }
       }}
     >
       {sessionMissing ? (

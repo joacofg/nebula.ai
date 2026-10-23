@@ -38,16 +38,25 @@ function clears(step: DecisionStep) {
   return step.p !== null && step.tau !== null && step.p >= step.tau;
 }
 
+function formatTau(step: DecisionStep) {
+  return step.tau === null ? "∞" : formatProb(step.tau);
+}
+
+/** What a step compared, as the figure and its text alternative both write it: "p 0.82 ≥ τ 0.75". */
+function comparison(step: DecisionStep) {
+  if (step.p === null) {
+    return `p sin dato · τ ${formatTau(step)}`;
+  }
+  return `p ${formatProb(step.p)} ${clears(step) ? "≥" : "<"} τ ${formatTau(step)}`;
+}
+
 function describe(steps: DecisionStep[], chosen: DecisionTier, exitRow: number) {
   const evaluated = steps.filter((_, i) => i <= exitRow);
   const parts = evaluated.map((step) => {
     if (step.p === null) {
       return `${step.tier} sin dato`;
     }
-    const tau = step.tau === null ? "∞" : formatProb(step.tau);
-    return clears(step)
-      ? `${step.tier} elegido (${formatProb(step.p)} ≥ ${tau})`
-      : `${step.tier} descartado (${formatProb(step.p)} < ${tau})`;
+    return clears(step) ? `${step.tier} elegido (${comparison(step)})` : `${step.tier} descartado (${comparison(step)})`;
   });
   if (!evaluated.some((s) => s.tier === chosen && clears(s))) {
     parts.push(`${tierLabel(chosen)} elegido`);
@@ -84,14 +93,15 @@ type Geometry = {
   width: number;
 };
 
-/** Wide: scaled to fill a column. Compact: drawn 1:1 for a ~350 px panel, τ inside each box. */
-const WIDE: Geometry = { boxW: 124, boxH: 34, row: 62, startX: 8, boxX0: 56, stepX: 150, endX: 430, width: 500 };
-const COMPACT: Geometry = { boxW: 112, boxH: 44, row: 60, startX: 6, boxX0: 22, stepX: 96, endX: 252, width: 336 };
+/** Wide: scaled to fill a column. Compact: drawn 1:1 for a ~350 px panel. Each box holds one comparison line. */
+const WIDE: Geometry = { boxW: 136, boxH: 34, row: 62, startX: 8, boxX0: 56, stepX: 150, endX: 430, width: 500 };
+const COMPACT: Geometry = { boxW: 124, boxH: 34, row: 56, startX: 6, boxX0: 22, stepX: 96, endX: 260, width: 344 };
 const TIERS = ["local", "economy", "frontier"] as const;
 
 /**
- * The router cascade drawn as a signal path: every tier is on the sheet, the evaluated
- * steps show their probability and threshold, and only the branch that won is inked.
+ * The router cascade drawn as a signal path: every tier is on the sheet, each evaluated step
+ * writes what it compared (p against τ), and only the branch that won is inked. The branches not
+ * taken are dashed and their text stays at full AA contrast; nothing is faded.
  */
 export function DecisionPath({ steps, chosen, animate = false, compact = false, className }: DecisionPathProps) {
   const g = compact ? COMPACT : WIDE;
@@ -130,33 +140,30 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
       width={compact ? g.width : undefined}
       className={cn("block h-auto overflow-visible", compact ? "max-w-full" : "w-full max-w-[600px]", className)}
     >
-      <path d={faint.join(" ")} fill="none" strokeWidth={1} className="stroke-line" />
+      <path d={faint.join(" ")} fill="none" strokeWidth={1} strokeDasharray="4 3" className="stroke-ink-3" />
       <circle cx={g.startX} cy={cy(0)} r={4} className="fill-ink" />
       {steps.slice(0, 2).map((step, i) => {
         const x = boxX(i);
         const evaluated = i <= exitRow;
         const won = i === winnerIndex;
-        const tau = step.tau === null ? "∞" : formatProb(step.tau);
         return (
-          <g key={step.tier} data-stage={step.tier} data-evaluated={String(evaluated)} className={evaluated ? "" : "opacity-40"}>
+          <g key={step.tier} data-stage={step.tier} data-evaluated={String(evaluated)}>
             <rect
               x={x}
               y={cy(i) - g.boxH / 2}
               width={g.boxW}
               height={g.boxH}
-              className={cn("fill-surface", won ? "stroke-ink" : "stroke-line-strong")}
               strokeWidth={won ? 1.5 : 1}
+              strokeDasharray={evaluated ? undefined : "4 3"}
+              className={cn("fill-surface", won ? "stroke-ink" : evaluated ? "stroke-line-strong" : "stroke-ink-3")}
             />
-            <text x={x + g.boxW / 2} y={compact ? cy(i) - 3 : cy(i) + 4.5} textAnchor="middle" className="fill-ink font-label text-[13px]">
-              {step.p === null ? `p ${step.tier} sin dato` : `p ${step.tier} ${formatProb(step.p)}`}
-            </text>
             <text
-              x={compact ? x + g.boxW / 2 : x + g.boxW + 8}
-              y={compact ? cy(i) + 13 : cy(i) - 7}
-              textAnchor={compact ? "middle" : undefined}
-              className="fill-ink-3 font-label text-[12px]"
+              x={x + g.boxW / 2}
+              y={cy(i) + 4.5}
+              textAnchor="middle"
+              className={cn("font-label text-[13px]", evaluated ? "fill-ink" : "fill-ink-3")}
             >
-              {`τ ${tau}`}
+              {evaluated ? comparison(step) : "no evaluado"}
             </text>
           </g>
         );
@@ -171,10 +178,16 @@ export function DecisionPath({ steps, chosen, animate = false, compact = false, 
             data-stage={tier === "frontier" ? "frontier" : undefined}
             data-evaluated={tier === "frontier" ? String(reached) : undefined}
             data-chosen={isChosen ? "true" : undefined}
-            className={isChosen ? "" : "opacity-40"}
           >
-            <rect x={g.endX} y={cy(row) - 7} width={14} height={14} className={isChosen ? (SWATCH[chosen] ?? "fill-ink") : (SWATCH[tier] ?? "fill-line")} />
-            <text x={g.endX + 22} y={cy(row) + 4.5} className={cn("fill-ink font-label text-[14px]", isChosen ? "font-semibold" : "")}>
+            <rect
+              x={g.endX}
+              y={cy(row) - 7}
+              width={14}
+              height={14}
+              strokeWidth={1}
+              className={isChosen ? (SWATCH[chosen] ?? "fill-ink") : "fill-surface stroke-ink-3"}
+            />
+            <text x={g.endX + 22} y={cy(row) + 4.5} className={cn("font-label text-[14px]", isChosen ? "fill-ink font-semibold" : "fill-ink-3")}>
               {isChosen ? tierLabel(chosen) : tier}
             </text>
           </g>

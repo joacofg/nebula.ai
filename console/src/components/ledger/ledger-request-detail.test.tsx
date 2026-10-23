@@ -167,7 +167,7 @@ describe("ledger-request-detail", () => {
       />,
     );
     expect(screen.getByRole("heading", { name: "Por qué este nivel" })).toBeInTheDocument();
-    expect(screen.getByRole("img", { name: /economy elegido \(0\.95 ≥ 0\.92\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /economy elegido \(p 0\.95 ≥ τ 0\.92\)/ })).toBeInTheDocument();
     // The detail column is narrow: the path is drawn 1:1 so its labels stay legible.
     expect(screen.getByRole("img", { name: /economy elegido/ })).toHaveAttribute("width");
   });

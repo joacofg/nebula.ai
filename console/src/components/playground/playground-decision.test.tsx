@@ -53,9 +53,12 @@ describe("PlaygroundDecision", () => {
 
     expect(screen.getByRole("heading", { name: "Por qué este nivel" })).toBeInTheDocument();
     expect(
-      screen.getByRole("img", { name: "Decisión: local descartado (0.69 < 0.76), economy elegido (0.91 ≥ 0.90)" }),
+      screen.getByRole("img", { name: "Decisión: local descartado (p 0.69 < τ 0.76), economy elegido (p 0.91 ≥ τ 0.90)" }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Objetivo 0\.90 · router aprendido v1/)).toBeInTheDocument();
+    // The comparison each node made is written in the figure, not only in its text alternative.
+    expect(screen.getByText("p 0.69 < τ 0.76")).toBeInTheDocument();
+    expect(screen.getByText("p 0.91 ≥ τ 0.90")).toBeInTheDocument();
     expect(panelText(container)).not.toMatch(/Figura|NaN|undefined/);
   });
 
@@ -77,7 +80,7 @@ describe("PlaygroundDecision", () => {
       />,
     );
 
-    expect(screen.getByRole("img", { name: "Decisión: local elegido (0.8312 ≥ 0.82)" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Decisión: local elegido (p 0.8312 ≥ τ 0.82)" })).toBeInTheDocument();
     expect(screen.getByText(/Objetivo 0\.95 · router aprendido v1/)).toBeInTheDocument();
   });
 
@@ -100,7 +103,7 @@ describe("PlaygroundDecision", () => {
 
     expect(
       screen.getByRole("img", {
-        name: "Decisión: local descartado (0.99 < ∞), economy descartado (0.99 < ∞), frontier elegido",
+        name: "Decisión: local descartado (p 0.99 < τ ∞), economy descartado (p 0.99 < τ ∞), frontier elegido",
       }),
     ).toBeInTheDocument();
     expect(screen.getByText(/Objetivo 1\.00 · todo frontier · router aprendido v1/)).toBeInTheDocument();
@@ -140,12 +143,15 @@ describe("PlaygroundDecision", () => {
     );
 
     expect(screen.getByText(/no pudo calcular el embedding/)).toBeInTheDocument();
-    expect(screen.getByText(/heurística token_complexity/)).toBeInTheDocument();
-    expect(panelText(container)).not.toMatch(/NaN|undefined|p_local/);
+    expect(screen.getByText(/Heurística por complejidad/)).toBeInTheDocument();
+    expect(container).toHaveTextContent(
+      "El router aprendido no pudo calcular el embedding del prompt. Decidió: Heurística por complejidad (12 tokens, complejidad baja).",
+    );
+    expect(panelText(container)).not.toMatch(/NaN|undefined|p_local|token_complexity/);
   });
 
-  it("says the heuristic decided when the learned router is not active", () => {
-    render(
+  it("says the heuristic decided when the learned router is not active, in Spanish", () => {
+    const { container } = render(
       <PlaygroundDecision
         entry={entry({
           route_reason: "token_complexity",
@@ -155,8 +161,12 @@ describe("PlaygroundDecision", () => {
       />,
     );
 
-    expect(screen.getByText(/Ruteo heurístico \(token_complexity\)/)).toBeInTheDocument();
-    expect(screen.getByText(/812 tokens/)).toBeInTheDocument();
+    expect(screen.getByText(/Heurística por complejidad/)).toBeInTheDocument();
+    expect(screen.getByText(/812 tokens, complejidad alta, con palabra clave/)).toBeInTheDocument();
+    expect(container).toHaveTextContent(
+      "Heurística por complejidad (812 tokens, complejidad alta, con palabra clave): el router aprendido no estuvo activo.",
+    );
+    expect(panelText(container)).not.toMatch(/token_complexity|complejidad high/);
   });
 
   it("explains when no route signals were recorded", () => {
@@ -184,7 +194,7 @@ describe("PlaygroundDecision", () => {
                           routeTier="economy" />,
     );
     expect(panelText(container)).toMatch(/falló el modelo local/i);
-    expect(screen.getByRole("img", { name: /local descartado \(0\.69 < 0\.76\)/ })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: /local descartado \(p 0\.69 < τ 0\.76\)/ })).toBeInTheDocument();
   });
 
   it("tells a dimension mismatch apart from an unavailable embedding", () => {

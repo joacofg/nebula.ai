@@ -13,8 +13,10 @@ import { PlaygroundForm } from "@/components/playground/playground-form";
 import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
 import { PlaygroundRecordedOutcome } from "@/components/playground/playground-recorded-outcome";
 import { PlaygroundResponse } from "@/components/playground/playground-response";
+import { routingModeLabel } from "@/components/system/labels";
 import {
   createPlaygroundCompletion,
+  getTenantPolicy,
   getUsageLedgerEntry,
   listTenants,
   type PlaygroundInput,
@@ -22,6 +24,7 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { formatTarget } from "@/lib/quality-target";
 import { useSelectedTenant } from "@/lib/selected-tenant";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
@@ -36,20 +39,23 @@ export default function PlaygroundPage() {
     enabled: Boolean(adminKey),
   });
 
-  const { tenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const { tenantId, tenant, setTenantId } = useSelectedTenant(tenantsQuery.data);
   const selectedTenantId = tenantId ?? "";
+
+  // The header's target and mode come from the tenant's policy, the query the Política page shares.
+  const policyQuery = useQuery({
+    queryKey: queryKeys.tenantPolicy(selectedTenantId || "unselected"),
+    queryFn: () => getTenantPolicy(adminKey ?? "", selectedTenantId),
+    enabled: Boolean(adminKey) && selectedTenantId.length > 0,
+  });
+  const policy = policyQuery.data;
 
   const mutation = useMutation({
     mutationFn: async (payload: PlaygroundInput) => {
       if (!adminKey) {
         throw new Error("Falta la sesión de admin.");
       }
-      const startedAt = performance.now();
-      const result = await createPlaygroundCompletion(adminKey, payload);
-      return {
-        ...result,
-        latencyMs: Math.round(performance.now() - startedAt),
-      };
+      return createPlaygroundCompletion(adminKey, payload);
     },
   });
 
@@ -60,8 +66,9 @@ export default function PlaygroundPage() {
       <PageHeader
         title="Playground"
         cells={[
-          { label: "Modo", value: "Sin streaming" },
-          { label: "Sesión", value: "admin" },
+          { label: "Tenant", value: tenant?.name ?? "—" },
+          { label: "Objetivo", value: policy ? formatTarget(policy.routing_quality_target) : "—" },
+          { label: "Modo de ruteo", value: policy ? routingModeLabel(policy.routing_mode_default) : "—" },
         ]}
       />
 
@@ -104,7 +111,12 @@ export default function PlaygroundPage() {
         </div>
 
         <div className="min-w-0 border-t border-line px-6 py-6 xl:border-t-0">
-          <PlaygroundResponseCard result={mutation.data} error={mutation.error} adminKey={adminKey} />
+          <PlaygroundResponseCard
+            result={mutation.data}
+            error={mutation.error}
+            isPending={mutation.isPending}
+            adminKey={adminKey}
+          />
         </div>
       </div>
     </section>
@@ -114,14 +126,12 @@ export default function PlaygroundPage() {
 function PlaygroundResponseCard({
   result,
   error,
+  isPending,
   adminKey,
 }: {
-  result:
-    | (PlaygroundCompletionResult & {
-        latencyMs: number;
-      })
-    | undefined;
+  result: PlaygroundCompletionResult | undefined;
   error: Error | null;
+  isPending: boolean;
   adminKey: string | null;
 }) {
   const requestId = result?.requestId ?? "";
@@ -135,6 +145,16 @@ function PlaygroundResponseCard({
     },
     enabled: Boolean(adminKey && requestId),
   });
+
+  // TanStack clears `data` and `error` when a request starts, so a pending one has neither.
+  if (isPending) {
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="m-0 text-ink-2">Esperando respuesta…</p>
+        <LoadingRows rows={4} label="Esperando respuesta…" />
+      </div>
+    );
+  }
 
   if (error) {
     return <ErrorAlert error={error} fallback="No se pudo completar el pedido." />;
@@ -165,13 +185,6 @@ function PlaygroundResponseCard({
       <PlaygroundMetadata
         requestId={result.requestId}
         tenantId={result.tenantId}
-        routeTarget={result.routeTarget}
-        routeReason={result.routeReason}
-        routeTier={result.routeTier ?? ""}
-        provider={result.provider}
-        cacheHit={result.cacheHit}
-        fallbackUsed={result.fallbackUsed}
-        latencyMs={result.latencyMs}
         policyMode={result.policyMode}
         policyOutcome={result.policyOutcome}
       />
