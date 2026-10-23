@@ -20,7 +20,7 @@ export function explainCalibration(summary: CalibrationEvidenceSummary): Explana
     },
   ];
   if (gated > 0) {
-    items.push({ label: "Filas con rollout desactivado", value: `${gated} (${formatReasonCounts(summary.gated_reasons)})` });
+    items.push({ label: "Filas con ruteo automático apagado", value: `${gated} (${formatReasonCounts(summary.gated_reasons)})` });
   }
   if (degraded > 0) {
     items.push({ label: "Filas degradadas", value: `${degraded} (${formatReasonCounts(summary.degraded_reasons)})` });
@@ -40,7 +40,7 @@ export function explainCalibration(summary: CalibrationEvidenceSummary): Explana
     return { badge: "degradada", summary: "La evidencia reciente está degradada: faltan señales en parte del tráfico.", items };
   }
   if (gated > 0 && eligible === 0) {
-    return { badge: "rollout desactivado", summary: "Hay tráfico, pero el ruteo calibrado sigue desactivado por el operador.", items };
+    return { badge: "ruteo automático apagado", summary: "Hay tráfico, pero el ruteo automático sigue apagado por el operador.", items };
   }
   return { badge: "escasa", summary: "La evidencia del tenant todavía es escasa para el ruteo calibrado.", items };
 }
