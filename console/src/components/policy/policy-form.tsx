@@ -747,6 +747,7 @@ export function PolicyForm({
                     <Readout items={tierCountItems(simulationResult.summary)} />
                     <p className="m-0 text-[13px] text-ink-3">
                       {`${simulationResult.summary.learned_router_rows} con el router aprendido · ${simulationResult.summary.heuristic_rows} con la heurística`}
+                      {simulationResult.summary.cache_rows ? ` · ${simulationResult.summary.cache_rows} siguen en caché` : ""}
                     </p>
                   </section>
                 ) : null}

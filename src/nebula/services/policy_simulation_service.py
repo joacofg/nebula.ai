@@ -62,6 +62,8 @@ class PolicySimulationService:
     it exactly under the candidate quality target. Every other row is replayed with the heuristic:
     token-count and keyword-match route signals from the original decision are reused when present;
     otherwise a synthetic prompt based on token volume is used to approximate complexity routing.
+    A row the cache answered stays a cache hit while the candidate keeps the cache on (the replay
+    cannot know the cache would miss); with the cache off it is re-decided like any other row.
     No provider execution, policy writes, or usage writes occur during simulation.
     """
 
@@ -111,6 +113,7 @@ class PolicySimulationService:
             "learned_router": 0,
             "heuristic": 0,
         }
+        cache_rows = 0
 
         simulation_context = AuthenticatedTenantContext(
             tenant=tenant_context.tenant,
@@ -120,6 +123,12 @@ class PolicySimulationService:
 
         for replay_input in replay_inputs:
             evaluated_count += 1
+            if self._held_by_cache(replay_input.record, payload.candidate_policy):
+                # The replay cannot tell whether the cache would answer again, and the live
+                # gateway serves a stored answer before routing: the row stays a cache hit, with
+                # no tier and no cost on either side, and is not a change.
+                cache_rows += 1
+                continue
             baseline_target = self._baseline_target(replay_input.record)
             baseline_denied = replay_input.record.terminal_status == "policy_denied"
             baseline_cost = replay_input.baseline_cost
@@ -224,6 +233,7 @@ class PolicySimulationService:
                 simulated_tier_counts=simulated_tier_counts,
                 learned_router_rows=decision_source_counts["learned_router"],
                 heuristic_rows=decision_source_counts["heuristic"],
+                cache_rows=cache_rows,
             ),
             calibration_summary=calibration_summary,
             changed_requests=sampled_changed,
@@ -267,6 +277,11 @@ class PolicySimulationService:
             replay_context=replay_input.replay_context,
             evidence_summary=evidence_summary,
         )
+
+    @staticmethod
+    def _held_by_cache(record: UsageLedgerRecord, policy: TenantPolicy) -> bool:
+        """A row the cache answered stays a cache hit unless the candidate turns the cache off."""
+        return record.final_route_target == "cache" and policy.semantic_cache_enabled
 
     @staticmethod
     def _is_probability(value: object) -> bool:

@@ -213,9 +213,12 @@ class PolicySimulationOutcomeCounts(BaseModel):
     baseline_tier_counts: dict[str, int] = Field(default_factory=_empty_tier_counts)
     simulated_tier_counts: dict[str, int] = Field(default_factory=_empty_tier_counts)
     # How each row was re-decided: the learned router from its stored probabilities, or the
-    # heuristic replay. They add up to evaluated_rows.
+    # heuristic replay. A row the cache answered stays a cache row while the candidate keeps the
+    # cache on; neither router re-decides it, so it counts in cache_rows. The three add up to
+    # evaluated_rows.
     learned_router_rows: int = 0
     heuristic_rows: int = 0
+    cache_rows: int = 0
 
 
 class PolicySimulationChangedRequest(BaseModel):

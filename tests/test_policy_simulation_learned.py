@@ -513,6 +513,57 @@ async def test_rows_without_learned_signals_use_the_heuristic(
     assert len(response.approximation_note_codes) == len(response.approximation_notes)
 
 
+def _cache_row(request_id: str, *, seconds: int = 0) -> UsageLedgerRecord:
+    # A cache hit keeps the router's decision in its signals; at 0.95 these probabilities pick
+    # frontier, so re-deciding the row would turn it into a premium request.
+    return _row(
+        request_id,
+        seconds=seconds,
+        route_signals=_learned_signals(0.62, 0.91, tier="frontier"),
+        final_route_target="cache",
+        response_model="nebula-cache",
+        terminal_status="cache_hit",
+        route_reason="cache",
+    )
+
+
+async def test_a_cache_row_stays_cache_while_the_candidate_keeps_the_cache() -> None:
+    rows = [
+        _cache_row("req-cache", seconds=0),
+        _row("req-learned", seconds=1, route_signals=_learned_signals(0.62, 0.91)),
+    ]
+
+    response = await _simulate(rows, TenantPolicy(routing_quality_target=0.95))
+
+    summary = response.summary
+    assert response.changed_requests == []
+    assert summary.changed_routes == 0
+    assert summary.evaluated_rows == 2
+    # Neither router re-decides a held cache row: it has its own bucket.
+    assert (summary.learned_router_rows, summary.heuristic_rows, summary.cache_rows) == (1, 0, 1)
+    assert summary.learned_router_rows + summary.heuristic_rows + summary.cache_rows == summary.evaluated_rows
+    # No tier on either side, and no cost: the cache answers it again.
+    assert summary.baseline_tier_counts == summary.simulated_tier_counts == _counts(frontier=1)
+    assert summary.simulated_premium_cost == pytest.approx(summary.baseline_premium_cost)
+
+
+async def test_a_cache_row_is_redecided_when_the_candidate_turns_the_cache_off() -> None:
+    response = await _simulate(
+        [_cache_row("req-cache")],
+        TenantPolicy(routing_quality_target=0.95, semantic_cache_enabled=False),
+    )
+
+    summary = response.summary
+    [changed] = response.changed_requests
+    assert changed.request_id == "req-cache"
+    assert changed.decision_source == "learned_router"
+    assert (changed.baseline_route_target, changed.simulated_route_target) == ("cache", "premium")
+    assert (changed.baseline_tier, changed.simulated_tier) == (None, "frontier")
+    assert summary.changed_routes == 1
+    assert (summary.learned_router_rows, summary.heuristic_rows, summary.cache_rows) == (1, 0, 0)
+    assert summary.simulated_tier_counts == _counts(frontier=1)
+
+
 async def test_mixed_window_counts_add_up() -> None:
     keyword_signals = {**_heuristic_signals(), "keyword_match": True}
     rows = [
@@ -530,7 +581,7 @@ async def test_mixed_window_counts_add_up() -> None:
             route_reason="token_complexity",
         ),
         _strict_row("req-strict", seconds=3),
-        # Served from the cache: no tier in the baseline; p_local clears tau_local (0.76).
+        # Served from the cache, and the candidate keeps the cache on: it stays a cache hit.
         _row(
             "req-cache",
             seconds=4,
@@ -567,7 +618,6 @@ async def test_mixed_window_counts_add_up() -> None:
         "req-rounded": "learned_router",
         "req-heuristic": "heuristic",
         "req-strict": "heuristic",
-        "req-cache": "learned_router",
         "req-denied": "heuristic",
         "req-fallback": "learned_router",
     }
@@ -578,19 +628,21 @@ async def test_mixed_window_counts_add_up() -> None:
         "req-rounded": ("frontier", None),
         "req-heuristic": ("local", None),
         "req-strict": ("frontier", "local"),
-        "req-cache": (None, "local"),
         "req-denied": (None, "local"),
         "req-fallback": ("economy", "local"),
     }
     assert summary.evaluated_rows == 7
-    assert (summary.learned_router_rows, summary.heuristic_rows) == (4, 3)
-    assert summary.learned_router_rows + summary.heuristic_rows == summary.evaluated_rows
+    assert (summary.learned_router_rows, summary.heuristic_rows, summary.cache_rows) == (3, 3, 1)
+    assert (
+        summary.learned_router_rows + summary.heuristic_rows + summary.cache_rows
+        == summary.evaluated_rows
+    )
     assert summary.baseline_tier_counts == _counts(local=1, economy=1, frontier=3)
-    assert summary.simulated_tier_counts == _counts(local=4, economy=1)
+    assert summary.simulated_tier_counts == _counts(local=3, economy=1)
     simulated_denied = [i for i in changed.values() if i.simulated_route_target == "denied"]
     assert sum(summary.simulated_tier_counts.values()) == summary.evaluated_rows - len(
         simulated_denied
-    )
+    ) - summary.cache_rows
     assert summary.simulated_premium_cost == pytest.approx(_cost(ECONOMY_MODEL))
 
 

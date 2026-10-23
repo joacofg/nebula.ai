@@ -112,9 +112,11 @@ export type PolicySimulationOutcomeCounts = {
   /** A row with no tier (denied, or served from the cache in the baseline) counts in none. */
   baseline_tier_counts: TierCounts;
   simulated_tier_counts: TierCounts;
-  /** Add up to `evaluated_rows`. */
+  /** With `cache_rows`, add up to `evaluated_rows`. */
   learned_router_rows: number;
   heuristic_rows: number;
+  /** Cache hits the draft keeps as cache hits (neither router re-decides them); absent from older gateways. */
+  cache_rows?: number;
 };
 
 export type PolicySimulationChangedRequest = {

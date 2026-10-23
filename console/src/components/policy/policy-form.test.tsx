@@ -392,6 +392,26 @@ describe("policy-form", () => {
     expect(screen.getByText("7 con el router aprendido · 3 con la heurística")).toBeInTheDocument();
   });
 
+  it("adds the cache hits the draft keeps, and their row reads the same before and after", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: {
+          ...baseSimulationResult.summary,
+          evaluated_rows: 41,
+          learned_router_rows: 35,
+          heuristic_rows: 0,
+          cache_rows: 6,
+          baseline_tier_counts: { local: 29, economy: 0, frontier: 6 },
+          simulated_tier_counts: { local: 19, economy: 0, frontier: 16 },
+        },
+      },
+    });
+
+    expect(screen.getByText("35 con el router aprendido · 0 con la heurística · 6 siguen en caché")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Caché o denegado" })).toHaveTextContent("6 → 6");
+  });
+
   it("does not show tier counts for a window without rows", () => {
     renderPolicyForm({
       simulationResult: {
