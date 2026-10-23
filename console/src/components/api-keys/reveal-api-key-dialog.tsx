@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Check, Copy } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+
+const COPIED_RESET_MS = 2000;
 
 type RevealApiKeyDialogProps = {
   apiKey: string | null;
@@ -16,6 +18,23 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
   const [copied, setCopied] = useState(false);
 
   const revealedApiKey = apiKey ?? "";
+  const visible = open && apiKey !== null;
+
+  // "Copiada" is a confirmation, not a state: it goes back to "Copiar" after a moment, and a
+  // dialog that stays mounted while closed must not reopen already saying "Copiada".
+  useEffect(() => {
+    if (!copied) {
+      return;
+    }
+    const timer = setTimeout(() => setCopied(false), COPIED_RESET_MS);
+    return () => clearTimeout(timer);
+  }, [copied]);
+
+  useEffect(() => {
+    if (!visible) {
+      setCopied(false);
+    }
+  }, [visible]);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(revealedApiKey);
@@ -23,7 +42,7 @@ export function RevealApiKeyDialog({ apiKey, open, onClose }: RevealApiKeyDialog
   }
 
   return (
-    <Dialog open={open && apiKey !== null} onOpenChange={(next) => (next ? null : onClose())}>
+    <Dialog open={visible} onOpenChange={(next) => (next ? null : onClose())}>
       <DialogContent
         aria-label="Clave de API"
         className="sm:max-w-xl"

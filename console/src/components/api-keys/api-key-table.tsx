@@ -28,9 +28,10 @@ function getScopeSummary(apiKey: ApiKeyRecord) {
 export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps) {
   return (
     <div className="relative overflow-x-auto">
-      <table className="w-full min-w-[680px] table-fixed border-collapse text-sm" aria-label="Claves de API">
+      <table className="w-full min-w-[780px] table-fixed border-collapse text-sm" aria-label="Claves de API">
         <colgroup>
-          <col className="w-[26%]" />
+          <col className="w-[22%]" />
+          <col className="w-[104px]" />
           <col />
           <col className="w-[11%]" />
           <col className="w-[14%]" />
@@ -39,6 +40,7 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
         <thead>
           <tr className="border-b border-line-strong">
             <th scope="col" className={HEAD}>Nombre</th>
+            <th scope="col" className={HEAD}>Prefijo</th>
             <th scope="col" className={HEAD}>Alcance</th>
             <th scope="col" className={HEAD}>Estado</th>
             <th scope="col" className={HEAD}>Creada</th>
@@ -58,6 +60,7 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
                     {apiKey.name}
                   </span>
                 </td>
+                <td className={`px-3 py-2.5 font-mono text-[12px] ${revoked ? "text-ink-3" : "text-ink-2"}`}>{apiKey.key_prefix}</td>
                 <td className="px-3 py-2.5">
                   <div className="truncate font-medium text-ink" title={`${scope.title}. ${scope.detail}`}>
                     {scope.title}

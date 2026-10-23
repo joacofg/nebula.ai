@@ -1,6 +1,6 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RevealApiKeyDialog } from "@/components/api-keys/reveal-api-key-dialog";
 import { renderWithProviders } from "@/test/render";
@@ -23,6 +23,71 @@ describe("reveal-api-key-dialog", () => {
 
     await waitFor(() => {
       expect(navigator.clipboard.writeText).toHaveBeenCalledWith("nbk_secret");
+    });
+  });
+
+  describe("copy confirmation", () => {
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    // fireEvent, not userEvent: user-event waits on timers, which the fake clock holds back.
+    async function copyKey() {
+      await act(async () => {
+        fireEvent.click(screen.getByRole("button", { name: "Copiar" }));
+      });
+    }
+
+    it("goes back from Copiada to Copiar after 2 s", async () => {
+      vi.useFakeTimers();
+      renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={vi.fn()} />);
+
+      await copyKey();
+      expect(screen.getByRole("button", { name: "Copiada" })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1999);
+      });
+      expect(screen.getByRole("button", { name: "Copiada" })).toBeInTheDocument();
+
+      act(() => {
+        vi.advanceTimersByTime(1);
+      });
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+    });
+
+    it("shows Copiar again when the dialog is reopened with another key", async () => {
+      vi.useFakeTimers();
+      const { rerender } = renderWithProviders(<RevealApiKeyDialog apiKey="nbk_first" open onClose={vi.fn()} />);
+
+      await copyKey();
+      expect(screen.getByRole("button", { name: "Copiada" })).toBeInTheDocument();
+
+      rerender(<RevealApiKeyDialog apiKey={null} open={false} onClose={vi.fn()} />);
+      rerender(<RevealApiKeyDialog apiKey="nbk_second" open onClose={vi.fn()} />);
+
+      expect(screen.getByText("nbk_second")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Copiar" })).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: "Copiada" })).not.toBeInTheDocument();
+    });
+
+    it("does not cut a later copy short with the timer of an earlier one", async () => {
+      vi.useFakeTimers();
+      const { rerender } = renderWithProviders(<RevealApiKeyDialog apiKey="nbk_first" open onClose={vi.fn()} />);
+
+      await copyKey();
+      act(() => {
+        vi.advanceTimersByTime(1500);
+      });
+      rerender(<RevealApiKeyDialog apiKey={null} open={false} onClose={vi.fn()} />);
+      rerender(<RevealApiKeyDialog apiKey="nbk_second" open onClose={vi.fn()} />);
+
+      await copyKey();
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+      expect(screen.getByRole("button", { name: "Copiada" })).toBeInTheDocument();
     });
   });
 
