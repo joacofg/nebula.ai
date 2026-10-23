@@ -64,6 +64,7 @@ componentes nunca usan colores crudos ni hex.
   comunica solo con color: siempre va con su nombre.
 - `tier-cache` es un gris neutro fuera de la rampa. Contra `tier-local` la relación de luminancia
   es 1.54:1 (≥ 1.5:1, así que en escala de grises no se confunden) y contra blanco 3.26:1 (≥ 3:1).
+  Contra `tier-economy` queda en 1.45:1: ningún gris cumple 1.5:1 contra ambos.
 - Estados siempre con ícono o texto además del color.
 - **Modo oscuro:** no existe. Solo tema claro.
 
@@ -123,5 +124,5 @@ monospace como disfraz; emojis como íconos; texto gris por debajo de AA.
 | 2026-09-30 | Solo tema claro | Las capturas van a un Word de fondo blanco |
 | 2026-09-30 | Tailwind 4 + shadcn/ui tematizado por roles | shadcn 4.x genera para v4; roles como única vía de color |
 | 2026-09-30 | Rampa azul ordinal para los niveles, rojo solo para selección | Los niveles están ordenados por costo; el rojo marca la decisión del operador |
-| 2026-10-22 | `tier-cache` pasa de `#aab2bb` a `#898f98` | Con `#aab2bb` local y caché tenían la misma luminancia (1.02:1) y eran idénticos en escala de grises (una captura impresa). Ahora 1.54:1 contra local y 3.26:1 contra blanco; sigue siendo un gris neutro y el nivel va siempre con su nombre. Verificado con el script de dataviz (rampa ordinal sin cambios: pasa) y un cálculo de relación de luminancia WCAG |
+| 2026-10-22 | `tier-cache` pasa de `#aab2bb` a `#898f98` | Con `#aab2bb` local y caché tenían la misma luminancia (1.02:1) y eran idénticos en escala de grises (una captura impresa). Ahora 1.54:1 contra local y 3.26:1 contra blanco; sigue siendo un gris neutro. Contra economy baja a 1.45:1 y ningún gris cumple 1.5:1 contra local y economy a la vez (haría falta L ≤ 0.2817 y L ≥ 0.2834), así que el nivel va siempre con su nombre. Verificado con el script de dataviz (rampa ordinal sin cambios: pasa) y un cálculo de relación de luminancia WCAG |
 | 2026-10-22 | `Figure` sin número ("Figura N." eliminado del pie) | El número dentro de la app se filtraba a las capturas de la tesis, donde cada figura se numera en el documento; el pie conserva solo el texto |

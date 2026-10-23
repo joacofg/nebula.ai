@@ -1,6 +1,7 @@
 /**
  * Spanish labels for the gateway's enum codes; the raw code stays available as a title.
- * Every function returns the raw code for one it does not know, never an empty cell.
+ * Every function returns the raw code for one it does not know and a dash for none, never an
+ * empty cell; only a table's own keys count as codes ("constructor" is just an unknown code).
  */
 const ROUTE_REASONS: Record<string, string> = {
   learned_router: "router aprendido",
@@ -61,38 +62,40 @@ const RUNTIME_STATUSES: Record<string, string> = {
   unknown: "Desconocido",
 };
 
+/** A known code's label, the code itself when unknown, a dash when there is none. */
+function lookup(labels: Record<string, string>, code: string | null | undefined) {
+  if (!code) {
+    return "—";
+  }
+  return Object.hasOwn(labels, code) ? labels[code] : code;
+}
+
 /** Where the answer came from: local / premium / cache / denied / embeddings. */
-export function routeLabel(code: string) {
-  return ROUTES[code] ?? code;
+export function routeLabel(code: string | null | undefined) {
+  return lookup(ROUTES, code);
 }
 
 /** The tenant's routing mode default: auto / local_only / premium_only. */
-export function routingModeLabel(mode: string) {
-  return ROUTING_MODES[mode] ?? mode;
+export function routingModeLabel(mode: string | null | undefined) {
+  return lookup(ROUTING_MODES, mode);
 }
 
 /** What decides the tier: the learned router or the complexity heuristic. */
-export function routerLabel(name: string) {
-  return ROUTERS[name] ?? name;
+export function routerLabel(name: string | null | undefined) {
+  return lookup(ROUTERS, name);
 }
 
 /** Health of the gateway, the cache and each dependency. */
-export function runtimeStatusLabel(status: string) {
-  return RUNTIME_STATUSES[status] ?? status;
+export function runtimeStatusLabel(status: string | null | undefined) {
+  return lookup(RUNTIME_STATUSES, status);
 }
 
 export function reasonLabel(code: string | null | undefined) {
-  if (!code) {
-    return "—";
-  }
-  return ROUTE_REASONS[code] ?? code;
+  return lookup(ROUTE_REASONS, code);
 }
 
 export function statusLabel(code: string | null | undefined) {
-  if (!code) {
-    return "—";
-  }
-  return STATUSES[code] ?? code;
+  return lookup(STATUSES, code);
 }
 
 export function plural(n: number, one: string, many: string) {

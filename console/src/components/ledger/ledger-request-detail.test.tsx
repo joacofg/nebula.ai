@@ -213,6 +213,22 @@ describe("ledger-request-detail", () => {
     expect(group("Aplicación")).toHaveTextContent("Downgrade");
   });
 
+  it("keeps an amount it cannot parse as the gateway wrote it", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "local",
+          route_reason: "hard_budget_downgrade",
+          policy_outcome:
+            "hard_budget=exceeded(limit_usd=unlimited,spent_usd=0.1,enforcement=downgrade);budget_action=downgraded_to_local",
+        }}
+      />,
+    );
+    expect(group("Límite duro")).toHaveTextContent("USD unlimited");
+    expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
+  });
+
   it("reads a hard-budget denial and a soft-budget advisory", () => {
     const denied = renderWithProviders(
       <LedgerRequestDetail

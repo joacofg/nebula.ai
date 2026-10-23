@@ -42,6 +42,31 @@ describe("labels", () => {
   });
 });
 
+describe("every label function", () => {
+  const labelFunctions = [
+    ["reasonLabel", reasonLabel],
+    ["statusLabel", statusLabel],
+    ["routeLabel", routeLabel],
+    ["routingModeLabel", routingModeLabel],
+    ["routerLabel", routerLabel],
+    ["runtimeStatusLabel", runtimeStatusLabel],
+  ] as const;
+
+  it.each(labelFunctions)("%s returns an unknown code as it came", (_name, label) => {
+    expect(label("something_new")).toBe("something_new");
+  });
+
+  it.each(labelFunctions)("%s shows a dash for an empty code, never an empty cell", (_name, label) => {
+    expect(label("")).toBe("—");
+  });
+
+  it.each(labelFunctions)("%s does not read inherited object properties as codes", (_name, label) => {
+    for (const code of ["constructor", "toString", "__proto__", "hasOwnProperty"]) {
+      expect(label(code)).toBe(code);
+    }
+  });
+});
+
 describe("routeLabel", () => {
   it.each([
     ["local", "Local"],

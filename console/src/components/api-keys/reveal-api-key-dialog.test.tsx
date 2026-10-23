@@ -26,6 +26,17 @@ describe("reveal-api-key-dialog", () => {
     });
   });
 
+  it("has exactly one Cerrar button, and it closes the dialog", async () => {
+    const onClose = vi.fn();
+    renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={onClose} />);
+
+    const close = screen.getAllByRole("button", { name: "Cerrar" });
+    expect(close).toHaveLength(1);
+
+    await userEvent.click(close[0]);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("stays open on a click outside, since the key is shown only once", async () => {
     const onClose = vi.fn();
     renderWithProviders(<RevealApiKeyDialog apiKey="nbk_secret" open onClose={onClose} />);
