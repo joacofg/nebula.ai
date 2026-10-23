@@ -9,7 +9,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nebula.benchmarking.pricing import PricingCatalog
-from nebula.core.config import Settings
+from nebula.core.config import Settings, same_embedding_model
 from nebula.models.governance import ApiKeyRecord, TenantPolicy, TenantRecord
 from nebula.models.openai import ChatCompletionRequest
 from nebula.providers.base import CompletionChunk, CompletionResult, ProviderError
@@ -402,6 +402,37 @@ def test_an_artifact_trained_on_another_embedding_model_disables_the_learned_rou
     [record] = [r for r in caplog.records if r.levelno == logging.ERROR]
     assert "nomic-embed-text-v2-moe" in record.getMessage()
     assert "'nomic-embed-text'" in record.getMessage()
+
+
+@pytest.mark.parametrize("embedding_model", ["nomic-embed-text", "nomic-embed-text:latest"])
+def test_learned_router_accepts_latest_tag(tmp_path: Path, embedding_model: str) -> None:
+    # Ollama reports an untagged model as ":latest", so both spellings name the artifact's model.
+    artifact = _write_artifact(tmp_path)
+    with configured_app(
+        NEBULA_LEARNED_ROUTER_ENABLED="true",
+        NEBULA_LEARNED_ROUTER_PATH=str(artifact),
+        NEBULA_EMBEDDING_MODEL=embedding_model,
+    ) as app:
+        with TestClient(app):
+            learned = app.state.container.router_service.learned
+
+    assert learned is not None
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "expected"),
+    [
+        ("a", "a:latest", True),
+        ("a:latest", "a", True),
+        ("a:latest", "a:latest", True),
+        ("a", "a", True),
+        ("a:v1.5", "a", False),
+        ("a:v1.5", "a:latest", False),
+        ("a", "b:latest", False),
+    ],
+)
+def test_same_embedding_model(a: str, b: str, expected: bool) -> None:
+    assert same_embedding_model(a, b) is expected
 
 
 def test_container_fails_loud_on_a_missing_or_invalid_artifact(tmp_path: Path) -> None:

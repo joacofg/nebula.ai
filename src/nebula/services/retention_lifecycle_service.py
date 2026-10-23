@@ -174,12 +174,18 @@ class RetentionLifecycleService:
         if self._semantic_cache is None:
             return
         try:
-            for tenant in self._governance_store.list_tenants():
+            tenants = self._governance_store.list_tenants()
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Semantic cache retention cleanup failed: %s", exc)
+            return
+        # One tenant's failure (its policy, or a Qdrant error) must not skip the tenants after it.
+        for tenant in tenants:
+            try:
                 policy = self._governance_store.get_policy(tenant.id)
                 cutoff = int(now.timestamp()) - policy.semantic_cache_max_entry_age_hours * 3600
                 await self._semantic_cache.delete_expired(tenant_id=tenant.id, created_before=cutoff)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("Semantic cache retention cleanup failed: %s", exc)
+            except Exception:  # noqa: BLE001
+                logger.exception("retention sweep failed", extra={"tenant_id": tenant.id})
 
     @staticmethod
     def _normalize(value: datetime) -> datetime:

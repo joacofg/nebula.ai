@@ -11,6 +11,15 @@ DEFAULT_LEARNED_ROUTER_PATH = str(Path(__file__).resolve().parents[1] / "data" /
 DEFAULT_ROUTER_REPLAY_PATH = str(Path(__file__).resolve().parents[1] / "data" / "router_replay_v1.json")
 
 
+def same_embedding_model(a: str, b: str) -> bool:
+    """Whether two embedding-model names name the same model.
+
+    Ollama lists an untagged model as `name:latest`, so `nomic-embed-text` and
+    `nomic-embed-text:latest` are one model; any other tag is a different one.
+    """
+    return a.removesuffix(":latest") == b.removesuffix(":latest")
+
+
 class Settings(BaseSettings):
     app_name: str = Field(default="Nebula", alias="NEBULA_APP_NAME")
     env: str = Field(default="local", alias="NEBULA_ENV")
