@@ -181,18 +181,20 @@ ADMIN_STORE_METHODS = (
 
 
 @pytest.mark.parametrize(
-    ("method", "path"),
+    ("method", "path", "expected_store_method"),
     [
-        ("GET", "/v1/admin/tenants"),
-        ("GET", "/v1/admin/tenants/default/policy"),
-        ("PUT", "/v1/admin/tenants/default/policy"),
-        ("GET", "/v1/admin/usage/ledger"),
-        ("POST", "/v1/admin/tenants/default/policy/simulate"),
-        ("GET", "/v1/admin/tenants/default/recommendations"),
-        ("GET", "/v1/admin/api-keys"),
+        ("GET", "/v1/admin/tenants", "list_tenants"),
+        ("GET", "/v1/admin/tenants/default/policy", "get_policy"),
+        ("PUT", "/v1/admin/tenants/default/policy", "upsert_policy"),
+        ("GET", "/v1/admin/usage/ledger", "list_usage_records"),
+        ("POST", "/v1/admin/tenants/default/policy/simulate", "tenant_spend_before"),
+        ("GET", "/v1/admin/tenants/default/recommendations", "summarize_calibration_evidence"),
+        ("GET", "/v1/admin/api-keys", "list_api_keys"),
     ],
 )
-def test_admin_store_calls_run_off_the_loop(method: str, path: str) -> None:
+def test_admin_store_calls_run_off_the_loop(
+    method: str, path: str, expected_store_method: str
+) -> None:
     with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
         with TestClient(app) as client:
             _stub_local(app)
@@ -209,8 +211,25 @@ def test_admin_store_calls_run_off_the_loop(method: str, path: str) -> None:
             response = client.request(method, path, headers=admin_headers(), json=bodies.get(method))
 
     assert response.status_code == 200, response.text
-    assert calls, "the handler never touched the store"
+    assert _calls_named(calls, expected_store_method), f"{expected_store_method} was never called"
     assert [c for c in calls if c[1]] == []
+
+
+def test_simulation_without_records_skips_the_spend_read() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            policy = client.get("/v1/admin/tenants/default/policy", headers=admin_headers()).json()
+            calls = record_loop_calls(app.state.container.governance_store, ADMIN_STORE_METHODS)
+            response = client.post(
+                "/v1/admin/tenants/default/policy/simulate",
+                headers=admin_headers(),
+                json={"candidate_policy": policy},
+            )
+
+    assert response.status_code == 200, response.text
+    assert response.json()["summary"]["evaluated_rows"] == 0
+    assert _calls_named(calls, "list_usage_records")
+    assert not _calls_named(calls, "tenant_spend_before")
 
 
 def test_playground_store_calls_run_off_the_loop() -> None:

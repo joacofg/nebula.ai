@@ -1119,9 +1119,30 @@ class ChatService:
     ) -> CompletionUsage:
         return usage or self.policy_service.estimate_usage(request, response_content)
 
-    async def _record_usage(self, **fields: Any) -> None:
-        """Write one ledger row off the event loop; `fields` are `_write_usage`'s keywords."""
-        await run_in_threadpool(self._write_usage, **fields)
+    async def _record_usage(
+        self,
+        *,
+        request_id: str | None,
+        tenant_id: str,
+        request: ChatCompletionRequest,
+        metadata: CompletionMetadata,
+        response_model: str | None,
+        usage: CompletionUsage | None,
+        latency_ms: float | None,
+        terminal_status: TerminalStatus,
+    ) -> None:
+        """Write one ledger row off the event loop (same keywords as `_write_usage`)."""
+        await run_in_threadpool(
+            self._write_usage,
+            request_id=request_id,
+            tenant_id=tenant_id,
+            request=request,
+            metadata=metadata,
+            response_model=response_model,
+            usage=usage,
+            latency_ms=latency_ms,
+            terminal_status=terminal_status,
+        )
 
     def _write_usage(
         self,

@@ -2154,9 +2154,7 @@ def test_usage_ledger_rejects_a_tier_that_is_not_local_economy_or_frontier() -> 
 
 
 def _spend_row(request_id: str, at: datetime, cost: float, **overrides) -> UsageLedgerRecord:
-    return _ledger_row(
-        request_id, None, timestamp=at, estimated_cost=cost, **overrides
-    )
+    return _ledger_row(request_id, None, timestamp=at, estimated_cost=cost, **overrides)
 
 
 def test_tenant_spend_before_matches_per_row_query() -> None:

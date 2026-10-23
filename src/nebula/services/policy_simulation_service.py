@@ -130,10 +130,14 @@ class PolicySimulationService:
         )
         # Each row is judged against the spend before it, so the guardrails see the hard budget run
         # out part way through the window: one pass for all rows instead of a query per row.
-        spend_before_rows = await run_in_threadpool(
-            self.governance_store.tenant_spend_before,
-            tenant_context.tenant.id,
-            [record.timestamp for record in records],
+        spend_before_rows = (
+            await run_in_threadpool(
+                self.governance_store.tenant_spend_before,
+                tenant_context.tenant.id,
+                [record.timestamp for record in records],
+            )
+            if records
+            else []
         )
         changed: list[PolicySimulationChangedRequest] = []
         evaluated_count = 0
