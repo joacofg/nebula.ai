@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from nebula.core.config import Settings
 from nebula.models.governance import CalibrationEvidenceSummary, RoutingMode, TenantPolicy
 from nebula.models.openai import ChatCompletionRequest
-from nebula.services.learned_router import LearnedRouterModel, OperatingPoint
+from nebula.services.learned_router import LearnedRouterModel, OperatingPoint, tier_for
 
 logger = logging.getLogger(__name__)
 
@@ -104,6 +104,35 @@ class RouterService:
             evidence_summary=evidence_summary,
         )
         return self._decision_from_breakdown(breakdown)
+
+    def choose_target_for_learned_replay(
+        self,
+        p_local: float,
+        p_economy: float,
+        policy: TenantPolicy,
+        *,
+        request: ChatCompletionRequest | None = None,
+        replay_context: ReplayRouteContext | None = None,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
+    ) -> RouteDecision | None:
+        """Re-decide a learned-router ledger row from its stored probabilities.
+
+        The decision the live router makes for those probabilities under `policy`; None when no
+        learned router is loaded. Given the row's replay inputs, it also carries the heuristic
+        signals of their replay breakdown, as a live learned decision carries the live one's.
+        """
+        if self.learned is None:
+            return None
+        base_signals: dict[str, Any] = {}
+        if request is not None and replay_context is not None:
+            breakdown = self._build_replay_breakdown(
+                request=request,
+                replay_context=replay_context,
+                policy=policy,
+                evidence_summary=evidence_summary,
+            )
+            base_signals = self._signals_from_breakdown(breakdown)
+        return self._learned_route_decision(p_local, p_economy, policy, base_signals=base_signals)
 
     async def choose_target_with_reason(
         self,
@@ -302,8 +331,28 @@ class RouterService:
         policy: TenantPolicy,
     ) -> RouteDecision:
         assert self.learned is not None
-        choice = self.learned.choose(vector, policy.routing_quality_target)
-        tier = choice.tier
+        p_local, p_economy = self.learned.probabilities(vector)
+        return self._learned_route_decision(
+            p_local, p_economy, policy, base_signals=self._signals_from_breakdown(breakdown)
+        )
+
+    def _learned_route_decision(
+        self,
+        p_local: float,
+        p_economy: float,
+        policy: TenantPolicy,
+        *,
+        base_signals: dict[str, Any],
+    ) -> RouteDecision:
+        """The learned router's decision for two probabilities under the tenant's target.
+
+        The live path computes the probabilities from the prompt embedding; the policy
+        simulation reads them back from a ledger row. Both decide here, so a replay of the
+        same probabilities under the same policy is the decision the live router made.
+        """
+        assert self.learned is not None
+        point = self.learned.operating_point(policy.routing_quality_target)
+        tier = tier_for(p_local, p_economy, point)
         if tier == "economy" and not self.settings.economy_model:
             # No economy model configured: the premium provider serves the frontier model.
             tier = "frontier"
@@ -314,22 +363,22 @@ class RouterService:
         elif tier == "frontier":
             model = self.settings.premium_model
 
-        signals = self._signals_from_breakdown(breakdown)
-        signals.update(
-            {
-                "tier": tier,
-                "p_local": round(choice.p_local, 4),
-                "p_economy": round(choice.p_economy, 4),
-                "quality_target": policy.routing_quality_target,
-                "operating_point": _operating_point_signal(choice.point),
-                "learned_router": self.learned.version,
-            }
-        )
+        signals = {
+            **base_signals,
+            "tier": tier,
+            # Unrounded: the policy simulation re-decides the row from them.
+            "p_local": p_local,
+            "p_economy": p_economy,
+            "quality_target": policy.routing_quality_target,
+            "operating_point": _operating_point_signal(point),
+            "learned_router": self.learned.version,
+            "economy_model": self.settings.economy_model,
+        }
         return RouteDecision(
             target="local" if tier == "local" else "premium",
             reason="learned_router",
             signals=signals,
-            score=round(1.0 - choice.p_local, 4),
+            score=round(1.0 - p_local, 4),
             model=model,
         )
 

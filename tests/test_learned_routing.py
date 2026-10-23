@@ -229,8 +229,11 @@ async def test_learned_decision_carries_probabilities_point_and_heuristic_signal
     decision = await _route(ECONOMY_VECTOR)
 
     signals = decision.signals
-    assert decision.score == pytest.approx(1 - signals["p_local"])
+    # sigmoid(-6): the stored probability keeps every decimal, the score keeps four.
+    assert signals["p_local"] == pytest.approx(0.00247262316, abs=1e-11)
+    assert decision.score == 0.9975
     assert signals["p_economy"] > 0.99
+    assert signals["economy_model"] == ECONOMY_MODEL
     assert signals["quality_target"] == 0.9
     assert signals["operating_point"] == {
         "tau_local": 0.5,
