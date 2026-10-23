@@ -117,6 +117,13 @@ class PolicySimulationService:
             to_timestamp=payload.to_timestamp,
             limit=payload.limit,
         )
+        # Each row is judged against the spend before it, so the guardrails see the hard budget run
+        # out part way through the window: one pass for all rows instead of a query per row.
+        spend_before_rows = await run_in_threadpool(
+            self.governance_store.tenant_spend_before,
+            tenant_context.tenant.id,
+            [record.timestamp for record in records],
+        )
         changed: list[PolicySimulationChangedRequest] = []
         evaluated_count = 0
         changed_routes = 0
@@ -137,7 +144,7 @@ class PolicySimulationService:
             policy=payload.candidate_policy,
         )
 
-        for replay_input in replay_inputs:
+        for replay_input, spend_before in zip(replay_inputs, spend_before_rows, strict=True):
             evaluated_count += 1
             if self._held_by_cache(replay_input.record, payload.candidate_policy):
                 # Live, routing resolves first and the cache lookup is scoped to the chosen tier.
@@ -163,10 +170,7 @@ class PolicySimulationService:
                     route_decision=learned_decision,
                     before_timestamp=replay_input.record.timestamp,
                     evidence_summary=calibration_summary,
-                    tenant_spend_total=await self.policy_service.read_tenant_spend(
-                        tenant_context.tenant.id,
-                        before_timestamp=replay_input.record.timestamp,
-                    ),
+                    tenant_spend_total=spend_before,
                 )
             else:
                 decision_source = "heuristic"
@@ -177,6 +181,7 @@ class PolicySimulationService:
                     replay_context=replay_input.replay_context,
                     before_timestamp=replay_input.record.timestamp,
                     evidence_summary_override=calibration_summary,
+                    tenant_spend_total=spend_before,
                 )
             decision_source_counts[decision_source] += 1
 

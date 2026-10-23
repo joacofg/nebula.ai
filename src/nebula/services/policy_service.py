@@ -167,6 +167,7 @@ class PolicyService:
         before_timestamp: datetime | None = None,
         evidence_summary_override: CalibrationEvidenceSummary | None = None,
         prompt_embedding: list[float] | None = None,
+        tenant_spend_total: float | None = None,
     ) -> PolicyEvaluation:
         policy = tenant_context.policy
         evidence_summary = evidence_summary_override
@@ -189,9 +190,10 @@ class PolicyService:
                 evidence_summary=evidence_summary,
                 prompt_embedding=prompt_embedding,
             )
-        tenant_spend_total = await self.read_tenant_spend(
-            tenant_context.tenant.id, before_timestamp=before_timestamp
-        )
+        if tenant_spend_total is None:
+            tenant_spend_total = await self.read_tenant_spend(
+                tenant_context.tenant.id, before_timestamp=before_timestamp
+            )
         return self.evaluate_decision(
             request=request,
             tenant_context=tenant_context,

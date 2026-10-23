@@ -3,7 +3,9 @@ from __future__ import annotations
 import hashlib
 import logging
 import secrets
+from bisect import bisect_left
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
@@ -561,6 +563,15 @@ class GovernanceStore:
             degraded_reasons=self._reason_counts(degraded_counter),
         )
 
+    # A stream the client abandoned still spent the premium tokens it streamed.
+    _SPEND_TERMINAL_STATUSES = ("completed", "fallback_completed", "cache_hit", "client_disconnected")
+
+    def _spend_filters(self, tenant_id: str) -> tuple:
+        return (
+            UsageLedgerModel.tenant_id == tenant_id,
+            UsageLedgerModel.terminal_status.in_(self._SPEND_TERMINAL_STATUSES),
+        )
+
     def tenant_spend_total(
         self,
         tenant_id: str,
@@ -569,16 +580,43 @@ class GovernanceStore:
     ) -> float:
         with self._session() as session:
             stmt = select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
-                UsageLedgerModel.tenant_id == tenant_id,
-                # A stream the client abandoned still spent the premium tokens it streamed.
-                UsageLedgerModel.terminal_status.in_(
-                    ["completed", "fallback_completed", "cache_hit", "client_disconnected"]
-                ),
+                *self._spend_filters(tenant_id)
             )
             if before_timestamp is not None:
                 stmt = stmt.where(UsageLedgerModel.timestamp < before_timestamp)
             total = session.scalar(stmt)
             return float(total or 0.0)
+
+    def tenant_spend_before(self, tenant_id: str, timestamps: Sequence[datetime]) -> list[float]:
+        """`tenant_spend_total(tenant_id, before_timestamp=t)` for every `t`, in input order.
+
+        Two queries however many timestamps: the spend before the earliest one, and the spend rows
+        from there up to the latest one, accumulated into a running total that each timestamp
+        reads with a binary search. Strictly before, like the per-timestamp query; a naive
+        timestamp is UTC.
+        """
+        if not timestamps:
+            return []
+        bounds = [self._normalize_comparable_datetime(at) for at in timestamps]
+        earliest, latest = min(bounds), max(bounds)
+        filters = self._spend_filters(tenant_id)
+        with self._session() as session:
+            base = session.scalar(
+                select(func.coalesce(func.sum(UsageLedgerModel.estimated_cost), 0.0)).where(
+                    *filters, UsageLedgerModel.timestamp < earliest
+                )
+            )
+            rows = session.execute(
+                select(UsageLedgerModel.timestamp, UsageLedgerModel.estimated_cost)
+                .where(*filters, UsageLedgerModel.timestamp >= earliest, UsageLedgerModel.timestamp < latest)
+                .order_by(UsageLedgerModel.timestamp)
+            ).all()
+        row_times = [self._normalize_comparable_datetime(row_time) for row_time, _ in rows]
+        # spent_before[i]: the spend before the i-th of the rows that fall in the window.
+        spent_before = [float(base or 0.0)]
+        for _, cost in rows:
+            spent_before.append(spent_before[-1] + float(cost or 0.0))
+        return [spent_before[bisect_left(row_times, bound)] for bound in bounds]
 
     def health_status(self) -> dict[str, object]:
         try:

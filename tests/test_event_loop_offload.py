@@ -176,6 +176,7 @@ ADMIN_STORE_METHODS = (
     "operator_api_key",
     "summarize_calibration_evidence",
     "tenant_spend_total",
+    "tenant_spend_before",
 )
 
 

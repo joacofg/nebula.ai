@@ -226,6 +226,9 @@ class _LedgerStore:
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp=None) -> float:
         return self.spend_total
 
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        return [self.spend_total for _ in timestamps]
+
     def record_usage(self, record):  # pragma: no cover - a simulation never writes
         raise AssertionError("the simulation wrote a ledger row")
 

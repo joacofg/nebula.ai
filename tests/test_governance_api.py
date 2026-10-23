@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 
@@ -2150,3 +2150,67 @@ def test_usage_ledger_rejects_a_tier_that_is_not_local_economy_or_frontier() -> 
 
     assert invalid.status_code == 422
     assert empty.status_code == 422
+
+
+def _spend_row(request_id: str, at: datetime, cost: float, **overrides) -> UsageLedgerRecord:
+    return _ledger_row(
+        request_id, None, timestamp=at, estimated_cost=cost, **overrides
+    )
+
+
+def test_tenant_spend_before_matches_per_row_query() -> None:
+    t0 = datetime(2026, 10, 22, 12, 0, 0, tzinfo=UTC)
+    t1, t2, t3 = (t0 + timedelta(minutes=m) for m in (10, 20, 30))
+    before_all = t0 - timedelta(minutes=5)
+    # Costs are binary fractions, so the sum is exact in any order.
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            for row in (
+                _spend_row("before-window", before_all - timedelta(hours=1), 4.0),
+                _spend_row("at-t1", t1, 0.5),
+                _spend_row("tie-a", t2, 0.25),
+                _spend_row("tie-b", t2, 0.125),
+                _spend_row("at-t3", t3, 1.0),
+                _spend_row("cache", t1, 2.0, terminal_status="cache_hit"),
+                _spend_row("abandoned", t2, 0.0625, terminal_status="client_disconnected"),
+                _spend_row("failed", t2, 8.0, terminal_status="provider_error"),
+                _spend_row("other-tenant", t1, 16.0, tenant_id="other"),
+            ):
+                store.record_usage(row)
+
+            for timestamps in (
+                [t3, t1, t2, before_all],
+                [t3, t1, t2],
+                [t2, t2, t1],
+                [t3],
+                [before_all, before_all],
+                [timestamp.replace(tzinfo=None) for timestamp in (t3, t1, t2, before_all)],
+                [t3, t1.replace(tzinfo=None), t2, before_all],
+            ):
+                expected = [
+                    store.tenant_spend_total("default", before_timestamp=t) for t in timestamps
+                ]
+                assert store.tenant_spend_before("default", timestamps) == expected, timestamps
+
+            # Strict "<": the tie at t2 is not in the spend before t2, and the row at t1 is not
+            # in the spend before t1.
+            assert store.tenant_spend_before("default", [t1, t2, t3]) == [
+                4.0,
+                4.0 + 0.5 + 2.0,
+                4.0 + 0.5 + 2.0 + 0.25 + 0.125 + 0.0625,
+            ]
+            assert store.tenant_spend_before("default", []) == []
+
+
+def test_tenant_spend_before_empty_tenant_returns_zeros() -> None:
+    at = datetime(2026, 10, 22, 12, 0, 0, tzinfo=UTC)
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            store.record_usage(_spend_row("someone-elses", at, 3.0, tenant_id="other"))
+            spend = store.tenant_spend_before(
+                "default", [at, at + timedelta(minutes=1), at - timedelta(days=1)]
+            )
+
+    assert spend == [0.0, 0.0, 0.0]

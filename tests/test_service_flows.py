@@ -17,6 +17,7 @@ from nebula.models.governance import (
     CalibrationEvidenceSummary,
     CalibrationReasonCount,
     PolicySimulationRequest,
+    PolicySimulationResponse,
     RecommendationBundle,
     TenantPolicy,
     TenantRecord,
@@ -477,12 +478,18 @@ class RuntimePolicyStore:
         self.spend_total = spend_total
         self.evidence_summary = evidence_summary
         self.calls: list[tuple[str, datetime | None]] = []
+        self.spend_before_calls: list[tuple[str, list[datetime]]] = []
         self.evidence_summary_calls: list[str] = []
 
     def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
         assert tenant_id == "default"
         self.calls.append((tenant_id, before_timestamp))
         return self.spend_total
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        assert tenant_id == "default"
+        self.spend_before_calls.append((tenant_id, list(timestamps)))
+        return [self.spend_total for _ in timestamps]
 
     def summarize_calibration_evidence(self, *, tenant_id: str) -> CalibrationEvidenceSummary:
         assert tenant_id == "default"
@@ -797,7 +804,7 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
         ),
     )
 
-    assert store.calls == [("default", now)]
+    assert store.spend_before_calls == [("default", [now])]
     assert response.summary.evaluated_rows == 1
     assert response.summary.changed_routes == 1
     changed = response.changed_requests[0]
@@ -813,6 +820,86 @@ async def test_policy_simulation_uses_before_timestamp_for_hard_budget_windows()
     assert changed.simulated_degraded_routing is False
     assert changed.simulated_route_score == 1.0
     assert "hard_budget=exceeded" in (changed.simulated_policy_outcome or "")
+
+
+class _CountingSpendStore(FakeSimulationGovernanceStore):
+    """Spend is the premium cost of the rows before a timestamp; reads are counted by method."""
+
+    def __init__(self, records: list[UsageLedgerRecord]) -> None:
+        super().__init__(records)
+        self.total_calls = 0
+        self.before_calls = 0
+
+    def _spent_before(self, at: datetime) -> float:
+        return sum(row.estimated_cost or 0.0 for row in self.records if row.timestamp < at)
+
+    def tenant_spend_total(self, tenant_id: str, *, before_timestamp: datetime | None = None) -> float:
+        self.total_calls += 1
+        assert before_timestamp is not None
+        return self._spent_before(before_timestamp)
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        self.before_calls += 1
+        return [self._spent_before(at) for at in timestamps]
+
+
+class _PerRowSpendStore(_CountingSpendStore):
+    """The reference: the batch answer is the per-row query asked once per timestamp."""
+
+    def tenant_spend_before(self, tenant_id: str, timestamps) -> list[float]:
+        return [self.tenant_spend_total(tenant_id, before_timestamp=at) for at in timestamps]
+
+
+@pytest.mark.asyncio
+async def test_simulation_queries_spend_once() -> None:
+    settings = Settings()
+    start = datetime(2026, 10, 22, 12, 0, tzinfo=UTC)
+    records = [
+        _ledger_record(
+            request_id=f"req-{index:02d}",
+            timestamp=start + timedelta(minutes=index),
+            final_route_target="premium",
+            estimated_cost=0.5,
+            prompt_tokens=800,
+            completion_tokens=256,
+            route_signals={"token_count": 900, "complexity_tier": "medium", "keyword_match": True},
+        )
+        for index in range(20)
+    ]
+
+    async def simulate(store: _CountingSpendStore) -> PolicySimulationResponse:
+        service = PolicySimulationService(
+            governance_store=store,
+            router_service=RouterService(settings),
+            policy_service=PolicyService(
+                settings, store, PricingCatalog.from_path(PROJECT_ROOT / "benchmarks" / "pricing.json")
+            ),
+        )
+        return await service.simulate(
+            tenant_context=tenant_context(),
+            payload=PolicySimulationRequest(
+                candidate_policy=TenantPolicy(
+                    hard_budget_limit_usd=5.0, hard_budget_enforcement="downgrade"
+                ),
+                limit=200,
+                changed_sample_limit=50,
+            ),
+        )
+
+    batched_store = _CountingSpendStore(records)
+    reference_store = _PerRowSpendStore(records)
+    batched = await simulate(batched_store)
+    reference = await simulate(reference_store)
+
+    assert (batched_store.total_calls, batched_store.before_calls) == (0, 1)
+    assert reference_store.total_calls == 20
+    # The budget runs out half way through the window, so the spend is what decides the rows.
+    assert batched.summary.evaluated_rows == 20
+    assert batched.summary.changed_routes == 10
+    # The calibration summary is stamped with the wall clock of each run.
+    assert batched.model_dump(exclude={"calibration_summary"}) == reference.model_dump(
+        exclude={"calibration_summary"}
+    )
 
 
 @pytest.mark.asyncio
