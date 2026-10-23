@@ -47,10 +47,11 @@ failure. No paid API calls (premium runs use `NEBULA_PREMIUM_PROVIDER=mock`).
   `missing_route_signals`. They no longer flip a tenant to "degraded".
 
 ### B19 — simulation spend in one pass
-- The simulation computes the spend before each replayed row from two queries instead of one per row. One query
-  sums the spend before the window, the other selects (timestamp, cost) inside the window, and a prefix sum gives
-  each row its value. The comparison is strict `<`, the same as `tenant_spend_total(before_timestamp=…)`. The
-  values equal the per-row query exactly. It reuses the spend-status list the store already defines.
+- The simulation computes the spend before each replayed row from one query instead of one per row. The query
+  selects the tenant's spend rows (timestamp, cost) before the latest replayed row, and a running total gives each
+  row its value. The comparison is strict `<`, the same as `tenant_spend_total(before_timestamp=…)`. The prefix sum
+  is exactly rounded (the `math.fsum` recipe), which is what SQLite's SUM returns for the per-row query. It reuses
+  the spend-status list the store already defines.
 
 ### B20 — observability
 - `JsonFormatter` adds `exc_info` (formatted traceback) and `stack_info` when present.

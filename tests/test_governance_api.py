@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import math
 from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
@@ -2214,3 +2215,26 @@ def test_tenant_spend_before_empty_tenant_returns_zeros() -> None:
             )
 
     assert spend == [0.0, 0.0, 0.0]
+
+
+def test_tenant_spend_before_rounds_like_the_per_row_sum_for_non_binary_costs() -> None:
+    # Plain left-to-right float addition drifts from SQLite's SUM on costs like these, and a
+    # drifted total flips a `>=` budget check that sits exactly at the limit.
+    costs = [0.1] * 30 + [0.01] * 50 + [0.3] * 7
+    start = datetime(2026, 10, 22, 12, 0, 0, tzinfo=UTC)
+    times = [start + timedelta(seconds=index) for index in range(len(costs))]
+    after_last = times[-1] + timedelta(seconds=1)
+    with configured_app() as app:
+        with TestClient(app):
+            store = app.state.container.governance_store
+            for index, (at, cost) in enumerate(zip(times, costs, strict=True)):
+                store.record_usage(_spend_row(f"row-{index}", at, cost))
+
+            queries = [*times, after_last]
+            batched = store.tenant_spend_before("default", queries)
+            per_row = [store.tenant_spend_total("default", before_timestamp=t) for t in queries]
+
+    assert batched == per_row
+    assert batched[-1] == math.fsum(costs)
+    limit = round(0.1 * 30, 6)
+    assert [spent >= limit for spent in batched] == [spent >= limit for spent in per_row]
