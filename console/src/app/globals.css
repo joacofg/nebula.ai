@@ -39,7 +39,7 @@
   --color-tier-local: #86b6ef;
   --color-tier-economy: #2f73cc;
   --color-tier-frontier: #103f82;
-  --color-tier-cache: #aab2bb;
+  --color-tier-cache: #898f98;
 
   --shadow-panel: none;
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -110,6 +110,13 @@
   ::selection {
     background: color-mix(in srgb, var(--color-mark) 16%, transparent);
   }
+
+  /* Placeholders carry meaning here ("Sin límite"), so they meet AA like any label: ink-3, not
+     the preflight's half-transparent ink (3.5:1). */
+  ::placeholder {
+    color: var(--color-ink-3);
+    opacity: 1;
+  }
 }
 
 /* Legacy utilities kept while pages migrate to the system components. */
@@ -126,7 +133,7 @@
 }
 
 @utility field-input {
-  @apply min-h-10 w-full rounded-[2px] border border-line bg-surface px-3 py-2 text-[15px] text-ink transition-colors focus:border-ink;
+  @apply min-h-10 w-full rounded-[2px] border border-line bg-surface px-3 py-2 text-[15px] text-ink transition-colors focus:border-ink aria-invalid:border-danger;
 }
 
 @utility action-button {

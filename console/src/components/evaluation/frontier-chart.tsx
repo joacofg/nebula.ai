@@ -2,7 +2,8 @@
 
 import { useMemo, useRef, useState, type PointerEvent } from "react";
 
-import { TIER_COLORS, formatPer1000, formatQuality, formatTau, formatUsd1000 } from "@/components/evaluation/format";
+import { TIER_COLORS, formatQuality, formatTau } from "@/components/evaluation/format";
+import { formatUsd, formatUsdPer1000 } from "@/lib/format";
 import type { CostQuality, ReplayBaselines, ReplayOperatingPoint } from "@/lib/router-replay";
 
 // Plano chart ink: the router is drawn in ink, the random mix dashed, the
@@ -156,7 +157,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
       }
     }
     showPoint(x(nearest.cost_per_prompt), y(nearest.quality), "Router v1", [
-      `${formatPer1000(nearest.cost_per_prompt)} / 1000 · calidad ${formatQuality(nearest.quality)}`,
+      `${formatUsdPer1000(nearest.cost_per_prompt, 3)} · calidad ${formatQuality(nearest.quality)}`,
       `τ_local ${formatTau(nearest.tau_local)} · τ_economy ${formatTau(nearest.tau_economy)}`,
     ]);
   }
@@ -184,7 +185,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="h-auto w-full"
           role="group"
-          aria-label={`Frontera costo–calidad del router: punto elegido ${formatUsd1000(current.cost)} por 1000 pedidos, calidad ${formatQuality(current.quality)}`}
+          aria-label={`Frontera costo–calidad del router: punto elegido ${formatUsd(current.cost * 1000)} por 1000 pedidos, calidad ${formatQuality(current.quality)}`}
           onPointerLeave={() => setHover(null)}
         >
           {/* Oscilloscope graticule: major lines at the ticks, minor marks on the centre axes. */}
@@ -291,7 +292,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
           {markers.map((m) => {
             const mx = x(m.cost);
             const my = y(m.quality);
-            const lines = [`${formatPer1000(m.cost)} / 1000 · calidad ${formatQuality(m.quality)}`];
+            const lines = [`${formatUsdPer1000(m.cost, 3)} · calidad ${formatQuality(m.quality)}`];
             return (
               <g
                 key={m.id}
@@ -353,7 +354,12 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
       </div>
 
       <div className="flex justify-end">
-        <button type="button" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark" onClick={() => setShowTable((v) => !v)}>
+        <button
+          type="button"
+          aria-expanded={showTable}
+          className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark"
+          onClick={() => setShowTable((v) => !v)}
+        >
           {showTable ? "Ocultar tabla" : "Ver tabla"}
         </button>
       </div>
@@ -364,7 +370,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
             <thead className="sticky top-0 bg-canvas text-ink-3">
               <tr>
                 <th className="px-3 py-2 font-semibold">Política</th>
-                <th className="px-3 py-2 text-right font-semibold">USD / 1000</th>
+                <th className="px-3 py-2 text-right font-semibold">Costo por 1000 pedidos</th>
                 <th className="px-3 py-2 text-right font-semibold">Calidad</th>
               </tr>
             </thead>
@@ -372,13 +378,13 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
               {markers.map((m) => (
                 <tr key={m.id}>
                   <td className="px-3 py-1.5 font-sans">{m.label}</td>
-                  <td className="px-3 py-1.5 text-right">{(finite(m.cost) * 1000).toFixed(3)}</td>
+                  <td className="px-3 py-1.5 text-right">{formatUsd(finite(m.cost) * 1000, 3)}</td>
                   <td className="px-3 py-1.5 text-right">{formatQuality(m.quality)}</td>
                 </tr>
               ))}
               <tr>
                 <td className="px-3 py-1.5 font-sans">heurística v0 (economy)</td>
-                <td className="px-3 py-1.5 text-right">{(finite(baselines.heuristic_premium_economy.cost) * 1000).toFixed(3)}</td>
+                <td className="px-3 py-1.5 text-right">{formatUsd(finite(baselines.heuristic_premium_economy.cost) * 1000, 3)}</td>
                 <td className="px-3 py-1.5 text-right">{formatQuality(baselines.heuristic_premium_economy.quality)}</td>
               </tr>
               {front.map((p) => (
@@ -386,7 +392,7 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
                   <td className="px-3 py-1.5 font-sans">
                     Router τ_local {formatTau(p.tau_local)} · τ_economy {formatTau(p.tau_economy)}
                   </td>
-                  <td className="px-3 py-1.5 text-right">{(finite(p.cost_per_prompt) * 1000).toFixed(3)}</td>
+                  <td className="px-3 py-1.5 text-right">{formatUsd(finite(p.cost_per_prompt) * 1000, 3)}</td>
                   <td className="px-3 py-1.5 text-right">{formatQuality(p.quality)}</td>
                 </tr>
               ))}

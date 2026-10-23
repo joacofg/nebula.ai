@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 
+import { gatewayUnreachableResponse } from "@/lib/admin-errors";
+
 const HOP_BY_HOP_HEADERS = new Set([
   "connection",
   "content-length",
@@ -31,24 +33,32 @@ async function proxyRequest(request: NextRequest, path: string[]) {
     }
   });
 
-  const response = await fetch(upstreamUrl, {
-    method: request.method,
-    headers,
-    body: request.method === "GET" || request.method === "HEAD" ? undefined : await request.text(),
-    cache: "no-store",
-  });
+  const body = request.method === "GET" || request.method === "HEAD" ? undefined : await request.text();
 
-  const responseHeaders = new Headers();
-  response.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      responseHeaders.set(key, value);
-    }
-  });
+  try {
+    const response = await fetch(upstreamUrl, {
+      method: request.method,
+      headers,
+      body,
+      cache: "no-store",
+    });
 
-  return new Response(await response.arrayBuffer(), {
-    status: response.status,
-    headers: responseHeaders,
-  });
+    const responseHeaders = new Headers();
+    response.headers.forEach((value, key) => {
+      if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
+        responseHeaders.set(key, value);
+      }
+    });
+
+    return new Response(await response.arrayBuffer(), {
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    // Not every failure here is the network: keep the cause, the client only gets gateway_unreachable.
+    console.error("Nebula admin proxy: the gateway call failed:", error);
+    return gatewayUnreachableResponse();
+  }
 }
 
 type RouteContext = {

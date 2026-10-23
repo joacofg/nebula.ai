@@ -1,17 +1,22 @@
+import type { Ref } from "react";
+
 import type { TenantRecord } from "@/lib/admin-api";
 
 import { cn } from "cn";
 
+import { formatDateTimeShort } from "@/lib/format";
+
 type TenantTableProps = {
   tenants: TenantRecord[];
   selectedTenantId: string | null;
+  /** Reaches the selected row, so the page can hand focus back to it. */
+  selectedRowRef?: Ref<HTMLTableRowElement>;
   onSelectTenant: (tenant: TenantRecord) => void;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
 const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
-export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: TenantTableProps) {
+export function TenantTable({ tenants, selectedTenantId, selectedRowRef, onSelectTenant }: TenantTableProps) {
   return (
     <div className="overflow-x-auto">
       <table className="w-full min-w-[640px] table-fixed border-collapse text-sm" aria-label="Tenants">
@@ -35,6 +40,7 @@ export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: Tenan
             return (
               <tr
                 key={tenant.id}
+                ref={selected ? selectedRowRef : undefined}
                 tabIndex={0}
                 aria-selected={selected}
                 onClick={() => onSelectTenant(tenant)}
@@ -66,7 +72,7 @@ export function TenantTable({ tenants, selectedTenantId, onSelectTenant }: Tenan
                     {tenant.active ? "activo" : "inactivo"}
                   </span>
                 </td>
-                <td className="px-3 py-2.5 text-ink-3">{dateFormatter.format(new Date(tenant.updated_at))}</td>
+                <td className="px-3 py-2.5 text-ink-3">{formatDateTimeShort(tenant.updated_at)}</td>
               </tr>
             );
           })}

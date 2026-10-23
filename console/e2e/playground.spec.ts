@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test("operator can submit a playground prompt and see metadata plus recorded outcome", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/session", async (route) => {
     await route.fulfill({ status: 200, body: JSON.stringify({ status: "ok" }) });
   });
@@ -22,8 +25,40 @@ test("operator can submit a playground prompt and see metadata plus recorded out
     });
   });
 
+  // The header reads the tenant's target and routing mode from its policy.
+  await page.route("**/api/admin/tenants/default/policy", async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        routing_mode_default: "auto",
+        calibrated_routing_enabled: true,
+        allowed_premium_models: ["openai/gpt-4o-mini"],
+        semantic_cache_enabled: true,
+        semantic_cache_similarity_threshold: 0.9,
+        semantic_cache_max_entry_age_hours: 168,
+        fallback_enabled: true,
+        max_premium_cost_per_request: null,
+        hard_budget_limit_usd: null,
+        hard_budget_enforcement: null,
+        soft_budget_usd: null,
+        prompt_capture_enabled: false,
+        response_capture_enabled: false,
+        evidence_retention_window: "30d",
+        metadata_minimization_level: "standard",
+        routing_quality_target: 0.9,
+      }),
+    });
+  });
+
+  // The completion waits until the test has seen the pending state.
+  let answer: () => void = () => {};
+  const answered = new Promise<void>((resolve) => {
+    answer = resolve;
+  });
   await page.route("**/api/playground/completions", async (route) => {
     expect(route.request().headers()["x-nebula-admin-key"]).toBe("nb-admin-valid");
+    await answered;
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -93,15 +128,24 @@ test("operator can submit a playground prompt and see metadata plus recorded out
   await page.getByLabel("Clave de admin").fill("nb-admin-valid");
   await page.getByRole("button", { name: "Entrar" }).click();
 
-  await expect(page.getByRole("link", { name: "Playground" })).toBeVisible({ timeout: 30_000 });
-  await page.getByRole("link", { name: "Playground" }).click();
+  await expect(page.getByRole("link", { name: "Playground", exact: true })).toBeVisible({ timeout: 30_000 });
+  await page.getByRole("link", { name: "Playground", exact: true }).click();
   await expect(page).toHaveURL(/\/playground$/, { timeout: 30_000 });
 
   await expect(page.getByRole("combobox").first()).toHaveValue("default");
+  const header = page.locator("header");
+  await expect(header).toContainText("Default Workspace");
+  await expect(header).toContainText("Objetivo0.90");
+  await expect(header).toContainText("Modo de ruteoAutomático");
+
   await page.getByLabel("Prompt").fill("Run the phase 3 playground path.");
   await page.getByRole("button", { name: "Enviar" }).click();
 
+  await expect(page.getByRole("status", { name: "Esperando respuesta…" })).toBeVisible();
+  answer();
+
   await expect(page.getByText("Playground response content")).toBeVisible();
+  await expect(page.getByRole("status", { name: "Esperando respuesta…" })).toHaveCount(0);
   const ledger = page.getByRole("region", { name: "Registro en el ledger" });
   await expect(ledger).toBeVisible();
   await expect(ledger.getByRole("group", { name: "Estado" })).toHaveText(/completado con fallback/);
@@ -110,5 +154,5 @@ test("operator can submit a playground prompt and see metadata plus recorded out
 
   await page.getByText("Detalle de la respuesta").click();
   await expect(page.getByRole("group", { name: "Request ID" })).toHaveText(/req-play-001/);
-  await expect(page.getByRole("group", { name: "Modo de política" })).toHaveText(/auto/);
+  await expect(page.getByRole("group", { name: "Modo de política" })).toHaveText(/Automático/);
 });

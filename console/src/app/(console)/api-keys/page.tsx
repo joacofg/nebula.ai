@@ -89,22 +89,26 @@ export default function ApiKeysPage() {
     setPendingRevoke(apiKey);
   }
 
-  async function confirmRevoke() {
+  // `mutate`, not `mutateAsync`: a failed revoke is shown below, never left as an unhandled rejection.
+  function confirmRevoke() {
     if (!pendingRevoke) {
       return;
     }
     const apiKey = pendingRevoke;
     setPendingRevoke(null);
     setRevokingId(apiKey.id);
-    await revokeMutation.mutateAsync(apiKey.id);
+    revokeMutation.mutate(apiKey.id);
   }
 
   const tenantFilter = (
     <select
       aria-label="Tenant"
-      className="h-9 min-w-52 rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
+      className="h-9 w-52 max-w-full rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
       value={selectedTenantId ?? ""}
-      onChange={(event) => setSelectedTenantId(event.target.value || null)}
+      onChange={(event) => {
+        revokeMutation.reset();
+        setSelectedTenantId(event.target.value || null);
+      }}
     >
       <option value="">Todos los tenants</option>
       {tenantOptions.map((tenant) => (
@@ -132,7 +136,13 @@ export default function ApiKeysPage() {
       />
 
       <div className="px-6 py-5">
-        {apiKeysQuery.isLoading ? (
+        {revokeMutation.isError ? (
+          <div className="mb-4">
+            <ErrorAlert error={revokeMutation.error} fallback="No se pudo revocar la clave." />
+          </div>
+        ) : null}
+        {/* `isPending`, not `isLoading`: a list that has not arrived is still waiting, never an empty one. */}
+        {apiKeysQuery.isPending ? (
           <LoadingRows rows={6} label="Cargando claves" />
         ) : apiKeysQuery.isError ? (
           <ErrorAlert error={apiKeysQuery.error} fallback="No se pudieron cargar las claves." />
@@ -171,7 +181,7 @@ export default function ApiKeysPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction variant="destructive" onClick={() => void confirmRevoke()}>
+            <AlertDialogAction variant="destructive" onClick={confirmRevoke}>
               Revocar clave
             </AlertDialogAction>
           </AlertDialogFooter>

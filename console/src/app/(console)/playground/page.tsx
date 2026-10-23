@@ -1,20 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import Link from "next/link";
 
 import { PageHeader } from "@/components/system/page-header";
-import { EmptyState, LoadingRows } from "@/components/system/state";
+import { EmptyState, ErrorAlert, errorMessage, LoadingRows } from "@/components/system/state";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { PlaygroundForm } from "@/components/playground/playground-form";
-import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
+import { PlaygroundMetadata, type ResponseFacts } from "@/components/playground/playground-metadata";
 import { PlaygroundRecordedOutcome } from "@/components/playground/playground-recorded-outcome";
 import { PlaygroundResponse } from "@/components/playground/playground-response";
+import { routingModeLabel } from "@/components/system/labels";
 import {
   createPlaygroundCompletion,
+  getTenantPolicy,
   getUsageLedgerEntry,
   listTenants,
   type PlaygroundInput,
@@ -22,12 +24,12 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
-import { ErrorAlert } from "@/components/system/state";
+import { formatTarget } from "@/lib/quality-target";
+import { useSelectedTenant } from "@/lib/selected-tenant";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PlaygroundPage() {
   const { adminKey } = useAdminSession();
-  const [selectedTenantId, setSelectedTenantId] = useState("");
   const [model, setModel] = useState("nebula-auto");
   const [prompt, setPrompt] = useState("");
 
@@ -37,23 +39,23 @@ export default function PlaygroundPage() {
     enabled: Boolean(adminKey),
   });
 
-  useEffect(() => {
-    if (!selectedTenantId && tenantsQuery.data?.length) {
-      setSelectedTenantId(tenantsQuery.data[0].id);
-    }
-  }, [selectedTenantId, tenantsQuery.data]);
+  const { tenantId, tenant, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const selectedTenantId = tenantId ?? "";
+
+  // The header's target and mode come from the tenant's policy, the query the Política page shares.
+  const policyQuery = useQuery({
+    queryKey: queryKeys.tenantPolicy(selectedTenantId || "unselected"),
+    queryFn: () => getTenantPolicy(adminKey ?? "", selectedTenantId),
+    enabled: Boolean(adminKey) && selectedTenantId.length > 0,
+  });
+  const policy = policyQuery.data;
 
   const mutation = useMutation({
     mutationFn: async (payload: PlaygroundInput) => {
       if (!adminKey) {
         throw new Error("Falta la sesión de admin.");
       }
-      const startedAt = performance.now();
-      const result = await createPlaygroundCompletion(adminKey, payload);
-      return {
-        ...result,
-        latencyMs: Math.round(performance.now() - startedAt),
-      };
+      return createPlaygroundCompletion(adminKey, payload);
     },
   });
 
@@ -64,14 +66,19 @@ export default function PlaygroundPage() {
       <PageHeader
         title="Playground"
         cells={[
-          { label: "Modo", value: "Sin streaming" },
-          { label: "Sesión", value: "admin" },
+          { label: "Tenant", value: tenant?.name ?? "—" },
+          {
+            label: "Objetivo",
+            value: typeof policy?.routing_quality_target === "number" ? formatTarget(policy.routing_quality_target) : "—",
+          },
+          { label: "Modo de ruteo", value: policy ? routingModeLabel(policy.routing_mode_default) : "—" },
         ]}
       />
 
       <div className="grid xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
         <div className="border-line px-6 py-6 xl:border-r">
-          {tenantsQuery.isLoading ? (
+          {/* `isPending`, not `isLoading`: a list that has not arrived is still waiting, never an empty one. */}
+          {tenantsQuery.isPending ? (
             <LoadingRows rows={4} label="Cargando tenants" />
           ) : tenantsQuery.isError ? (
             <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
@@ -93,42 +100,53 @@ export default function PlaygroundPage() {
               disabled={sessionMissing || mutation.isPending || (tenantsQuery.data ?? []).length === 0}
               isSubmitting={mutation.isPending}
               sessionMissing={sessionMissing}
-              onSelectedTenantIdChange={setSelectedTenantId}
+              onSelectedTenantIdChange={setTenantId}
               onModelChange={setModel}
               onPromptChange={setPrompt}
-              onSubmit={async () => {
-                await mutation.mutateAsync({
-                  tenantId: selectedTenantId,
-                  model,
-                  prompt,
-                });
-              }}
+              // `mutate` never rejects: a request that cannot be sent lands in `mutation.error`,
+              // which the result card shows.
+              onSubmit={() => mutation.mutate({ tenantId: selectedTenantId, model, prompt })}
             />
           )}
         </div>
 
         <div className="min-w-0 border-t border-line px-6 py-6 xl:border-t-0">
-          <PlaygroundResponseCard result={mutation.data} error={mutation.error} adminKey={adminKey} />
+          <PlaygroundResponseCard
+            result={mutation.data}
+            error={mutation.error}
+            isPending={mutation.isPending}
+            adminKey={adminKey}
+          />
         </div>
       </div>
     </section>
   );
 }
 
+function responseFacts(result: PlaygroundCompletionResult): ResponseFacts {
+  return {
+    routeTarget: result.routeTarget,
+    routeReason: result.routeReason,
+    routeTier: result.routeTier ?? "",
+    provider: result.provider,
+    cacheHit: result.cacheHit,
+    fallbackUsed: result.fallbackUsed,
+  };
+}
+
 function PlaygroundResponseCard({
   result,
   error,
+  isPending,
   adminKey,
 }: {
-  result:
-    | (PlaygroundCompletionResult & {
-        latencyMs: number;
-      })
-    | undefined;
+  result: PlaygroundCompletionResult | undefined;
   error: Error | null;
+  isPending: boolean;
   adminKey: string | null;
 }) {
   const requestId = result?.requestId ?? "";
+  const lookupEnabled = Boolean(adminKey && requestId);
   const recordedOutcomeQuery = useQuery({
     queryKey: queryKeys.usageLedgerEntry(requestId),
     queryFn: async () => {
@@ -137,8 +155,17 @@ function PlaygroundResponseCard({
       }
       return getUsageLedgerEntry(adminKey, requestId);
     },
-    enabled: Boolean(adminKey && requestId),
+    enabled: lookupEnabled,
   });
+  // `isPending`, not `isLoading`: a lookup that has not answered is still waiting.
+  // A disabled one (no request yet) is pending forever, so it only counts once it can run.
+  const waitingForLedger = lookupEnabled && recordedOutcomeQuery.isPending;
+
+  // TanStack clears `data` and `error` when a request starts, so a pending one has neither. The
+  // waiting rows say it once, as the other loading states do.
+  if (isPending) {
+    return <LoadingRows rows={4} label="Esperando respuesta…" />;
+  }
 
   if (error) {
     return <ErrorAlert error={error} fallback="No se pudo completar el pedido." />;
@@ -150,20 +177,14 @@ function PlaygroundResponseCard({
 
   return (
     <div className="flex flex-col gap-8">
-      {result.errorDetail ? (
-        <Alert variant="destructive">
-          <AlertDescription>{result.errorDetail}</AlertDescription>
-        </Alert>
-      ) : null}
+      {result.errorDetail ? <ErrorAlert error={result.errorDetail} fallback="No se pudo completar el pedido." /> : null}
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
-      {recordedOutcomeQuery.isLoading ? (
+      {waitingForLedger ? (
         <LoadingRows rows={3} label="Esperando el registro del ledger" />
       ) : recordedOutcomeQuery.isError ? (
         <Alert variant="warning">
           <AlertDescription>
-            {recordedOutcomeQuery.error instanceof Error
-              ? recordedOutcomeQuery.error.message
-              : "No se pudo leer el registro del ledger."}
+            {errorMessage(recordedOutcomeQuery.error, "No se pudo leer el registro del ledger.")}
           </AlertDescription>
         </Alert>
       ) : recordedOutcomeQuery.data ? (
@@ -175,15 +196,12 @@ function PlaygroundResponseCard({
       <PlaygroundMetadata
         requestId={result.requestId}
         tenantId={result.tenantId}
-        routeTarget={result.routeTarget}
-        routeReason={result.routeReason}
-        routeTier={result.routeTier ?? ""}
-        provider={result.provider}
-        cacheHit={result.cacheHit}
-        fallbackUsed={result.fallbackUsed}
-        latencyMs={result.latencyMs}
         policyMode={result.policyMode}
         policyOutcome={result.policyOutcome}
+        // The ledger block records the routing facts once. Without a ledger record (the lookup
+        // failed, or found nothing) the headers' copy keeps the result from coming back empty;
+        // while the lookup runs it waits, so the facts never show in both places.
+        response={recordedOutcomeQuery.data || waitingForLedger ? undefined : responseFacts(result)}
       />
     </div>
   );

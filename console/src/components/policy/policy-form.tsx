@@ -1,19 +1,45 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 import { AlertCircle, ArrowRight, LoaderCircle, RotateCcw, Save, Telescope } from "lucide-react";
 
 import type {
   PolicyOptionsResponse,
   PolicySimulationChangedRequest,
+  PolicySimulationOutcomeCounts,
   PolicySimulationResponse,
   TenantPolicy,
+  TierCounts,
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
-import { Readout } from "@/components/system/readout";
-import { LoadingRows } from "@/components/system/state";
+import {
+  numberText,
+  parsePolicyNumber,
+  policyFormChanged,
+  validatePolicyForm,
+  type PolicyFormErrors,
+  type PolicyFormField,
+  type PolicyFormState,
+  type TenantPolicyPayload,
+} from "@/components/policy/policy-validation";
+import {
+  approximationNoteLabel,
+  NO_SCORE_LABEL,
+  policyOutcomeLabel,
+  reasonLabel,
+  routeLabel,
+  routingModeLabel,
+  scoreLabel,
+  scoreModeLabel,
+  statusLabel,
+} from "@/components/system/labels";
+import { Readout, type ReadoutItem } from "@/components/system/readout";
+import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { formatUsd } from "@/lib/format";
+import { TARGET_MAX, TARGET_MIN, formatTarget } from "@/lib/quality-target";
+import { TIERS } from "@/lib/router-replay";
 
 type PolicyFormProps = {
   tenantName: string;
@@ -27,22 +53,44 @@ type PolicyFormProps = {
   onSave: (policy: TenantPolicy) => Promise<void>;
 };
 
-type PolicyFormState = {
-  routingModeDefault: TenantPolicy["routing_mode_default"];
-  calibratedRoutingEnabled: boolean;
-  fallbackEnabled: boolean;
-  semanticCacheEnabled: boolean;
-  semanticCacheSimilarityThreshold: string;
-  semanticCacheMaxEntryAgeHours: string;
-  allowedPremiumModels: string[];
-  maxPremiumCostPerRequest: string;
-  hardBudgetLimitUsd: string;
-  hardBudgetEnforcement: NonNullable<TenantPolicy["hard_budget_enforcement"]>;
-  softBudgetUsd: string;
-  evidenceRetentionWindow: TenantPolicy["evidence_retention_window"];
-  metadataMinimizationLevel: TenantPolicy["metadata_minimization_level"];
-  routingQualityTarget: string;
-  rateLimitRequestsPerMinute: string;
+// The label of every field, in the order the form shows them: the fields, and the panel that
+// names the ones to fix, read from here.
+const FIELD_LABELS: Record<PolicyFormField, string> = {
+  routingQualityTarget: "Objetivo de calidad",
+  routingModeDefault: "Modo de ruteo",
+  calibratedRoutingEnabled: "Ruteo automático por nivel",
+  fallbackEnabled: "Fallback a premium si falla el local",
+  rateLimitRequestsPerMinute: "Límite de pedidos por minuto",
+  maxPremiumCostPerRequest: "Costo premium máximo por pedido (USD)",
+  hardBudgetLimitUsd: "Presupuesto duro acumulado (USD)",
+  hardBudgetEnforcement: "Al agotarse el presupuesto",
+  softBudgetUsd: "Presupuesto blando (USD)",
+  semanticCacheEnabled: "Caché semántico activado",
+  semanticCacheSimilarityThreshold: "Umbral de similitud",
+  semanticCacheMaxEntryAgeHours: "Antigüedad máxima (h)",
+  allowedPremiumModels: "Modelos premium permitidos",
+  evidenceRetentionWindow: "Retención de evidencia",
+  metadataMinimizationLevel: "Minimización de metadatos",
+};
+
+// The runtime field that shows each form field: one the gateway does not enforce is not shown, so it
+// is neither checked nor written. `soft` marks a field the gateway only reports as a signal.
+const FIELD_GATES: Record<PolicyFormField, { field: string; soft?: true }> = {
+  routingQualityTarget: { field: "routing_quality_target" },
+  routingModeDefault: { field: "routing_mode_default" },
+  calibratedRoutingEnabled: { field: "calibrated_routing_enabled" },
+  fallbackEnabled: { field: "fallback_enabled" },
+  rateLimitRequestsPerMinute: { field: "rate_limit_requests_per_minute" },
+  maxPremiumCostPerRequest: { field: "max_premium_cost_per_request" },
+  hardBudgetLimitUsd: { field: "hard_budget_limit_usd" },
+  hardBudgetEnforcement: { field: "hard_budget_enforcement" },
+  softBudgetUsd: { field: "soft_budget_usd", soft: true },
+  semanticCacheEnabled: { field: "semantic_cache_enabled" },
+  semanticCacheSimilarityThreshold: { field: "semantic_cache_enabled" },
+  semanticCacheMaxEntryAgeHours: { field: "semantic_cache_enabled" },
+  allowedPremiumModels: { field: "allowed_premium_models" },
+  evidenceRetentionWindow: { field: "evidence_retention_window" },
+  metadataMinimizationLevel: { field: "metadata_minimization_level" },
 };
 
 // Gateway default (TenantPolicy.routing_quality_target) for policies saved before the field existed.
@@ -54,48 +102,19 @@ function toFormState(policy: TenantPolicy): PolicyFormState {
     calibratedRoutingEnabled: policy.calibrated_routing_enabled,
     fallbackEnabled: policy.fallback_enabled,
     semanticCacheEnabled: policy.semantic_cache_enabled,
-    semanticCacheSimilarityThreshold: policy.semantic_cache_similarity_threshold.toString(),
-    semanticCacheMaxEntryAgeHours: policy.semantic_cache_max_entry_age_hours.toString(),
+    semanticCacheSimilarityThreshold: numberText(policy.semantic_cache_similarity_threshold),
+    semanticCacheMaxEntryAgeHours: numberText(policy.semantic_cache_max_entry_age_hours),
     allowedPremiumModels: policy.allowed_premium_models,
-    maxPremiumCostPerRequest: policy.max_premium_cost_per_request?.toString() ?? "",
-    hardBudgetLimitUsd: policy.hard_budget_limit_usd?.toString() ?? "",
+    maxPremiumCostPerRequest: numberText(policy.max_premium_cost_per_request),
+    hardBudgetLimitUsd: numberText(policy.hard_budget_limit_usd),
     hardBudgetEnforcement: policy.hard_budget_enforcement ?? "downgrade",
-    softBudgetUsd: policy.soft_budget_usd?.toString() ?? "",
+    softBudgetUsd: numberText(policy.soft_budget_usd),
     evidenceRetentionWindow: policy.evidence_retention_window,
     metadataMinimizationLevel: policy.metadata_minimization_level,
-    routingQualityTarget: (policy.routing_quality_target ?? DEFAULT_ROUTING_QUALITY_TARGET).toString(),
-    rateLimitRequestsPerMinute: policy.rate_limit_requests_per_minute?.toString() ?? "",
+    // A stored target outside the console's range shows as it is; saving it asks for a new one.
+    routingQualityTarget: formatTarget(policy.routing_quality_target ?? DEFAULT_ROUTING_QUALITY_TARGET),
+    rateLimitRequestsPerMinute: numberText(policy.rate_limit_requests_per_minute),
   };
-}
-
-function toPolicyPayload(state: PolicyFormState, initialPolicy: TenantPolicy): TenantPolicy {
-  const hardBudgetLimitUsd =
-    state.hardBudgetLimitUsd.trim() === "" ? null : Number(state.hardBudgetLimitUsd);
-
-  return {
-    ...initialPolicy,
-    routing_mode_default: state.routingModeDefault,
-    calibrated_routing_enabled: state.calibratedRoutingEnabled,
-    fallback_enabled: state.fallbackEnabled,
-    semantic_cache_enabled: state.semanticCacheEnabled,
-    semantic_cache_similarity_threshold: Number(state.semanticCacheSimilarityThreshold),
-    semantic_cache_max_entry_age_hours: Number(state.semanticCacheMaxEntryAgeHours),
-    allowed_premium_models: state.allowedPremiumModels,
-    max_premium_cost_per_request:
-      state.maxPremiumCostPerRequest.trim() === "" ? null : Number(state.maxPremiumCostPerRequest),
-    hard_budget_limit_usd: hardBudgetLimitUsd,
-    hard_budget_enforcement: hardBudgetLimitUsd === null ? null : state.hardBudgetEnforcement,
-    soft_budget_usd: state.softBudgetUsd.trim() === "" ? null : Number(state.softBudgetUsd),
-    evidence_retention_window: state.evidenceRetentionWindow,
-    metadata_minimization_level: state.metadataMinimizationLevel,
-    routing_quality_target: Number(state.routingQualityTarget),
-    rate_limit_requests_per_minute:
-      state.rateLimitRequestsPerMinute.trim() === "" ? null : Number(state.rateLimitRequestsPerMinute),
-  };
-}
-
-function formatUsd(value: number) {
-  return `${value < 0 ? "−" : ""}USD ${Math.abs(value).toFixed(4)}`;
 }
 
 function formatRouteScore(score: number | null | undefined) {
@@ -113,70 +132,101 @@ function formatRoutingState(
   routeReason: string | null,
 ) {
   if (routeMode === null && routeReason === "calibrated_routing_disabled") {
-    return "rollout disabled";
+    return reasonLabel(routeReason);
   }
 
+  const modeLabel = routeMode === null ? null : scoreModeLabel(routeMode);
   const markers: string[] = [];
   if (calibratedRouting === true) {
-    markers.push("calibrated");
+    markers.push(scoreModeLabel("calibrated"));
   }
   if (degradedRouting === true) {
-    markers.push("degraded");
+    markers.push(scoreModeLabel("degraded"));
   }
 
   const routeScoreLabel = formatRouteScore(routeScore);
-  const detailParts = markers.join(" / ");
-  const detail = [detailParts, routeScoreLabel === null ? null : `score ${routeScoreLabel}`]
+  // A marker that repeats the mode ("calibrado (calibrado, ...)") adds nothing.
+  const detailParts = markers.filter((marker) => marker !== modeLabel).join(" / ");
+  const detail = [detailParts, routeScoreLabel === null ? null : scoreLabel(routeScoreLabel)]
     .filter((value): value is string => Boolean(value))
     .join(", ");
 
-  if (routeMode === null) {
-    return detail.length > 0 ? `unscored (${detail})` : "unscored";
-  }
-
-  return detail.length > 0 ? `${routeMode} (${detail})` : routeMode;
+  const name = modeLabel ?? NO_SCORE_LABEL;
+  return detail.length > 0 ? `${name} (${detail})` : name;
 }
 
 function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
   const routeChanged = change.baseline_route_target !== change.simulated_route_target;
+  const tierChanged = change.baseline_tier !== change.simulated_tier;
   const statusChanged = change.baseline_terminal_status !== change.simulated_terminal_status;
-  const outcomeChanged = change.baseline_policy_outcome !== change.simulated_policy_outcome;
+  // Compared as read: two outcomes that differ only in bookkeeping are no change to show.
+  const baselineOutcome = policyOutcomeLabel(change.baseline_policy_outcome);
+  const simulatedOutcome = policyOutcomeLabel(change.simulated_policy_outcome);
+  const outcomeChanged = baselineOutcome !== simulatedOutcome;
   const costChanged = change.baseline_estimated_cost !== change.simulated_estimated_cost;
 
   const highlights: string[] = [];
   if (routeChanged) {
-    highlights.push(`ruta ${change.baseline_route_target} → ${change.simulated_route_target}`);
+    highlights.push(`ruta ${routeLabel(change.baseline_route_target)} → ${routeLabel(change.simulated_route_target)}`);
+  }
+  if (tierChanged) {
+    highlights.push(`nivel ${change.baseline_tier ?? "—"} → ${change.simulated_tier ?? "—"}`);
   }
   if (statusChanged) {
-    highlights.push(`estado ${change.baseline_terminal_status} → ${change.simulated_terminal_status}`);
-  }
-  if (outcomeChanged) {
     highlights.push(
-      `política ${(change.baseline_policy_outcome ?? "ninguna")} → ${(change.simulated_policy_outcome ?? "ninguna")}`,
+      `estado ${statusLabel(change.baseline_terminal_status)} → ${statusLabel(change.simulated_terminal_status)}`,
     );
   }
+  if (outcomeChanged) {
+    highlights.push(`política ${baselineOutcome} → ${simulatedOutcome}`);
+  }
   if (costChanged) {
-    highlights.push(`costo ${formatUsd(change.baseline_estimated_cost)} → ${formatUsd(change.simulated_estimated_cost)}`);
+    highlights.push(`costo ${formatUsd(change.baseline_estimated_cost, 4)} → ${formatUsd(change.simulated_estimated_cost, 4)}`);
   }
 
   return highlights.join(" · ");
 }
 
+/** "paridad de ruteo: A → B", or null when the draft scores the row the same way (nothing to read). */
 function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
-  return `paridad de ruteo: ${formatRoutingState(
+  const baseline = formatRoutingState(
     change.baseline_route_mode,
     change.baseline_calibrated_routing,
     change.baseline_degraded_routing,
     change.baseline_route_score,
     change.baseline_route_reason,
-  )} → ${formatRoutingState(
+  );
+  const simulated = formatRoutingState(
     change.simulated_route_mode,
     change.simulated_calibrated_routing,
     change.simulated_degraded_routing,
     change.simulated_route_score,
     change.simulated_route_reason,
-  )}`;
+  );
+  return baseline === simulated ? null : `paridad de ruteo: ${baseline} → ${simulated}`;
 }
+
+/**
+ * Rows per tier, actual → draft. A row served from the cache or denied has no tier, so the last
+ * row holds the rest and each column adds up to the evaluated rows. Null when the gateway sent no
+ * counts (an older gateway): the preview then shows none rather than made-up zeros.
+ */
+function tierCountItems(summary: PolicySimulationOutcomeCounts): ReadoutItem[] | null {
+  const { baseline_tier_counts: baseline, simulated_tier_counts: simulated } = summary;
+  if (!baseline || !simulated) {
+    return null;
+  }
+  const untiered = (counts: TierCounts) =>
+    summary.evaluated_rows - TIERS.reduce((total, tier) => total + counts[tier], 0);
+
+  return [
+    ...TIERS.map((tier) => ({ label: tier, value: `${baseline[tier]} → ${simulated[tier]}` })),
+    { label: "Caché o denegado", value: `${untiered(baseline)} → ${untiered(simulated)}` },
+  ];
+}
+
+/** The changed requests the preview lists; the headline counts all of them. */
+const CHANGED_LIST_LIMIT = 5;
 
 function getDecisionSummary(simulationResult: PolicySimulationResponse) {
   const { summary, window, changed_requests: changedRequests } = simulationResult;
@@ -212,9 +262,9 @@ function getDecisionSummary(simulationResult: PolicySimulationResponse) {
     );
   }
   if (summary.premium_cost_delta > 0) {
-    consequenceParts.push(`el gasto premium subiría ${formatUsd(summary.premium_cost_delta)}`);
+    consequenceParts.push(`el gasto premium subiría ${formatUsd(summary.premium_cost_delta, 4)}`);
   } else if (summary.premium_cost_delta < 0) {
-    consequenceParts.push(`el gasto premium bajaría ${formatUsd(Math.abs(summary.premium_cost_delta))}`);
+    consequenceParts.push(`el gasto premium bajaría ${formatUsd(Math.abs(summary.premium_cost_delta), 4)}`);
   }
 
   const consequenceLabel =
@@ -222,10 +272,18 @@ function getDecisionSummary(simulationResult: PolicySimulationResponse) {
       ? consequenceParts.join("; ")
       : `${changedCount} ${changedCount === 1 ? "pedido cambiaría" : "pedidos cambiarían"}`;
 
+  // The gateway returns at most `changed_sample_limit` changed requests. When it hit that cap,
+  // the list is a sample and the total is only known to be at least the larger count.
+  const truncated = changedCount >= window.changed_sample_limit && changedCount < summary.evaluated_rows;
+  const atLeast = Math.max(changedCount, summary.changed_routes, summary.newly_denied);
+  const title = truncated
+    ? `Este borrador cambiaría al menos ${atLeast} ${atLeast === 1 ? "pedido" : "pedidos"} de la muestra.`
+    : `Este borrador cambiaría ${changedCount} ${changedCount === 1 ? "pedido" : "pedidos"} de la muestra.`;
+
   return {
     tone: summary.newly_denied > 0 ? ("rose" as const) : ("sky" as const),
     badge: summary.newly_denied > 0 ? "Revisar antes de guardar" : "Cambia resultados",
-    title: `Este borrador cambiaría ${changedCount} ${changedCount === 1 ? "pedido" : "pedidos"} de la muestra.`,
+    title,
     body: `${consequenceLabel.charAt(0).toUpperCase()}${consequenceLabel.slice(1)}.`,
   };
 }
@@ -242,79 +300,81 @@ export function PolicyForm({
   onSave,
 }: PolicyFormProps) {
   const [formState, setFormState] = useState<PolicyFormState>(() => toFormState(initialPolicy));
-  const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<PolicyFormErrors>({});
+  const [saveError, setSaveError] = useState<unknown>(null);
+  // "Política guardada." stays until the next edit; the refetch after a save does not clear it.
+  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     setFormState(toFormState(initialPolicy));
-    setError(null);
+    setFieldErrors({});
+    setSaveError(null);
   }, [initialPolicy]);
 
-  const baseline = useMemo(() => JSON.stringify(toFormState(initialPolicy)), [initialPolicy]);
-  const dirty = JSON.stringify(formState) !== baseline;
+  const storedState = useMemo(() => toFormState(initialPolicy), [initialPolicy]);
+  const dirty = policyFormChanged(formState, storedState);
   const runtimeEnforcedFields = useMemo(
     () => new Set(options.runtime_enforced_fields),
     [options.runtime_enforced_fields],
   );
   const softSignalFields = useMemo(() => new Set(options.soft_signal_fields), [options.soft_signal_fields]);
+  const hiddenFields = useMemo(
+    () =>
+      new Set(
+        (Object.keys(FIELD_GATES) as PolicyFormField[]).filter((field) => {
+          const gate = FIELD_GATES[field];
+          return !(gate.soft ? softSignalFields : runtimeEnforcedFields).has(gate.field);
+        }),
+      ),
+    [runtimeEnforcedFields, softSignalFields],
+  );
+  const shown = (field: PolicyFormField) => !hiddenFields.has(field);
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
-  const cacheThresholdValue = Number(formState.semanticCacheSimilarityThreshold);
-  const cacheMaxAgeValue = Number(formState.semanticCacheMaxEntryAgeHours);
-  const rateLimitText = formState.rateLimitRequestsPerMinute.trim();
-  const rateLimitValid =
-    rateLimitText === "" ||
-    (/^\d+$/.test(rateLimitText) && Number(rateLimitText) >= 1 && Number(rateLimitText) <= 100000);
-  const qualityTargetText = formState.routingQualityTarget.trim();
-  const qualityTargetValue = qualityTargetText === "" ? Number.NaN : Number(qualityTargetText);
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
+  const tierCounts = simulationResult ? tierCountItems(simulationResult.summary) : null;
+  const invalidFields = (Object.keys(FIELD_LABELS) as PolicyFormField[]).filter((field) => fieldErrors[field]);
+
+  // The one check behind Guardar and Simular: the policy to send, or null with the errors shown.
+  function validate(): TenantPolicy | null {
+    setSaveError(null);
+    const { errors, payload } = validatePolicyForm(formState, hiddenFields);
+    setFieldErrors(errors);
+    return payload === null ? null : toPolicy(payload);
+  }
+
+  // The form edits some fields; the rest (the capture flags, a field it does not show) stay as stored.
+  function toPolicy(payload: Partial<TenantPolicyPayload>): TenantPolicy {
+    const policy: TenantPolicy = { ...initialPolicy, ...payload };
+    // A stored target finer than a hundredth shows rounded: it stays as stored unless the operator
+    // changed the number.
+    const targetUntouched =
+      parsePolicyNumber(formState.routingQualityTarget) === parsePolicyNumber(storedState.routingQualityTarget);
+    if (targetUntouched && initialPolicy.routing_quality_target !== undefined) {
+      policy.routing_quality_target = initialPolicy.routing_quality_target;
+    }
+    return policy;
+  }
+
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(null);
+    setSaved(false);
 
-    const nextPolicy = toPolicyPayload(formState, initialPolicy);
-    if (nextPolicy.allowed_premium_models.length === 0) {
-      setError("Elegir al menos un modelo premium.");
-      return;
-    }
-    if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
-      setError("El umbral de similitud tiene que estar entre 0 y 1.");
-      return;
-    }
-    if (!rateLimitValid) {
-      setError("El límite tiene que ser un entero entre 1 y 100000 pedidos por minuto.");
-      return;
-    }
-    if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
-      setError("La antigüedad máxima tiene que ser un entero entre 1 y 720 horas.");
-      return;
-    }
-    if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
-      setError("El objetivo de calidad tiene que estar entre 0.5 y 1.");
+    const nextPolicy = validate();
+    if (nextPolicy === null) {
       return;
     }
 
-    await onSave(nextPolicy).catch((nextError) => {
-      setError(nextError instanceof Error ? nextError.message : "No se pudo guardar la política.");
-    });
+    try {
+      await onSave(nextPolicy);
+      setSaved(true);
+    } catch (nextError) {
+      setSaveError(nextError);
+    }
   }
 
   async function handleSimulate() {
-    setError(null);
-
-    const nextPolicy = toPolicyPayload(formState, initialPolicy);
-    if (nextPolicy.allowed_premium_models.length === 0) {
-      setError("Elegir al menos un modelo premium.");
-      return;
-    }
-    if (!Number.isFinite(cacheThresholdValue) || cacheThresholdValue < 0 || cacheThresholdValue > 1) {
-      setError("El umbral de similitud tiene que estar entre 0 y 1.");
-      return;
-    }
-    if (!Number.isInteger(cacheMaxAgeValue) || cacheMaxAgeValue < 1 || cacheMaxAgeValue > 720) {
-      setError("La antigüedad máxima tiene que ser un entero entre 1 y 720 horas.");
-      return;
-    }
-    if (!Number.isFinite(qualityTargetValue) || qualityTargetValue < 0.5 || qualityTargetValue > 1) {
-      setError("El objetivo de calidad tiene que estar entre 0.5 y 1.");
+    const nextPolicy = validate();
+    if (nextPolicy === null) {
       return;
     }
 
@@ -323,54 +383,79 @@ export function PolicyForm({
     });
   }
 
+  function discardChanges() {
+    setFormState(storedState);
+    setFieldErrors({});
+    setSaveError(null);
+    setSaved(false);
+  }
 
-  const set = <K extends keyof PolicyFormState>(key: K, value: PolicyFormState[K]) =>
+  // Any edit takes the confirmation away and the edited field's error with it.
+  const set = <K extends keyof PolicyFormState>(key: K, value: PolicyFormState[K]) => {
     setFormState((current) => ({ ...current, [key]: value }));
-  const has = (field: string) => runtimeEnforcedFields.has(field);
+    setSaved(false);
+    setFieldErrors((current) => {
+      if (current[key] === undefined) {
+        return current;
+      }
+      const next = { ...current };
+      delete next[key];
+      return next;
+    });
+  };
 
   return (
     <form onSubmit={handleSubmit} aria-label={`Política de ${tenantName}`}>
       <div className="grid xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex min-w-0 flex-col gap-8 px-6 py-6">
           <FormSection title="Ruteo">
-            {has("routing_quality_target") ? (
-              <Field id="routing-quality-target" label="Objetivo de calidad" hint="0.5 a 1.0: el router elige el punto más barato que lo cumple; 1.0 manda todo a frontier.">
-                <input
-                  id="routing-quality-target"
-                  className="field-input max-w-40"
-                  inputMode="decimal"
-                  value={formState.routingQualityTarget}
-                  onChange={(event) => set("routingQualityTarget", event.target.value)}
-                />
+            {shown("routingQualityTarget") ? (
+              <Field
+                id="routing-quality-target"
+                label={FIELD_LABELS.routingQualityTarget}
+                error={fieldErrors.routingQualityTarget}
+                hint={`${formatTarget(TARGET_MIN)} a ${formatTarget(TARGET_MAX)}: el router elige el punto más barato que lo cumple; ${formatTarget(TARGET_MAX)} manda todo a frontier.`}
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    className="field-input max-w-40"
+                    inputMode="decimal"
+                    value={formState.routingQualityTarget}
+                    onChange={(event) => set("routingQualityTarget", event.target.value)}
+                  />
+                )}
               </Field>
             ) : null}
-            {has("routing_mode_default") ? (
-              <Field id="routing-mode-default" label="Modo de ruteo">
-                <select
-                  id="routing-mode-default"
-                  className="field-input max-w-60"
-                  value={formState.routingModeDefault}
-                  onChange={(event) => set("routingModeDefault", event.target.value as TenantPolicy["routing_mode_default"])}
-                >
-                  {options.routing_modes.map((routingMode) => (
-                    <option key={routingMode} value={routingMode}>
-                      {routingMode}
-                    </option>
-                  ))}
-                </select>
+            {shown("routingModeDefault") ? (
+              <Field id="routing-mode-default" label={FIELD_LABELS.routingModeDefault}>
+                {(control) => (
+                  <select
+                    {...control}
+                    className="field-input max-w-60"
+                    value={formState.routingModeDefault}
+                    onChange={(event) => set("routingModeDefault", event.target.value as TenantPolicy["routing_mode_default"])}
+                  >
+                    {options.routing_modes.map((routingMode) => (
+                      <option key={routingMode} value={routingMode}>
+                        {routingModeLabel(routingMode)}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </Field>
             ) : null}
-            {has("calibrated_routing_enabled") ? (
+            {shown("calibratedRoutingEnabled") ? (
               <Check
-                label="Ruteo calibrado (heurística v0)"
+                label={FIELD_LABELS.calibratedRoutingEnabled}
                 hint="Si se apaga, el tráfico automático va a local."
                 checked={formState.calibratedRoutingEnabled}
                 onChange={(checked) => set("calibratedRoutingEnabled", checked)}
               />
             ) : null}
-            {has("fallback_enabled") ? (
+            {shown("fallbackEnabled") ? (
               <Check
-                label="Fallback a premium si falla el local"
+                label={FIELD_LABELS.fallbackEnabled}
                 checked={formState.fallbackEnabled}
                 onChange={(checked) => set("fallbackEnabled", checked)}
               />
@@ -378,148 +463,207 @@ export function PolicyForm({
           </FormSection>
 
           <FormSection title="Límites">
-            {has("rate_limit_requests_per_minute") ? (
-              <Field id="rate-limit-rpm" label="Límite de pedidos por minuto" hint="Sobre el límite el gateway responde 429 con Retry-After.">
-                <input
-                  id="rate-limit-rpm"
-                  className="field-input max-w-40"
-                  inputMode="numeric"
-                  placeholder="Sin límite"
-                  value={formState.rateLimitRequestsPerMinute}
-                  onChange={(event) => set("rateLimitRequestsPerMinute", event.target.value)}
-                />
+            {shown("rateLimitRequestsPerMinute") ? (
+              <Field
+                id="rate-limit-rpm"
+                label={FIELD_LABELS.rateLimitRequestsPerMinute}
+                error={fieldErrors.rateLimitRequestsPerMinute}
+                hint="Sobre el límite el gateway responde 429 con Retry-After."
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    className="field-input max-w-40"
+                    inputMode="numeric"
+                    placeholder="Sin límite"
+                    value={formState.rateLimitRequestsPerMinute}
+                    onChange={(event) => set("rateLimitRequestsPerMinute", event.target.value)}
+                  />
+                )}
               </Field>
             ) : null}
-            {has("max_premium_cost_per_request") ? (
-              <Field id="max-premium-cost" label="Costo premium máximo por pedido (USD)">
-                <input
-                  id="max-premium-cost"
-                  className="field-input max-w-40"
-                  inputMode="decimal"
-                  value={formState.maxPremiumCostPerRequest}
-                  onChange={(event) => set("maxPremiumCostPerRequest", event.target.value)}
-                />
+            {shown("maxPremiumCostPerRequest") ? (
+              <Field
+                id="max-premium-cost"
+                label={FIELD_LABELS.maxPremiumCostPerRequest}
+                error={fieldErrors.maxPremiumCostPerRequest}
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    className="field-input max-w-40"
+                    inputMode="decimal"
+                    placeholder="Sin límite"
+                    value={formState.maxPremiumCostPerRequest}
+                    onChange={(event) => set("maxPremiumCostPerRequest", event.target.value)}
+                  />
+                )}
               </Field>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
-              {has("hard_budget_limit_usd") ? (
-                <Field id="hard-budget-limit-usd" label="Presupuesto duro acumulado (USD)" hint="Vacío: sin límite.">
-                  <input
-                    id="hard-budget-limit-usd"
-                    className="field-input"
-                    inputMode="decimal"
-                    value={formState.hardBudgetLimitUsd}
-                    onChange={(event) => set("hardBudgetLimitUsd", event.target.value)}
-                  />
+              {shown("hardBudgetLimitUsd") ? (
+                <Field
+                  id="hard-budget-limit-usd"
+                  label={FIELD_LABELS.hardBudgetLimitUsd}
+                  error={fieldErrors.hardBudgetLimitUsd}
+                >
+                  {(control) => (
+                    <input
+                      {...control}
+                      className="field-input"
+                      inputMode="decimal"
+                      placeholder="Sin límite"
+                      value={formState.hardBudgetLimitUsd}
+                      onChange={(event) => set("hardBudgetLimitUsd", event.target.value)}
+                    />
+                  )}
                 </Field>
               ) : null}
-              {has("hard_budget_enforcement") ? (
+              {shown("hardBudgetEnforcement") ? (
                 <Field
                   id="hard-budget-enforcement"
-                  label="Al agotarse el presupuesto"
+                  label={FIELD_LABELS.hardBudgetEnforcement}
                   hint={hardBudgetConfigured ? undefined : "Primero definir el presupuesto duro."}
                 >
-                  <select
-                    id="hard-budget-enforcement"
-                    className="field-input"
-                    value={formState.hardBudgetEnforcement}
-                    disabled={!hardBudgetConfigured}
-                    onChange={(event) =>
-                      set("hardBudgetEnforcement", event.target.value as NonNullable<TenantPolicy["hard_budget_enforcement"]>)
-                    }
-                  >
-                    <option value="downgrade">Degradar a local el tráfico automático</option>
-                    <option value="deny">Denegar el tráfico premium</option>
-                  </select>
+                  {(control) => (
+                    <select
+                      {...control}
+                      className="field-input"
+                      value={formState.hardBudgetEnforcement}
+                      disabled={!hardBudgetConfigured}
+                      onChange={(event) =>
+                        set("hardBudgetEnforcement", event.target.value as NonNullable<TenantPolicy["hard_budget_enforcement"]>)
+                      }
+                    >
+                      <option value="downgrade">Degradar a local el tráfico automático</option>
+                      <option value="deny">Denegar el tráfico premium</option>
+                    </select>
+                  )}
                 </Field>
               ) : null}
             </div>
-            {softSignalFields.has("soft_budget_usd") ? (
-              <Field id="soft-budget-usd" label="Presupuesto blando (USD)" hint="Solo aviso: no bloquea ni degrada.">
-                <input
-                  id="soft-budget-usd"
-                  className="field-input max-w-40"
-                  inputMode="decimal"
-                  value={formState.softBudgetUsd}
-                  onChange={(event) => set("softBudgetUsd", event.target.value)}
-                />
+            {shown("softBudgetUsd") ? (
+              <Field
+                id="soft-budget-usd"
+                label={FIELD_LABELS.softBudgetUsd}
+                error={fieldErrors.softBudgetUsd}
+                hint="Solo aviso: no bloquea ni degrada."
+              >
+                {(control) => (
+                  <input
+                    {...control}
+                    className="field-input max-w-40"
+                    inputMode="decimal"
+                    placeholder="Sin límite"
+                    value={formState.softBudgetUsd}
+                    onChange={(event) => set("softBudgetUsd", event.target.value)}
+                  />
+                )}
               </Field>
             ) : null}
           </FormSection>
 
-          {has("semantic_cache_enabled") ? (
+          {shown("semanticCacheEnabled") ? (
             <FormSection title="Caché semántico">
               <Check
-                label="Caché semántico activado"
+                label={FIELD_LABELS.semanticCacheEnabled}
                 checked={formState.semanticCacheEnabled}
                 onChange={(checked) => set("semanticCacheEnabled", checked)}
               />
               <div className="grid gap-4 sm:grid-cols-2">
-                <Field id="semantic-cache-similarity-threshold" label="Umbral de similitud" hint="0 a 1, por cada búsqueda.">
-                  <input
-                    id="semantic-cache-similarity-threshold"
-                    className="field-input"
-                    inputMode="decimal"
-                    value={formState.semanticCacheSimilarityThreshold}
-                    onChange={(event) => set("semanticCacheSimilarityThreshold", event.target.value)}
-                  />
+                <Field
+                  id="semantic-cache-similarity-threshold"
+                  label={FIELD_LABELS.semanticCacheSimilarityThreshold}
+                  error={fieldErrors.semanticCacheSimilarityThreshold}
+                  hint="0 a 1, por cada búsqueda."
+                >
+                  {(control) => (
+                    <input
+                      {...control}
+                      className="field-input"
+                      inputMode="decimal"
+                      value={formState.semanticCacheSimilarityThreshold}
+                      onChange={(event) => set("semanticCacheSimilarityThreshold", event.target.value)}
+                    />
+                  )}
                 </Field>
-                <Field id="semantic-cache-max-entry-age-hours" label="Antigüedad máxima (h)" hint="Entre 1 y 720.">
-                  <input
-                    id="semantic-cache-max-entry-age-hours"
-                    className="field-input"
-                    inputMode="numeric"
-                    value={formState.semanticCacheMaxEntryAgeHours}
-                    onChange={(event) => set("semanticCacheMaxEntryAgeHours", event.target.value)}
-                  />
+                <Field
+                  id="semantic-cache-max-entry-age-hours"
+                  label={FIELD_LABELS.semanticCacheMaxEntryAgeHours}
+                  error={fieldErrors.semanticCacheMaxEntryAgeHours}
+                  hint="Entre 1 y 720."
+                >
+                  {(control) => (
+                    <input
+                      {...control}
+                      className="field-input"
+                      inputMode="numeric"
+                      value={formState.semanticCacheMaxEntryAgeHours}
+                      onChange={(event) => set("semanticCacheMaxEntryAgeHours", event.target.value)}
+                    />
+                  )}
                 </Field>
               </div>
             </FormSection>
           ) : null}
 
-          {has("allowed_premium_models") ? (
-            <FormSection title="Modelos premium permitidos">
+          {shown("allowedPremiumModels") ? (
+            <FormSection title={FIELD_LABELS.allowedPremiumModels}>
               <ModelAllowlistInput
                 knownModels={options.known_premium_models}
                 value={formState.allowedPremiumModels}
                 onChange={(nextValue) => set("allowedPremiumModels", nextValue)}
+                errorId={fieldErrors.allowedPremiumModels ? "allowed-premium-models-error" : undefined}
               />
+              {fieldErrors.allowedPremiumModels ? (
+                <p id="allowed-premium-models-error" className="m-0 text-[13px] font-medium text-danger">
+                  {fieldErrors.allowedPremiumModels}
+                </p>
+              ) : null}
             </FormSection>
           ) : null}
 
-          {has("evidence_retention_window") || has("metadata_minimization_level") ? (
+          {shown("evidenceRetentionWindow") || shown("metadataMinimizationLevel") ? (
             <FormSection title="Evidencia">
               <div className="grid gap-4 sm:grid-cols-2">
-                {has("evidence_retention_window") ? (
-                  <Field id="evidence-retention-window" label="Retención de evidencia">
-                    <select
-                      id="evidence-retention-window"
-                      className="field-input"
-                      value={formState.evidenceRetentionWindow}
-                      onChange={(event) =>
-                        set("evidenceRetentionWindow", event.target.value as TenantPolicy["evidence_retention_window"])
-                      }
-                    >
-                      <option value="24h">24 h</option>
-                      <option value="7d">7 días</option>
-                      <option value="30d">30 días</option>
-                      <option value="90d">90 días</option>
-                    </select>
+                {shown("evidenceRetentionWindow") ? (
+                  <Field id="evidence-retention-window" label={FIELD_LABELS.evidenceRetentionWindow}>
+                    {(control) => (
+                      <select
+                        {...control}
+                        className="field-input"
+                        value={formState.evidenceRetentionWindow}
+                        onChange={(event) =>
+                          set("evidenceRetentionWindow", event.target.value as TenantPolicy["evidence_retention_window"])
+                        }
+                      >
+                        <option value="24h">24 h</option>
+                        <option value="7d">7 días</option>
+                        <option value="30d">30 días</option>
+                        <option value="90d">90 días</option>
+                      </select>
+                    )}
                   </Field>
                 ) : null}
-                {has("metadata_minimization_level") ? (
-                  <Field id="metadata-minimization-level" label="Minimización de metadatos" hint="Estricta no guarda las señales de ruteo.">
-                    <select
-                      id="metadata-minimization-level"
-                      className="field-input"
-                      value={formState.metadataMinimizationLevel}
-                      onChange={(event) =>
-                        set("metadataMinimizationLevel", event.target.value as TenantPolicy["metadata_minimization_level"])
-                      }
-                    >
-                      <option value="standard">Estándar</option>
-                      <option value="strict">Estricta</option>
-                    </select>
+                {shown("metadataMinimizationLevel") ? (
+                  <Field
+                    id="metadata-minimization-level"
+                    label={FIELD_LABELS.metadataMinimizationLevel}
+                    hint="Estricta no guarda las señales de ruteo."
+                  >
+                    {(control) => (
+                      <select
+                        {...control}
+                        className="field-input"
+                        value={formState.metadataMinimizationLevel}
+                        onChange={(event) =>
+                          set("metadataMinimizationLevel", event.target.value as TenantPolicy["metadata_minimization_level"])
+                        }
+                      >
+                        <option value="standard">Estándar</option>
+                        <option value="strict">Estricta</option>
+                      </select>
+                    )}
                   </Field>
                 ) : null}
               </div>
@@ -553,24 +697,29 @@ export function PolicyForm({
                 type="button"
                 variant="ghost"
                 disabled={!dirty || isSaving || isSimulating}
-                onClick={() => setFormState(toFormState(initialPolicy))}
+                onClick={discardChanges}
               >
                 <RotateCcw aria-hidden className="size-4" />
                 Descartar cambios
               </Button>
             </div>
 
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
+            {saved ? (
+              <Alert variant="success" role="status">
+                <AlertDescription>Política guardada.</AlertDescription>
               </Alert>
             ) : null}
+            {invalidFields.length > 0 ? (
+              <ErrorAlert
+                error={`Revisar los campos: ${invalidFields.map((field) => FIELD_LABELS[field]).join(", ")}.`}
+                fallback="Revisar los campos."
+              />
+            ) : null}
+            {saveError ? <ErrorAlert error={saveError} fallback="No se pudo guardar la política." /> : null}
 
             {isSimulating ? <LoadingRows rows={3} label="Simulando el borrador" /> : null}
             {simulationError ? (
-              <Alert variant="destructive">
-                <AlertDescription>La simulación falló: {simulationError}</AlertDescription>
-              </Alert>
+              <ErrorAlert error={`La simulación falló: ${simulationError}`} fallback="La simulación falló." />
             ) : null}
             {!isSimulating && !simulationError && !simulationResult ? (
               <p className="m-0 border border-dashed border-line px-4 py-4 text-sm text-ink-3">
@@ -590,9 +739,22 @@ export function PolicyForm({
                     { label: "Pedidos evaluados", value: String(simulationResult.summary.evaluated_rows) },
                     { label: "Rutas que cambian", value: String(simulationResult.summary.changed_routes) },
                     { label: "Nuevas denegaciones", value: String(simulationResult.summary.newly_denied) },
-                    { label: "Δ costo premium", value: formatUsd(simulationResult.summary.premium_cost_delta) },
+                    { label: "Δ costo premium", value: formatUsd(simulationResult.summary.premium_cost_delta, 4) },
                   ]}
                 />
+                {simulationResult.summary.evaluated_rows > 0 ? (
+                  tierCounts ? (
+                    <section aria-labelledby="tier-counts-heading" className="flex flex-col gap-2">
+                      <h3 id="tier-counts-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
+                        Pedidos por nivel: actual → borrador
+                      </h3>
+                      <Readout items={tierCounts} />
+                      <DecisionSources summary={simulationResult.summary} />
+                    </section>
+                  ) : (
+                    <DecisionSources summary={simulationResult.summary} />
+                  )
+                ) : null}
                 <p className="m-0 text-[13px] text-ink-3">
                   {`Comparado contra ${simulationResult.window.returned_rows} pedidos recientes. No se guardó nada.`}
                 </p>
@@ -607,24 +769,29 @@ export function PolicyForm({
                 ) : (
                   <section aria-labelledby="changed-sample-heading" className="flex flex-col gap-2">
                     <h3 id="changed-sample-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
-                      Pedidos que cambian
+                      {simulationResult.changed_requests.length > CHANGED_LIST_LIMIT
+                        ? `Pedidos que cambian · ${CHANGED_LIST_LIMIT} de ${simulationResult.changed_requests.length}`
+                        : "Pedidos que cambian"}
                     </h3>
                     <ul className="m-0 flex list-none flex-col divide-y divide-line border-y border-line p-0">
-                      {simulationResult.changed_requests.map((change) => (
-                        <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
-                          <div className="flex flex-wrap items-center gap-2 text-sm">
-                            <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>
-                            <span className="font-mono text-[12px] text-ink-3">{change.requested_model}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-sm font-medium text-ink">
-                            <span>{change.baseline_route_target}</span>
-                            <ArrowRight aria-hidden className="size-3.5 text-ink-3" />
-                            <span>{change.simulated_route_target}</span>
-                          </div>
-                          <p className="m-0 text-[13px] text-ink-2">{renderChangedRequestSummary(change)}</p>
-                          <p className="m-0 text-[12px] text-ink-3">{renderChangedRequestParity(change)}</p>
-                        </li>
-                      ))}
+                      {simulationResult.changed_requests.slice(0, CHANGED_LIST_LIMIT).map((change) => {
+                        const parity = renderChangedRequestParity(change);
+                        return (
+                          <li key={change.request_id} className="flex flex-col gap-1 py-2.5">
+                            <div className="flex flex-wrap items-center gap-2 text-sm">
+                              <span className="font-mono text-[12px] text-ink-2">{change.request_id}</span>
+                              <span className="font-mono text-[12px] text-ink-3">{change.requested_model}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm font-medium text-ink">
+                              <span>{routeLabel(change.baseline_route_target)}</span>
+                              <ArrowRight aria-hidden className="size-3.5 text-ink-3" />
+                              <span>{routeLabel(change.simulated_route_target)}</span>
+                            </div>
+                            <p className="m-0 text-[13px] text-ink-2">{renderChangedRequestSummary(change)}</p>
+                            {parity ? <p className="m-0 text-[12px] text-ink-3">{parity}</p> : null}
+                          </li>
+                        );
+                      })}
                     </ul>
                   </section>
                 )}
@@ -632,8 +799,10 @@ export function PolicyForm({
                   <div className="text-[13px] text-ink-3">
                     <div className="font-semibold text-ink-2">Notas de la simulación</div>
                     <ul className="mt-1 list-disc pl-5">
-                      {simulationResult.approximation_notes.map((note) => (
-                        <li key={note}>{note}</li>
+                      {simulationResult.approximation_notes.map((note, index) => (
+                        <li key={simulationResult.approximation_note_codes?.[index] ?? note}>
+                          {approximationNoteLabel(simulationResult.approximation_note_codes?.[index], note)}
+                        </li>
                       ))}
                     </ul>
                   </div>
@@ -647,6 +816,23 @@ export function PolicyForm({
   );
 }
 
+/**
+ * Which router re-decided the rows, and how many the cache keeps: "37 con el router aprendido · …".
+ * An older gateway may not report the router counts: then nothing is said, never "undefined".
+ */
+function DecisionSources({ summary }: { summary: PolicySimulationOutcomeCounts }) {
+  const { learned_router_rows: learnedRows, heuristic_rows: heuristicRows } = summary;
+  if (learnedRows === undefined || heuristicRows === undefined) {
+    return null;
+  }
+  return (
+    <p className="m-0 text-[13px] text-ink-3">
+      {`${learnedRows} con el router aprendido · ${heuristicRows} con la heurística`}
+      {summary.cache_rows ? ` · ${summary.cache_rows} siguen en caché` : ""}
+    </p>
+  );
+}
+
 function FormSection({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="flex flex-col gap-4">
@@ -656,14 +842,53 @@ function FormSection({ title, children }: { title: string; children: ReactNode }
   );
 }
 
-function Field({ id, label, hint, children }: { id: string; label: string; hint?: string; children: ReactNode }) {
+type FieldControlProps = {
+  id: string;
+  "aria-describedby"?: string;
+  "aria-invalid"?: true;
+};
+
+/**
+ * A labelled control with its hint and its error linked to it (`aria-describedby`), so a screen
+ * reader says them with the field. The control comes from the render function with those props.
+ */
+function Field({
+  id,
+  label,
+  hint,
+  error,
+  children,
+}: {
+  id: string;
+  label: string;
+  hint?: string;
+  error?: string;
+  children: (control: FieldControlProps) => ReactNode;
+}) {
+  const errorId = `${id}-error`;
+  const hintId = `${id}-hint`;
+  const describedBy = [error ? errorId : null, hint ? hintId : null].filter(Boolean).join(" ");
+
   return (
     <div>
       <label className="field-label" htmlFor={id}>
         {label}
       </label>
-      {children}
-      {hint ? <p className="mt-1.5 text-[13px] text-ink-3">{hint}</p> : null}
+      {children({
+        id,
+        "aria-describedby": describedBy || undefined,
+        "aria-invalid": error ? true : undefined,
+      })}
+      {error ? (
+        <p id={errorId} className="mt-1.5 text-[13px] font-medium text-danger">
+          {error}
+        </p>
+      ) : null}
+      {hint ? (
+        <p id={hintId} className="mt-1.5 text-[13px] text-ink-3">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -679,13 +904,25 @@ function Check({
   checked: boolean;
   onChange: (checked: boolean) => void;
 }) {
+  const hintId = useId();
+
   return (
     <div>
       <label className="flex items-center gap-2.5 text-[15px] font-medium text-ink">
-        <input type="checkbox" className="size-4 accent-ink" checked={checked} onChange={(event) => onChange(event.target.checked)} />
+        <input
+          type="checkbox"
+          className="size-4 accent-ink"
+          checked={checked}
+          aria-describedby={hint ? hintId : undefined}
+          onChange={(event) => onChange(event.target.checked)}
+        />
         {label}
       </label>
-      {hint ? <p className="mt-1 ml-[26px] text-[13px] text-ink-3">{hint}</p> : null}
+      {hint ? (
+        <p id={hintId} className="mt-1 ml-[26px] text-[13px] text-ink-3">
+          {hint}
+        </p>
+      ) : null}
     </div>
   );
 }

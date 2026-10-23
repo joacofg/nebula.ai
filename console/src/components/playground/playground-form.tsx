@@ -27,7 +27,8 @@ type PlaygroundFormProps = {
   onSelectedTenantIdChange: (tenantId: string) => void;
   onModelChange: (model: string) => void;
   onPromptChange: (prompt: string) => void;
-  onSubmit: () => Promise<void>;
+  /** Sends the prompt. It reports its own failures: the form never awaits it, so it must not reject. */
+  onSubmit: () => void;
 };
 
 export function PlaygroundForm({
@@ -48,12 +49,12 @@ export function PlaygroundForm({
   return (
     <form
       className="flex flex-col gap-4"
-      onSubmit={async (event) => {
+      onSubmit={(event) => {
         event.preventDefault();
         if (submitDisabled) {
           return;
         }
-        await onSubmit();
+        onSubmit();
       }}
     >
       {sessionMissing ? (

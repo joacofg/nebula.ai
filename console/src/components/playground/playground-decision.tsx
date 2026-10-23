@@ -1,5 +1,6 @@
-import { DecisionPath, type DecisionStep } from "@/components/system/decision-path";
+import { DecisionPath, formatProb, type DecisionStep } from "@/components/system/decision-path";
 import { Figure } from "@/components/system/figure";
+import { complexityLabel, routerLabel } from "@/components/system/labels";
 import { TierBadge } from "@/components/system/tier-badge";
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
@@ -7,8 +8,6 @@ type PlaygroundDecisionProps = {
   entry: UsageLedgerRecord;
   /** `X-Nebula-Route-Tier` from the live response; empty when the gateway sent none. */
   routeTier: string;
-  /** Figure number for the decision path caption on the page that shows it. */
-  figureNumber?: number;
   /** Narrow column (the ledger detail): draw the path in its compact layout. */
   compact?: boolean;
 };
@@ -22,7 +21,6 @@ type Explanation =
       tier: string;
       computed: "local" | "economy" | "frontier";
       version: string;
-      steps: string[];
       path: DecisionStep[];
       context: string;
       note: string | null;
@@ -38,27 +36,12 @@ function asNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
-/** Up to four decimals, never fewer than two: 0.9 → "0.90", 0.8312 → "0.8312". */
-function formatProb(value: number) {
-  const fixed = value.toFixed(4).replace(/0+$/, "");
-  const [whole, decimals = ""] = fixed.split(".");
-  return `${whole}.${decimals.padEnd(2, "0")}`;
-}
-
-function formatMaybe(value: number | null) {
-  return value === null ? "—" : formatProb(value);
-}
-
-function formatThreshold(value: number | null) {
-  return value === null ? "∞" : formatProb(value);
-}
-
 function heuristicDetail(signals: Signals | null) {
   const tokens = asNumber(signals?.token_count);
   const complexity = typeof signals?.complexity_tier === "string" ? signals.complexity_tier : null;
   const parts = [
     tokens !== null ? `${tokens} tokens` : null,
-    complexity ? `complejidad ${complexity}` : null,
+    complexity ? `complejidad ${complexityLabel(complexity)}` : null,
     signals?.keyword_match === true ? "con palabra clave" : null,
   ].filter(Boolean);
   return parts.length ? ` (${parts.join(", ")})` : "";
@@ -93,28 +76,9 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
   const tauLocal = asNumber(point.tau_local);
   const tauEconomy = asNumber(point.tau_economy);
   const allFrontier = tauLocal === null && tauEconomy === null;
-  const targetText =
-    target === null ? "" : ` (objetivo ${formatProb(target)}${allFrontier ? ", todo frontier" : ""})`;
 
   const clearsLocal = tauLocal !== null && pLocal !== null && pLocal >= tauLocal;
   const clearsEconomy = tauEconomy !== null && pEconomy !== null && pEconomy >= tauEconomy;
-  const steps: string[] = [];
-  if (clearsLocal) {
-    steps.push(`p_local ${formatMaybe(pLocal)} ≥ τ_local ${formatThreshold(tauLocal)} → local${targetText}`);
-  } else {
-    steps.push(
-      pLocal === null
-        ? `p_local — (no registrado) → no se puede comparar con τ_local ${formatThreshold(tauLocal)}`
-        : `p_local ${formatMaybe(pLocal)} < τ_local ${formatThreshold(tauLocal)} → no alcanza el local`,
-    );
-    steps.push(
-      pEconomy === null
-        ? `p_economy — (no registrado) → no se puede comparar con τ_economy ${formatThreshold(tauEconomy)}`
-        : clearsEconomy
-          ? `p_economy ${formatMaybe(pEconomy)} ≥ τ_economy ${formatThreshold(tauEconomy)} → economy${targetText}`
-          : `p_economy ${formatMaybe(pEconomy)} < τ_economy ${formatThreshold(tauEconomy)} → frontier${targetText}`,
-    );
-  }
 
   const computed = clearsLocal ? "local" : clearsEconomy ? "economy" : "frontier";
   const tier = typeof signals.tier === "string" ? signals.tier : routeTier || computed;
@@ -136,10 +100,10 @@ export function explainDecision(entry: UsageLedgerRecord, routeTier: string): Ex
     .filter(Boolean)
     .join(" · ");
 
-  return { kind: "learned", tier, computed, version, steps, path, context, note, fallback };
+  return { kind: "learned", tier, computed, version, path, context, note, fallback };
 }
 
-export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact = false }: PlaygroundDecisionProps) {
+export function PlaygroundDecision({ entry, routeTier, compact = false }: PlaygroundDecisionProps) {
   const explanation = explainDecision(entry, routeTier);
 
   return (
@@ -159,7 +123,7 @@ export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact
         </p>
       ) : explanation.kind === "learned" ? (
         <>
-          <Figure number={figureNumber} caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
+          <Figure caption={`Cascada de decisión del router para este pedido. ${explanation.context}.`}>
             <DecisionPath steps={explanation.path} chosen={explanation.computed} animate compact={compact} />
           </Figure>
           {explanation.note ? <p className="m-0 text-sm text-warn">{explanation.note}</p> : null}
@@ -172,12 +136,14 @@ export function PlaygroundDecision({ entry, routeTier, figureNumber = 1, compact
           {explanation.status === "embedding_dimension_mismatch"
             ? "El embedding del prompt no tiene la dimensión que espera el router aprendido"
             : "El router aprendido no pudo calcular el embedding del prompt"}
-          ; decidió la heurística token_complexity{explanation.detail}.
+          . Decidió: {routerLabel("token_complexity")}
+          {explanation.detail}.
           {explanation.fallback ? " Después falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : explanation.kind === "heuristic" ? (
         <p className="m-0 text-sm text-ink-2">
-          Ruteo heurístico (token_complexity){explanation.detail}: el router aprendido no estuvo activo.
+          {routerLabel("token_complexity")}
+          {explanation.detail}: el router aprendido no estuvo activo.
           {explanation.fallback ? " Falló el modelo local y se sirvió con premium (fallback)." : ""}
         </p>
       ) : (

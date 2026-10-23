@@ -1,10 +1,26 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
-import { formatTimestamp, titleCaseToken } from "@/components/observability/format";
+import { formatTimestamp } from "@/components/observability/format";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
+import {
+  complexityLabel,
+  denialReasonLabel,
+  enforcementLabel,
+  governanceSourceLabel,
+  messageTypeLabel,
+  minimizationLabel,
+  NO_SCORE_LABEL,
+  policyOutcomeLabel,
+  reasonLabel,
+  retentionWindowLabel,
+  scoreLabel,
+  scoreModeLabel,
+  suppressedFieldLabel,
+} from "@/components/system/labels";
 import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
+import { formatUsdText } from "@/lib/format";
 
 type RouteSignals = Record<string, unknown>;
 
@@ -14,8 +30,10 @@ type LedgerRequestDetailProps = {
 
 type Section = { title: string; summary: string | null; items: ReadoutItem[] };
 
-function orDash(value: string | null | undefined) {
-  return value && value.length > 0 ? value : "—";
+/** The reason of a denial in Spanish; the gateway's own sentence stays as the title when it was translated. */
+function denialReason(text: string): ReadoutItem["value"] {
+  const label = denialReasonLabel(text);
+  return label === text ? label : <span title={text}>{label}</span>;
 }
 
 function yesNo(value: boolean) {
@@ -34,6 +52,27 @@ function formatScore(value: unknown) {
   return numericValue.toFixed(2);
 }
 
+// The two sentences of the policy that are about spend; every other denial is about the request itself.
+const HARD_BUDGET_DENIAL = "Tenant hard budget limit reached";
+const PER_REQUEST_CAP_DENIAL = "Request exceeds the tenant premium spend guardrail.";
+
+function isBudgetDenial(text: string) {
+  return text.startsWith(HARD_BUDGET_DENIAL) || text === PER_REQUEST_CAP_DENIAL;
+}
+
+/** The `denied=` sentence of a policy outcome; null when it has none. */
+function deniedPart(policyOutcome: string) {
+  return policyOutcome.match(/(?:^|;)denied=([^;]+)/)?.[1] ?? null;
+}
+
+/** The denial on its own line, for the ones that are not about the budget (those read under Presupuesto). */
+function otherDenialItems(policyOutcome: string | null | undefined): ReadoutItem[] {
+  const denied = policyOutcome ? deniedPart(policyOutcome) : null;
+  return denied !== null && !isBudgetDenial(denied)
+    ? [{ label: "Motivo de la denegación", value: denialReason(denied) }]
+    : [];
+}
+
 function budgetSection(policyOutcome: string | null | undefined): Section | null {
   if (!policyOutcome) {
     return null;
@@ -45,28 +84,30 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
   if (hard) {
     const [, limitUsd, spentUsd, enforcement] = hard;
     summary = "Presupuesto duro alcanzado";
-    items.push({ label: "Gastado al decidir", value: `USD ${spentUsd}` });
-    items.push({ label: "Límite duro", value: `USD ${limitUsd}` });
-    items.push({ label: "Aplicación", value: titleCaseToken(enforcement) });
+    items.push({ label: "Gastado al decidir", value: formatUsdText(spentUsd) });
+    items.push({ label: "Límite duro", value: formatUsdText(limitUsd) });
+    items.push({ label: "Aplicación", value: enforcementLabel(enforcement) });
   }
   if (policyOutcome.includes("budget_action=downgraded_to_local")) {
     summary = "Premium degradado a local";
     items.push({ label: "Acción", value: "Degradado a local" });
   }
-  const denied = policyOutcome.match(/(?:^|;)denied=([^;]+)/);
-  if (denied) {
+  const denied = deniedPart(policyOutcome);
+  if (denied !== null) {
+    if (isBudgetDenial(denied)) {
+      summary = "Pedido premium denegado por presupuesto";
+      items.push({ label: "Motivo de la denegación", value: denialReason(denied) });
+    }
+  } else if (policyOutcome.startsWith(`${HARD_BUDGET_DENIAL}; premium routing is blocked`)) {
     summary = "Pedido premium denegado por presupuesto";
-    items.push({ label: "Motivo de la denegación", value: denied[1] });
-  } else if (policyOutcome.startsWith("Tenant hard budget limit reached; premium routing is blocked")) {
-    summary = "Pedido premium denegado por presupuesto";
-    items.push({ label: "Motivo de la denegación", value: policyOutcome });
+    items.push({ label: "Motivo de la denegación", value: denialReason(policyOutcome) });
     const spent = policyOutcome.match(/spent_usd=([^,)]+)/);
     const limit = policyOutcome.match(/limit_usd=([^)]+)/);
     if (spent) {
-      items.push({ label: "Gastado al decidir", value: `USD ${spent[1]}` });
+      items.push({ label: "Gastado al decidir", value: formatUsdText(spent[1]) });
     }
     if (limit) {
-      items.push({ label: "Límite duro", value: `USD ${limit[1]}` });
+      items.push({ label: "Límite duro", value: formatUsdText(limit[1]) });
     }
   }
   if (policyOutcome.includes("soft_budget=exceeded")) {
@@ -78,17 +119,18 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
 
 function routingState(signals: RouteSignals, routeReason: string | null, score: string | null) {
   const mode = typeof signals.route_mode === "string" ? signals.route_mode : null;
+  // The words are the policy parity's: both pages say the same thing about the same row.
   if (mode === null && routeReason === "calibrated_routing_disabled") {
-    return "rollout desactivado";
+    return reasonLabel(routeReason);
   }
-  const withScore = (label: string) => (score === null ? label : `${label} (score ${score})`);
+  const withScore = (label: string) => (score === null ? label : `${label} (${scoreLabel(score)})`);
   if (signals.degraded_routing === true || mode === "degraded") {
-    return withScore("degradado");
+    return withScore(scoreModeLabel("degraded"));
   }
   if (signals.calibrated_routing === true || mode === "calibrated") {
-    return withScore("calibrado");
+    return withScore(scoreModeLabel("calibrated"));
   }
-  return mode !== null ? withScore(mode) : withScore("sin score");
+  return withScore(mode !== null ? scoreModeLabel(mode) : NO_SCORE_LABEL);
 }
 
 /** The v0 heuristic's score breakdown; absent for the learned router, which the decision path explains. */
@@ -103,14 +145,14 @@ function heuristicSection(signals: RouteSignals | null, routeReason: string | nu
   const score = (components ? formatScore(components.total_score) : null) ?? formatScore(signals.route_score);
   const items: ReadoutItem[] = [{ label: "Estado del ruteo", value: routingState(signals, routeReason, score) }];
   if (typeof signals.route_mode === "string") {
-    items.push({ label: "Modo", value: signals.route_mode });
+    items.push({ label: "Modo", value: scoreModeLabel(signals.route_mode) });
   }
   if (score !== null) {
-    items.push({ label: "Score", value: score });
+    items.push({ label: "Puntaje", value: score });
   }
   if (components) {
     const parts: Array<[string, unknown]> = [
-      ["Score por tokens", components.token_score],
+      ["Puntaje por tokens", components.token_score],
       ["Bono por palabra clave", components.keyword_bonus],
       ["Bono de política", components.policy_bonus],
     ];
@@ -133,7 +175,7 @@ function signalsSection(signals: RouteSignals | null): Section | null {
     items.push({ label: "Tokens contados", value: String(signals.token_count) });
   }
   if (signals.complexity_tier !== undefined) {
-    items.push({ label: "Complejidad", value: String(signals.complexity_tier) });
+    items.push({ label: "Complejidad", value: complexityLabel(String(signals.complexity_tier)) });
   }
   if (signals.keyword_match !== undefined) {
     items.push({ label: "Palabra clave", value: yesNo(Boolean(signals.keyword_match)) });
@@ -175,7 +217,7 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
       </div>
 
       {signals || entry.route_reason === "cache_hit" ? (
-        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} figureNumber={1} compact />
+        <PlaygroundDecision entry={entry} routeTier={typeof signals?.tier === "string" ? signals.tier : ""} compact />
       ) : null}
 
       <Readout items={ledgerReadout(entry)} />
@@ -187,14 +229,15 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
             items={[
               { label: "Request ID", value: <span className="font-mono text-[12px] font-normal">{entry.request_id}</span> },
               { label: "Tenant", value: <span className="font-mono text-[13px]">{entry.tenant_id}</span> },
-              { label: "Tipo de mensaje", value: entry.message_type },
+              { label: "Tipo de mensaje", value: messageTypeLabel(entry.message_type) },
               { label: "Modelo pedido", value: <span className="font-mono text-[13px]">{entry.requested_model}</span> },
-              { label: "Política", value: <span className="font-mono text-[12px] font-normal">{orDash(entry.policy_outcome)}</span> },
-              { label: "Retención", value: entry.evidence_retention_window },
+              { label: "Política", value: <span title={entry.policy_outcome ?? ""}>{policyOutcomeLabel(entry.policy_outcome)}</span> },
+              ...otherDenialItems(entry.policy_outcome),
+              { label: "Retención", value: retentionWindowLabel(entry.evidence_retention_window) },
               { label: "Vence", value: entry.evidence_expires_at ? formatTimestamp(entry.evidence_expires_at) : "—" },
-              { label: "Minimización", value: entry.metadata_minimization_level },
-              { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(titleCaseToken).join(", ") : "ninguno" },
-              { label: "Fuente de gobierno", value: entry.governance_source },
+              { label: "Minimización", value: minimizationLabel(entry.metadata_minimization_level) },
+              { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(suppressedFieldLabel).join(", ") : "ninguno" },
+              { label: "Fuente de gobierno", value: governanceSourceLabel(entry.governance_source) },
             ]}
           />
           {sections.map((section) => (

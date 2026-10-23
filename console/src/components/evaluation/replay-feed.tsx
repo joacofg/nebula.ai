@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from "react";
 
 import { Check, Pause, Play, RotateCcw, SkipForward, X } from "lucide-react";
 
-import { formatQuality, formatUsd1000 } from "@/components/evaluation/format";
+import { formatQuality } from "@/components/evaluation/format";
 import { Readout } from "@/components/system/readout";
 import { TierBadge } from "@/components/system/tier-badge";
+import { formatUsd } from "@/lib/format";
 import { routeRow, tierOutcome, type ReplayOperatingPoint, type ReplayRow, type Tier } from "@/lib/router-replay";
 
 const SPEEDS = [1, 10, 100] as const;
 type Speed = (typeof SPEEDS)[number];
+// 10 prompts per second replays the 1250-prompt corpus in about two minutes; at 1× it takes 21.
+const DEFAULT_SPEED: Speed = 10;
 
 // Ticks every 100 ms; `speed` prompts per second, counted in integer tenths so
 // ten ticks at 1× are exactly one prompt.
@@ -69,7 +72,7 @@ function advance(
 export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedProps) {
   const [state, setState] = useState<FeedState>(EMPTY);
   const [playing, setPlaying] = useState(initialPlaying);
-  const [speed, setSpeed] = useState<Speed>(1);
+  const [speed, setSpeed] = useState<Speed>(DEFAULT_SPEED);
   const [started, setStarted] = useState(initialPlaying);
   // The live point, read at each tick: moving the slider re-routes from the
   // current prompt on, and decisions already made keep their tier.
@@ -96,8 +99,9 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
   }, [playing, finished, speed, rows, order]);
 
   const processed = state.position;
-  const avgCost = processed > 0 ? state.cost / processed : 0;
-  const quality = processed > 0 ? state.ok / processed : 0;
+  // Averages of nothing are not zero: before the first prompt there is no cost or quality to show.
+  const avgCost = processed > 0 ? state.cost / processed : null;
+  const quality = processed > 0 ? state.ok / processed : null;
 
   return (
     <div className="space-y-4">
@@ -164,8 +168,16 @@ export function ReplayFeed({ rows, order, point, initialPlaying }: ReplayFeedPro
       <Readout
         className="max-w-xl"
         items={[
-          { label: "Costo acumulado", value: `${formatUsd1000(avgCost)} / 1000`, detail: "promedio por pedido" },
-          { label: "Calidad acumulada", value: formatQuality(quality), detail: "respuestas aceptadas por los jueces" },
+          {
+            label: "Costo por 1000 pedidos",
+            value: avgCost === null ? "—" : formatUsd(avgCost * 1000),
+            detail: "promedio hasta ahora",
+          },
+          {
+            label: "Calidad acumulada",
+            value: quality === null ? "—" : formatQuality(quality),
+            detail: "respuestas aceptadas por el ensamble de jueces",
+          },
         ]}
       />
 

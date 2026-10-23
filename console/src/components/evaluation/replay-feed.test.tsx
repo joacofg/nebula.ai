@@ -32,6 +32,29 @@ describe("ReplayFeed", () => {
     expect(screen.getByRole("group", { name: "Calidad acumulada" })).toHaveTextContent("1.000");
   });
 
+  it("shows no cost or quality before the first prompt, not a zero that contradicts the chart", () => {
+    render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying={false} />);
+
+    const cost = screen.getByRole("group", { name: "Costo por 1000 pedidos" });
+    expect(cost).toHaveTextContent("—");
+    expect(cost).toHaveTextContent("promedio hasta ahora");
+    expect(screen.getByRole("group", { name: "Calidad acumulada" })).toHaveTextContent("—");
+    expect(screen.getByRole("group", { name: "Calidad acumulada" })).not.toHaveTextContent("0.000");
+
+    fireEvent.click(screen.getByRole("button", { name: "Paso" }));
+
+    expect(cost).toHaveTextContent("USD 0.00");
+    expect(screen.getByRole("group", { name: "Calidad acumulada" })).toHaveTextContent("1.000");
+  });
+
+  it("says the judge ensemble accepted the answers", () => {
+    render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying={false} />);
+
+    expect(screen.getByRole("group", { name: "Calidad acumulada" })).toHaveTextContent(
+      "respuestas aceptadas por el ensamble de jueces",
+    );
+  });
+
   it("re-routes from the current prompt when the operating point changes", () => {
     const { rerender } = render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying={false} />);
     fireEvent.click(screen.getByRole("button", { name: "Paso" }));
@@ -43,21 +66,34 @@ describe("ReplayFeed", () => {
     // Newest first: the second prompt went to frontier, the first stays local.
     expect(within(items[0]).getByText("frontier")).toBeInTheDocument();
     expect(within(items[1]).getByText("local")).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Costo acumulado" })).toHaveTextContent("USD 2.00");
+    expect(screen.getByRole("group", { name: "Costo por 1000 pedidos" })).toHaveTextContent("USD 2.00");
+  });
+
+  it("starts at 10×, so the whole corpus replays in about two minutes", () => {
+    vi.useFakeTimers();
+    render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying />);
+
+    expect(screen.getByRole("button", { name: "10×" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "1×" })).toHaveAttribute("aria-pressed", "false");
+    act(() => {
+      vi.advanceTimersByTime(250);
+    });
+    expect(screen.getByText("2 / 4 pedidos")).toBeInTheDocument();
   });
 
   it("plays at the chosen speed, stops at the end and cleans up on unmount", () => {
     vi.useFakeTimers();
     const { unmount } = render(<ReplayFeed rows={rows} order={order} point={cheap} initialPlaying />);
 
-    fireEvent.click(screen.getByRole("button", { name: "10×" }));
+    fireEvent.click(screen.getByRole("button", { name: "1×" }));
     act(() => {
-      vi.advanceTimersByTime(250);
+      vi.advanceTimersByTime(2000);
     });
     expect(screen.getByText("2 / 4 pedidos")).toBeInTheDocument();
 
+    fireEvent.click(screen.getByRole("button", { name: "100×" }));
     act(() => {
-      vi.advanceTimersByTime(2000);
+      vi.advanceTimersByTime(200);
     });
     expect(screen.getByText("4 / 4 pedidos")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Reiniciar" })).toBeInTheDocument();
@@ -78,7 +114,7 @@ describe("ReplayFeed", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Reanudar" }));
     act(() => {
-      vi.advanceTimersByTime(1000);
+      vi.advanceTimersByTime(100);
     });
     expect(screen.getByText("1 / 4 pedidos")).toBeInTheDocument();
   });

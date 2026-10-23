@@ -3,19 +3,20 @@ import type { ReactNode } from "react";
 import { cn } from "cn";
 
 type FigureProps = {
-  number: number;
   caption: ReactNode;
   children: ReactNode;
   className?: string;
 };
 
-export function Figure({ number, caption, children, className }: FigureProps) {
+/**
+ * A figure with its caption. The caption carries no figure number: the thesis numbers each
+ * capture in its own document, so a number inside the app would end up in the wrong place.
+ */
+export function Figure({ caption, children, className }: FigureProps) {
   return (
     <figure className={cn("m-0 flex flex-col gap-2", className)}>
       {children}
-      <figcaption className="text-sm text-ink-2">
-        <span className="font-semibold text-ink">{`Figura ${number}.`}</span> <span>{caption}</span>
-      </figcaption>
+      <figcaption className="text-sm text-ink-2">{caption}</figcaption>
     </figure>
   );
 }

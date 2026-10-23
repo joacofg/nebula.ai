@@ -1,54 +1,39 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
-import { queryKeys } from "@/lib/query-keys";
-import { formatTarget } from "@/components/evaluation/quality-slider";
-import { ErrorAlert } from "@/components/system/state";
+import type { TenantTarget } from "@/components/evaluation/use-tenant-target";
+import { ErrorAlert, errorMessage } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { formatTarget } from "@/lib/quality-target";
 
 type ApplyTargetProps = {
-  adminKey: string;
-  target: number;
+  tenantTarget: TenantTarget;
 };
 
-export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
-  const queryClient = useQueryClient();
-  const [tenantId, setTenantId] = useState("");
+export function ApplyTarget({ tenantTarget }: ApplyTargetProps) {
+  const {
+    tenants,
+    tenantsError,
+    policyError,
+    tenantId: selectedTenantId,
+    setTenantId,
+    currentTarget,
+    target,
+    saving,
+    settling,
+    apply,
+  } = tenantTarget;
+  const tenantId = selectedTenantId ?? "";
 
-  const tenantsQuery = useQuery({
-    queryKey: queryKeys.tenants,
-    queryFn: () => listTenants(adminKey),
-    enabled: Boolean(adminKey),
-  });
-
-  useEffect(() => {
-    if (!tenantId && tenantsQuery.data?.length) {
-      setTenantId(tenantsQuery.data[0].id);
-    }
-  }, [tenantId, tenantsQuery.data]);
-
-  const mutation = useMutation({
-    mutationFn: async ({ id, value }: { id: string; value: number }) => {
-      // Read the current policy first: a failed read must not turn into a partial write.
-      const policy = await getTenantPolicy(adminKey, id);
-      return updateTenantPolicy(adminKey, id, { ...policy, routing_quality_target: value });
-    },
-    onSuccess: (saved, { id }) => {
-      queryClient.setQueryData(queryKeys.tenantPolicy(id), saved);
-    },
-  });
-
-  const tenantName = (id: string) => tenantsQuery.data?.find((t) => t.id === id)?.name ?? id;
+  const tenantName = (id: string) => tenants?.find((t) => t.id === id)?.name ?? id;
 
   return (
     <div className="flex flex-col gap-3">
-      {tenantsQuery.isError ? (
-        <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
+      {tenantsError ? <ErrorAlert error={tenantsError} fallback="No se pudieron cargar los tenants." /> : null}
+      {policyError ? (
+        <ErrorAlert error={policyError} fallback="No se pudo cargar el objetivo actual del tenant." />
       ) : null}
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
@@ -59,14 +44,11 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
             id="evaluation-tenant"
             className="field-input"
             value={tenantId}
-            onChange={(event) => {
-              setTenantId(event.target.value);
-              mutation.reset();
-            }}
-            disabled={!tenantsQuery.data?.length}
+            onChange={(event) => setTenantId(event.target.value)}
+            disabled={!tenants?.length || saving}
           >
-            {tenantsQuery.data?.length ? null : <option value="">Sin tenants</option>}
-            {tenantsQuery.data?.map((tenant) => (
+            {tenants?.length ? null : <option value="">Sin tenants</option>}
+            {tenants?.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
                 {tenant.name}
               </option>
@@ -75,25 +57,32 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
         </div>
         <Button
           type="button"
-          disabled={!tenantId || mutation.isPending}
-          onClick={() => mutation.mutate({ id: tenantId, value: target })}
+          disabled={!tenantId || saving || settling}
+          onClick={() => apply.mutate({ id: tenantId, value: target })}
         >
-          {mutation.isPending ? "Guardando…" : "Aplicar al tenant"}
+          {saving ? "Guardando…" : "Aplicar al tenant"}
         </Button>
       </div>
-      {mutation.isSuccess ? (
+      {tenantId ? (
+        <div className="flex items-baseline justify-between gap-4 text-sm">
+          <p className="m-0 text-ink-2">{`Objetivo actual ${currentTarget === null ? "—" : formatTarget(currentTarget)}`}</p>
+          <Link href="/playground" className="font-semibold text-ink underline underline-offset-4 hover:text-mark">
+            Probar en Playground
+          </Link>
+        </div>
+      ) : null}
+      {apply.isSuccess ? (
         <Alert variant="success" role="status">
           <AlertDescription>
-            {`Objetivo ${formatTarget(mutation.data.routing_quality_target)} guardado en ${tenantName(mutation.variables.id)}.`}
+            {`Objetivo ${formatTarget(apply.data.routing_quality_target)} guardado en ${tenantName(apply.variables.id)}.`}
           </AlertDescription>
         </Alert>
       ) : null}
-      {mutation.isError ? (
-        <Alert variant="destructive">
-          <AlertDescription>
-            No se pudo aplicar: {mutation.error instanceof Error ? mutation.error.message : "error desconocido"}
-          </AlertDescription>
-        </Alert>
+      {apply.isError ? (
+        <ErrorAlert
+          error={`No se pudo aplicar: ${errorMessage(apply.error, "error desconocido")}`}
+          fallback="No se pudo aplicar."
+        />
       ) : null}
     </div>
   );

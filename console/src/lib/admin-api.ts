@@ -1,6 +1,9 @@
 "use client";
 
-import type { RouterReplay } from "@/lib/router-replay";
+import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
+import type { RouterReplay, Tier } from "@/lib/router-replay";
+
+export { AdminApiError } from "@/lib/admin-errors";
 
 export type RoutingMode = "auto" | "local_only" | "premium_only";
 export type EvidenceRetentionWindow = "24h" | "7d" | "30d" | "90d";
@@ -93,6 +96,12 @@ export type PolicySimulationWindow = {
   returned_rows: number;
 };
 
+/** Rows per tier; every key is present. */
+export type TierCounts = Record<Tier, number>;
+
+/** How the simulation re-decided a row: the learned router from its stored probabilities, or the heuristic. */
+export type SimulationDecisionSource = "learned_router" | "heuristic";
+
 export type PolicySimulationOutcomeCounts = {
   evaluated_rows: number;
   changed_routes: number;
@@ -100,6 +109,17 @@ export type PolicySimulationOutcomeCounts = {
   baseline_premium_cost: number;
   simulated_premium_cost: number;
   premium_cost_delta: number;
+  /**
+   * A row with no tier (denied, or served from the cache in the baseline) counts in none. Absent
+   * from older gateways.
+   */
+  baseline_tier_counts?: TierCounts;
+  simulated_tier_counts?: TierCounts;
+  /** With `cache_rows`, add up to `evaluated_rows`; absent from older gateways. */
+  learned_router_rows?: number;
+  heuristic_rows?: number;
+  /** Cache hits the draft keeps as cache hits (neither router re-decides them); absent from older gateways. */
+  cache_rows?: number;
 };
 
 export type PolicySimulationChangedRequest = {
@@ -124,6 +144,10 @@ export type PolicySimulationChangedRequest = {
   simulated_route_score: number | null;
   baseline_estimated_cost: number;
   simulated_estimated_cost: number;
+  /** Null when denied (or, in the baseline, served from the cache). */
+  baseline_tier: Tier | null;
+  simulated_tier: Tier | null;
+  decision_source: SimulationDecisionSource;
 };
 
 export type CalibrationReasonCount = {
@@ -155,6 +179,8 @@ export type PolicySimulationResponse = {
   tenant_id: string;
   candidate_policy: TenantPolicy;
   approximation_notes: string[];
+  /** One stable code per note, in the same order, for wording the notes in Spanish; absent from older gateways. */
+  approximation_note_codes?: string[];
   window: PolicySimulationWindow;
   summary: PolicySimulationOutcomeCounts;
   calibration_summary: CalibrationEvidenceSummary;
@@ -245,8 +271,10 @@ export type PlaygroundCompletionResult = {
   /** Learned-router tier (`local` / `economy` / `frontier`); empty for heuristic routes. */
   routeTier: string;
   provider: string;
-  cacheHit: boolean;
-  fallbackUsed: boolean;
+  /** From `X-Nebula-Cache-Hit`; null when the header was not sent. */
+  cacheHit: boolean | null;
+  /** From `X-Nebula-Fallback-Used`; null when the header was not sent. */
+  fallbackUsed: boolean | null;
   policyMode: string;
   policyOutcome: string;
 };
@@ -326,7 +354,10 @@ export type UsageLedgerRecord = {
 export type UsageLedgerFilters = {
   tenantId?: string;
   routeTarget?: string;
+  /** The tier the router chose (`route_signals.tier`): local, economy or frontier. */
+  tier?: string;
   terminalStatus?: string;
+  /** A UTC ISO instant, as `toISOString()` writes it. */
   fromTimestamp?: string;
   toTimestamp?: string;
   requestId?: string;
@@ -339,7 +370,7 @@ type RequestOptions = {
 };
 
 async function adminRequest<T>(path: string, options: RequestOptions): Promise<T> {
-  const response = await fetch(path, {
+  const response = await gatewayFetch(path, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -350,8 +381,7 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "Nebula admin request failed.");
+    throw await adminErrorFromResponse(response);
   }
 
   return (await response.json()) as T;
@@ -436,7 +466,7 @@ export const ADMIN_ROUTER_EVALUATION_ENDPOINT = "/api/admin/evaluation/router";
 
 /** The learned router's out-of-fold replay; `null` when the gateway has none (404). */
 export async function getRouterEvaluation(adminKey: string): Promise<RouterReplay | null> {
-  const response = await fetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
+  const response = await gatewayFetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -445,13 +475,13 @@ export async function getRouterEvaluation(adminKey: string): Promise<RouterRepla
     cache: "no-store",
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    const error = await adminErrorFromResponse(response);
     // Only the gateway's "no replay file" 404 means "nothing to show"; any other 404
     // (an older gateway without the endpoint, a proxy miss) is a real error.
-    if (response.status === 404 && body.detail?.startsWith("No router replay")) {
+    if (error.status === 404 && typeof error.detail === "string" && error.detail.startsWith("No router replay")) {
       return null;
     }
-    throw new Error(body.detail ?? "Nebula admin request failed.");
+    throw error;
   }
   return (await response.json()) as RouterReplay;
 }
@@ -460,11 +490,16 @@ export function getPolicyOptions(adminKey: string) {
   return adminRequest<PolicyOptionsResponse>("/api/admin/policy/options", { adminKey });
 }
 
+/** A boolean header: true only for "true", null when the gateway did not send it. */
+function headerFlag(value: string | null) {
+  return value === null ? null : value === "true";
+}
+
 export async function createPlaygroundCompletion(
   adminKey: string,
   payload: PlaygroundInput,
 ): Promise<PlaygroundCompletionResult> {
-  const response = await fetch("/api/playground/completions", {
+  const response = await gatewayFetch("/api/playground/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -479,13 +514,14 @@ export async function createPlaygroundCompletion(
     cache: "no-store",
   });
 
-  const responseBody = (await response.json().catch(() => ({}))) as PlaygroundResponse & {
-    detail?: string;
-  };
+  // A failed completion still carries the request metadata, so it resolves with the Spanish
+  // message in `errorDetail` instead of throwing.
+  const failure = response.ok ? null : await adminErrorFromResponse(response.clone());
+  const responseBody = (await response.json().catch(() => ({}))) as PlaygroundResponse;
   const isSuccess = response.ok;
   return {
     body: isSuccess ? responseBody : null,
-    errorDetail: isSuccess ? null : responseBody.detail ?? "Nebula playground request failed.",
+    errorDetail: failure?.message ?? null,
     status: response.status,
     requestId: response.headers.get("X-Request-ID") ?? responseBody.request_id ?? "",
     tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,
@@ -493,8 +529,8 @@ export async function createPlaygroundCompletion(
     routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
     routeTier: response.headers.get("X-Nebula-Route-Tier") ?? "",
     provider: response.headers.get("X-Nebula-Provider") ?? "",
-    cacheHit: response.headers.get("X-Nebula-Cache-Hit") === "true",
-    fallbackUsed: response.headers.get("X-Nebula-Fallback-Used") === "true",
+    cacheHit: headerFlag(response.headers.get("X-Nebula-Cache-Hit")),
+    fallbackUsed: headerFlag(response.headers.get("X-Nebula-Fallback-Used")),
     policyMode: response.headers.get("X-Nebula-Policy-Mode") ?? "",
     policyOutcome: response.headers.get("X-Nebula-Policy-Outcome") ?? "",
   };
@@ -507,6 +543,9 @@ function buildUsageLedgerQuery(filters: UsageLedgerFilters) {
   }
   if (filters.routeTarget) {
     searchParams.set("route_target", filters.routeTarget);
+  }
+  if (filters.tier) {
+    searchParams.set("tier", filters.tier);
   }
   if (filters.terminalStatus) {
     searchParams.set("terminal_status", filters.terminalStatus);

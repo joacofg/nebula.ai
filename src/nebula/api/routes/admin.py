@@ -33,6 +33,7 @@ from nebula.services.governance_store import (
     UnknownTenantError,
     UnscopedApiKeyError,
 )
+from nebula.services.learned_router import Tier
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -252,6 +253,7 @@ async def list_usage_ledger(
     tenant_id: str | None = Query(default=None),
     terminal_status: str | None = Query(default=None),
     route_target: str | None = Query(default=None),
+    tier: Tier | None = Query(default=None),
     from_timestamp: datetime | None = Query(default=None),
     to_timestamp: datetime | None = Query(default=None),
     limit: int = Query(default=100, ge=1, le=500),
@@ -262,6 +264,7 @@ async def list_usage_ledger(
         tenant_id=tenant_id,
         terminal_status=terminal_status,
         route_target=route_target,
+        tier=tier,
         from_timestamp=from_timestamp,
         to_timestamp=to_timestamp,
         limit=limit,

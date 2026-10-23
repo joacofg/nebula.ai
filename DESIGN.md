@@ -17,7 +17,7 @@ componentes nunca usan colores crudos ni hex.
 - **Dirección:** "Plano" — la consola como hoja de ingeniería: tinta negra sobre blanco, líneas de
   1 px, esquinas rectas, rótulo de plano como encabezado, grilla de osciloscopio en los gráficos,
   la decisión del router dibujada como un camino de señal. Préstamos de "Hoja de datos": tabla de
-  características (valor + IC 95 %) y pies "Figura N".
+  características (valor + IC 95 %) y pies de figura (sin número: la tesis numera).
 - **Decoración:** mínima. Lo que no es dato, control o estructura se borra.
 - **Mood:** instrumento de medición; serio, exacto, legible en una captura.
 - **Referencias:** `docs/superpowers/fase7/referencias/` (Langfuse, Helicone, Grafana, Vercel);
@@ -57,11 +57,14 @@ componentes nunca usan colores crudos ni hex.
 | `tier-local` | `#86b6ef` | nivel local |
 | `tier-economy` | `#2f73cc` | nivel economy |
 | `tier-frontier` | `#103f82` | nivel frontier |
-| `tier-cache` | `#aab2bb` | respuesta de caché |
+| `tier-cache` | `#898f98` | respuesta de caché |
 
 - La rampa de niveles es ordinal (costo creciente), un solo tono, validada con el script de
   dataviz (`--ordinal`: monotonía, saltos de L ≥ 0.06, extremo claro ≥ 2:1). El nivel nunca se
   comunica solo con color: siempre va con su nombre.
+- `tier-cache` es un gris neutro fuera de la rampa. Contra `tier-local` la relación de luminancia
+  es 1.54:1 (≥ 1.5:1, así que en escala de grises no se confunden) y contra blanco 3.26:1 (≥ 3:1).
+  Contra `tier-economy` queda en 1.45:1: ningún gris cumple 1.5:1 contra ambos.
 - Estados siempre con ícono o texto además del color.
 - **Modo oscuro:** no existe. Solo tema claro.
 
@@ -92,9 +95,9 @@ componentes nunca usan colores crudos ni hex.
 
 ## Components
 
-- **shadcn/ui re-tematizado por roles:** Sidebar, Table, Input, Select, Label, Button, Dialog,
-  AlertDialog, Alert, Tabs, Badge, Skeleton, Tooltip, Separator, Sheet.
-- **Propios:** `PageHeader`, `Readout`, `Figure` (pie "Figura N."), `TierBadge`, `EmptyState`,
+- **shadcn/ui re-tematizado por roles:** Input, Label, Button, Dialog, AlertDialog, Alert, Tabs,
+  Skeleton, Tooltip, Sheet. Dialog y Sheet cierran con "Cerrar".
+- **Propios:** `PageHeader`, `Readout`, `Figure` (pie sin número), `TierBadge`, `EmptyState`,
   `ErrorAlert`, `LoadingRows`, `DecisionPath` (cascada local → economy → frontier con p y τ).
 
 ## Copy
@@ -102,7 +105,10 @@ componentes nunca usan colores crudos ni hex.
 - Español neutro, sin voseo; infinitivos en acciones ("Crear tenant", "Aplicar al tenant").
 - Sin párrafos en encabezados. Una línea de ayuda solo donde evita un error.
 - Términos de la tesis sin traducir: tenant, ledger, playground, local, economy, frontier.
-- Números como la tesis: `USD 1.70`, punto decimal, `31 %`.
+- Números como la tesis: `USD 1.70`, punto decimal, `31 %`. Un solo formateador
+  (`console/src/lib/format.ts`): `USD 1.70`, `USD 1.70 / 1000`; los decimales se eligen por uso.
+- Los códigos del gateway se muestran en español (`console/src/components/system/labels.ts`); un
+  código desconocido se muestra tal cual, nunca una celda vacía.
 
 ## Prohibido
 
@@ -118,3 +124,5 @@ monospace como disfraz; emojis como íconos; texto gris por debajo de AA.
 | 2026-09-30 | Solo tema claro | Las capturas van a un Word de fondo blanco |
 | 2026-09-30 | Tailwind 4 + shadcn/ui tematizado por roles | shadcn 4.x genera para v4; roles como única vía de color |
 | 2026-09-30 | Rampa azul ordinal para los niveles, rojo solo para selección | Los niveles están ordenados por costo; el rojo marca la decisión del operador |
+| 2026-10-22 | `tier-cache` pasa de `#aab2bb` a `#898f98` | Con `#aab2bb` local y caché tenían la misma luminancia (1.02:1) y eran idénticos en escala de grises (una captura impresa). Ahora 1.54:1 contra local y 3.26:1 contra blanco; sigue siendo un gris neutro. Contra economy baja a 1.45:1 y ningún gris cumple 1.5:1 contra local y economy a la vez (haría falta L ≤ 0.2817 y L ≥ 0.2834), así que el nivel va siempre con su nombre. Verificado con el script de dataviz (rampa ordinal sin cambios: pasa) y un cálculo de relación de luminancia WCAG |
+| 2026-10-22 | `Figure` sin número ("Figura N." eliminado del pie) | El número dentro de la app se filtraba a las capturas de la tesis, donde cada figura se numera en el documento; el pie conserva solo el texto |

@@ -4,7 +4,8 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 import PolicyPage from "@/app/(console)/policy/page";
 import * as adminApi from "@/lib/admin-api";
-import { renderWithProviders } from "@/test/render";
+import { queryKeys } from "@/lib/query-keys";
+import { createTestQueryClient, renderWithProviders } from "@/test/render";
 
 vi.mock("@/lib/admin-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/admin-api")>("@/lib/admin-api");
@@ -148,7 +149,8 @@ beforeEach(() => {
       gated_reasons: [],
       degraded_reasons: [],
     },
-    approximation_notes: ["Replay uses stored route signals."],
+    approximation_notes: ["Replay uses persisted ledger request metadata."],
+    approximation_note_codes: ["ledger_metadata_replay"],
     window: {
       requested_from: null,
       requested_to: null,
@@ -165,6 +167,10 @@ beforeEach(() => {
       baseline_premium_cost: 0,
       simulated_premium_cost: 0.01,
       premium_cost_delta: 0.01,
+      baseline_tier_counts: { local: 2, economy: 0, frontier: 0 },
+      simulated_tier_counts: { local: 1, economy: 0, frontier: 1 },
+      learned_router_rows: 0,
+      heuristic_rows: 2,
     },
     changed_requests: [
       {
@@ -189,6 +195,9 @@ beforeEach(() => {
         simulated_route_score: 0.31,
         baseline_estimated_cost: 0,
         simulated_estimated_cost: 0.01,
+        baseline_tier: "local",
+        simulated_tier: "frontier",
+        decision_source: "heuristic",
       },
       {
         request_id: "req-2",
@@ -212,6 +221,9 @@ beforeEach(() => {
         simulated_route_score: null,
         baseline_estimated_cost: 0,
         simulated_estimated_cost: 0,
+        baseline_tier: "local",
+        simulated_tier: "local",
+        decision_source: "heuristic",
       },
     ],
   });
@@ -261,7 +273,8 @@ describe("policy-page", () => {
             semantic_cache_max_entry_age_hours: 48,
           }),
           limit: 50,
-          changed_sample_limit: 5,
+          // Every changed row of the window comes back, so the headline counts all of them.
+          changed_sample_limit: 50,
         }),
       );
     });
@@ -271,16 +284,72 @@ describe("policy-page", () => {
     expect(screen.getByText(/Comparado contra 2 pedidos recientes\./i)).toBeInTheDocument();
     expect(screen.getByText(/No se guardó nada\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "paridad de ruteo: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)",
-      ),
+      screen.getByText("paridad de ruteo: calibrado (puntaje 0.74) → degradado (puntaje 0.31)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("paridad de ruteo: degraded (degraded, score 0.28) → rollout disabled"),
+      screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo automático apagado"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "frontier" })).toHaveTextContent("0 → 1");
+    expect(screen.getByText("0 con el router aprendido · 2 con la heurística")).toBeInTheDocument();
+    expect(
+      screen.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
+  });
+
+  it("shows the Spanish message of the first query that fails instead of the form", async () => {
+    getPolicyOptionsMock.mockRejectedValue(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("El gateway devolvió un error (500).");
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
+  });
+
+  describe("while a first answer has not arrived", () => {
+    it("keeps the loading rows while the selected tenant's policy has not arrived", async () => {
+      // The options and the tenant list arrive; only the policy of the selected tenant waits.
+      getTenantPolicyMock.mockReturnValue(new Promise<never>(() => {}));
+      renderPolicyPage();
+
+      await waitFor(() => expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("tenant-a"));
+      await waitFor(() => expect(getTenantPolicyMock).toHaveBeenCalledWith("admin-key", "tenant-a"));
+
+      expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
+      expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
+    });
+
+    it("does not claim there are no tenants while the list has not arrived", async () => {
+      // The options are already known; only the tenant list waits.
+      const queryClient = createTestQueryClient();
+      queryClient.setQueryData(queryKeys.policyOptions, await getPolicyOptionsMock("admin-key"));
+      listTenantsMock.mockReturnValue(new Promise<never>(() => {}));
+      renderWithProviders(<PolicyPage />, { adminKey: "admin-key", queryClient });
+
+      await waitFor(() => expect(listTenantsMock).toHaveBeenCalled());
+
+      expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
+      expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
+    });
+  });
+
+  it("shows the Spanish message when the tenant list cannot be read", async () => {
+    listTenantsMock.mockRejectedValue(new adminApi.AdminApiError(401, "Invalid admin key."));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("La clave de admin no es válida.");
+    expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
+  });
+
+  it("shows the Spanish message when the selected tenant's policy cannot be read", async () => {
+    getTenantPolicyMock.mockRejectedValue(new adminApi.AdminApiError(404, "Tenant not found."));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se encontró el recurso.");
+    expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
   });
 
   it("shows preview errors from the simulation mutation", async () => {
@@ -342,6 +411,7 @@ describe("policy-page", () => {
         degraded_reasons: [],
       },
       approximation_notes: [],
+      approximation_note_codes: [],
       window: {
         requested_from: null,
         requested_to: null,
@@ -358,6 +428,10 @@ describe("policy-page", () => {
         baseline_premium_cost: 0,
         simulated_premium_cost: 0,
         premium_cost_delta: 0,
+        baseline_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        simulated_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        learned_router_rows: 0,
+        heuristic_rows: 0,
       },
       changed_requests: [],
     });
@@ -418,6 +492,7 @@ describe("policy-page", () => {
         degraded_reasons: [],
       },
       approximation_notes: [],
+      approximation_note_codes: [],
       window: {
         requested_from: null,
         requested_to: null,
@@ -434,6 +509,10 @@ describe("policy-page", () => {
         baseline_premium_cost: 0,
         simulated_premium_cost: 0,
         premium_cost_delta: 0,
+        baseline_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        simulated_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        learned_router_rows: 0,
+        heuristic_rows: 0,
       },
       changed_requests: [],
     });
@@ -479,6 +558,86 @@ describe("policy-page", () => {
     await waitFor(() => {
       expect(screen.queryByText("Pedidos que cambian")).not.toBeInTheDocument();
     });
+    expect(
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
+    ).toBeInTheDocument();
+  });
+
+  it("confirms a saved policy with 'Política guardada.' through the refetch, until the next edit", async () => {
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    // The gateway answers the refetch after the save with the policy as saved.
+    const stored = await getTenantPolicyMock("admin-key", "tenant-a");
+    getTenantPolicyMock.mockResolvedValue({ ...stored, fallback_enabled: false });
+    const fetchesBeforeSave = getTenantPolicyMock.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    expect(await screen.findByText("Política guardada.")).toBeInTheDocument();
+    expect(updateTenantPolicyMock).toHaveBeenCalledTimes(1);
+    expect(getTenantPolicyMock.mock.calls.length).toBeGreaterThan(fetchesBeforeSave);
+    expect(screen.queryByText("Cambios sin guardar")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "1");
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+  });
+
+  it("shows why a save failed and does not confirm it", async () => {
+    updateTenantPolicyMock.mockRejectedValueOnce(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    expect(await screen.findByText("El gateway devolvió un error (500).")).toBeInTheDocument();
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+  });
+
+  it("does not show a failed simulation of one tenant under the next", async () => {
+    simulateTenantPolicyMock.mockRejectedValueOnce(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+    expect(await screen.findByText(/La simulación falló/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Tenant"), "tenant-b");
+
+    expect(await screen.findByRole("form", { name: "Política de Tenant B" })).toBeInTheDocument();
+    expect(screen.queryByText(/La simulación falló/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show under the next tenant a simulation that was still running for the last one", async () => {
+    let finishSimulation!: (result: adminApi.PolicySimulationResponse) => void;
+    const tenantAResult = await simulateTenantPolicyMock("admin-key", "tenant-a", {} as never);
+    simulateTenantPolicyMock.mockClear();
+    simulateTenantPolicyMock.mockImplementationOnce(
+      () => new Promise<adminApi.PolicySimulationResponse>((resolve) => (finishSimulation = resolve)),
+    );
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+    expect(await screen.findByRole("status", { name: "Simulando el borrador" })).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Tenant"), "tenant-b");
+    expect(await screen.findByRole("form", { name: "Política de Tenant B" })).toBeInTheDocument();
+    // Tenant B has nothing running: its preview is idle and its buttons work.
+    expect(screen.queryByRole("status", { name: "Simulando el borrador" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Simular" })).toBeEnabled();
+
+    // Tenant A's answer lands late: it is not Tenant B's preview.
+    finishSimulation(tenantAResult);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(screen.queryByText("Pedidos que cambian")).not.toBeInTheDocument();
     expect(
       screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
     ).toBeInTheDocument();

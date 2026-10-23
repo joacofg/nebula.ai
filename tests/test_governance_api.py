@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
 from nebula.db.models import UsageLedgerModel
-from nebula.models.governance import TenantPolicy
+from nebula.models.governance import TenantPolicy, UsageLedgerRecord
 from nebula.providers.base import CompletionResult
 from nebula.services.embeddings_service import EmbeddingsResult, EmbeddingVector
 from tests.support import (
@@ -1888,3 +1889,264 @@ def test_listing_api_keys_by_tenant_includes_keys_scoped_through_allowed_tenant_
     assert own_b.status_code == 201
     assert {key["name"] for key in for_b.json()} == {"shared", "own-b"}
     assert {key["name"] for key in for_c.json()} == {"own-c"}
+
+
+def _ledger_row(
+    request_id: str, route_signals: dict[str, object] | None, **overrides
+) -> UsageLedgerRecord:
+    fields = {
+        "request_id": request_id,
+        "tenant_id": "default",
+        "requested_model": "nebula-auto",
+        "final_route_target": "premium",
+        "fallback_used": False,
+        "cache_hit": False,
+        "timestamp": datetime(2026, 10, 22, 14, 5, 3, tzinfo=UTC),
+        "terminal_status": "completed",
+        "route_signals": route_signals,
+    }
+    return UsageLedgerRecord(**{**fields, **overrides})
+
+
+ECONOMY_MODEL = "anthropic/claude-haiku-4.5"
+FRONTIER_MODEL = "openai/gpt-4.1"
+
+
+def test_usage_ledger_tier_filter_follows_the_tier_the_console_shows_for_a_row() -> None:
+    # Same rule as `rowTier` in console/src/components/ledger/ledger-table.tsx: a row that was not
+    # premium is where it was served; a premium row is its route signal when that names a premium
+    # tier, and otherwise the model that answered (economy when it is the signals' economy model).
+    with configured_app() as app:
+        with TestClient(app) as client:
+            store = app.state.container.governance_store
+            store.record_usage(_ledger_row("heuristic-local", None, final_route_target="local"))
+            store.record_usage(
+                _ledger_row(
+                    "heuristic-local-signals",
+                    {"complexity_tier": "low"},
+                    final_route_target="local",
+                )
+            )
+            store.record_usage(
+                _ledger_row("learned-local", {"tier": "local"}, final_route_target="local")
+            )
+            store.record_usage(_ledger_row("premium-economy", {"tier": "economy"}))
+            store.record_usage(_ledger_row("premium-frontier", {"tier": "frontier"}))
+            # Decided local, the local model failed, a premium model answered: the premium row
+            # is the tier that served it, never "local".
+            learned_local = {"tier": "local", "economy_model": ECONOMY_MODEL}
+            store.record_usage(
+                _ledger_row(
+                    "fallback-economy",
+                    learned_local,
+                    response_model=ECONOMY_MODEL,
+                    fallback_used=True,
+                )
+            )
+            store.record_usage(
+                _ledger_row(
+                    "fallback-frontier",
+                    learned_local,
+                    response_model=FRONTIER_MODEL,
+                    fallback_used=True,
+                )
+            )
+            store.record_usage(
+                _ledger_row(
+                    "heuristic-premium",
+                    {"complexity_tier": "high"},
+                    response_model=FRONTIER_MODEL,
+                )
+            )
+            store.record_usage(
+                _ledger_row("heuristic-premium-no-signals", None, response_model=ECONOMY_MODEL)
+            )
+            store.record_usage(
+                _ledger_row("cache-economy-signal", {"tier": "economy"}, final_route_target="cache")
+            )
+            store.record_usage(
+                _ledger_row("denied-frontier-signal", {"tier": "frontier"}, final_route_target="denied")
+            )
+
+            def matching(tier: str) -> set[str]:
+                response = client.get(f"/v1/admin/usage/ledger?tier={tier}", headers=admin_headers())
+                assert response.status_code == 200
+                return {row["request_id"] for row in response.json()}
+
+            local = matching("local")
+            economy = matching("economy")
+            frontier = matching("frontier")
+
+    assert local == {"heuristic-local", "heuristic-local-signals", "learned-local"}
+    assert economy == {"premium-economy", "fallback-economy"}
+    # Without an economy model in its signals, a premium row cannot be told economy: frontier.
+    assert frontier == {
+        "premium-frontier",
+        "fallback-frontier",
+        "heuristic-premium",
+        "heuristic-premium-no-signals",
+    }
+    assert not {"cache-economy-signal", "denied-frontier-signal"} & (local | economy | frontier)
+
+
+def test_usage_ledger_tier_filter_treats_strict_minimized_rows_by_the_same_rule() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            client.put(
+                "/v1/admin/tenants/default/policy",
+                headers=admin_headers(),
+                json=TenantPolicy(metadata_minimization_level="strict").model_dump(mode="json"),
+            )
+            store = app.state.container.governance_store
+            store.record_usage(
+                _ledger_row("strict-local", {"tier": "local"}, final_route_target="local")
+            )
+            store.record_usage(_ledger_row("strict-premium", {"tier": "economy"}))
+
+            stored = {row.request_id: row for row in store.list_usage_records()}
+
+            def matching(tier: str) -> set[str]:
+                response = client.get(f"/v1/admin/usage/ledger?tier={tier}", headers=admin_headers())
+                assert response.status_code == 200
+                return {row["request_id"] for row in response.json()}
+
+            local = matching("local")
+            economy = matching("economy")
+            frontier = matching("frontier")
+
+    # The strict policy kept the signals out of both rows: where a row was served is all that is
+    # left, and a premium row with no economy model to compare against reads frontier.
+    assert stored["strict-local"].route_signals is None
+    assert stored["strict-premium"].route_signals is None
+    assert local == {"strict-local"}
+    assert economy == set()
+    assert frontier == {"strict-premium"}
+
+
+def test_usage_ledger_tier_filter_combines_with_route_target_and_limit() -> None:
+    def at(hour: int) -> datetime:
+        return datetime(2026, 10, 22, hour, 0, 0, tzinfo=UTC)
+
+    with configured_app() as app:
+        with TestClient(app) as client:
+            store = app.state.container.governance_store
+            # A local decision the frontier model answered after the local model failed.
+            store.record_usage(
+                _ledger_row(
+                    "fallback-frontier",
+                    {"tier": "local", "economy_model": ECONOMY_MODEL},
+                    response_model=FRONTIER_MODEL,
+                    fallback_used=True,
+                    timestamp=at(10),
+                )
+            )
+            store.record_usage(_ledger_row("premium-frontier-1", {"tier": "frontier"}, timestamp=at(11)))
+            store.record_usage(
+                _ledger_row("served-local", None, final_route_target="local", timestamp=at(12))
+            )
+            store.record_usage(_ledger_row("premium-economy", {"tier": "economy"}, timestamp=at(13)))
+            store.record_usage(_ledger_row("premium-frontier-2", {"tier": "frontier"}, timestamp=at(14)))
+
+            def ids(query: str) -> list[str]:
+                response = client.get(f"/v1/admin/usage/ledger?{query}", headers=admin_headers())
+                assert response.status_code == 200
+                return [row["request_id"] for row in response.json()]
+
+            frontier_and_premium = ids("tier=frontier&route_target=premium")
+            local_and_premium = ids("tier=local&route_target=premium")
+            local_and_local = ids("tier=local&route_target=local")
+            frontier_newest_two = ids("tier=frontier&limit=2")
+            economy_and_local = ids("tier=economy&route_target=local")
+
+    assert frontier_and_premium == ["premium-frontier-2", "premium-frontier-1", "fallback-frontier"]
+    assert local_and_premium == []
+    assert local_and_local == ["served-local"]
+    assert frontier_newest_two == ["premium-frontier-2", "premium-frontier-1"]
+    assert economy_and_local == []
+
+
+def test_usage_ledger_filters_by_tier_and_reads_a_premium_row_without_one_by_its_model() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            store = app.state.container.governance_store
+            store.record_usage(_ledger_row("economy-1", {"tier": "economy"}))
+            store.record_usage(_ledger_row("economy-2", {"tier": "economy", "p_local": 0.2}))
+            store.record_usage(_ledger_row("local-1", {"tier": "local"}, final_route_target="local"))
+            store.record_usage(_ledger_row("frontier-1", {"tier": "frontier"}))
+            store.record_usage(
+                _ledger_row(
+                    "signals-without-tier",
+                    {"p_local": 0.9, "economy_model": ECONOMY_MODEL},
+                    response_model=ECONOMY_MODEL,
+                )
+            )
+            store.record_usage(_ledger_row("no-signals", None))
+            store.record_usage(
+                _ledger_row("economy-other-tenant", {"tier": "economy"}, tenant_id="team-b")
+            )
+
+            economy = client.get("/v1/admin/usage/ledger?tier=economy", headers=admin_headers())
+            economy_in_tenant = client.get(
+                "/v1/admin/usage/ledger?tier=economy&tenant_id=default",
+                headers=admin_headers(),
+            )
+            local = client.get("/v1/admin/usage/ledger?tier=local", headers=admin_headers())
+            frontier = client.get("/v1/admin/usage/ledger?tier=frontier", headers=admin_headers())
+            everything = client.get("/v1/admin/usage/ledger", headers=admin_headers())
+
+    assert economy.status_code == 200
+    assert {row["request_id"] for row in economy.json()} == {
+        "economy-1",
+        "economy-2",
+        "signals-without-tier",
+        "economy-other-tenant",
+    }
+    assert {row["request_id"] for row in economy_in_tenant.json()} == {
+        "economy-1",
+        "economy-2",
+        "signals-without-tier",
+    }
+    assert {row["request_id"] for row in local.json()} == {"local-1"}
+    assert {row["request_id"] for row in frontier.json()} == {"frontier-1", "no-signals"}
+    assert {row["request_id"] for row in everything.json()} >= {
+        "signals-without-tier",
+        "no-signals",
+    }
+
+
+def test_usage_ledger_date_filters_honor_the_utc_offset_they_carry() -> None:
+    # One row at 14:05:03 UTC, which is 11:05:03 at UTC-03:00.
+    with configured_app() as app:
+        with TestClient(app) as client:
+            app.state.container.governance_store.record_usage(_ledger_row("row", None))
+
+            def matching(**window: str) -> list[str]:
+                response = client.get("/v1/admin/usage/ledger", params=window, headers=admin_headers())
+                assert response.status_code == 200
+                return [entry["request_id"] for entry in response.json()]
+
+            from_utc = matching(from_timestamp="2026-10-22T14:05:03Z")
+            from_just_after_in_utc = matching(from_timestamp="2026-10-22T14:05:04Z")
+            from_just_after_with_offset = matching(from_timestamp="2026-10-22T11:05:04-03:00")
+            from_same_instant_with_offset = matching(from_timestamp="2026-10-22T11:05:03-03:00")
+            to_just_before_with_offset = matching(to_timestamp="2026-10-22T11:05:02-03:00")
+            to_same_instant_with_offset = matching(to_timestamp="2026-10-22T11:05:03-03:00")
+            naive_is_utc = matching(from_timestamp="2026-10-22T14:05:04")
+
+    assert from_utc == ["row"]
+    assert from_just_after_in_utc == []
+    assert from_just_after_with_offset == []
+    assert from_same_instant_with_offset == ["row"]
+    assert to_just_before_with_offset == []
+    assert to_same_instant_with_offset == ["row"]
+    assert naive_is_utc == []
+
+
+def test_usage_ledger_rejects_a_tier_that_is_not_local_economy_or_frontier() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            invalid = client.get("/v1/admin/usage/ledger?tier=premium", headers=admin_headers())
+            empty = client.get("/v1/admin/usage/ledger?tier=", headers=admin_headers())
+
+    assert invalid.status_code == 422
+    assert empty.status_code == 422

@@ -1,7 +1,12 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import type { ReactNode } from "react";
+
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { SelectedTenantProvider } from "@/lib/selected-tenant";
+import { createTestQueryClient } from "@/test/render";
 
 import ObservabilityPage from "./page";
 
@@ -20,19 +25,17 @@ vi.mock("@/lib/admin-session-provider", () => ({
 }));
 
 function renderPage() {
-  const queryClient = new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-      },
-    },
-  });
+  const queryClient = createTestQueryClient();
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ObservabilityPage />
-    </QueryClientProvider>,
-  );
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SelectedTenantProvider>{children}</SelectedTenantProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(<ObservabilityPage />, { wrapper: Wrapper });
 }
 
 function expectTextToAppearBefore(container: HTMLElement, first: string, second: string) {
@@ -168,10 +171,26 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Observabilidad" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Filtros del ledger" })).toBeInTheDocument();
     const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
-    expect(within(table).getByRole("row", { selected: true })).toHaveTextContent("req-inte");
+    expect(within(table).getByRole("row", { current: true })).toHaveTextContent("req-inte");
     expect(await screen.findByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-inte");
     expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0042");
     expectTextToAppearBefore(container, "req-inte", "Recomendaciones");
+  });
+
+  it("refreshes the ledger and the tenant context from the page header, outside the filters", async () => {
+    const user = userEvent.setup();
+    const { container } = renderPage();
+    await screen.findByRole("table", { name: "Ledger de pedidos" });
+    await waitFor(() => expect(getTenantRecommendations).toHaveBeenCalled());
+    const ledgerCalls = listUsageLedger.mock.calls.length;
+    const recommendationCalls = getTenantRecommendations.mock.calls.length;
+
+    const header = container.querySelector("header") as HTMLElement;
+    expect(within(screen.getByRole("group", { name: "Filtros del ledger" })).queryByRole("button")).not.toBeInTheDocument();
+    await user.click(within(header).getByRole("button", { name: "Actualizar" }));
+
+    await waitFor(() => expect(listUsageLedger.mock.calls.length).toBe(ledgerCalls + 1));
+    await waitFor(() => expect(getTenantRecommendations.mock.calls.length).toBe(recommendationCalls + 1));
   });
 
   it("keeps tenant context in tabs: recommendations, cache, calibration and dependencies", async () => {
@@ -198,6 +217,18 @@ describe("ObservabilityPage", () => {
 
     await user.click(screen.getByRole("tab", { name: "Dependencias" }));
     expect(await screen.findByText("postgres")).toBeInTheDocument();
+  });
+
+  it("says the gateway is unreachable in the dependencies tab", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "gateway_unreachable" }), { status: 503 })),
+    );
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Dependencias" }));
+    expect(await screen.findByText("No se pudo conectar con el gateway.")).toBeInTheDocument();
   });
 
   it("names stale tenant calibration in its tab", async () => {
@@ -243,5 +274,235 @@ describe("ObservabilityPage", () => {
     listTenants.mockRejectedValue(new Error("Tenants unavailable."));
     renderPage();
     expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+  });
+
+  it("still loads the ledger when the tenant list fails", async () => {
+    listTenants.mockRejectedValue(new Error("Tenants unavailable."));
+    renderPage();
+
+    expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+    const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
+    expect(within(table).getByRole("row", { name: /req-integrated-001/ })).toBeInTheDocument();
+    // With no tenant list there is no default tenant to read: every tenant's rows.
+    expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" }));
+  });
+
+  describe("ledger filters", () => {
+    beforeEach(() => {
+      listUsageLedger.mockClear();
+    });
+
+    async function settledFilters() {
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
+      return within(screen.getByRole("group", { name: "Filtros del ledger" }));
+    }
+
+    it("sends the tier the operator picks and none until then", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const filters = await settledFilters();
+      expect(listUsageLedger.mock.calls.every(([, sent]) => !sent.tier)).toBe(true);
+
+      await user.selectOptions(filters.getByLabelText("Nivel"), "economy");
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tier: "economy" })),
+      );
+    });
+
+    it("sends the status the gateway records for an abandoned stream", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const filters = await settledFilters();
+
+      await user.selectOptions(filters.getByLabelText("Estado"), "client_disconnected");
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith(
+          "nebula-admin-key",
+          expect.objectContaining({ terminalStatus: "client_disconnected" }),
+        ),
+      );
+    });
+
+    it("sends the dates as the UTC instants of the local times the operator typed", async () => {
+      renderPage();
+      const filters = await settledFilters();
+
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "2026-10-22T10:00" } });
+      fireEvent.change(filters.getByLabelText("Hasta"), { target: { value: "2026-10-22T18:30" } });
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith(
+          "nebula-admin-key",
+          expect.objectContaining({
+            fromTimestamp: new Date("2026-10-22T10:00").toISOString(),
+            toTimestamp: new Date("2026-10-22T18:30").toISOString(),
+          }),
+        ),
+      );
+      // The inputs keep what was typed, in the operator's clock.
+      expect(filters.getByLabelText("Desde")).toHaveValue("2026-10-22T10:00");
+      expect(filters.getByLabelText("Hasta")).toHaveValue("2026-10-22T18:30");
+    });
+
+    it("sends no date while the input is cleared", async () => {
+      renderPage();
+      const filters = await settledFilters();
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "2026-10-22T10:00" } });
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ fromTimestamp: expect.any(String) })),
+      );
+
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "" } });
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ fromTimestamp: "" })),
+      );
+    });
+  });
+
+  describe("cost summary", () => {
+    const row = (requestId: string, cost: number | null) => ({
+      request_id: requestId,
+      tenant_id: "tenant-alpha",
+      requested_model: "gpt-4o-mini",
+      final_route_target: "premium",
+      final_provider: "openai-compatible",
+      fallback_used: false,
+      cache_hit: false,
+      response_model: "gpt-4o-mini",
+      prompt_tokens: 1,
+      completion_tokens: 1,
+      total_tokens: 2,
+      estimated_cost: cost,
+      latency_ms: 100,
+      timestamp: "2026-03-23T18:00:00Z",
+      terminal_status: "completed",
+      route_reason: "learned_router",
+      policy_outcome: "allowed",
+      route_signals: null,
+      message_type: "chat",
+      evidence_retention_window: "30d",
+      evidence_expires_at: null,
+      metadata_minimization_level: "standard",
+      metadata_fields_suppressed: [],
+      governance_source: "tenant_policy",
+    });
+
+    it("says how many requests the cost adds up and what 1000 of them cost", async () => {
+      listUsageLedger.mockResolvedValue([row("req-a", 0.0042), row("req-b", 0.0018)]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0060 en 2 pedidos")).toBeInTheDocument();
+      expect(screen.getByText("USD 3.00 / 1000")).toBeInTheDocument();
+    });
+
+    it("counts a request with no recorded cost as zero, in the sum and in the number of requests", async () => {
+      listUsageLedger.mockResolvedValue([row("req-a", 0.0042), row("req-b", null)]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0042 en 2 pedidos")).toBeInTheDocument();
+      expect(screen.getByText("USD 2.10 / 1000")).toBeInTheDocument();
+    });
+
+    it("counts a single request in the singular", async () => {
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0042 en 1 pedido")).toBeInTheDocument();
+      expect(screen.getByText("USD 4.20 / 1000")).toBeInTheDocument();
+    });
+
+    it("has no cost per 1000 when there are no requests to average", async () => {
+      listUsageLedger.mockResolvedValue([]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0000 en 0 pedidos")).toBeInTheDocument();
+      expect(screen.queryByText(/\/ 1000/)).not.toBeInTheDocument();
+    });
+
+    it("shows a dash instead of a cost until the ledger arrives", () => {
+      listUsageLedger.mockReturnValue(new Promise(() => {}));
+      renderPage();
+
+      expect(screen.getByText("Costo").parentElement).toHaveTextContent(/^Costo—$/);
+    });
+  });
+
+  describe("tenant scope", () => {
+    beforeEach(() => {
+      listUsageLedger.mockClear();
+      getTenantRecommendations.mockClear();
+      listTenants.mockResolvedValue([
+        { id: "tenant-alpha", name: "Tenant Alpha" },
+        { id: "tenant-bravo", name: "Tenant Bravo" },
+      ]);
+    });
+
+    function tenantFilter() {
+      return within(screen.getByRole("group", { name: "Filtros del ledger" })).getByLabelText("Tenant");
+    }
+
+    it("starts on the shared tenant and lets the operator pick Todos los tenants", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "");
+
+      expect(tenantFilter()).toHaveValue("");
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" })),
+      );
+      // Settled: the all-tenants ledger has loaded and drawn, so every effect it triggered has run.
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
+      // The default selection does not come back over the operator's choice.
+      expect(tenantFilter()).toHaveValue("");
+      expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" }));
+    });
+
+    it("keeps Todos los tenants when the page renders again", async () => {
+      const user = userEvent.setup();
+      const view = renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "");
+
+      view.rerender(<ObservabilityPage />);
+
+      expect(tenantFilter()).toHaveValue("");
+    });
+
+    it("shares the tenant picked here with the other pages, and starts on the one picked there", async () => {
+      const user = userEvent.setup();
+      const view = renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "tenant-bravo");
+
+      view.rerender(<div />);
+      view.rerender(<ObservabilityPage />);
+
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-bravo"));
+      await waitFor(() =>
+        expect(getTenantRecommendations).toHaveBeenLastCalledWith("nebula-admin-key", "tenant-bravo"),
+      );
+    });
+
+    it("does not read the ledger of every tenant while the tenant list loads", async () => {
+      renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
+      for (const call of listUsageLedger.mock.calls) {
+        expect(call[1]).toEqual(expect.objectContaining({ tenantId: "tenant-alpha" }));
+      }
+    });
+
+    it("asks for no tenant context and shows the empty ledger when there are no tenants", async () => {
+      listTenants.mockResolvedValue([]);
+      listUsageLedger.mockResolvedValue([]);
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText("No hay pedidos en este rango.")).toBeInTheDocument());
+      expect(getTenantRecommendations).not.toHaveBeenCalled();
+    });
   });
 });

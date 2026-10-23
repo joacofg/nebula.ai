@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 
 import type { ApiKeyCreateInput, TenantRecord } from "@/lib/admin-api";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/system/state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -34,6 +34,7 @@ export function CreateApiKeyDialog({
   const [tenantId, setTenantId] = useState<string | null>(initialTenant);
   const [allowedTenantIds, setAllowedTenantIds] = useState<string[]>(initialTenant ? [initialTenant] : []);
   const [error, setError] = useState<string | null>(null);
+  const tenantHintId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -83,11 +84,7 @@ export function CreateApiKeyDialog({
         </DialogHeader>
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
+          {error ? <ErrorAlert error={error} fallback="No se pudo crear la clave." /> : null}
 
           <div>
             <label className="field-label" htmlFor="api-key-name">
@@ -103,9 +100,11 @@ export function CreateApiKeyDialog({
             <select
               id="tenant-id"
               className="field-input"
+              aria-describedby={tenantHintId}
               value={tenantId ?? ""}
               onChange={(event) => setTenantId(event.target.value || null)}
             >
+              <option value="">Sin tenant por defecto</option>
               {tenants.map((tenant) => (
                 <option key={tenant.id} value={tenant.id}>
                   {tenant.name}
@@ -114,7 +113,7 @@ export function CreateApiKeyDialog({
             </select>
           </div>
 
-          <fieldset className="m-0 border-0 p-0">
+          <fieldset className="m-0 border-0 p-0" aria-describedby={tenantHintId}>
             <legend className="field-label">Tenants permitidos</legend>
             <div className="grid gap-2 sm:grid-cols-2">
               {tenants.map((tenant) => (
@@ -129,7 +128,7 @@ export function CreateApiKeyDialog({
                 </label>
               ))}
             </div>
-            <p className="mt-1.5 text-[13px] text-ink-3">
+            <p id={tenantHintId} className="mt-1.5 text-[13px] text-ink-3">
               Con más de uno y sin tenant por defecto, los pedidos envían X-Nebula-Tenant-ID.
             </p>
           </fieldset>

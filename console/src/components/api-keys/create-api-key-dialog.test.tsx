@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -88,6 +88,78 @@ describe("create-api-key-dialog", () => {
         allowed_tenant_ids: ["tenant-a", "tenant-b"],
       });
     });
+  });
+
+  it("offers no default tenant first and submits it as null", async () => {
+    const onSubmit = vi.fn().mockResolvedValue(undefined);
+
+    renderWithProviders(
+      <CreateApiKeyDialog
+        open
+        tenants={TENANTS}
+        selectedTenantId="tenant-a"
+        isSaving={false}
+        onClose={vi.fn()}
+        onSubmit={onSubmit}
+      />,
+    );
+
+    const select = screen.getByLabelText("Tenant por defecto");
+    expect(within(select).getAllByRole("option").map((option) => option.textContent)).toEqual([
+      "Sin tenant por defecto",
+      "Tenant A",
+      "Tenant B",
+    ]);
+    expect(select).toHaveValue("tenant-a");
+
+    await userEvent.selectOptions(select, "Sin tenant por defecto");
+    expect(select).toHaveValue("");
+
+    await userEvent.type(screen.getByLabelText("Nombre"), "Header key");
+    await userEvent.click(screen.getByLabelText("Tenant B"));
+    await userEvent.click(screen.getByRole("button", { name: "Crear clave" }));
+
+    await waitFor(() => {
+      expect(onSubmit).toHaveBeenCalledWith({
+        name: "Header key",
+        tenant_id: null,
+        allowed_tenant_ids: ["tenant-a", "tenant-b"],
+      });
+    });
+  });
+
+  it("shows the empty option when there are no tenants to default to", () => {
+    renderWithProviders(
+      <CreateApiKeyDialog
+        open
+        tenants={[]}
+        selectedTenantId={null}
+        isSaving={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const select = screen.getByLabelText("Tenant por defecto");
+    expect(select).toHaveValue("");
+    expect(within(select).getByRole("option", { name: "Sin tenant por defecto" })).toBeInTheDocument();
+  });
+
+  it("links the tenant-header hint to the controls it explains", () => {
+    renderWithProviders(
+      <CreateApiKeyDialog
+        open
+        tenants={TENANTS}
+        selectedTenantId="tenant-a"
+        isSaving={false}
+        onClose={vi.fn()}
+        onSubmit={vi.fn().mockResolvedValue(undefined)}
+      />,
+    );
+
+    const hint = /Con más de uno y sin tenant por defecto, los pedidos envían X-Nebula-Tenant-ID/;
+    expect(screen.getByRole("group", { name: "Tenants permitidos" })).toHaveAccessibleDescription(hint);
+    expect(screen.getByLabelText("Tenant por defecto")).toHaveAccessibleDescription(hint);
   });
 });
 

@@ -1,5 +1,7 @@
 import type { NextRequest } from "next/server";
 
+import { gatewayUnreachableResponse } from "@/lib/admin-errors";
+
 const RESPONSE_HEADERS = [
   "X-Request-ID",
   "X-Nebula-Tenant-ID",
@@ -19,28 +21,36 @@ function buildUpstreamUrl() {
 }
 
 export async function POST(request: NextRequest) {
-  const upstream = await fetch(buildUpstreamUrl(), {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Nebula-Admin-Key": request.headers.get("X-Nebula-Admin-Key") ?? "",
-    },
-    body: await request.text(),
-    cache: "no-store",
-  });
+  const body = await request.text();
 
-  const headers = new Headers({
-    "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
-  });
-  for (const header of RESPONSE_HEADERS) {
-    const value = upstream.headers.get(header);
-    if (value !== null) {
-      headers.set(header, value);
+  try {
+    const upstream = await fetch(buildUpstreamUrl(), {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Nebula-Admin-Key": request.headers.get("X-Nebula-Admin-Key") ?? "",
+      },
+      body,
+      cache: "no-store",
+    });
+
+    const headers = new Headers({
+      "Content-Type": upstream.headers.get("Content-Type") ?? "application/json",
+    });
+    for (const header of RESPONSE_HEADERS) {
+      const value = upstream.headers.get(header);
+      if (value !== null) {
+        headers.set(header, value);
+      }
     }
-  }
 
-  return new Response(await upstream.arrayBuffer(), {
-    status: upstream.status,
-    headers,
-  });
+    return new Response(await upstream.arrayBuffer(), {
+      status: upstream.status,
+      headers,
+    });
+  } catch (error) {
+    // Not every failure here is the network: keep the cause, the client only gets gateway_unreachable.
+    console.error("Nebula playground proxy: the gateway call failed:", error);
+    return gatewayUnreachableResponse();
+  }
 }

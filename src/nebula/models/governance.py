@@ -194,6 +194,13 @@ class PolicySimulationWindow(BaseModel):
     returned_rows: int
 
 
+SimulationDecisionSource = Literal["learned_router", "heuristic"]
+
+
+def _empty_tier_counts() -> dict[str, int]:
+    return {"local": 0, "economy": 0, "frontier": 0}
+
+
 class PolicySimulationOutcomeCounts(BaseModel):
     evaluated_rows: int = 0
     changed_routes: int = 0
@@ -201,6 +208,17 @@ class PolicySimulationOutcomeCounts(BaseModel):
     baseline_premium_cost: float = 0.0
     simulated_premium_cost: float = 0.0
     premium_cost_delta: float = 0.0
+    # Rows per tier (local, economy, frontier; every key present). A row with no tier (denied,
+    # or served from the cache in the baseline) counts in none.
+    baseline_tier_counts: dict[str, int] = Field(default_factory=_empty_tier_counts)
+    simulated_tier_counts: dict[str, int] = Field(default_factory=_empty_tier_counts)
+    # How each row was re-decided: the learned router from its stored probabilities, or the
+    # heuristic replay. A row the cache answered stays a cache row while the candidate keeps the
+    # cache on; neither router re-decides it, so it counts in cache_rows. The three add up to
+    # evaluated_rows.
+    learned_router_rows: int = 0
+    heuristic_rows: int = 0
+    cache_rows: int = 0
 
 
 class PolicySimulationChangedRequest(BaseModel):
@@ -225,12 +243,19 @@ class PolicySimulationChangedRequest(BaseModel):
     simulated_route_score: float | None = None
     baseline_estimated_cost: float = Field(default=0.0, ge=0)
     simulated_estimated_cost: float = Field(default=0.0, ge=0)
+    # local / economy / frontier; None when denied (or, in the baseline, served from the cache).
+    baseline_tier: str | None = None
+    simulated_tier: str | None = None
+    decision_source: SimulationDecisionSource
 
 
 class PolicySimulationResponse(BaseModel):
     tenant_id: str
     candidate_policy: TenantPolicy
-    approximation_notes: list[str] = Field(default_factory=list, max_length=3)
+    # At most the five notes policy_simulation_service.py can add.
+    approximation_notes: list[str] = Field(default_factory=list, max_length=5)
+    # One stable code per note, in the same order, for clients that word the notes themselves.
+    approximation_note_codes: list[str] = Field(default_factory=list, max_length=5)
     window: PolicySimulationWindow
     summary: PolicySimulationOutcomeCounts
     calibration_summary: CalibrationEvidenceSummary

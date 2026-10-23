@@ -1,11 +1,26 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { RuntimeHealthCards } from "@/components/health/runtime-health-cards";
 import { renderWithProviders } from "@/test/render";
 
+// A moment on the viewer's clock, as the ledger writes it ("12/4/26, 01:00:00"), not an ISO string.
+const LOCAL_STAMP = /^.*\d{1,2}\/\d{1,2}\/\d{2},? \d{2}:\d{2}:\d{2}$/;
+
+/** One dependency's card, found by the name in its heading. */
+function card(name: string) {
+  const article = screen.getByRole("heading", { name }).closest("article");
+  expect(article).not.toBeNull();
+  return within(article as HTMLElement);
+}
+
+/** The status written next to a card's name. */
+function statusOf(name: string) {
+  return screen.getByRole("heading", { name }).nextElementSibling;
+}
+
 describe("runtime-health-cards", () => {
-  it("renders ready, degraded, and not_ready cards with explicit text", () => {
+  it("renders ready, degraded, and not_ready cards with their status in Spanish", () => {
     renderWithProviders(
       <RuntimeHealthCards
         isLoading={false}
@@ -30,16 +45,30 @@ describe("runtime-health-cards", () => {
     );
 
     expect(screen.getByText("gateway")).toBeInTheDocument();
-    expect(screen.getByText("ready")).toBeInTheDocument();
-    expect(screen.getByText("degraded")).toBeInTheDocument();
-    expect(screen.getByText("not ready")).toBeInTheDocument();
-    expect(screen.getByText("premium_provider")).toBeInTheDocument();
+    expect(statusOf("gateway")).toHaveTextContent("Listo");
+    expect(statusOf("semantic_cache")).toHaveTextContent("Degradado");
+    expect(statusOf("premium_provider")).toHaveTextContent("No listo");
+    expect(screen.queryByText("not ready")).not.toBeInTheDocument();
+    expect(screen.queryByText("degraded")).not.toBeInTheDocument();
     expect(
       screen.getByText("Una dependencia opcional degradada no bloquea el gateway."),
     ).toBeInTheDocument();
+    // The gateway's own diagnosis stays as written.
+    expect(screen.getByText("FastAPI application is running.")).toBeInTheDocument();
   });
 
-  it("renders resilience metadata for critical, optional, and recovering dependencies", () => {
+  it("keeps a status it does not know as the gateway sent it", () => {
+    renderWithProviders(
+      <RuntimeHealthCards
+        isLoading={false}
+        dependencies={{ postgres: { status: "healthy", required: true, detail: "ready" } }}
+      />,
+    );
+
+    expect(statusOf("postgres")).toHaveTextContent("healthy");
+  });
+
+  it("renders resilience metadata for critical, optional, and recovering dependencies in Spanish", () => {
     renderWithProviders(
       <RuntimeHealthCards
         isLoading={false}
@@ -83,26 +112,86 @@ describe("runtime-health-cards", () => {
       />,
     );
 
-    expect(screen.getAllByText("Clase")).toHaveLength(3);
-    expect(screen.getByText("serving critical")).toBeInTheDocument();
-    expect(screen.getAllByText("serving optional")).toHaveLength(2);
-    expect(screen.getAllByText("Ciclo de vida")).toHaveLength(3);
-    expect(screen.getAllByText("recovering")).toHaveLength(2);
-    expect(screen.getAllByText("Efecto")).toHaveLength(3);
-    expect(screen.getByText("fail closed")).toBeInTheDocument();
-    expect(screen.getAllByText("continuity limited")).toHaveLength(2);
-    expect(screen.getAllByText("Código")).toHaveLength(3);
-    expect(screen.getByText("governance query failed")).toBeInTheDocument();
-    expect(screen.getByText("semantic cache unavailable")).toBeInTheDocument();
-    expect(screen.getByText("premium provider recovered")).toBeInTheDocument();
-    expect(screen.getAllByText("Activada")).toHaveLength(2);
-    expect(screen.getAllByText("sí")).toHaveLength(3);
-    expect(screen.getAllByText("Recuperándose")).toHaveLength(3);
-    expect(screen.getAllByText("no")).toHaveLength(2);
-    expect(screen.getAllByText("Última falla")).toHaveLength(2);
-    expect(screen.getByText("2026-04-12T01:00:00Z")).toBeInTheDocument();
-    expect(screen.getAllByText("Última recuperación")).toHaveLength(1);
-    expect(screen.getByText("2026-04-12T01:03:00Z")).toBeInTheDocument();
+    const governance = card("governance_store");
+    expect(governance.getByRole("group", { name: "Clase" })).toHaveTextContent("crítica para servir");
+    expect(governance.getByRole("group", { name: "Ciclo de vida" })).toHaveTextContent("No listo");
+    expect(governance.getByRole("group", { name: "Efecto" })).toHaveTextContent("bloquea pedidos");
+    expect(governance.getByRole("group", { name: "Código" })).toHaveTextContent("falló la consulta al almacén");
+    expect(governance.getByRole("group", { name: "Activada" })).toHaveTextContent("sí");
+    expect(governance.getByRole("group", { name: "Recuperándose" })).toHaveTextContent("no");
+    expect(governance.getByRole("group", { name: "Última falla" })).toHaveTextContent(LOCAL_STAMP);
+    expect(governance.queryByText("2026-04-12T01:00:00Z")).not.toBeInTheDocument();
+    expect(governance.queryByRole("group", { name: "Última recuperación" })).not.toBeInTheDocument();
+
+    const cache = card("semantic_cache");
+    expect(cache.getByRole("group", { name: "Clase" })).toHaveTextContent("opcional");
+    expect(cache.getByRole("group", { name: "Ciclo de vida" })).toHaveTextContent("Degradado");
+    expect(cache.getByRole("group", { name: "Efecto" })).toHaveTextContent("continuidad limitada");
+    expect(cache.getByRole("group", { name: "Código" })).toHaveTextContent("caché no disponible");
+
+    const provider = card("premium_provider");
+    expect(statusOf("premium_provider")).toHaveTextContent("Recuperándose");
+    expect(provider.getByRole("group", { name: "Ciclo de vida" })).toHaveTextContent("Recuperándose");
+    expect(provider.getByRole("group", { name: "Recuperándose" })).toHaveTextContent("sí");
+    expect(provider.getByRole("group", { name: "Última recuperación" })).toHaveTextContent(LOCAL_STAMP);
+    // A reason the console does not know is shown as the gateway sent it, never a blank.
+    expect(provider.getByRole("group", { name: "Código" })).toHaveTextContent("premium_provider_recovered");
+
+    for (const english of ["serving critical", "fail closed", "governance query failed", "not ready"]) {
+      expect(screen.queryByText(english)).not.toBeInTheDocument();
+    }
+  });
+
+  it("keeps the gateway's code available as the title of its Spanish label", () => {
+    renderWithProviders(
+      <RuntimeHealthCards
+        isLoading={false}
+        dependencies={{
+          local_ollama: {
+            status: "ready",
+            required: false,
+            detail: "Local Ollama endpoint is reachable.",
+            dependency_class: "serving_optional",
+            serving_effect: "continuity_limited",
+            reason_code: "local_ollama_ready",
+          },
+        }}
+      />,
+    );
+
+    expect(card("local_ollama").getByText("Ollama alcanzable")).toHaveAttribute("title", "local_ollama_ready");
+    expect(card("local_ollama").getByText("opcional")).toHaveAttribute("title", "serving_optional");
+    expect(card("local_ollama").getByText("continuidad limitada")).toHaveAttribute("title", "continuity_limited");
+  });
+
+  it("writes every moment of a card on the viewer's clock", () => {
+    renderWithProviders(
+      <RuntimeHealthCards
+        isLoading={false}
+        dependencies={{
+          retention_lifecycle: {
+            status: "ready",
+            required: false,
+            detail: "Retention lifecycle cleanup completed successfully.",
+            // Built from local components, so the expectation holds in any time zone.
+            last_failure_at: new Date(2026, 3, 12, 1, 0, 0).toISOString(),
+            last_recovery_at: new Date(2026, 3, 12, 1, 3, 0).toISOString(),
+            last_run_at: new Date(2026, 3, 12, 1, 2, 3).toISOString(),
+            last_attempted_run_at: "2026-04-12T01:05:00",
+            last_cutoff: null,
+          },
+        }}
+      />,
+    );
+
+    const retention = card("retention_lifecycle");
+    expect(retention.getByRole("group", { name: "Última falla" })).toHaveTextContent(/12\/0?4\/26,? 01:00:00$/);
+    expect(retention.getByRole("group", { name: "Última recuperación" })).toHaveTextContent(/12\/0?4\/26,? 01:03:00$/);
+    expect(retention.getByRole("group", { name: "Última corrida" })).toHaveTextContent(/12\/0?4\/26,? 01:02:03$/);
+    // A zoneless timestamp is UTC, the way the gateway stores it, so it reads like its "Z" twin.
+    expect(retention.getByRole("group", { name: "Último intento" })).toHaveTextContent(LOCAL_STAMP);
+    // No moment is a dash, not an empty cell.
+    expect(retention.getByRole("group", { name: "Último corte" })).toHaveTextContent("—");
   });
 
   it("renders retention lifecycle runtime metrics without introducing a dedicated dashboard", () => {
@@ -126,8 +215,8 @@ describe("runtime-health-cards", () => {
     );
 
     expect(screen.getByText("retention_lifecycle")).toBeInTheDocument();
-    expect(screen.getByText("Último estado")).toBeInTheDocument();
-    expect(screen.getByText("failed")).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Último estado" })).toHaveTextContent("fallida");
+    expect(screen.queryByText("failed")).not.toBeInTheDocument();
     expect(screen.getByText("Filas borradas")).toBeInTheDocument();
     expect(screen.getAllByText("4")).toHaveLength(2);
     expect(screen.getByText("Último error")).toBeInTheDocument();

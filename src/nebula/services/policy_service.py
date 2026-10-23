@@ -181,7 +181,31 @@ class PolicyService:
                 evidence_summary=evidence_summary,
                 prompt_embedding=prompt_embedding,
             )
+        return self.evaluate_decision(
+            request=request,
+            tenant_context=tenant_context,
+            route_decision=route_decision,
+            before_timestamp=before_timestamp,
+            evidence_summary=evidence_summary,
+        )
 
+    def evaluate_decision(
+        self,
+        *,
+        request: ChatCompletionRequest,
+        tenant_context: AuthenticatedTenantContext,
+        route_decision: RouteDecision,
+        before_timestamp: datetime | None = None,
+        evidence_summary: CalibrationEvidenceSummary | None = None,
+    ) -> PolicyEvaluation:
+        """Apply the tenant's guardrails to a route decision that is already made.
+
+        `evaluate` routes first and ends here; the policy simulation also comes here directly
+        with the learned router's re-decision of a ledger row, so both meet the same
+        guardrails (calibrated routing off, explicit-model conflicts, allowed premium models
+        with the economy-to-frontier escalation, the per-request cap and the hard budget).
+        """
+        policy = tenant_context.policy
         calibrated_routing_gated = False
         if self._calibrated_routing_disabled(policy=policy, route_decision=route_decision):
             route_decision = RouteDecision(

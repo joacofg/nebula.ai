@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/system/page-header";
 import { Readout } from "@/components/system/readout";
 import { EmptyState, ErrorAlert, LoadingRows } from "@/components/system/state";
 import { TierBadge } from "@/components/system/tier-badge";
+import { AdminApiError } from "@/lib/admin-api";
 
 describe("TierBadge", () => {
   it.each([
@@ -27,8 +28,27 @@ describe("ErrorAlert", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("boom");
   });
 
-  it("falls back when the error is not an Error", () => {
-    render(<ErrorAlert error="nope" fallback="No se pudo cargar." />);
+  it("shows the Spanish message of a gateway error as is", () => {
+    render(<ErrorAlert error={new AdminApiError(403, "Tenant policy denied.")} fallback="No se pudo cargar." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Acción no permitida.");
+  });
+
+  it("shows a text message as is, so forms can report their own validation", () => {
+    render(<ErrorAlert error="Falta el nombre." fallback="No se pudo cargar." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("Falta el nombre.");
+  });
+
+  it("falls back when there is no message to show, never [object Object]", () => {
+    const { rerender } = render(<ErrorAlert error={{ detail: [{ loc: ["body"] }] }} fallback="No se pudo cargar." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo cargar.");
+
+    rerender(<ErrorAlert error="" fallback="No se pudo cargar." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo cargar.");
+
+    rerender(<ErrorAlert error={new Error("")} fallback="No se pudo cargar." />);
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudo cargar.");
+
+    rerender(<ErrorAlert error={null} fallback="No se pudo cargar." />);
     expect(screen.getByRole("alert")).toHaveTextContent("No se pudo cargar.");
   });
 });
@@ -48,15 +68,16 @@ describe("EmptyState and LoadingRows", () => {
 });
 
 describe("Figure", () => {
-  it("numbers the caption", () => {
+  it("renders the caption without a figure number, so a capture can be numbered in the thesis", () => {
     render(
-      <Figure number={1} caption="Calidad en función del costo.">
+      <Figure caption="Calidad en función del costo.">
         <svg />
       </Figure>,
     );
     const figure = screen.getByRole("figure");
-    expect(within(figure).getByText("Figura 1.")).toBeInTheDocument();
     expect(within(figure).getByText("Calidad en función del costo.")).toBeInTheDocument();
+    expect(figure.querySelector("figcaption")).toHaveTextContent("Calidad en función del costo.");
+    expect(figure).not.toHaveTextContent(/Figura/);
   });
 });
 

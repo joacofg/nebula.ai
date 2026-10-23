@@ -12,6 +12,7 @@ import {
   randomFrontier,
   replayOrder,
   routeRow,
+  tierModels,
   type ReplayBaselines,
   type ReplayOperatingPoint,
   type ReplayRow,
@@ -57,6 +58,24 @@ describe("router replay golden test (real file)", () => {
     expect(allFrontier.quality).toBe(1);
     expect(Math.abs(allFrontier.costPerPrompt - replay.baselines.all_frontier.cost)).toBeLessThan(1e-9);
     expect(allFrontier.share).toEqual({ local: 0, economy: 0, frontier: 1 });
+  });
+});
+
+describe("tierModels", () => {
+  it("names the model each tier ran in the real replay, and leaves out the candidate that lost", () => {
+    // llama3.2:3b was measured too but the thesis picked qwen2.5:7b as the local model.
+    expect(Object.values(replay.latency).map((l) => l.model)).toContain("llama3.2:3b");
+    expect(tierModels(replay.latency)).toEqual({
+      local: "qwen2.5:7b",
+      economy: "anthropic/claude-haiku-4.5",
+      frontier: "openai/gpt-4.1",
+    });
+  });
+
+  it("leaves a tier without a model when its latency was not measured", () => {
+    expect(tierModels({ gpt41: { model: "openai/gpt-4.1", median_s: 1, p90_s: 2, mean_s: 1, n: 3 } })).toEqual({
+      frontier: "openai/gpt-4.1",
+    });
   });
 });
 

@@ -1,6 +1,9 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test("operator can sign in and land on the evaluation page", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/tenants", async (route) => {
     await route.fulfill({
       status: 200,
@@ -34,9 +37,16 @@ test("operator can sign in and land on the evaluation page", async ({ page }) =>
 
   await expect(page).toHaveURL(/\/evaluacion$/);
   await expect(page.getByRole("heading", { level: 1, name: "Evaluación del router" })).toBeVisible();
+
+  // Signing out ends on the login page, said as a sign-out and not as an expired session.
+  await page.getByRole("button", { name: "Cerrar sesión" }).click();
+  await expect(page.getByLabel("Clave de admin")).toBeVisible();
+  await expect(page.getByText("Sesión cerrada.")).toBeVisible();
+  await expect(page.getByText("La sesión se cerró. Ingresar la clave de admin otra vez.")).toHaveCount(0);
 });
 
 test("refresh clears the in-memory admin session", async ({ page }) => {
+  await mockEvaluationLanding(page);
   await page.route("**/api/admin/tenants", async (route) => {
     await route.fulfill({
       status: 200,

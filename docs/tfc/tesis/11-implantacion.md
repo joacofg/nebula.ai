@@ -89,7 +89,8 @@ versiones de los modelos quedaron en `benchmarks/ground-truth/v1/provenance.json
 
 1. *Unitarias y de integración* (pytest para el backend, Vitest para la consola): cada componente
    del gateway y de la consola, con proveedores y caché simulados.
-2. *De extremo a extremo* (Playwright): la consola contra el gateway real.
+2. *De extremo a extremo* (Playwright): la consola compilada, en un navegador, con las respuestas
+   del gateway simuladas en sus proxies.
 3. *Validación del instrumento de calidad:* acuerdo de los jueces con un lector humano, con
    reglas y umbral pre-registrados antes de correr los jueces sobre el corpus.
 4. *Evaluación del router:* validación cruzada de 5 folds agrupada por prompt, y una estimación
@@ -109,7 +110,7 @@ hipótesis.
 ### 11.2.2 Casos de prueba
 
 La Tabla 11.3 resume los casos de prueba. La tabla completa, con la entrada y el test o reporte
-que respalda cada caso, está en el Anexo A. La suite automática tiene 811 pruebas del backend (pytest) y 186 de la consola (Vitest), todas en verde en la última corrida (22 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
+que respalda cada caso, está en el Anexo A. La suite automática tiene 854 pruebas del backend (pytest) y 689 de la consola (Vitest), todas en verde en la última corrida (23 de octubre de 2026), más siete archivos de pruebas de extremo a extremo con Playwright.
 
 **Tabla 11.3.** Casos de prueba (P = pasó, F = falló).
 

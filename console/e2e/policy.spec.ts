@@ -1,8 +1,11 @@
 import { expect, test } from "@playwright/test";
 
+import { mockEvaluationLanding } from "./landing";
+
 test.setTimeout(60_000);
 
 test("operator can update tenant policy from the console", async ({ page }) => {
+  await mockEvaluationLanding(page);
   const tenants = [
     {
       id: "default",
@@ -49,16 +52,22 @@ test("operator can update tenant policy from the console", async ({ page }) => {
         routing_modes: ["auto", "local_only", "premium_only"],
         known_premium_models: ["openai/gpt-4o-mini", "openai/gpt-4.1-mini"],
         default_premium_model: "openai/gpt-4o-mini",
+        // As the gateway answers (src/nebula/api/routes/admin.py, get_policy_options).
         runtime_enforced_fields: [
-          "routing_quality_target",
-      "rate_limit_requests_per_minute",
           "routing_mode_default",
+          "calibrated_routing_enabled",
+          "routing_quality_target",
+          "rate_limit_requests_per_minute",
           "allowed_premium_models",
           "semantic_cache_enabled",
+          "semantic_cache_similarity_threshold",
+          "semantic_cache_max_entry_age_hours",
           "fallback_enabled",
           "max_premium_cost_per_request",
           "hard_budget_limit_usd",
           "hard_budget_enforcement",
+          "evidence_retention_window",
+          "metadata_minimization_level",
         ],
         soft_signal_fields: ["soft_budget_usd"],
         advisory_fields: ["prompt_capture_enabled", "response_capture_enabled"],
@@ -89,9 +98,12 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await expect(page.getByText("Primero definir el presupuesto duro.")).toBeVisible();
   await expect(page.getByLabel("Prompt capture enabled")).not.toBeVisible();
 
+  await expect(page.getByRole("checkbox", { name: "Ruteo automático por nivel" })).toBeChecked();
+
   await page.selectOption("#routing-mode-default", "premium_only");
   await page.getByRole("checkbox", { name: "Fallback a premium si falla el local" }).uncheck();
-  await page.locator("#hard-budget-limit-usd").fill("25");
+  // A decimal comma is a number, not "sin límite".
+  await page.locator("#hard-budget-limit-usd").fill("25,5");
   await expect(page.getByLabel("Al agotarse el presupuesto")).toBeEnabled();
   await page.selectOption("#hard-budget-enforcement", "deny");
   await page.getByRole("textbox", { name: "Agregar modelo" }).fill("openai/gpt-4.5-mini");
@@ -100,12 +112,15 @@ test("operator can update tenant policy from the console", async ({ page }) => {
   await page.getByLabel("Objetivo de calidad").fill("0.9");
   await page.getByRole("button", { name: "Guardar política" }).click();
 
+  await expect(page.getByRole("status").filter({ hasText: "Política guardada." })).toBeVisible();
+  expect(policy).toMatchObject({ hard_budget_limit_usd: 25.5, routing_quality_target: 0.9 });
+
   await page.getByRole("link", { name: "Tenants" }).click();
   await page.getByRole("link", { name: "Política" }).click();
 
   await expect(page.locator("#routing-mode-default")).toHaveValue("premium_only");
-  await expect(page.locator("#hard-budget-limit-usd")).toHaveValue("25");
+  await expect(page.locator("#hard-budget-limit-usd")).toHaveValue("25.5");
   await expect(page.locator("#hard-budget-enforcement")).toHaveValue("deny");
-  await expect(page.locator("#routing-quality-target")).toHaveValue("0.9");
+  await expect(page.locator("#routing-quality-target")).toHaveValue("0.90");
   await expect(page.getByText("openai/gpt-4.5-mini")).toBeVisible();
 });

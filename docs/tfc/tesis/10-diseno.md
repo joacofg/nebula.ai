@@ -150,7 +150,7 @@ compara el borrador con el tráfico reciente del ledger y nada se guarda sin una
 ![Figura 10.3](figuras/consola-politica.png)
 
 **Figura 10.3.** Edición de la política del tenant en la consola: objetivo de calidad, límite de
-pedidos por minuto y vista previa del borrador.
+pedidos por minuto y vista previa de un borrador con objetivo 0.95 frente al tráfico reciente.
 
 ## 10.3 Modelo de procesos
 
@@ -198,9 +198,9 @@ los dos clasificadores, se traza la frontera y se escribe el artefacto que carga
 la frontera, mueve un control entre 0.75 y 1.00 y el simulador reproduce, sin llamar a ningún
 modelo, cómo se repartirían los 1250 prompts del corpus entre los tres niveles y cuánto costarían.
 Cuando elige un punto, lo aplica al tenant, y desde el pedido siguiente el router usa ese objetivo
-de calidad. En el Playground, cada respuesta muestra por qué se eligió su nivel (Figura 10.7): las dos
-probabilidades, los umbrales del punto vigente y el nivel resultante, dibujados como una cascada
-en la que solo la rama elegida queda marcada.
+de calidad. En el Playground, cada respuesta muestra por qué se eligió su nivel (Figura 10.7): las
+probabilidades que el router comparó con los umbrales del punto vigente y el nivel resultante,
+dibujados como una cascada en la que solo la rama elegida queda marcada.
 
 ![Figura 10.6](figuras/consola-evaluacion.png)
 
@@ -211,5 +211,5 @@ resultan.
 ![Figura 10.7](figuras/consola-playground.png)
 
 **Figura 10.7.** Playground con el panel "Por qué este nivel": el router mandó el pedido al modelo
-local porque su probabilidad (0.80) superó el umbral del punto vigente (0.76); el tenant de demo
+local porque su probabilidad (0.83) superó el umbral del punto vigente (0.76); el tenant de demo
 tiene aplicado el objetivo 0.90.

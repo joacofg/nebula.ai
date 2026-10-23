@@ -35,8 +35,48 @@ describe("CalibrationSummary", () => {
     expect(screen.getByText("suficiente")).toBeInTheDocument();
     expect(screen.getByText("La evidencia del tenant alcanza para el ruteo calibrado.")).toBeInTheDocument();
     expect(group("Filas elegibles")).toHaveTextContent("7 de 5 necesarias");
-    expect(group("Filas degradadas")).toHaveTextContent("1 (Missing Route Signals (1))");
-    expect(group("Filas excluidas")).toHaveTextContent("Policy Forced Route (1)");
+    expect(group("Filas degradadas")).toHaveTextContent("1 (sin señales de ruteo (1))");
+    // A code the labels do not know (yet) stays as the gateway sent it, never title-cased English.
+    expect(group("Filas excluidas")).toHaveTextContent("policy_forced_route (1)");
+  });
+
+  it("names the reasons in Spanish when the labels know them", () => {
+    renderWithProviders(
+      <CalibrationSummary
+        summary={{
+          ...base,
+          excluded_request_count: 3,
+          excluded_reasons: [
+            { reason: "rate_limited", count: 2 },
+            { reason: "explicit_model_override", count: 1 },
+          ],
+        }}
+      />,
+    );
+    expect(group("Filas excluidas")).toHaveTextContent("3 (límite de pedidos (2), modelo explícito (1))");
+  });
+
+  it("names every code the gateway counts rows under, none left raw", () => {
+    renderWithProviders(
+      <CalibrationSummary
+        summary={{
+          ...base,
+          excluded_request_count: 3,
+          excluded_reasons: [
+            { reason: "explicit_model_override", count: 2 },
+            { reason: "policy_forced_routing", count: 1 },
+          ],
+          degraded_request_count: 3,
+          degraded_reasons: [
+            { reason: "missing_route_signals", count: 2 },
+            { reason: "degraded_replay_signals", count: 1 },
+          ],
+        }}
+      />,
+    );
+    expect(group("Filas excluidas")).toHaveTextContent("3 (modelo explícito (2), ruteo forzado por la política (1))");
+    expect(group("Filas degradadas")).toHaveTextContent("3 (sin señales de ruteo (2), señales incompletas (1))");
+    expect(screen.queryByText(/_/)).not.toBeInTheDocument();
   });
 
   it("says when calibrated routing is still gated by the operator", () => {
@@ -56,8 +96,10 @@ describe("CalibrationSummary", () => {
         }}
       />,
     );
-    expect(screen.getByText("rollout desactivado")).toBeInTheDocument();
-    expect(group("Filas con rollout desactivado")).toHaveTextContent("Calibrated Routing Disabled (3)");
+    expect(screen.getByText("ruteo automático apagado")).toBeInTheDocument();
+    expect(screen.getByText("Hay tráfico, pero el ruteo automático sigue apagado por el operador.")).toBeInTheDocument();
+    expect(group("Filas con ruteo automático apagado")).toHaveTextContent("3 (ruteo automático apagado (3))");
+    expect(screen.queryByText(/rollout/i)).not.toBeInTheDocument();
     expect(group("Última fila elegible")).toHaveTextContent("Sin filas elegibles");
   });
 

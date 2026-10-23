@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiKeyTable } from "@/components/api-keys/api-key-table";
@@ -55,6 +55,65 @@ describe("api-keys-page api-key-table", () => {
     expect(
       screen.getByTitle(/Los pedidos tienen que enviar X-Nebula-Tenant-ID/i),
     ).toBeInTheDocument();
+  });
+
+  it("reads a zoneless timestamp as UTC, the way SQLite hands it back, and survives one it cannot read", () => {
+    const key = (id: string, created_at: string) => ({
+      id,
+      name: id,
+      key_prefix: "nbk_1234",
+      tenant_id: "tenant-a",
+      allowed_tenant_ids: ["tenant-a"],
+      revoked_at: null,
+      created_at,
+      updated_at: created_at,
+    });
+    renderWithProviders(
+      <ApiKeyTable
+        apiKeys={[
+          key("zoned", "2026-03-16T12:00:00Z"),
+          key("zoneless", "2026-03-16T12:00:00.123456"),
+          key("broken", "ayer"),
+        ]}
+        onRevoke={vi.fn()}
+        revokingId={null}
+      />,
+    );
+
+    // Name, prefix, scope, status, created, action.
+    const created = (name: string) =>
+      within(screen.getByText(name).closest("tr") as HTMLElement).getAllByRole("cell")[4].textContent;
+    expect(created("zoneless")).toBe(created("zoned"));
+    expect(created("zoned")).toMatch(/\d{1,2}\/\d{1,2}\/\d{2},? \d{2}:\d{2}/);
+    expect(created("broken")).toBe("ayer");
+  });
+
+  it("shows each key's prefix under a Prefijo column", () => {
+    renderWithProviders(
+      <ApiKeyTable
+        apiKeys={[
+          {
+            id: "key-4",
+            name: "Prefixed Key",
+            key_prefix: "nbk_a1b2",
+            tenant_id: "tenant-a",
+            allowed_tenant_ids: ["tenant-a"],
+            revoked_at: null,
+            created_at: "2026-03-16T12:00:00Z",
+            updated_at: "2026-03-16T12:00:00Z",
+          },
+        ]}
+        onRevoke={vi.fn()}
+        revokingId={null}
+      />,
+    );
+
+    const headers = screen.getAllByRole("columnheader").map((header) => header.textContent);
+    expect(headers).toEqual(["Nombre", "Prefijo", "Alcance", "Estado", "Creada", "Acciones"]);
+    const prefix = screen.getByText("nbk_a1b2");
+    expect(prefix.closest("td")).toBe(within(prefix.closest("tr") as HTMLElement).getAllByRole("cell")[1]);
+    // The cell is narrow and truncates, so the whole prefix stays one hover away.
+    expect(prefix.closest("td")).toHaveAttribute("title", "nbk_a1b2");
   });
 
   it("keeps revoked records visible", () => {
