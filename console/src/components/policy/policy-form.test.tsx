@@ -27,7 +27,11 @@ const baseSimulationResult: PolicySimulationResponse = {
     metadata_minimization_level: "standard",
     routing_quality_target: 0.95,
   },
-  approximation_notes: ["Replay uses stored route signals rather than raw prompt text."],
+  approximation_notes: [
+    "Replay uses persisted ledger request metadata and route signals instead of raw prompt text.",
+    "Rows without stored learned-router probabilities are replayed with the token-complexity heuristic.",
+  ],
+  approximation_note_codes: ["ledger_metadata_replay", "heuristic_fallback_rows"],
   window: {
     requested_from: null,
     requested_to: null,
@@ -44,6 +48,10 @@ const baseSimulationResult: PolicySimulationResponse = {
     baseline_premium_cost: 0.2,
     simulated_premium_cost: 0.3,
     premium_cost_delta: 0.1,
+    baseline_tier_counts: { local: 5, economy: 3, frontier: 2 },
+    simulated_tier_counts: { local: 4, economy: 3, frontier: 3 },
+    learned_router_rows: 7,
+    heuristic_rows: 3,
   },
   calibration_summary: {
     tenant_id: "default",
@@ -77,16 +85,19 @@ const baseSimulationResult: PolicySimulationResponse = {
       simulated_policy_outcome: "routing_mode=premium_only;denied=Request exceeds the tenant premium spend guardrail.",
       baseline_route_reason: "auto_local",
       simulated_route_reason: "explicit_premium_model",
-      baseline_route_mode: "auto",
-      simulated_route_mode: "premium_only",
+      baseline_route_mode: "calibrated",
+      simulated_route_mode: "degraded",
       baseline_calibrated_routing: true,
-      simulated_calibrated_routing: null,
+      simulated_calibrated_routing: false,
       baseline_degraded_routing: false,
-      simulated_degraded_routing: false,
+      simulated_degraded_routing: true,
       baseline_route_score: 0.61,
-      simulated_route_score: null,
+      simulated_route_score: 0.31,
       baseline_estimated_cost: 0,
       simulated_estimated_cost: 0.1,
+      baseline_tier: "local",
+      simulated_tier: null,
+      decision_source: "learned_router",
     },
   ],
 };
@@ -192,6 +203,17 @@ describe("policy-form", () => {
     });
   });
 
+  it("keeps the capture flags the form does not show as they were stored", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave, policyOverrides: { prompt_capture_enabled: true, response_capture_enabled: true } });
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ prompt_capture_enabled: true, response_capture_enabled: true });
+  });
+
   it("sends the current draft to simulation without saving", async () => {
     const onSimulate = vi.fn().mockResolvedValue(undefined);
     const onSave = vi.fn().mockResolvedValue(undefined);
@@ -229,14 +251,113 @@ describe("policy-form", () => {
     }
     expect(preview.getByText("Pedidos que cambian")).toBeInTheDocument();
     expect(preview.getByText("req-1")).toBeInTheDocument();
-    expect(preview.getByText(/ruta local → premium/i)).toBeInTheDocument();
-    expect(preview.getByText(/estado completed → policy_denied/i)).toBeInTheDocument();
+    expect(preview.getByText(/ruta Local → Premium/)).toBeInTheDocument();
+    expect(preview.getByText(/estado completado → denegado por política/)).toBeInTheDocument();
     expect(preview.getByText(/costo USD 0\.0000 → USD 0\.1000/)).toBeInTheDocument();
     expect(preview.getByRole("group", { name: "Δ costo premium" })).toHaveTextContent("USD 0.1000");
-    expect(preview.getByText(/paridad de ruteo: auto \(calibrated, score 0\.61\) → premium_only/i)).toBeInTheDocument();
-    expect(preview.getByText(/Replay uses stored route signals rather than raw prompt text\./i)).toBeInTheDocument();
+    expect(preview.getByText("paridad de ruteo: calibrado (puntaje 0.61) → degradado (puntaje 0.31)")).toBeInTheDocument();
     expect(preview.getByText("Comparado contra 2 pedidos recientes. No se guardó nada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar política" })).toBeInTheDocument();
+  });
+
+  it("writes the route of each changed request with the Spanish route labels, not the codes", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    const row = within(screen.getByText("req-1").closest("li") as HTMLElement);
+    expect(row.getByText("Local")).toBeInTheDocument();
+    expect(row.getByText("Premium")).toBeInTheDocument();
+    expect(row.queryByText("local")).not.toBeInTheDocument();
+    expect(row.queryByText(/policy_denied/)).not.toBeInTheDocument();
+  });
+
+  it("shows the tier counts before and after the draft for local, economy and frontier", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByRole("heading", { name: "Pedidos por nivel: actual → borrador" })).toBeInTheDocument();
+    expect(preview.getByRole("group", { name: "local" })).toHaveTextContent("5 → 4");
+    expect(preview.getByRole("group", { name: "economy" })).toHaveTextContent("3 → 3");
+    expect(preview.getByRole("group", { name: "frontier" })).toHaveTextContent("2 → 3");
+  });
+
+  it("says how many rows the learned router re-decided and how many the heuristic did", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    expect(screen.getByText("7 con el router aprendido · 3 con la heurística")).toBeInTheDocument();
+  });
+
+  it("does not show tier counts for a window without rows", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        window: { ...baseSimulationResult.window, returned_rows: 0 },
+        summary: {
+          ...baseSimulationResult.summary,
+          evaluated_rows: 0,
+          changed_routes: 0,
+          newly_denied: 0,
+          premium_cost_delta: 0,
+          baseline_tier_counts: { local: 0, economy: 0, frontier: 0 },
+          simulated_tier_counts: { local: 0, economy: 0, frontier: 0 },
+          learned_router_rows: 0,
+          heuristic_rows: 0,
+        },
+        changed_requests: [],
+      },
+    });
+
+    expect(screen.queryByRole("heading", { name: /Pedidos por nivel/ })).not.toBeInTheDocument();
+    expect(screen.queryByText(/con el router aprendido/)).not.toBeInTheDocument();
+  });
+
+  it("names the tier each changed request moves between", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        changed_requests: [
+          {
+            ...baseSimulationResult.changed_requests[0],
+            request_id: "req-tier",
+            baseline_route_target: "premium",
+            simulated_route_target: "premium",
+            baseline_terminal_status: "completed",
+            simulated_terminal_status: "completed",
+            baseline_tier: "economy",
+            simulated_tier: "frontier",
+          },
+          baseSimulationResult.changed_requests[0],
+        ],
+      },
+    });
+
+    expect(within(screen.getByText("req-tier").closest("li") as HTMLElement).getByText(/nivel economy → frontier/)).toBeInTheDocument();
+    expect(within(screen.getByText("req-1").closest("li") as HTMLElement).getByText(/nivel local → —/)).toBeInTheDocument();
+  });
+
+  it("words the approximation notes in Spanish by code", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    const notes = within(screen.getByText("Notas de la simulación").parentElement as HTMLElement);
+    expect(notes.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos.")).toBeInTheDocument();
+    expect(
+      notes.getByText(
+        "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+      ),
+    ).toBeInTheDocument();
+    expect(notes.queryByText(/Replay uses/)).not.toBeInTheDocument();
+  });
+
+  it("shows the raw text of an approximation note whose code it does not know", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        approximation_notes: ["A new kind of approximation.", "Replay uses persisted ledger request metadata."],
+        approximation_note_codes: ["something_new", "ledger_metadata_replay"],
+      },
+    });
+
+    expect(screen.getByText("A new kind of approximation.")).toBeInTheDocument();
+    expect(screen.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos.")).toBeInTheDocument();
   });
 
   it("writes a premium cost that goes down with its sign after USD", () => {
@@ -497,7 +618,46 @@ describe("policy-form", () => {
     expect(screen.getByText(/Este borrador cambiaría 1 pedido de la muestra\./i)).toBeInTheDocument();
     expect(screen.getByText(/req-degraded/i)).toBeInTheDocument();
     expect(screen.getByText(/política outcome_evidence=sufficient\(route_mode=calibrated\) → outcome_evidence=degraded\(route_mode=unscored reason=missing_route_signals\)/i)).toBeInTheDocument();
-    expect(screen.getByText(/paridad de ruteo: unscored → unscored/i)).toBeInTheDocument();
+    expect(screen.getByText("paridad de ruteo: sin puntaje → sin puntaje")).toBeInTheDocument();
+  });
+
+  it("writes the routing parity in Spanish for every state it can be in", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        changed_requests: [
+          {
+            ...row,
+            request_id: "req-off",
+            baseline_route_mode: "degraded",
+            baseline_calibrated_routing: false,
+            baseline_degraded_routing: true,
+            baseline_route_score: 0.28,
+            simulated_route_mode: null,
+            simulated_calibrated_routing: null,
+            simulated_degraded_routing: null,
+            simulated_route_score: null,
+            simulated_route_reason: "calibrated_routing_disabled",
+          },
+          {
+            ...row,
+            request_id: "req-partial",
+            baseline_route_mode: null,
+            baseline_calibrated_routing: true,
+            baseline_degraded_routing: null,
+            baseline_route_score: 0.4,
+            simulated_route_mode: "something_new",
+            simulated_calibrated_routing: null,
+            simulated_degraded_routing: null,
+            simulated_route_score: null,
+          },
+        ],
+      },
+    });
+
+    expect(screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo calibrado apagado")).toBeInTheDocument();
+    expect(screen.getByText("paridad de ruteo: sin puntaje (calibrado, puntaje 0.40) → something_new")).toBeInTheDocument();
   });
 
   it("groups the runtime controls into sections and keeps the soft budget as advisory", () => {
@@ -506,7 +666,8 @@ describe("policy-form", () => {
     const routing = screen.getByRole("heading", { name: "Ruteo" }).closest("section") as HTMLElement;
     expect(routing).toHaveTextContent("Objetivo de calidad");
     expect(routing).toHaveTextContent("Modo de ruteo");
-    expect(routing).toHaveTextContent("Ruteo calibrado (heurística v0)");
+    expect(routing).toHaveTextContent("Ruteo automático por nivel");
+    expect(routing).not.toHaveTextContent("heurística v0");
     expect(routing).toHaveTextContent("Fallback a premium si falla el local");
 
     const limits = screen.getByRole("heading", { name: "Límites" }).closest("section") as HTMLElement;
@@ -543,9 +704,60 @@ describe("policy-form", () => {
     await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
     const message = await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.");
-    // Shown next to the sticky Guardar button, where the operator is looking.
-    expect(screen.getByRole("complementary", { name: "Vista previa" })).toContainElement(message);
+    // The reason sits under the field; the sticky panel by Guardar names the field to fix.
+    expect(screen.getByLabelText("Umbral de similitud").closest("div")).toContainElement(message);
+    expect(screen.getByRole("complementary", { name: "Vista previa" })).toHaveTextContent(
+      "Revisar los campos: Umbral de similitud.",
+    );
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("links a field's hint and its error to the field for screen readers", async () => {
+    renderPolicyForm();
+
+    const threshold = screen.getByLabelText("Umbral de similitud");
+    expect(threshold).toHaveAccessibleDescription("0 a 1, por cada búsqueda.");
+    expect(threshold).not.toBeInvalid();
+
+    await userEvent.clear(threshold);
+    await userEvent.type(threshold, "1.2");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.");
+    expect(threshold).toBeInvalid();
+    expect(threshold).toHaveAccessibleDescription(
+      /El umbral de similitud tiene que estar entre 0 y 1\..*0 a 1, por cada búsqueda\./,
+    );
+  });
+
+  it("links the hint of a checkbox to it", () => {
+    renderPolicyForm();
+
+    expect(screen.getByRole("checkbox", { name: "Ruteo automático por nivel" })).toHaveAccessibleDescription(
+      "Si se apaga, el tráfico automático va a local.",
+    );
+    expect(screen.getByLabelText("Límite de pedidos por minuto")).toHaveAccessibleDescription(
+      "Sobre el límite el gateway responde 429 con Retry-After.",
+    );
+    expect(screen.getByLabelText("Al agotarse el presupuesto")).toHaveAccessibleDescription(
+      "Primero definir el presupuesto duro.",
+    );
+  });
+
+  it("clears a field's error as soon as it is edited, and the panel stops naming it", async () => {
+    renderPolicyForm();
+
+    const threshold = screen.getByLabelText("Umbral de similitud");
+    await userEvent.clear(threshold);
+    await userEvent.type(threshold, "1.2");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+    await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.");
+
+    await userEvent.type(threshold, "0");
+
+    expect(screen.queryByText("El umbral de similitud tiene que estar entre 0 y 1.")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Revisar los campos/)).not.toBeInTheDocument();
+    expect(threshold).not.toBeInvalid();
   });
 
   it("saves an edited routing quality target", async () => {
@@ -560,6 +772,40 @@ describe("policy-form", () => {
 
     await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
     expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.9 });
+  });
+
+  it("shows the quality target with two decimals and a hint with the console's range", () => {
+    renderPolicyForm({ policyOverrides: { routing_quality_target: 0.9 } });
+
+    const field = screen.getByLabelText("Objetivo de calidad");
+    expect(field).toHaveValue("0.90");
+    expect(field).toHaveAccessibleDescription(/0\.75 a 1\.00/);
+    expect(screen.queryByText(/0\.5 a 1\.0/)).not.toBeInTheDocument();
+  });
+
+  it("shows a stored target below the console's range as it is and blocks saving it", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave, policyOverrides: { routing_quality_target: 0.6 } });
+
+    expect(screen.getByLabelText("Objetivo de calidad")).toHaveValue("0.60");
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    expect(await screen.findByText("El objetivo de calidad tiene que estar entre 0.75 y 1.00.")).toBeInTheDocument();
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("reads a decimal comma in the quality target", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave });
+
+    await userEvent.clear(screen.getByLabelText("Objetivo de calidad"));
+    await userEvent.type(screen.getByLabelText("Objetivo de calidad"), "0,85");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.85 });
   });
 
   it("saves a rate limit", async () => {
@@ -591,7 +837,7 @@ describe("policy-form", () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    for (const value of ["0", "2.5", "100001", "abc"]) {
+    for (const value of ["0", "2.5", "10,5", "100001"]) {
       await userEvent.clear(screen.getByLabelText("Límite de pedidos por minuto"));
       await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), value);
       await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
@@ -602,23 +848,23 @@ describe("policy-form", () => {
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("blocks save when the routing quality target is outside 0.5-1.0", async () => {
+  it("blocks save when the routing quality target is outside 0.75-1.00", async () => {
     const onSave = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSave });
 
-    for (const value of ["0.4", "1.01", "abc"]) {
+    for (const value of ["0.4", "0.7", "1.01"]) {
       await userEvent.clear(screen.getByLabelText("Objetivo de calidad"));
       await userEvent.type(screen.getByLabelText("Objetivo de calidad"), value);
       await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
 
       expect(
-        await screen.findByText("El objetivo de calidad tiene que estar entre 0.5 y 1."),
+        await screen.findByText("El objetivo de calidad tiene que estar entre 0.75 y 1.00."),
       ).toBeInTheDocument();
     }
     expect(onSave).not.toHaveBeenCalled();
   });
 
-  it("does not preview a routing quality target outside 0.5-1.0", async () => {
+  it("does not preview a routing quality target outside 0.75-1.00", async () => {
     const onSimulate = vi.fn().mockResolvedValue(undefined);
     renderPolicyForm({ onSimulate });
 
@@ -626,8 +872,171 @@ describe("policy-form", () => {
     await userEvent.type(screen.getByLabelText("Objetivo de calidad"), "0.2");
     await userEvent.click(screen.getByRole("button", { name: "Simular" }));
 
-    expect(await screen.findByText("El objetivo de calidad tiene que estar entre 0.5 y 1.")).toBeInTheDocument();
+    expect(await screen.findByText("El objetivo de calidad tiene que estar entre 0.75 y 1.00.")).toBeInTheDocument();
     expect(onSimulate).not.toHaveBeenCalled();
+  });
+
+  describe("numeric fields", () => {
+    const usdFields = [
+      ["Costo premium máximo por pedido (USD)", "max_premium_cost_per_request"],
+      ["Presupuesto duro acumulado (USD)", "hard_budget_limit_usd"],
+      ["Presupuesto blando (USD)", "soft_budget_usd"],
+    ] as const;
+
+    it.each(usdFields)("%s reads a decimal comma and surrounding spaces", async (label, key) => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.type(screen.getByLabelText(label), "10,5");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0]).toMatchObject({ [key]: 10.5 });
+
+      await userEvent.clear(screen.getByLabelText(label));
+      await userEvent.type(screen.getByLabelText(label), " 3 ");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(2));
+      expect(onSave.mock.calls[1][0]).toMatchObject({ [key]: 3 });
+    });
+
+    it.each(usdFields)("%s means no limit only when it is empty, never for a typo", async (label, key) => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({
+        onSave,
+        policyOverrides: { [key]: 5, ...(key === "hard_budget_limit_usd" ? { hard_budget_enforcement: "deny" } : {}) },
+      });
+
+      await userEvent.clear(screen.getByLabelText(label));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0]).toMatchObject({ [key]: null });
+
+      await userEvent.type(screen.getByLabelText(label), "abc");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByText("Número inválido.")).toBeInTheDocument();
+      expect(screen.getByLabelText(label)).toBeInvalid();
+      expect(onSave).toHaveBeenCalledTimes(1);
+    });
+
+    it("reads a rate limit with spaces, and blank as unlimited", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), " 3 ");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0]).toMatchObject({ rate_limit_requests_per_minute: 3 });
+    });
+
+    it("calls a typo in the rate limit an invalid number, not an out-of-range one", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), "abc");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByText("Número inválido.")).toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("reads a decimal comma in the cache threshold", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+      await userEvent.type(screen.getByLabelText("Umbral de similitud"), "0,82");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+      expect(onSave.mock.calls[0][0]).toMatchObject({ semantic_cache_similarity_threshold: 0.82 });
+    });
+
+    it("never saves an emptied cache threshold as 0", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.")).toBeInTheDocument();
+      expect(onSave).not.toHaveBeenCalled();
+    });
+
+    it("blocks simulate with the same errors as save, the rate limit included", async () => {
+      const onSimulate = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSimulate });
+
+      await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), "0");
+      await userEvent.type(screen.getByLabelText("Presupuesto blando (USD)"), "abc");
+      await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+
+      expect(
+        await screen.findByText("El límite tiene que ser un entero entre 1 y 100000 pedidos por minuto."),
+      ).toBeInTheDocument();
+      expect(screen.getByText("Número inválido.")).toBeInTheDocument();
+      expect(screen.getByRole("complementary", { name: "Vista previa" })).toHaveTextContent(
+        "Revisar los campos: Límite de pedidos por minuto, Presupuesto blando (USD).",
+      );
+      expect(onSimulate).not.toHaveBeenCalled();
+    });
+
+    it("blocks simulate without a premium model", async () => {
+      const onSimulate = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSimulate });
+
+      await userEvent.click(screen.getByRole("button", { name: "Quitar openai/gpt-4o-mini" }));
+      await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+
+      expect(await screen.findByText("Elegir al menos un modelo premium.")).toBeInTheDocument();
+      expect(onSimulate).not.toHaveBeenCalled();
+    });
+  });
+
+  it("writes the routing modes in Spanish and keeps their codes as values", () => {
+    renderPolicyForm();
+
+    const options = within(screen.getByLabelText("Modo de ruteo")).getAllByRole("option");
+    expect(options.map((option) => option.textContent)).toEqual(["Automático", "Solo local", "Solo premium"]);
+    expect(options.map((option) => option.getAttribute("value"))).toEqual(["auto", "local_only", "premium_only"]);
+  });
+
+  describe("saving", () => {
+    it("confirms with 'Política guardada.' once the save succeeds, until the next edit", async () => {
+      const onSave = vi.fn().mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByRole("status")).toHaveTextContent("Política guardada.");
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    });
+
+    it("does not confirm a save that failed and shows why", async () => {
+      const onSave = vi.fn().mockRejectedValue(new Error("El gateway devolvió un error (500)."));
+      renderPolicyForm({ onSave });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByText("El gateway devolvió un error (500).")).toBeInTheDocument();
+      expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    });
+
+    it("stops confirming when a model is added, not only when a field is typed in", async () => {
+      renderPolicyForm();
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await screen.findByText("Política guardada.");
+
+      await userEvent.click(screen.getByRole("button", { name: "openai/gpt-4.1-mini" }));
+      expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    });
   });
 
   it("hides the routing quality target when the runtime does not enforce it", () => {

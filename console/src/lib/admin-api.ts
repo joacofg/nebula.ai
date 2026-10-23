@@ -1,7 +1,7 @@
 "use client";
 
 import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
-import type { RouterReplay } from "@/lib/router-replay";
+import type { RouterReplay, Tier } from "@/lib/router-replay";
 
 export { AdminApiError } from "@/lib/admin-errors";
 
@@ -96,6 +96,12 @@ export type PolicySimulationWindow = {
   returned_rows: number;
 };
 
+/** Rows per tier; every key is present. */
+export type TierCounts = Record<Tier, number>;
+
+/** How the simulation re-decided a row: the learned router from its stored probabilities, or the heuristic. */
+export type SimulationDecisionSource = "learned_router" | "heuristic";
+
 export type PolicySimulationOutcomeCounts = {
   evaluated_rows: number;
   changed_routes: number;
@@ -103,6 +109,12 @@ export type PolicySimulationOutcomeCounts = {
   baseline_premium_cost: number;
   simulated_premium_cost: number;
   premium_cost_delta: number;
+  /** A row with no tier (denied, or served from the cache in the baseline) counts in none. */
+  baseline_tier_counts: TierCounts;
+  simulated_tier_counts: TierCounts;
+  /** Add up to `evaluated_rows`. */
+  learned_router_rows: number;
+  heuristic_rows: number;
 };
 
 export type PolicySimulationChangedRequest = {
@@ -127,6 +139,10 @@ export type PolicySimulationChangedRequest = {
   simulated_route_score: number | null;
   baseline_estimated_cost: number;
   simulated_estimated_cost: number;
+  /** Null when denied (or, in the baseline, served from the cache). */
+  baseline_tier: Tier | null;
+  simulated_tier: Tier | null;
+  decision_source: SimulationDecisionSource;
 };
 
 export type CalibrationReasonCount = {
@@ -158,6 +174,8 @@ export type PolicySimulationResponse = {
   tenant_id: string;
   candidate_policy: TenantPolicy;
   approximation_notes: string[];
+  /** One stable code per note, in the same order, for wording the notes in Spanish. */
+  approximation_note_codes: string[];
   window: PolicySimulationWindow;
   summary: PolicySimulationOutcomeCounts;
   calibration_summary: CalibrationEvidenceSummary;

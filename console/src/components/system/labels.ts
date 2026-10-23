@@ -62,6 +62,21 @@ const RUNTIME_STATUSES: Record<string, string> = {
   unknown: "Desconocido",
 };
 
+// How a request was scored (`route_mode` in the route signals).
+const SCORE_MODES: Record<string, string> = {
+  calibrated: "calibrado",
+  degraded: "degradado",
+};
+
+// The policy simulation's approximation notes, by the code the gateway sends beside each text.
+const APPROXIMATION_NOTES: Record<string, string> = {
+  ledger_metadata_replay: "Se usan los metadatos guardados en el ledger, no el texto de los pedidos.",
+  token_count_approximation: "Sin señales completas, la complejidad se aproxima con los tokens guardados.",
+  pricing_estimate: "El costo usa los precios actuales; no se llama a ningún proveedor.",
+  heuristic_fallback_rows:
+    "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+};
+
 /** A known code's label, the code itself when unknown, a dash when there is none. */
 function lookup(labels: Record<string, string>, code: string | null | undefined) {
   if (!code) {
@@ -88,6 +103,16 @@ export function routerLabel(name: string | null | undefined) {
 /** Health of the gateway, the cache and each dependency. */
 export function runtimeStatusLabel(status: string | null | undefined) {
   return lookup(RUNTIME_STATUSES, status);
+}
+
+/** How a request was scored in the simulation's routing parity: calibrado / degradado. */
+export function scoreModeLabel(mode: string | null | undefined) {
+  return lookup(SCORE_MODES, mode);
+}
+
+/** A simulation note in Spanish by its code; a code it does not know shows the note's own text. */
+export function approximationNoteLabel(code: string | null | undefined, text: string) {
+  return code && Object.hasOwn(APPROXIMATION_NOTES, code) ? APPROXIMATION_NOTES[code] : text;
 }
 
 export function reasonLabel(code: string | null | undefined) {

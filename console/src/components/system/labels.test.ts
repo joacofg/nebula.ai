@@ -1,12 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  approximationNoteLabel,
   plural,
   reasonLabel,
   routeLabel,
   routerLabel,
   routingModeLabel,
   runtimeStatusLabel,
+  scoreModeLabel,
   statusLabel,
 } from "@/components/system/labels";
 
@@ -50,6 +52,7 @@ describe("every label function", () => {
     ["routingModeLabel", routingModeLabel],
     ["routerLabel", routerLabel],
     ["runtimeStatusLabel", runtimeStatusLabel],
+    ["scoreModeLabel", scoreModeLabel],
   ] as const;
 
   it.each(labelFunctions)("%s returns an unknown code as it came", (_name, label) => {
@@ -122,5 +125,29 @@ describe("runtimeStatusLabel", () => {
 
   it("returns an unknown status as it came", () => {
     expect(runtimeStatusLabel("on_fire")).toBe("on_fire");
+  });
+});
+
+describe("scoreModeLabel", () => {
+  it("labels how a request was scored", () => {
+    expect(scoreModeLabel("calibrated")).toBe("calibrado");
+    expect(scoreModeLabel("degraded")).toBe("degradado");
+  });
+});
+
+describe("approximationNoteLabel", () => {
+  it.each([
+    ["ledger_metadata_replay", "Se usan los metadatos guardados en el ledger, no el texto de los pedidos."],
+    ["token_count_approximation", "Sin señales completas, la complejidad se aproxima con los tokens guardados."],
+    ["pricing_estimate", "El costo usa los precios actuales; no se llama a ningún proveedor."],
+    ["heuristic_fallback_rows", "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística."],
+  ])("words %s in Spanish", (code, label) => {
+    expect(approximationNoteLabel(code, "English text from the API")).toBe(label);
+  });
+
+  it("shows the note's own text for a code it does not know or none", () => {
+    expect(approximationNoteLabel("something_new", "Something new happened.")).toBe("Something new happened.");
+    expect(approximationNoteLabel(undefined, "Plain note.")).toBe("Plain note.");
+    expect(approximationNoteLabel("constructor", "Plain note.")).toBe("Plain note.");
   });
 });

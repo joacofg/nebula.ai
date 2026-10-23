@@ -148,7 +148,8 @@ beforeEach(() => {
       gated_reasons: [],
       degraded_reasons: [],
     },
-    approximation_notes: ["Replay uses stored route signals."],
+    approximation_notes: ["Replay uses persisted ledger request metadata."],
+    approximation_note_codes: ["ledger_metadata_replay"],
     window: {
       requested_from: null,
       requested_to: null,
@@ -165,6 +166,10 @@ beforeEach(() => {
       baseline_premium_cost: 0,
       simulated_premium_cost: 0.01,
       premium_cost_delta: 0.01,
+      baseline_tier_counts: { local: 2, economy: 0, frontier: 0 },
+      simulated_tier_counts: { local: 1, economy: 0, frontier: 1 },
+      learned_router_rows: 0,
+      heuristic_rows: 2,
     },
     changed_requests: [
       {
@@ -189,6 +194,9 @@ beforeEach(() => {
         simulated_route_score: 0.31,
         baseline_estimated_cost: 0,
         simulated_estimated_cost: 0.01,
+        baseline_tier: "local",
+        simulated_tier: "frontier",
+        decision_source: "heuristic",
       },
       {
         request_id: "req-2",
@@ -212,6 +220,9 @@ beforeEach(() => {
         simulated_route_score: null,
         baseline_estimated_cost: 0,
         simulated_estimated_cost: 0,
+        baseline_tier: "local",
+        simulated_tier: "local",
+        decision_source: "heuristic",
       },
     ],
   });
@@ -271,12 +282,15 @@ describe("policy-page", () => {
     expect(screen.getByText(/Comparado contra 2 pedidos recientes\./i)).toBeInTheDocument();
     expect(screen.getByText(/No se guardó nada\./i)).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "paridad de ruteo: calibrated (calibrated, score 0.74) → degraded (degraded, score 0.31)",
-      ),
+      screen.getByText("paridad de ruteo: calibrado (puntaje 0.74) → degradado (puntaje 0.31)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("paridad de ruteo: degraded (degraded, score 0.28) → rollout disabled"),
+      screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo calibrado apagado"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "frontier" })).toHaveTextContent("0 → 1");
+    expect(screen.getByText("0 con el router aprendido · 2 con la heurística")).toBeInTheDocument();
+    expect(
+      screen.getByText("Se usan los metadatos guardados en el ledger, no el texto de los pedidos."),
     ).toBeInTheDocument();
     expect(screen.queryByText(/dashboard/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/routing studio/i)).not.toBeInTheDocument();
@@ -350,6 +364,7 @@ describe("policy-page", () => {
         degraded_reasons: [],
       },
       approximation_notes: [],
+      approximation_note_codes: [],
       window: {
         requested_from: null,
         requested_to: null,
@@ -366,6 +381,10 @@ describe("policy-page", () => {
         baseline_premium_cost: 0,
         simulated_premium_cost: 0,
         premium_cost_delta: 0,
+        baseline_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        simulated_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        learned_router_rows: 0,
+        heuristic_rows: 0,
       },
       changed_requests: [],
     });
@@ -426,6 +445,7 @@ describe("policy-page", () => {
         degraded_reasons: [],
       },
       approximation_notes: [],
+      approximation_note_codes: [],
       window: {
         requested_from: null,
         requested_to: null,
@@ -442,6 +462,10 @@ describe("policy-page", () => {
         baseline_premium_cost: 0,
         simulated_premium_cost: 0,
         premium_cost_delta: 0,
+        baseline_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        simulated_tier_counts: { local: 0, economy: 0, frontier: 0 },
+        learned_router_rows: 0,
+        heuristic_rows: 0,
       },
       changed_requests: [],
     });
@@ -490,6 +514,40 @@ describe("policy-page", () => {
     expect(
       screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
     ).toBeInTheDocument();
+  });
+
+  it("confirms a saved policy with 'Política guardada.' through the refetch, until the next edit", async () => {
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    // The gateway answers the refetch after the save with the policy as saved.
+    const stored = await getTenantPolicyMock("admin-key", "tenant-a");
+    getTenantPolicyMock.mockResolvedValue({ ...stored, fallback_enabled: false });
+    const fetchesBeforeSave = getTenantPolicyMock.mock.calls.length;
+
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    expect(await screen.findByText("Política guardada.")).toBeInTheDocument();
+    expect(updateTenantPolicyMock).toHaveBeenCalledTimes(1);
+    expect(getTenantPolicyMock.mock.calls.length).toBeGreaterThan(fetchesBeforeSave);
+    expect(screen.queryByText("Cambios sin guardar")).not.toBeInTheDocument();
+
+    await userEvent.type(screen.getByLabelText("Umbral de similitud"), "1");
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+  });
+
+  it("shows why a save failed and does not confirm it", async () => {
+    updateTenantPolicyMock.mockRejectedValueOnce(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    expect(await screen.findByText("El gateway devolvió un error (500).")).toBeInTheDocument();
+    expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
   });
 
   it("clears stale preview evidence when switching tenants", async () => {
