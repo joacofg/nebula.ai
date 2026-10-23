@@ -64,6 +64,37 @@ describe("admin-api playground completion", () => {
   });
 });
 
+describe("admin-api playground completion flags", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  const input = { tenantId: "default", model: "nebula-auto", prompt: "Flags" };
+
+  it("reads the cache and fallback headers as booleans when they are sent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(
+        jsonResponse({}, 200, { "X-Nebula-Cache-Hit": "true", "X-Nebula-Fallback-Used": "false" }),
+      ),
+    );
+
+    await expect(createPlaygroundCompletion("nebula-admin-key", input)).resolves.toMatchObject({
+      cacheHit: true,
+      fallbackUsed: false,
+    });
+  });
+
+  it("reports a cache or fallback header that was not sent as unknown, not as false", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse({}, 200)));
+
+    const result = await createPlaygroundCompletion("nebula-admin-key", input);
+
+    expect(result.cacheHit).toBeNull();
+    expect(result.fallbackUsed).toBeNull();
+  });
+});
+
 describe("admin-api router evaluation", () => {
   afterEach(() => {
     vi.unstubAllGlobals();

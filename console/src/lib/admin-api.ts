@@ -266,8 +266,10 @@ export type PlaygroundCompletionResult = {
   /** Learned-router tier (`local` / `economy` / `frontier`); empty for heuristic routes. */
   routeTier: string;
   provider: string;
-  cacheHit: boolean;
-  fallbackUsed: boolean;
+  /** From `X-Nebula-Cache-Hit`; null when the header was not sent. */
+  cacheHit: boolean | null;
+  /** From `X-Nebula-Fallback-Used`; null when the header was not sent. */
+  fallbackUsed: boolean | null;
   policyMode: string;
   policyOutcome: string;
 };
@@ -483,6 +485,11 @@ export function getPolicyOptions(adminKey: string) {
   return adminRequest<PolicyOptionsResponse>("/api/admin/policy/options", { adminKey });
 }
 
+/** A boolean header: true only for "true", null when the gateway did not send it. */
+function headerFlag(value: string | null) {
+  return value === null ? null : value === "true";
+}
+
 export async function createPlaygroundCompletion(
   adminKey: string,
   payload: PlaygroundInput,
@@ -517,8 +524,8 @@ export async function createPlaygroundCompletion(
     routeReason: response.headers.get("X-Nebula-Route-Reason") ?? "",
     routeTier: response.headers.get("X-Nebula-Route-Tier") ?? "",
     provider: response.headers.get("X-Nebula-Provider") ?? "",
-    cacheHit: response.headers.get("X-Nebula-Cache-Hit") === "true",
-    fallbackUsed: response.headers.get("X-Nebula-Fallback-Used") === "true",
+    cacheHit: headerFlag(response.headers.get("X-Nebula-Cache-Hit")),
+    fallbackUsed: headerFlag(response.headers.get("X-Nebula-Fallback-Used")),
     policyMode: response.headers.get("X-Nebula-Policy-Mode") ?? "",
     policyOutcome: response.headers.get("X-Nebula-Policy-Outcome") ?? "",
   };

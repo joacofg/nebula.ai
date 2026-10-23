@@ -504,6 +504,22 @@ describe("playground-page", () => {
     expect(screen.queryByText(/routing_mode|denied=|premium_only/)).not.toBeInTheDocument();
   });
 
+  it("reads Caché and Fallback as a dash, not as no, when the response headers did not send them", async () => {
+    const user = userEvent.setup();
+    adminApi.getUsageLedgerEntry.mockResolvedValue(null);
+    adminApi.createPlaygroundCompletion.mockResolvedValue(
+      completion({ requestId: "req-bare", cacheHit: null, fallbackUsed: null }),
+    );
+
+    renderWithProviders(<PlaygroundPage />, { adminKey: "nebula-admin-key" });
+    await sendPrompt(user, "Bare headers");
+    expect(await screen.findByText("A slow answer")).toBeInTheDocument();
+    await waitFor(() => expect(adminApi.getUsageLedgerEntry).toHaveBeenCalledWith("nebula-admin-key", "req-bare"));
+
+    await waitFor(() => expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("—"));
+    expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("—");
+  });
+
   it("waits for the ledger record before showing the routing facts, then shows them once in its block", async () => {
     const user = userEvent.setup();
     const lookup = deferred<Awaited<ReturnType<typeof adminApi.getUsageLedgerEntry>>>();

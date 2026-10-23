@@ -8,8 +8,9 @@ export type ResponseFacts = {
   routeReason: string;
   routeTier: string;
   provider: string;
-  cacheHit: boolean;
-  fallbackUsed: boolean;
+  /** null when the header was not sent. */
+  cacheHit: boolean | null;
+  fallbackUsed: boolean | null;
 };
 
 type PlaygroundMetadataProps = {
@@ -29,7 +30,10 @@ function orDash(value: string) {
   return value.trim().length > 0 ? value : "—";
 }
 
-function yesNo(value: boolean) {
+function yesNo(value: boolean | null) {
+  if (value === null) {
+    return "—";
+  }
   return value ? "sí" : "no";
 }
 

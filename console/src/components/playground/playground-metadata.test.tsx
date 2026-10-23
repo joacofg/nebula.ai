@@ -96,12 +96,30 @@ describe("playground-metadata", () => {
         tenantId=""
         policyMode=""
         policyOutcome=""
-        response={{ routeTarget: "", routeReason: "", routeTier: "", provider: "", cacheHit: false, fallbackUsed: false }}
+        response={{ routeTarget: "", routeReason: "", routeTier: "", provider: "", cacheHit: null, fallbackUsed: null }}
       />,
     );
 
-    for (const label of ["Request ID", "Tenant", "Modo de política", "Resultado de política", "Ruta", "Motivo", "Nivel", "Proveedor"]) {
+    for (const label of RESPONSE_FACTS) {
       expect(screen.getByRole("group", { name: label }), label).toHaveTextContent("—");
     }
+    for (const label of ["Request ID", "Tenant", "Modo de política", "Resultado de política"]) {
+      expect(screen.getByRole("group", { name: label }), label).toHaveTextContent("—");
+    }
+  });
+
+  it("keeps sí and no for a cache or fallback header the gateway did send", () => {
+    renderWithProviders(
+      <PlaygroundMetadata
+        requestId="req-1"
+        tenantId="default"
+        policyMode="auto"
+        policyOutcome="default"
+        response={{ ...response, cacheHit: false, fallbackUsed: true }}
+      />,
+    );
+
+    expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("no");
+    expect(screen.getByRole("group", { name: "Fallback" })).toHaveTextContent("sí");
   });
 });
