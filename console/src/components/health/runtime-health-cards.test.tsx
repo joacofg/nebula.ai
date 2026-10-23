@@ -4,6 +4,9 @@ import { describe, expect, it } from "vitest";
 import { RuntimeHealthCards } from "@/components/health/runtime-health-cards";
 import { renderWithProviders } from "@/test/render";
 
+// A moment on the viewer's clock, as the ledger writes it ("12/4/26, 01:00:00"), not an ISO string.
+const LOCAL_STAMP = /^.*\d{1,2}\/\d{1,2}\/\d{2},? \d{2}:\d{2}:\d{2}$/;
+
 /** One dependency's card, found by the name in its heading. */
 function card(name: string) {
   const article = screen.getByRole("heading", { name }).closest("article");
@@ -116,7 +119,8 @@ describe("runtime-health-cards", () => {
     expect(governance.getByRole("group", { name: "Código" })).toHaveTextContent("falló la consulta al almacén");
     expect(governance.getByRole("group", { name: "Activada" })).toHaveTextContent("sí");
     expect(governance.getByRole("group", { name: "Recuperándose" })).toHaveTextContent("no");
-    expect(governance.getByText("2026-04-12T01:00:00Z")).toBeInTheDocument();
+    expect(governance.getByRole("group", { name: "Última falla" })).toHaveTextContent(LOCAL_STAMP);
+    expect(governance.queryByText("2026-04-12T01:00:00Z")).not.toBeInTheDocument();
     expect(governance.queryByRole("group", { name: "Última recuperación" })).not.toBeInTheDocument();
 
     const cache = card("semantic_cache");
@@ -129,7 +133,7 @@ describe("runtime-health-cards", () => {
     expect(statusOf("premium_provider")).toHaveTextContent("Recuperándose");
     expect(provider.getByRole("group", { name: "Ciclo de vida" })).toHaveTextContent("Recuperándose");
     expect(provider.getByRole("group", { name: "Recuperándose" })).toHaveTextContent("sí");
-    expect(provider.getByText("2026-04-12T01:03:00Z")).toBeInTheDocument();
+    expect(provider.getByRole("group", { name: "Última recuperación" })).toHaveTextContent(LOCAL_STAMP);
     // A reason the console does not know is shown as the gateway sent it, never a blank.
     expect(provider.getByRole("group", { name: "Código" })).toHaveTextContent("premium_provider_recovered");
 
@@ -158,6 +162,36 @@ describe("runtime-health-cards", () => {
     expect(card("local_ollama").getByText("Ollama alcanzable")).toHaveAttribute("title", "local_ollama_ready");
     expect(card("local_ollama").getByText("opcional")).toHaveAttribute("title", "serving_optional");
     expect(card("local_ollama").getByText("continuidad limitada")).toHaveAttribute("title", "continuity_limited");
+  });
+
+  it("writes every moment of a card on the viewer's clock", () => {
+    renderWithProviders(
+      <RuntimeHealthCards
+        isLoading={false}
+        dependencies={{
+          retention_lifecycle: {
+            status: "ready",
+            required: false,
+            detail: "Retention lifecycle cleanup completed successfully.",
+            // Built from local components, so the expectation holds in any time zone.
+            last_failure_at: new Date(2026, 3, 12, 1, 0, 0).toISOString(),
+            last_recovery_at: new Date(2026, 3, 12, 1, 3, 0).toISOString(),
+            last_run_at: new Date(2026, 3, 12, 1, 2, 3).toISOString(),
+            last_attempted_run_at: "2026-04-12T01:05:00",
+            last_cutoff: null,
+          },
+        }}
+      />,
+    );
+
+    const retention = card("retention_lifecycle");
+    expect(retention.getByRole("group", { name: "Última falla" })).toHaveTextContent(/12\/0?4\/26,? 01:00:00$/);
+    expect(retention.getByRole("group", { name: "Última recuperación" })).toHaveTextContent(/12\/0?4\/26,? 01:03:00$/);
+    expect(retention.getByRole("group", { name: "Última corrida" })).toHaveTextContent(/12\/0?4\/26,? 01:02:03$/);
+    // A zoneless timestamp is UTC, the way the gateway stores it, so it reads like its "Z" twin.
+    expect(retention.getByRole("group", { name: "Último intento" })).toHaveTextContent(LOCAL_STAMP);
+    // No moment is a dash, not an empty cell.
+    expect(retention.getByRole("group", { name: "Último corte" })).toHaveTextContent("—");
   });
 
   it("renders retention lifecycle runtime metrics without introducing a dedicated dashboard", () => {

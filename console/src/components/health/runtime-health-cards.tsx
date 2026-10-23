@@ -1,4 +1,5 @@
 import { RuntimeHealthDependency } from "@/lib/admin-api";
+import { formatTimestamp } from "@/components/observability/format";
 import {
   dependencyClassLabel,
   healthReasonLabel,
@@ -28,25 +29,25 @@ function formatHealthValue(value: unknown): string {
   return String(value);
 }
 
-/** One reading of a card; `code` words a gateway code in Spanish, keeping the code as the title. */
-type MetadataRow = { label: string; value: unknown; code?: (code: string) => string };
+/** One reading of a card; `read` words a raw value (a code, a moment) as the operator reads it, keeping the raw value as the title. */
+type MetadataRow = { label: string; value: unknown; read?: (raw: string) => string };
 
 function buildMetadata(dependency: RuntimeHealthDependency): MetadataRow[] {
   const metadata: MetadataRow[] = [
-    { label: "Clase", value: dependency.dependency_class, code: dependencyClassLabel },
-    { label: "Ciclo de vida", value: dependency.lifecycle_state, code: runtimeStatusLabel },
-    { label: "Efecto", value: dependency.serving_effect, code: servingEffectLabel },
-    { label: "Código", value: dependency.reason_code, code: healthReasonLabel },
+    { label: "Clase", value: dependency.dependency_class, read: dependencyClassLabel },
+    { label: "Ciclo de vida", value: dependency.lifecycle_state, read: runtimeStatusLabel },
+    { label: "Efecto", value: dependency.serving_effect, read: servingEffectLabel },
+    { label: "Código", value: dependency.reason_code, read: healthReasonLabel },
     { label: "Activada", value: dependency.enabled },
     { label: "Recuperándose", value: dependency.recovering },
-    { label: "Última falla", value: dependency.last_failure_at },
-    { label: "Última recuperación", value: dependency.last_recovery_at },
-    { label: "Último estado", value: dependency.last_status, code: lastRunStatusLabel },
-    { label: "Última corrida", value: dependency.last_run_at },
-    { label: "Último intento", value: dependency.last_attempted_run_at },
+    { label: "Última falla", value: dependency.last_failure_at, read: formatTimestamp },
+    { label: "Última recuperación", value: dependency.last_recovery_at, read: formatTimestamp },
+    { label: "Último estado", value: dependency.last_status, read: lastRunStatusLabel },
+    { label: "Última corrida", value: dependency.last_run_at, read: formatTimestamp },
+    { label: "Último intento", value: dependency.last_attempted_run_at, read: formatTimestamp },
     { label: "Filas borradas", value: dependency.last_deleted_count },
     { label: "Filas elegibles", value: dependency.last_eligible_count },
-    { label: "Último corte", value: dependency.last_cutoff },
+    { label: "Último corte", value: dependency.last_cutoff, read: formatTimestamp },
     { label: "Último error", value: dependency.last_error },
   ];
 
@@ -56,8 +57,8 @@ function buildMetadata(dependency: RuntimeHealthDependency): MetadataRow[] {
 function MetadataValue({ row }: { row: MetadataRow }) {
   if (typeof row.value === "string") {
     return (
-      <span className="text-sm font-medium" title={row.code ? row.value : undefined}>
-        {row.code ? row.code(row.value) : row.value}
+      <span className="text-sm font-medium" title={row.read ? row.value : undefined}>
+        {row.read ? row.read(row.value) : row.value}
       </span>
     );
   }

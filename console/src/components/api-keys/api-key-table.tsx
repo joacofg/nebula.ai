@@ -1,6 +1,7 @@
 import type { ApiKeyRecord } from "@/lib/admin-api";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTimeShort } from "@/lib/format";
 
 type ApiKeyTableProps = {
   apiKeys: ApiKeyRecord[];
@@ -8,7 +9,6 @@ type ApiKeyTableProps = {
   revokingId: string | null;
 };
 
-const dateFormatter = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
 const HEAD = "px-3 py-2 text-left font-label text-[13px] font-semibold text-ink-2";
 
 function getScopeSummary(apiKey: ApiKeyRecord) {
@@ -69,7 +69,7 @@ export function ApiKeyTable({ apiKeys, onRevoke, revokingId }: ApiKeyTableProps)
                     {revoked ? "revocada" : "activa"}
                   </span>
                 </td>
-                <td className="px-3 py-2.5 text-ink-3">{dateFormatter.format(new Date(apiKey.created_at))}</td>
+                <td className="px-3 py-2.5 text-ink-3">{formatDateTimeShort(apiKey.created_at)}</td>
                 <td className="px-3 py-2.5 text-right">
                   <Button
                     type="button"

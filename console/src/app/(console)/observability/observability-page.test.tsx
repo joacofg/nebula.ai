@@ -387,6 +387,14 @@ describe("ObservabilityPage", () => {
       expect(screen.getByText("USD 3.00 / 1000")).toBeInTheDocument();
     });
 
+    it("counts a request with no recorded cost as zero, in the sum and in the number of requests", async () => {
+      listUsageLedger.mockResolvedValue([row("req-a", 0.0042), row("req-b", null)]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0042 en 2 pedidos")).toBeInTheDocument();
+      expect(screen.getByText("USD 2.10 / 1000")).toBeInTheDocument();
+    });
+
     it("counts a single request in the singular", async () => {
       renderPage();
 

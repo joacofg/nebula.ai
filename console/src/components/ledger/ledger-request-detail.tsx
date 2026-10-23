@@ -5,17 +5,21 @@ import { PlaygroundDecision } from "@/components/playground/playground-decision"
 import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
 import {
   complexityLabel,
+  denialReasonLabel,
   enforcementLabel,
   governanceSourceLabel,
   messageTypeLabel,
   minimizationLabel,
+  NO_SCORE_LABEL,
+  reasonLabel,
   retentionWindowLabel,
+  scoreLabel,
   scoreModeLabel,
   suppressedFieldLabel,
 } from "@/components/system/labels";
 import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
-import { formatUsd } from "@/lib/format";
+import { formatUsdText } from "@/lib/format";
 
 type RouteSignals = Record<string, unknown>;
 
@@ -29,10 +33,10 @@ function orDash(value: string | null | undefined) {
   return value && value.length > 0 ? value : "—";
 }
 
-/** An amount the gateway wrote into the policy outcome as text; anything unparseable stays as written. */
-function usdFromOutcome(amount: string) {
-  const value = Number(amount);
-  return amount.trim() !== "" && Number.isFinite(value) ? formatUsd(value, 4) : `USD ${amount}`;
+/** The reason of a denial in Spanish; the gateway's own sentence stays as the title when it was translated. */
+function denialReason(text: string): ReadoutItem["value"] {
+  const label = denialReasonLabel(text);
+  return label === text ? label : <span title={text}>{label}</span>;
 }
 
 function yesNo(value: boolean) {
@@ -62,8 +66,8 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
   if (hard) {
     const [, limitUsd, spentUsd, enforcement] = hard;
     summary = "Presupuesto duro alcanzado";
-    items.push({ label: "Gastado al decidir", value: usdFromOutcome(spentUsd) });
-    items.push({ label: "Límite duro", value: usdFromOutcome(limitUsd) });
+    items.push({ label: "Gastado al decidir", value: formatUsdText(spentUsd) });
+    items.push({ label: "Límite duro", value: formatUsdText(limitUsd) });
     items.push({ label: "Aplicación", value: enforcementLabel(enforcement) });
   }
   if (policyOutcome.includes("budget_action=downgraded_to_local")) {
@@ -73,17 +77,17 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
   const denied = policyOutcome.match(/(?:^|;)denied=([^;]+)/);
   if (denied) {
     summary = "Pedido premium denegado por presupuesto";
-    items.push({ label: "Motivo de la denegación", value: denied[1] });
+    items.push({ label: "Motivo de la denegación", value: denialReason(denied[1]) });
   } else if (policyOutcome.startsWith("Tenant hard budget limit reached; premium routing is blocked")) {
     summary = "Pedido premium denegado por presupuesto";
-    items.push({ label: "Motivo de la denegación", value: policyOutcome });
+    items.push({ label: "Motivo de la denegación", value: denialReason(policyOutcome) });
     const spent = policyOutcome.match(/spent_usd=([^,)]+)/);
     const limit = policyOutcome.match(/limit_usd=([^)]+)/);
     if (spent) {
-      items.push({ label: "Gastado al decidir", value: usdFromOutcome(spent[1]) });
+      items.push({ label: "Gastado al decidir", value: formatUsdText(spent[1]) });
     }
     if (limit) {
-      items.push({ label: "Límite duro", value: usdFromOutcome(limit[1]) });
+      items.push({ label: "Límite duro", value: formatUsdText(limit[1]) });
     }
   }
   if (policyOutcome.includes("soft_budget=exceeded")) {
@@ -95,17 +99,18 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
 
 function routingState(signals: RouteSignals, routeReason: string | null, score: string | null) {
   const mode = typeof signals.route_mode === "string" ? signals.route_mode : null;
+  // The words are the policy parity's: both pages say the same thing about the same row.
   if (mode === null && routeReason === "calibrated_routing_disabled") {
-    return "rollout desactivado";
+    return reasonLabel(routeReason);
   }
-  const withScore = (label: string) => (score === null ? label : `${label} (score ${score})`);
+  const withScore = (label: string) => (score === null ? label : `${label} (${scoreLabel(score)})`);
   if (signals.degraded_routing === true || mode === "degraded") {
-    return withScore("degradado");
+    return withScore(scoreModeLabel("degraded"));
   }
   if (signals.calibrated_routing === true || mode === "calibrated") {
-    return withScore("calibrado");
+    return withScore(scoreModeLabel("calibrated"));
   }
-  return mode !== null ? withScore(mode) : withScore("sin score");
+  return withScore(mode !== null ? scoreModeLabel(mode) : NO_SCORE_LABEL);
 }
 
 /** The v0 heuristic's score breakdown; absent for the learned router, which the decision path explains. */
@@ -123,11 +128,11 @@ function heuristicSection(signals: RouteSignals | null, routeReason: string | nu
     items.push({ label: "Modo", value: scoreModeLabel(signals.route_mode) });
   }
   if (score !== null) {
-    items.push({ label: "Score", value: score });
+    items.push({ label: "Puntaje", value: score });
   }
   if (components) {
     const parts: Array<[string, unknown]> = [
-      ["Score por tokens", components.token_score],
+      ["Puntaje por tokens", components.token_score],
       ["Bono por palabra clave", components.keyword_bonus],
       ["Bono de política", components.policy_bonus],
     ];

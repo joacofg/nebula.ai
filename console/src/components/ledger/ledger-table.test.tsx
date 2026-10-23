@@ -132,7 +132,8 @@ describe("ledger-table", () => {
     const onSelectRow = vi.fn();
     renderWithProviders(<LedgerTable rows={rows} selectedRequestId="req-001" onSelectRow={onSelectRow} isLoading={false} />);
 
-    screen.getByRole("row", { name: /req-001/ }).focus();
+    await user.tab();
+    expect(screen.getByRole("row", { name: /req-001/ })).toHaveFocus();
     await user.keyboard("{ArrowDown}");
     expect(screen.getByRole("row", { name: /req-002/ })).toHaveFocus();
     // Moving is not opening: the detail changes only on Enter.
@@ -153,7 +154,8 @@ describe("ledger-table", () => {
     const user = userEvent.setup();
     renderWithProviders(<LedgerTable rows={rows} selectedRequestId={null} onSelectRow={vi.fn()} isLoading={false} />);
 
-    screen.getByRole("row", { name: /req-001/ }).focus();
+    await user.tab();
+    expect(screen.getByRole("row", { name: /req-001/ })).toHaveFocus();
     await user.keyboard("{ArrowUp}");
     expect(screen.getByRole("row", { name: /req-001/ })).toHaveFocus();
     await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}");
@@ -166,6 +168,25 @@ describe("ledger-table", () => {
 
     await user.click(screen.getByRole("row", { name: /req-003/ }));
     expect(bodyRows().map((row) => row.tabIndex)).toEqual([-1, -1, 0]);
+  });
+
+  it("keeps exactly one tab stop when the row that had focus leaves the list", async () => {
+    const user = userEvent.setup();
+    const table = (shown: UsageLedgerRecord[], selected: string | null) => (
+      <LedgerTable rows={shown} selectedRequestId={selected} onSelectRow={vi.fn()} isLoading={false} />
+    );
+    const { rerender } = renderWithProviders(table(rows, "req-001"));
+    await user.tab();
+    await user.keyboard("{ArrowDown}{ArrowDown}");
+    expect(screen.getByRole("row", { name: /req-003/ })).toHaveFocus();
+
+    // The focused row is gone: the stop falls back to the selected row.
+    rerender(table(rows.slice(0, 2), "req-001"));
+    expect(bodyRows().map((row) => row.tabIndex)).toEqual([0, -1]);
+
+    // The selected row is gone too: it falls back to the first one.
+    rerender(table(rows.slice(1, 2), "req-001"));
+    expect(bodyRows().map((row) => row.tabIndex)).toEqual([0]);
   });
 
   it("keeps long values on one line with the full text in the title", () => {

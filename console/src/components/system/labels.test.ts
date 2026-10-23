@@ -5,6 +5,7 @@ import {
   cacheEvidenceLabel,
   cacheInsightLabel,
   complexityLabel,
+  denialReasonLabel,
   dependencyClassLabel,
   enforcementLabel,
   governanceSourceLabel,
@@ -12,6 +13,7 @@ import {
   lastRunStatusLabel,
   messageTypeLabel,
   minimizationLabel,
+  NO_SCORE_LABEL,
   plural,
   reasonLabel,
   retentionWindowLabel,
@@ -19,6 +21,7 @@ import {
   routerLabel,
   routingModeLabel,
   runtimeStatusLabel,
+  scoreLabel,
   scoreModeLabel,
   servingEffectLabel,
   statusLabel,
@@ -221,7 +224,7 @@ describe("cache labels", () => {
 
   it("names the evidence rows of an insight", () => {
     expect(cacheEvidenceLabel("runtime_status")).toBe("Estado en runtime");
-    expect(cacheEvidenceLabel("cache_enabled")).toBe("Caché activada");
+    expect(cacheEvidenceLabel("cache_enabled")).toBe("Caché activado");
     expect(cacheEvidenceLabel("cache_hits")).toBe("Aciertos");
     expect(cacheEvidenceLabel("window_requests")).toBe("Pedidos en la ventana");
     expect(cacheEvidenceLabel("avoided_premium_cost_usd")).toBe("Premium evitado");
@@ -248,6 +251,56 @@ describe("ledger detail labels", () => {
     expect(complexityLabel("low")).toBe("baja");
     expect(complexityLabel("medium")).toBe("media");
     expect(complexityLabel("high")).toBe("alta");
+  });
+});
+
+describe("denialReasonLabel", () => {
+  it("words each denial the gateway can record, keeping the model and the amounts they carry", () => {
+    expect(denialReasonLabel("Premium model 'openai/gpt-4o' is not allowed for this tenant.")).toBe(
+      "Modelo premium 'openai/gpt-4o' no permitido para este tenant",
+    );
+    expect(denialReasonLabel("Request exceeds the tenant premium spend guardrail.")).toBe(
+      "El pedido supera el límite de costo por pedido",
+    );
+    expect(
+      denialReasonLabel("Tenant hard budget limit reached; premium routing is blocked (spent_usd=0.1, limit_usd=0.05)."),
+    ).toBe("Presupuesto duro alcanzado: ruteo premium bloqueado (gastado USD 0.1000, límite USD 0.0500)");
+    expect(denialReasonLabel("Tenant policy requires premium-only routing.")).toBe(
+      "La política exige ruteo solo premium",
+    );
+    expect(denialReasonLabel("Tenant policy does not allow explicit premium routing.")).toBe(
+      "La política no permite pedir un modelo premium",
+    );
+    expect(denialReasonLabel("Tenant policy restricts this request to local routing only.")).toBe(
+      "La política restringe el pedido a ruteo solo local",
+    );
+  });
+
+  it("words a hard-budget denial cut before its amounts, as the policy outcome keeps it", () => {
+    expect(denialReasonLabel("Tenant hard budget limit reached")).toBe(
+      "Presupuesto duro alcanzado: ruteo premium bloqueado",
+    );
+  });
+
+  it("keeps an amount that is not a number as written", () => {
+    expect(
+      denialReasonLabel("Tenant hard budget limit reached; premium routing is blocked (spent_usd=0.1, limit_usd=unknown)."),
+    ).toBe("Presupuesto duro alcanzado: ruteo premium bloqueado (gastado USD 0.1000, límite USD unknown)");
+  });
+
+  it("keeps a denial it does not know as the gateway wrote it", () => {
+    expect(denialReasonLabel("Something new was denied.")).toBe("Something new was denied.");
+    expect(denialReasonLabel("Premium model 'x' is not allowed for another reason.")).toBe(
+      "Premium model 'x' is not allowed for another reason.",
+    );
+    expect(denialReasonLabel("")).toBe("—");
+  });
+});
+
+describe("routing score words", () => {
+  it("words a missing score and a score the way the policy parity and the ledger detail share", () => {
+    expect(NO_SCORE_LABEL).toBe("sin puntaje");
+    expect(scoreLabel("0.40")).toBe("puntaje 0.40");
   });
 });
 

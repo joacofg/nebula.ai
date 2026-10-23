@@ -16,6 +16,15 @@ export function formatUsdPer1000(costPerRequest: number, digits = 2): string {
   return `${formatUsd(costPerRequest * 1000, digits)} / 1000`;
 }
 
+/**
+ * An amount the gateway wrote into a text ("0.1", "unknown"): written like any other amount when it
+ * is a number, kept as written after "USD" when it is not.
+ */
+export function formatUsdText(amount: string, digits = 4): string {
+  const value = Number(amount);
+  return amount.trim() !== "" && Number.isFinite(value) ? formatUsd(value, digits) : `USD ${amount}`;
+}
+
 // A trailing "Z" or UTC offset: the timestamp names its own zone.
 const HAS_ZONE = /(?:[zZ]|[+-]\d{2}(?::?\d{2})?)$/;
 
@@ -37,6 +46,14 @@ export function formatDateTime(value: string): string {
     return value;
   }
   return `${two(date.getDate())}/${two(date.getMonth() + 1)} ${two(date.getHours())}:${two(date.getMinutes())}:${two(date.getSeconds())}`;
+}
+
+const shortDateTime = new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "short", hourCycle: "h23" });
+
+/** A moment on the viewer's clock to the minute, for the tenant and API key tables: "16/3/26, 09:05". */
+export function formatDateTimeShort(value: string): string {
+  const date = parseTimestamp(value);
+  return date === null ? value : shortDateTime.format(date);
 }
 
 /**

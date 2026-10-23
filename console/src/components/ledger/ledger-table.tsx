@@ -20,7 +20,10 @@ type LedgerTableProps = {
   isLoading: boolean;
 };
 
-/** The level a row was served at: the learned router's tier for premium traffic, the route otherwise. */
+/**
+ * The level a row was served at: the learned router's tier for premium traffic, the route otherwise.
+ * The ledger's `tier` filter applies this same rule (`list_usage_records` in governance_store.py).
+ */
 export function rowTier(row: UsageLedgerRecord) {
   const signals = row.route_signals as Record<string, unknown> | null;
   if (row.final_route_target === "premium" && typeof signals?.tier === "string") {

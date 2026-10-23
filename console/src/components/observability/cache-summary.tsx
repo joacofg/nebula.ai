@@ -29,7 +29,7 @@ export function CacheSummary({ cache }: { cache: CacheControlSummary }) {
           items={[
             { label: "Tasa de aciertos estimada", value: `${Math.round(cache.estimated_hit_rate * 100)} %`, emphasis: true },
             { label: "Premium evitado", value: formatUsd(cache.avoided_premium_cost_usd, 4), emphasis: true },
-            { label: "Caché activada", value: cache.enabled ? "sí" : "no" },
+            { label: "Caché activado", value: cache.enabled ? "sí" : "no" },
             { label: "Estado en runtime", value: runtimeStatusLabel(cache.runtime_status) },
             { label: "Umbral de similitud", value: cache.similarity_threshold.toFixed(2) },
             { label: "Antigüedad máxima", value: `${cache.max_entry_age_hours} h` },

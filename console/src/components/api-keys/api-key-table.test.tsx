@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { ApiKeyTable } from "@/components/api-keys/api-key-table";
@@ -55,6 +55,37 @@ describe("api-keys-page api-key-table", () => {
     expect(
       screen.getByTitle(/Los pedidos tienen que enviar X-Nebula-Tenant-ID/i),
     ).toBeInTheDocument();
+  });
+
+  it("reads a zoneless timestamp as UTC, the way SQLite hands it back, and survives one it cannot read", () => {
+    const key = (id: string, created_at: string) => ({
+      id,
+      name: id,
+      key_prefix: "nbk_1234",
+      tenant_id: "tenant-a",
+      allowed_tenant_ids: ["tenant-a"],
+      revoked_at: null,
+      created_at,
+      updated_at: created_at,
+    });
+    renderWithProviders(
+      <ApiKeyTable
+        apiKeys={[
+          key("zoned", "2026-03-16T12:00:00Z"),
+          key("zoneless", "2026-03-16T12:00:00.123456"),
+          key("broken", "ayer"),
+        ]}
+        onRevoke={vi.fn()}
+        revokingId={null}
+      />,
+    );
+
+    // Name, scope, status, created, action.
+    const created = (name: string) =>
+      within(screen.getByText(name).closest("tr") as HTMLElement).getAllByRole("cell")[3].textContent;
+    expect(created("zoneless")).toBe(created("zoned"));
+    expect(created("zoned")).toMatch(/\d{1,2}\/\d{1,2}\/\d{2},? \d{2}:\d{2}/);
+    expect(created("broken")).toBe("ayer");
   });
 
   it("keeps revoked records visible", () => {

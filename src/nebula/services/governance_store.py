@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from uuid import uuid4
 
-from sqlalchemy import delete, func, inspect, select
+from sqlalchemy import and_, delete, func, inspect, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -420,9 +420,18 @@ class GovernanceStore:
             if route_target:
                 stmt = stmt.where(UsageLedgerModel.final_route_target == route_target)
             if tier:
-                # Portable JSON access (SQLite json_extract, Postgres ->>); a row whose
-                # signals are absent, suppressed or carry no tier yields NULL and never matches.
-                stmt = stmt.where(UsageLedgerModel.route_signals["tier"].as_string() == tier)
+                # The tier of a row is the one the console's "Nivel" column shows (`rowTier` in
+                # console/src/components/ledger/ledger-table.tsx): the route signal for a premium
+                # row, where it was served (local) for any other. Portable JSON access (SQLite
+                # json_extract, Postgres ->>); a premium row whose signals are absent, suppressed
+                # or carry no tier yields NULL and matches none.
+                signal_tier = UsageLedgerModel.route_signals["tier"].as_string()
+                stmt = stmt.where(
+                    or_(
+                        UsageLedgerModel.final_route_target == tier,
+                        and_(UsageLedgerModel.final_route_target == "premium", signal_tier == tier),
+                    )
+                )
             # Rows are stored as UTC. SQLite drops the zone of a bound datetime, so a bound that
             # carries an offset is converted first; one without a zone is UTC, as everywhere here.
             if from_timestamp:

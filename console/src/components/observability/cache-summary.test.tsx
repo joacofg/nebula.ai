@@ -73,7 +73,7 @@ describe("CacheSummary", () => {
     const degradedView = within(degraded as HTMLElement);
     expect(degradedView.getByText("alerta")).toBeInTheDocument();
     expect(degradedView.getByRole("group", { name: "Estado en runtime" })).toHaveTextContent("Degradado");
-    expect(degradedView.getByRole("group", { name: "Caché activada" })).toHaveTextContent("sí");
+    expect(degradedView.getByRole("group", { name: "Caché activado" })).toHaveTextContent("sí");
 
     const effectiveness = screen.getByRole("heading", { name: "Efectividad reciente del caché" }).closest("article");
     const effectivenessView = within(effectiveness as HTMLElement);
@@ -110,10 +110,10 @@ describe("CacheSummary", () => {
     const article = screen.getByRole("heading", { name: "Caché semántico desactivado" }).closest("article");
     const view = within(article as HTMLElement);
     expect(view.getByText("aviso")).toBeInTheDocument();
-    expect(view.getByRole("group", { name: "Caché activada" })).toHaveTextContent("no");
+    expect(view.getByRole("group", { name: "Caché activado" })).toHaveTextContent("no");
   });
 
-  it("shows an insight with a code it does not know exactly as the gateway sent it", () => {
+  it("keeps the title, summary and evidence of an insight whose code it does not know", () => {
     renderWithProviders(
       <CacheSummary
         cache={{
@@ -162,7 +162,7 @@ describe("CacheSummary", () => {
     const article = screen.getByRole("heading", { name: "Efectividad reciente del caché" }).closest("article");
     const view = within(article as HTMLElement);
     expect(view.getByRole("group", { name: "Premium evitado" })).toHaveTextContent("n/a");
-    expect(view.getByRole("group", { name: "Caché activada" })).toHaveTextContent("maybe");
+    expect(view.getByRole("group", { name: "Caché activado" })).toHaveTextContent("maybe");
     expect(view.getByRole("group", { name: "Estado en runtime" })).toHaveTextContent("on_fire");
   });
 

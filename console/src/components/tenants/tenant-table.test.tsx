@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
@@ -56,6 +56,28 @@ describe("tenants-page tenant-table", () => {
 
     expect(onSelectTenant).toHaveBeenCalledWith(expect.objectContaining({ id: "inactive-team" }));
   });
+  it("reads a zoneless timestamp as UTC, the way SQLite hands it back, and survives one it cannot read", () => {
+    renderWithProviders(
+      <TenantTable
+        tenants={[
+          { ...TENANTS[0], id: "zoned", name: "Zoned", updated_at: "2026-03-16T12:30:00Z" },
+          { ...TENANTS[0], id: "zoneless", name: "Zoneless", updated_at: "2026-03-16T12:30:00.123456" },
+          { ...TENANTS[0], id: "broken", name: "Broken", updated_at: "ayer" },
+        ]}
+        selectedTenantId={null}
+        onSelectTenant={vi.fn()}
+      />,
+    );
+
+    const updated = (name: string) => {
+      const cells = within(screen.getByText(name).closest("tr") as HTMLElement).getAllByRole("cell");
+      return cells[cells.length - 1].textContent;
+    };
+    expect(updated("Zoneless")).toBe(updated("Zoned"));
+    expect(updated("Zoned")).toMatch(/\d{1,2}\/\d{1,2}\/\d{2},? \d{2}:\d{2}/);
+    expect(updated("Broken")).toBe("ayer");
+  });
+
   it("keeps a long tenant name on one line with the full name in the title", () => {
     const longName = "Laboratorio de Robótica Aplicada del Departamento";
     renderWithProviders(

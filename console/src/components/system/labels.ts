@@ -3,6 +3,8 @@
  * Every function returns the raw code for one it does not know and a dash for none, never an
  * empty cell; only a table's own keys count as codes ("constructor" is just an unknown code).
  */
+import { formatUsdText } from "@/lib/format";
+
 const ROUTE_REASONS: Record<string, string> = {
   learned_router: "router aprendido",
   token_complexity: "heurística por complejidad",
@@ -129,7 +131,7 @@ const CACHE_INSIGHTS: Record<string, string> = {
 // The `label` of each evidence row of a cache insight.
 const CACHE_EVIDENCE: Record<string, string> = {
   runtime_status: "Estado en runtime",
-  cache_enabled: "Caché activada",
+  cache_enabled: "Caché activado",
   cache_hits: "Aciertos",
   window_requests: "Pedidos en la ventana",
   avoided_premium_cost_usd: "Premium evitado",
@@ -156,6 +158,23 @@ const ENFORCEMENTS: Record<string, string> = { downgrade: "degradar a local", de
 
 // How complex the heuristic found a prompt (`complexity_tier`).
 const COMPLEXITIES: Record<string, string> = { low: "baja", medium: "media", high: "alta" };
+
+// The denials the policy records, by the sentence the gateway writes (`denied=` in the policy outcome).
+// Two carry something of their own (a model, amounts) and are read by pattern in `denialReasonLabel`.
+const DENIALS: Record<string, string> = {
+  "Request exceeds the tenant premium spend guardrail.": "El pedido supera el límite de costo por pedido",
+  "Tenant policy requires premium-only routing.": "La política exige ruteo solo premium",
+  "Tenant policy does not allow explicit premium routing.": "La política no permite pedir un modelo premium",
+  "Tenant policy restricts this request to local routing only.": "La política restringe el pedido a ruteo solo local",
+};
+
+/** What a routing row says when it carries no mode of its own; the policy parity and the ledger detail share it. */
+export const NO_SCORE_LABEL = "sin puntaje";
+
+/** A routing score beside its mode: "puntaje 0.40". */
+export function scoreLabel(score: string) {
+  return `puntaje ${score}`;
+}
 
 /** A known code's label, the code itself when unknown, a dash when there is none. */
 function lookup(labels: Record<string, string>, code: string | null | undefined) {
@@ -193,6 +212,26 @@ export function scoreModeLabel(mode: string | null | undefined) {
 /** A simulation note in Spanish by its code; a code it does not know shows the note's own text, a dash if it has none. */
 export function approximationNoteLabel(code: string | null | undefined, text: string) {
   return code && Object.hasOwn(APPROXIMATION_NOTES, code) ? APPROXIMATION_NOTES[code] : text || "—";
+}
+
+/**
+ * Why the policy denied a request, from the sentence the gateway recorded, keeping the model or the
+ * amounts it carries; a sentence it does not know stays as written. The hard-budget sentence reaches
+ * the ledger whole or cut at its first ";", so its amounts are optional.
+ */
+export function denialReasonLabel(text: string | null | undefined) {
+  const model = text?.match(/^Premium model '(.+)' is not allowed for this tenant\.?$/);
+  if (model) {
+    return `Modelo premium '${model[1]}' no permitido para este tenant`;
+  }
+  if (text?.startsWith("Tenant hard budget limit reached")) {
+    const amounts = text.match(/spent_usd=([^,)\s]+),\s*limit_usd=([^)\s]+)/);
+    const reached = "Presupuesto duro alcanzado: ruteo premium bloqueado";
+    return amounts
+      ? `${reached} (gastado ${formatUsdText(amounts[1])}, límite ${formatUsdText(amounts[2])})`
+      : reached;
+  }
+  return lookup(DENIALS, text);
 }
 
 /** A dependency's class: critical for serving, optional or metadata only. */

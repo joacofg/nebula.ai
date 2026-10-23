@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { LedgerRequestDetail } from "@/components/ledger/ledger-request-detail";
@@ -177,11 +177,11 @@ describe("ledger-request-detail", () => {
       <LedgerRequestDetail entry={{ ...mockEntry, route_reason: "token_complexity", route_signals: heuristicSignals }} />,
     );
     expect(screen.getByText("Ruteo heurístico")).toBeInTheDocument();
-    expect(group("Estado del ruteo")).toHaveTextContent("calibrado (score 1.00)");
+    expect(group("Estado del ruteo")).toHaveTextContent("calibrado (puntaje 1.00)");
     expect(group("Modo")).toHaveTextContent("calibrado");
     expect(group("Modo")).not.toHaveTextContent("calibrated");
-    expect(group("Score")).toHaveTextContent("1.00");
-    expect(group("Score por tokens")).toHaveTextContent("1.00");
+    expect(group("Puntaje")).toHaveTextContent("1.00");
+    expect(group("Puntaje por tokens")).toHaveTextContent("1.00");
     expect(group("Bono por palabra clave")).toHaveTextContent("0.20");
     expect(group("Bono de política")).toHaveTextContent("0.10");
     expect(group("Tokens contados")).toHaveTextContent("842");
@@ -235,7 +235,7 @@ describe("ledger-request-detail", () => {
         }}
       />,
     );
-    expect(group("Estado del ruteo")).toHaveTextContent("degradado (score 0.60)");
+    expect(group("Estado del ruteo")).toHaveTextContent("degradado (puntaje 0.60)");
     unmount();
 
     const rollout = renderWithProviders(
@@ -243,7 +243,7 @@ describe("ledger-request-detail", () => {
         entry={{ ...mockEntry, route_reason: "calibrated_routing_disabled", route_signals: { token_count: 144, complexity_tier: "low" } }}
       />,
     );
-    expect(group("Estado del ruteo")).toHaveTextContent("rollout desactivado");
+    expect(group("Estado del ruteo")).toHaveTextContent("ruteo automático apagado");
     expect(screen.queryByRole("group", { name: "Modo" })).not.toBeInTheDocument();
     rollout.unmount();
 
@@ -252,8 +252,8 @@ describe("ledger-request-detail", () => {
         entry={{ ...mockEntry, route_reason: "explicit_premium_model", route_signals: { token_count: 61, complexity_tier: "low" } }}
       />,
     );
-    expect(group("Estado del ruteo")).toHaveTextContent("sin score");
-    expect(screen.queryByRole("group", { name: "Score" })).not.toBeInTheDocument();
+    expect(group("Estado del ruteo")).toHaveTextContent("sin puntaje");
+    expect(screen.queryByRole("group", { name: "Puntaje" })).not.toBeInTheDocument();
   });
 
   it("reads a hard-budget downgrade from the policy outcome", () => {
@@ -315,7 +315,9 @@ describe("ledger-request-detail", () => {
       />,
     );
     expect(screen.getByText("Pedido premium denegado por presupuesto")).toBeInTheDocument();
-    expect(group("Motivo de la denegación")).toHaveTextContent("Tenant hard budget limit reached");
+    expect(group("Motivo de la denegación")).toHaveTextContent(
+      "Presupuesto duro alcanzado: ruteo premium bloqueado (gastado USD 0.1000, límite USD 0.0500)",
+    );
     expect(group("Límite duro")).toHaveTextContent("USD 0.0500");
     expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
     denied.unmount();
@@ -323,6 +325,46 @@ describe("ledger-request-detail", () => {
     renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, policy_outcome: "soft_budget=exceeded" }} />);
     expect(screen.getByText("Aviso de presupuesto blando")).toBeInTheDocument();
     expect(group("Presupuesto blando")).toHaveTextContent("Superado (solo aviso)");
+  });
+
+  it.each([
+    [
+      "Premium model 'openai/gpt-4o' is not allowed for this tenant.",
+      "Modelo premium 'openai/gpt-4o' no permitido para este tenant",
+    ],
+    ["Request exceeds the tenant premium spend guardrail.", "El pedido supera el límite de costo por pedido"],
+    ["Tenant policy requires premium-only routing.", "La política exige ruteo solo premium"],
+    ["Tenant policy does not allow explicit premium routing.", "La política no permite pedir un modelo premium"],
+    ["Tenant policy restricts this request to local routing only.", "La política restringe el pedido a ruteo solo local"],
+    ["Tenant hard budget limit reached", "Presupuesto duro alcanzado: ruteo premium bloqueado"],
+  ])("reads the denial %j in Spanish from the policy outcome", (english, spanish) => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "denied",
+          terminal_status: "policy_denied",
+          policy_outcome: `routing_mode=auto;denied=${english};outcome_evidence=thin(eligible=0,sufficient=0)`,
+        }}
+      />,
+    );
+
+    const reason = group("Motivo de la denegación");
+    expect(reason).toHaveTextContent(spanish);
+    // The gateway's own sentence stays one hover away, for whoever has to search the logs for it.
+    expect(within(reason).getByText(spanish)).toHaveAttribute("title", english);
+  });
+
+  it("keeps a denial it does not know as the gateway wrote it", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{ ...mockEntry, final_route_target: "denied", policy_outcome: "routing_mode=auto;denied=Something new was denied." }}
+      />,
+    );
+
+    const reason = group("Motivo de la denegación");
+    expect(reason).toHaveTextContent("Something new was denied.");
+    expect(within(reason).getByText("Something new was denied.")).not.toHaveAttribute("title");
   });
 
   it("omits routing sections when route_signals is null", () => {

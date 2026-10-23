@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDateTime, formatUsd, formatUsdPer1000, localInputToIso } from "@/lib/format";
+import {
+  formatDateTime,
+  formatDateTimeShort,
+  formatUsd,
+  formatUsdPer1000,
+  formatUsdText,
+  localInputToIso,
+} from "@/lib/format";
 
 describe("formatUsd", () => {
   it("writes USD with two decimals by default, like the thesis", () => {
@@ -51,6 +58,18 @@ describe("formatUsdPer1000", () => {
   });
 });
 
+describe("formatUsdText", () => {
+  it("writes an amount the gateway sent as text like any other amount", () => {
+    expect(formatUsdText("0.1")).toBe("USD 0.1000");
+    expect(formatUsdText("0.05", 2)).toBe("USD 0.05");
+  });
+
+  it("keeps an amount that is not a number as written after USD", () => {
+    expect(formatUsdText("unknown")).toBe("USD unknown");
+    expect(formatUsdText("1,5")).toBe("USD 1,5");
+  });
+});
+
 describe("formatDateTime", () => {
   it("writes day/month and the time on the viewer's clock", () => {
     // Built from local components so the expectation holds in any time zone.
@@ -71,6 +90,22 @@ describe("formatDateTime", () => {
 
   it("keeps a value that is not a date as written", () => {
     expect(formatDateTime("ayer")).toBe("ayer");
+  });
+});
+
+describe("formatDateTimeShort", () => {
+  it("writes the date and the minute on the viewer's clock", () => {
+    expect(formatDateTimeShort(new Date(2026, 2, 16, 9, 5, 0).toISOString())).toMatch(/^16\/0?3\/26,? 09:05$/);
+  });
+
+  it("reads a timestamp without a zone as UTC, like the ledger does", () => {
+    expect(formatDateTimeShort("2026-03-16T12:00:00")).toBe(formatDateTimeShort("2026-03-16T12:00:00Z"));
+    expect(formatDateTimeShort("2026-03-16T12:00:00.250000")).toBe(formatDateTimeShort("2026-03-16T12:00:00Z"));
+  });
+
+  it("keeps a value that is not a date as written instead of throwing", () => {
+    expect(formatDateTimeShort("ayer")).toBe("ayer");
+    expect(formatDateTimeShort("")).toBe("");
   });
 });
 

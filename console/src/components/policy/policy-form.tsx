@@ -24,9 +24,11 @@ import {
 } from "@/components/policy/policy-validation";
 import {
   approximationNoteLabel,
+  NO_SCORE_LABEL,
   reasonLabel,
   routeLabel,
   routingModeLabel,
+  scoreLabel,
   scoreModeLabel,
   statusLabel,
 } from "@/components/system/labels";
@@ -144,11 +146,11 @@ function formatRoutingState(
   const routeScoreLabel = formatRouteScore(routeScore);
   // A marker that repeats the mode ("calibrado (calibrado, ...)") adds nothing.
   const detailParts = markers.filter((marker) => marker !== modeLabel).join(" / ");
-  const detail = [detailParts, routeScoreLabel === null ? null : `puntaje ${routeScoreLabel}`]
+  const detail = [detailParts, routeScoreLabel === null ? null : scoreLabel(routeScoreLabel)]
     .filter((value): value is string => Boolean(value))
     .join(", ");
 
-  const name = modeLabel ?? "sin puntaje";
+  const name = modeLabel ?? NO_SCORE_LABEL;
   return detail.length > 0 ? `${name} (${detail})` : name;
 }
 
