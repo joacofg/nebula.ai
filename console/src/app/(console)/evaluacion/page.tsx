@@ -106,16 +106,8 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
   );
 }
 
-function EvaluationBody({
-  replay,
-  adminKey,
-  tenantTarget,
-}: {
-  replay: RouterReplay;
-  adminKey: string;
-  tenantTarget: TenantTarget;
-}) {
-  const { target, setTarget } = tenantTarget;
+function EvaluationBody({ replay, tenantTarget }: { replay: RouterReplay; tenantTarget: TenantTarget }) {
+  const { target, setTarget, saving } = tenantTarget;
   const [initialPlaying] = useState(() => !prefersReducedMotion());
 
   const front = useMemo(() => paretoFront(replay.operating_points), [replay]);
@@ -154,7 +146,7 @@ function EvaluationBody({
           </Figure>
         </div>
         <div className="flex flex-col gap-5 border-t border-line p-5 xl:border-t-0">
-          <QualitySlider value={target} onChange={setTarget} />
+          <QualitySlider value={target} onChange={setTarget} disabled={saving} />
           <Readout
             items={[
               { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier), emphasis: true },
@@ -180,7 +172,7 @@ function EvaluationBody({
             <div className="font-label text-[13px] font-medium text-ink-2">Reparto por nivel</div>
             <TierShareBar share={result.share} models={models} />
           </div>
-          <ApplyTarget adminKey={adminKey} tenantTarget={tenantTarget} />
+          <ApplyTarget tenantTarget={tenantTarget} />
         </div>
       </div>
 
@@ -205,7 +197,8 @@ function EvaluationBody({
 
 export default function EvaluationPage() {
   const { adminKey } = useAdminSession();
-  // Fetched next to the replay, not inside it, so the slider opens at the tenant's target.
+  // Fetched next to the replay, not inside it: the body mounts once the tenant's target is known,
+  // so neither the slider nor the autoplaying replay ever starts at a placeholder.
   const tenantTarget = useTenantTarget(adminKey ?? "");
   const replayQuery = useQuery({
     queryKey: queryKeys.routerEvaluation,
@@ -239,7 +232,13 @@ export default function EvaluationPage() {
           <ErrorAlert error={replayQuery.error} fallback="No se pudo cargar el replay del router." />
         </div>
       ) : replay ? (
-        <EvaluationBody replay={replay} adminKey={adminKey ?? ""} tenantTarget={tenantTarget} />
+        tenantTarget.ready ? (
+          <EvaluationBody replay={replay} tenantTarget={tenantTarget} />
+        ) : (
+          <div className="px-6 py-6">
+            <LoadingRows rows={8} label="Cargando el objetivo del tenant" />
+          </div>
+        )
       ) : (
         <div className="px-6 py-8">
           <p className="m-0 text-lg font-semibold text-ink">No hay replay del router.</p>

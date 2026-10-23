@@ -3,9 +3,11 @@ import { TARGET_MAX, TARGET_MIN, TARGET_STEP, formatTarget, snapTarget } from "@
 type QualitySliderProps = {
   value: number;
   onChange: (value: number) => void;
+  /** Locked while a save is in flight, so its confirmation describes the value on screen. */
+  disabled?: boolean;
 };
 
-export function QualitySlider({ value, onChange }: QualitySliderProps) {
+export function QualitySlider({ value, onChange, disabled = false }: QualitySliderProps) {
   return (
     <div>
       <div className="flex items-baseline justify-between gap-4">
@@ -23,8 +25,9 @@ export function QualitySlider({ value, onChange }: QualitySliderProps) {
         max={TARGET_MAX}
         step={TARGET_STEP}
         value={value}
+        disabled={disabled}
         onChange={(event) => onChange(snapTarget(Number(event.target.value)))}
-        className="mt-3 w-full cursor-pointer accent-mark"
+        className="mt-3 w-full cursor-pointer accent-mark disabled:cursor-not-allowed disabled:accent-ink-3"
       />
       <div className="mt-1 flex justify-between font-mono text-xs text-ink-3">
         <span>{formatTarget(TARGET_MIN)}</span>

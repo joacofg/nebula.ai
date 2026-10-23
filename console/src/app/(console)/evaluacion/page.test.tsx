@@ -1,9 +1,10 @@
-import { fireEvent, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import EvaluationPage from "@/app/(console)/evaluacion/page";
 import { AdminApiError, type TenantPolicy } from "@/lib/admin-api";
+import { GATEWAY_UNREACHABLE_DETAIL } from "@/lib/admin-errors";
 import { useSelectedTenant } from "@/lib/selected-tenant";
 import { renderWithProviders } from "@/test/render";
 import { routerReplayFixture } from "@/test/router-replay-fixture";
@@ -58,6 +59,14 @@ const tenants = [
 ];
 
 const acme = { ...tenants[0], id: "acme", name: "Acme Robotics" };
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((res) => {
+    resolve = res;
+  });
+  return { promise, resolve };
+}
 
 /** The shared tenant selection, as the next page (Playground) reads it. */
 function SelectedTenantProbe() {
@@ -253,15 +262,91 @@ describe("evaluation page", () => {
     expect(adminApi.getTenantPolicy).not.toHaveBeenCalled();
   });
 
-  it("keeps the slider usable when the tenant's policy cannot be read", async () => {
-    adminApi.getTenantPolicy.mockRejectedValue(new Error("Tenant policy unavailable."));
+  it("says why the tenant's target is unknown and keeps the slider usable at 0.95", async () => {
+    adminApi.getTenantPolicy.mockRejectedValue(new AdminApiError(503, GATEWAY_UNREACHABLE_DETAIL));
     renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
 
     const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
-    expect(await screen.findByText("Objetivo actual —")).toBeInTheDocument();
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el gateway.");
+    expect(screen.getByText("Objetivo actual —")).toBeInTheDocument();
     expect(slider).toHaveValue("0.95");
     fireEvent.change(slider, { target: { value: "0.8" } });
     expect(slider).toHaveValue("0.8");
+  });
+
+  it("waits for the tenant's policy before showing the slider and starting the replay", async () => {
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    const pending = deferred<TenantPolicy>();
+    adminApi.getTenantPolicy.mockReturnValue(pending.promise);
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    await waitFor(() => expect(adminApi.getTenantPolicy).toHaveBeenCalled());
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+    });
+    expect(screen.getByRole("status", { name: "Cargando el objetivo del tenant" })).toBeInTheDocument();
+    expect(screen.queryByRole("slider")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Pausar|Reproducir/ })).not.toBeInTheDocument();
+
+    await act(async () => pending.resolve({ ...policy, routing_quality_target: 0.9 }));
+
+    // Mounted for the first time already at the tenant's target, never at 0.95.
+    expect(await screen.findByRole("slider", { name: "Calidad objetivo" })).toHaveValue("0.9");
+    expect(screen.getByRole("button", { name: "Pausar" })).toBeInTheDocument();
+  });
+
+  it("holds the slider where it was while an uncached tenant's policy loads, instead of passing through 0.95", async () => {
+    const user = userEvent.setup();
+    adminApi.listTenants.mockResolvedValue([...tenants, acme]);
+    const pendingAcme = deferred<TenantPolicy>();
+    adminApi.getTenantPolicy.mockImplementation((_key: string, id: string) =>
+      id === "acme" ? pendingAcme.promise : Promise.resolve({ ...policy, routing_quality_target: 0.9 }),
+    );
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
+    expect(slider).toHaveValue("0.9");
+    await screen.findByRole("option", { name: "Acme Robotics" });
+    await user.selectOptions(screen.getByRole("combobox", { name: "Tenant" }), "acme");
+
+    expect(await screen.findByText("Objetivo actual —")).toBeInTheDocument();
+    expect(slider).toHaveValue("0.9");
+
+    await act(async () => pendingAcme.resolve({ ...policy, routing_quality_target: 0.85 }));
+    await waitFor(() => expect(slider).toHaveValue("0.85"));
+    expect(screen.getByText("Objetivo actual 0.85")).toBeInTheDocument();
+  });
+
+  it("locks the slider and the tenant while a save is in flight and keeps its confirmation", async () => {
+    const user = userEvent.setup();
+    adminApi.listTenants.mockResolvedValue([...tenants, acme]);
+    const saving = deferred<TenantPolicy>();
+    adminApi.updateTenantPolicy.mockReturnValue(saving.promise);
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    const slider = await screen.findByRole("slider", { name: "Calidad objetivo" });
+    fireEvent.change(slider, { target: { value: "0.9" } });
+    await screen.findByRole("option", { name: "Acme Robotics" });
+    await user.click(screen.getByRole("button", { name: "Aplicar al tenant" }));
+
+    const busy = await screen.findByRole("button", { name: "Guardando…" });
+    expect(busy).toBeDisabled();
+    expect(slider).toBeDisabled();
+    expect(screen.getByRole("combobox", { name: "Tenant" })).toBeDisabled();
+    fireEvent.change(slider, { target: { value: "0.8" } });
+    expect(slider).toHaveValue("0.9");
+    expect(screen.getByRole("button", { name: "Guardando…" })).toBeDisabled();
+
+    await act(async () => saving.resolve({ ...policy, routing_quality_target: 0.9 }));
+
+    expect(await screen.findByText("Objetivo 0.90 guardado en Default Workspace.")).toBeInTheDocument();
+    expect(slider).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeEnabled();
   });
 
   it("follows the tenant: switching tenants opens the slider at that tenant's target", async () => {
@@ -338,7 +423,7 @@ describe("evaluation page", () => {
     await screen.findByRole("option", { name: "Default Workspace" });
     await user.click(await screen.findByRole("button", { name: "Aplicar al tenant" }));
 
-    expect(await screen.findByRole("alert")).toHaveTextContent("Tenant policy unavailable.");
+    expect(await screen.findByText("No se pudo aplicar: Tenant policy unavailable.")).toBeInTheDocument();
     expect(adminApi.updateTenantPolicy).not.toHaveBeenCalled();
   });
 

@@ -1,51 +1,39 @@
 "use client";
 
-import { useEffect } from "react";
-
 import Link from "next/link";
-
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { TenantTarget } from "@/components/evaluation/use-tenant-target";
 import { ErrorAlert, errorMessage } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { getTenantPolicy, updateTenantPolicy } from "@/lib/admin-api";
 import { formatTarget } from "@/lib/quality-target";
-import { queryKeys } from "@/lib/query-keys";
 
 type ApplyTargetProps = {
-  adminKey: string;
   tenantTarget: TenantTarget;
 };
 
-export function ApplyTarget({ adminKey, tenantTarget }: ApplyTargetProps) {
-  const queryClient = useQueryClient();
-  const { tenants, tenantsError, tenantId: selectedTenantId, setTenantId, currentTarget, target } = tenantTarget;
+export function ApplyTarget({ tenantTarget }: ApplyTargetProps) {
+  const {
+    tenants,
+    tenantsError,
+    policyError,
+    tenantId: selectedTenantId,
+    setTenantId,
+    currentTarget,
+    target,
+    saving,
+    apply,
+  } = tenantTarget;
   const tenantId = selectedTenantId ?? "";
-
-  const mutation = useMutation({
-    mutationFn: async ({ id, value }: { id: string; value: number }) => {
-      // Read the current policy first: a failed read must not turn into a partial write.
-      const policy = await getTenantPolicy(adminKey, id);
-      return updateTenantPolicy(adminKey, id, { ...policy, routing_quality_target: value });
-    },
-    onSuccess: (saved, { id }) => {
-      queryClient.setQueryData(queryKeys.tenantPolicy(id), saved);
-    },
-  });
-
-  // A saved (or failed) message describes the value that was applied: moving the slider retires it.
-  const { reset } = mutation;
-  useEffect(() => {
-    reset();
-  }, [target, reset]);
 
   const tenantName = (id: string) => tenants?.find((t) => t.id === id)?.name ?? id;
 
   return (
     <div className="flex flex-col gap-3">
       {tenantsError ? <ErrorAlert error={tenantsError} fallback="No se pudieron cargar los tenants." /> : null}
+      {policyError ? (
+        <ErrorAlert error={policyError} fallback="No se pudo cargar el objetivo actual del tenant." />
+      ) : null}
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <label htmlFor="evaluation-tenant" className="field-label">
@@ -55,11 +43,8 @@ export function ApplyTarget({ adminKey, tenantTarget }: ApplyTargetProps) {
             id="evaluation-tenant"
             className="field-input"
             value={tenantId}
-            onChange={(event) => {
-              setTenantId(event.target.value);
-              reset();
-            }}
-            disabled={!tenants?.length}
+            onChange={(event) => setTenantId(event.target.value)}
+            disabled={!tenants?.length || saving}
           >
             {tenants?.length ? null : <option value="">Sin tenants</option>}
             {tenants?.map((tenant) => (
@@ -71,10 +56,10 @@ export function ApplyTarget({ adminKey, tenantTarget }: ApplyTargetProps) {
         </div>
         <Button
           type="button"
-          disabled={!tenantId || mutation.isPending}
-          onClick={() => mutation.mutate({ id: tenantId, value: target })}
+          disabled={!tenantId || saving}
+          onClick={() => apply.mutate({ id: tenantId, value: target })}
         >
-          {mutation.isPending ? "Guardando…" : "Aplicar al tenant"}
+          {saving ? "Guardando…" : "Aplicar al tenant"}
         </Button>
       </div>
       {tenantId ? (
@@ -85,16 +70,16 @@ export function ApplyTarget({ adminKey, tenantTarget }: ApplyTargetProps) {
           </Link>
         </div>
       ) : null}
-      {mutation.isSuccess ? (
+      {apply.isSuccess ? (
         <Alert variant="success" role="status">
           <AlertDescription>
-            {`Objetivo ${formatTarget(mutation.data.routing_quality_target)} guardado en ${tenantName(mutation.variables.id)}.`}
+            {`Objetivo ${formatTarget(apply.data.routing_quality_target)} guardado en ${tenantName(apply.variables.id)}.`}
           </AlertDescription>
         </Alert>
       ) : null}
-      {mutation.isError ? (
+      {apply.isError ? (
         <ErrorAlert
-          error={`No se pudo aplicar: ${errorMessage(mutation.error, "error desconocido")}`}
+          error={`No se pudo aplicar: ${errorMessage(apply.error, "error desconocido")}`}
           fallback="No se pudo aplicar."
         />
       ) : null}
