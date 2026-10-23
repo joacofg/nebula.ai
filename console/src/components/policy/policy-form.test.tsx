@@ -297,6 +297,23 @@ describe("policy-form", () => {
     expect(preview.queryByText("Este borrador cambiaría 5 pedidos de la muestra.")).not.toBeInTheDocument();
   });
 
+  it("counts exactly when every evaluated row changed and the sample limit equals them", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        // 5 rows evaluated, all 5 changed, at most 5 returned: the sample is the whole window.
+        window: { ...baseSimulationResult.window, changed_sample_limit: 5, returned_rows: 5 },
+        summary: { ...baseSimulationResult.summary, evaluated_rows: 5, changed_routes: 5, newly_denied: 0 },
+        changed_requests: Array.from({ length: 5 }, (_, index) => ({ ...row, request_id: `req-${index + 1}` })),
+      },
+    });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByText("Este borrador cambiaría 5 pedidos de la muestra.")).toBeInTheDocument();
+    expect(preview.queryByText(/al menos/)).not.toBeInTheDocument();
+  });
+
   it("leaves out the routing parity when the draft decides the row the same way", () => {
     const row = baseSimulationResult.changed_requests[0];
     renderPolicyForm({
