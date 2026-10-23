@@ -50,13 +50,16 @@ export function LedgerFilters({
   onToTimestampChange,
   onRefresh,
 }: LedgerFiltersProps) {
-  const cell = "flex min-w-[150px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5 first:border-l-0";
-  const wide = "flex min-w-[250px] flex-[1.4] flex-col gap-1 border-l border-line px-4 py-2.5";
+  // Minimum widths sized so the six filters and "Actualizar" share one row at 1440 px: the tenant
+  // cell holds a name like "Acme Robotics", the short selects "Todas", the dates "dd/mm/aaaa, hh:mm".
+  const cell = "flex min-w-[140px] flex-1 flex-col gap-1 border-l border-line px-4 py-2.5 first:border-l-0";
+  const tenantCell = "flex min-w-[184px] flex-1 flex-col gap-1 px-4 py-2.5";
+  const wide = "flex min-w-[220px] flex-[1.4] flex-col gap-1 border-l border-line px-4 py-2.5";
   const control =
     "h-9 w-full rounded-[2px] border border-line bg-surface px-2 text-[15px] text-ink transition-colors focus:border-ink";
   return (
     <div className="flex flex-wrap items-stretch border-b border-line bg-surface" role="group" aria-label="Filtros del ledger">
-      <label className={cell}>
+      <label className={tenantCell}>
         <span className="font-label text-[13px] font-medium text-ink-3">Tenant</span>
         <select className={control} value={tenantId} onChange={(event) => onTenantIdChange(event.target.value)}>
           <option value="">Todos los tenants</option>
