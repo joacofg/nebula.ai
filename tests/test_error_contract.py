@@ -215,3 +215,16 @@ def test_the_api_prefix_setting_decides_which_routes_get_the_openai_shape() -> N
     assert chat.json()["error"]["type"] == "authentication_error"
     assert embeddings.json()["error"]["type"] == "authentication_error"
     assert admin.json() == {"detail": "Tenant not found."}
+
+
+def test_n_greater_than_one_is_rejected_and_n_one_is_served() -> None:
+    with fallback_client() as (client, _container, _premium):
+        rejected = client.post(CHAT, headers=auth_headers(), json={**VALID_CHAT, "n": 2})
+        accepted = client.post(CHAT, headers=auth_headers(), json={**VALID_CHAT, "n": 1})
+
+    body = rejected.json()
+    assert rejected.status_code == 422
+    assert body["error"]["type"] == "invalid_request_error"
+    assert "n" in body["error"]["message"]
+    assert isinstance(body["detail"], list) and body["detail"][0]["loc"] == ["body", "n"]
+    assert accepted.status_code == 200

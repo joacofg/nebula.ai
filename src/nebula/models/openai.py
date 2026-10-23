@@ -5,6 +5,24 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
+FinishReason = Literal["stop", "length", "content_filter", "tool_calls"]
+
+_FINISH_REASON_ALIASES: dict[str, FinishReason] = {
+    "stop": "stop",
+    "length": "length",
+    "content_filter": "content_filter",
+    "tool_calls": "tool_calls",
+    "function_call": "tool_calls",
+}
+
+
+def normalize_finish_reason(value: str | None) -> FinishReason:
+    """Map a provider's finish reason into the OpenAI contract; anything unknown becomes "stop"."""
+    if value is None:
+        return "stop"
+    return _FINISH_REASON_ALIASES.get(value, "stop")
+
+
 class ChatMessage(BaseModel):
     role: Literal["system", "user", "assistant", "tool"]
     content: str | list[dict[str, Any]]
@@ -16,7 +34,8 @@ class ChatCompletionRequest(BaseModel):
     messages: list[ChatMessage] = Field(min_length=1)
     temperature: float | None = Field(default=0.7, ge=0.0, le=2.0)
     top_p: float | None = Field(default=1.0, ge=0.0, le=1.0)
-    n: int | None = Field(default=1, ge=1, le=8)
+    # The gateway returns one choice; asking for more is rejected instead of silently ignored.
+    n: int | None = Field(default=1, ge=1, le=1)
     stream: bool = False
     stop: str | list[str] | None = None
     max_tokens: int | None = Field(default=None, ge=1)
@@ -40,7 +59,7 @@ class ChatCompletionResponseMessage(BaseModel):
 class ChatCompletionChoice(BaseModel):
     index: int
     message: ChatCompletionResponseMessage
-    finish_reason: Literal["stop", "length", "content_filter", "tool_calls"] = "stop"
+    finish_reason: FinishReason = "stop"
 
 
 class ChatCompletionUsage(BaseModel):
@@ -67,7 +86,7 @@ class ChatCompletionStreamDelta(BaseModel):
 class ChatCompletionChunkChoice(BaseModel):
     index: int
     delta: ChatCompletionStreamDelta
-    finish_reason: Literal["stop", "length", "content_filter", "tool_calls"] | None = None
+    finish_reason: FinishReason | None = None
 
 
 class ChatCompletionChunk(BaseModel):

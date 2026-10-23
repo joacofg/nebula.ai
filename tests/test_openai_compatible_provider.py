@@ -266,3 +266,18 @@ async def test_stream_null_delta_content_is_an_empty_delta() -> None:
     assert [chunk.delta for chunk in chunks] == ["", "hi", ""]
     assert chunks[-1].finish_reason == "length"
     await provider.close()
+
+
+def test_payload_does_not_forward_n() -> None:
+    provider = _provider_with_handler(lambda request: None)
+
+    payload = provider._build_payload(
+        ChatCompletionRequest(
+            model="openai/gpt-4o-mini",
+            messages=[{"role": "user", "content": "hello"}],
+            n=1,
+        ),
+        stream=False,
+    )
+
+    assert "n" not in payload

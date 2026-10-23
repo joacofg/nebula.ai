@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 
 from nebula.core.config import Settings
-from nebula.models.openai import ChatCompletionRequest
+from nebula.models.openai import ChatCompletionRequest, normalize_finish_reason
 from nebula.providers.base import (
     CompletionChunk,
     CompletionProvider,
@@ -34,7 +34,7 @@ class OpenAICompatibleProvider(CompletionProvider):
             content=body["choices"][0]["message"]["content"] or "",
             model=body.get("model", self.settings.premium_model),
             provider=self.name,
-            finish_reason=body["choices"][0].get("finish_reason", "stop"),
+            finish_reason=normalize_finish_reason(body["choices"][0].get("finish_reason")),
             usage=self._extract_usage(body.get("usage")),
         )
 
@@ -103,7 +103,6 @@ class OpenAICompatibleProvider(CompletionProvider):
             "messages": [message.model_dump(mode="json") for message in request.messages],
             "temperature": request.temperature,
             "top_p": request.top_p,
-            "n": request.n,
             "stream": stream,
             "stop": request.stop,
             "max_tokens": request.max_tokens,

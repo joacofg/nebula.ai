@@ -6,7 +6,7 @@ from typing import Any
 import httpx
 
 from nebula.core.config import Settings
-from nebula.models.openai import ChatCompletionRequest, ChatMessage
+from nebula.models.openai import ChatCompletionRequest, ChatMessage, normalize_finish_reason
 from nebula.providers.base import (
     CompletionChunk,
     CompletionProvider,
@@ -40,7 +40,7 @@ class OllamaProvider(CompletionProvider):
             content=body.get("message", {}).get("content", ""),
             model=body.get("model", payload["model"]),
             provider=self.name,
-            finish_reason="stop",
+            finish_reason=normalize_finish_reason(body.get("done_reason")),
             usage=CompletionUsage(
                 prompt_tokens=body.get("prompt_eval_count", 0),
                 completion_tokens=body.get("eval_count", 0),
@@ -64,7 +64,11 @@ class OllamaProvider(CompletionProvider):
                         yield CompletionChunk(
                             delta=chunk.get("message", {}).get("content", ""),
                             model=chunk.get("model", payload["model"]),
-                            finish_reason="stop" if chunk.get("done") else None,
+                            finish_reason=(
+                                normalize_finish_reason(chunk.get("done_reason"))
+                                if chunk.get("done")
+                                else None
+                            ),
                         )
             except httpx.HTTPError as exc:
                 raise ProviderError(f"Ollama stream failed: {describe_http_error(exc)}") from exc

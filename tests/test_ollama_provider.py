@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 import httpx
 import pytest
 
@@ -118,4 +120,41 @@ async def test_stream_redirect_response_is_a_provider_error() -> None:
             pass
 
     assert "stream failed: HTTP 308: moved permanently" in str(exc_info.value)
+    await provider.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("done_reason", "expected"), [("length", "length"), ("load", "stop"), ("stop", "stop"), (None, "stop")]
+)
+async def test_ollama_maps_done_reason(done_reason, expected) -> None:
+    body = {"model": "x", "message": {"content": "hi"}, "done": True}
+    if done_reason is not None:
+        body["done_reason"] = done_reason
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    provider = _provider_with_handler(handler)
+    result = await provider.complete(_hello_request())
+
+    assert result.finish_reason == expected
+    await provider.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(("done_reason", "expected"), [("length", "length"), ("load", "stop")])
+async def test_ollama_stream_final_chunk_maps_done_reason(done_reason, expected) -> None:
+    lines = [
+        {"model": "x", "message": {"content": "hi"}, "done": False},
+        {"model": "x", "message": {"content": ""}, "done": True, "done_reason": done_reason},
+    ]
+
+    async def handler(request: httpx.Request) -> httpx.Response:
+        return _streamed_response(200, ("\n".join(json.dumps(line) for line in lines)).encode())
+
+    provider = _provider_with_handler(handler)
+    chunks = [chunk async for chunk in provider.stream_complete(_hello_request())]
+
+    assert [chunk.finish_reason for chunk in chunks] == [None, expected]
     await provider.close()

@@ -21,6 +21,8 @@ from nebula.models.openai import (
     ChatCompletionResponseMessage,
     ChatCompletionStreamDelta,
     ChatCompletionUsage,
+    FinishReason,
+    normalize_finish_reason,
 )
 from nebula.observability.metrics import (
     CACHE_LOOKUPS,
@@ -279,7 +281,12 @@ class ChatService:
 
         usage = self._resolved_usage(request, result.content, result.usage)
         await self._store_in_cache(self._cache_write(cache_key, served_model), result.content)
-        response = self._build_response(content=result.content, model=result.model, usage=usage)
+        response = self._build_response(
+            content=result.content,
+            model=result.model,
+            usage=usage,
+            finish_reason=result.finish_reason,
+        )
         await self._record_usage(
             request_id=request_id,
             tenant_id=tenant_context.tenant.id,
@@ -405,6 +412,7 @@ class ChatService:
         content: str,
         model: str,
         usage: CompletionUsage | None,
+        finish_reason: str | None = None,
     ) -> ChatCompletionResponse:
         return ChatCompletionResponse(
             id=f"chatcmpl-{uuid4().hex}",
@@ -414,6 +422,7 @@ class ChatService:
                 ChatCompletionChoice(
                     index=0,
                     message=ChatCompletionResponseMessage(content=content),
+                    finish_reason=normalize_finish_reason(finish_reason),
                 )
             ],
             usage=ChatCompletionUsage(
@@ -608,7 +617,7 @@ class ChatService:
                                 ChatCompletionChunkChoice(
                                     index=0,
                                     delta=ChatCompletionStreamDelta(),
-                                    finish_reason=chunk.finish_reason,
+                                    finish_reason=normalize_finish_reason(chunk.finish_reason),
                                 )
                             ],
                         )
@@ -825,7 +834,9 @@ class ChatService:
             )
         )
 
-    def _finish_chunk(self, response_id: str, created: int, model: str, finish_reason: str) -> bytes:
+    def _finish_chunk(
+        self, response_id: str, created: int, model: str, finish_reason: FinishReason
+    ) -> bytes:
         return self._sse(
             ChatCompletionChunk(
                 id=response_id,

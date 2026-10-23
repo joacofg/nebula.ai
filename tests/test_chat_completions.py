@@ -1,12 +1,17 @@
+import json
+
+import pytest
 from fastapi.testclient import TestClient
 
 from nebula.models.governance import TenantPolicy
+from nebula.models.openai import normalize_finish_reason
 from nebula.providers.base import CompletionChunk, CompletionResult
 from tests.support import (
     StubProvider,
     admin_headers,
     auth_headers,
     configured_app,
+    fallback_client,
     usage,
     use_fake_cache,
 )
@@ -465,3 +470,70 @@ def test_an_oversized_request_id_header_is_bounded_in_the_ledger_and_the_respons
     assert response.headers["X-Request-ID"] == "r" * 128
     assert len(rows) == 1
     assert rows[0]["request_id"] == "r" * 128
+
+
+@pytest.mark.parametrize(
+    ("provider_value", "expected"),
+    [
+        ("stop", "stop"),
+        ("length", "length"),
+        ("content_filter", "content_filter"),
+        ("tool_calls", "tool_calls"),
+        ("function_call", "tool_calls"),
+        (None, "stop"),
+        ("error", "stop"),
+    ],
+)
+def test_normalize_finish_reason_maps_into_the_literal(provider_value, expected) -> None:
+    assert normalize_finish_reason(provider_value) == expected
+
+
+def test_chat_completion_returns_provider_finish_reason() -> None:
+    with configured_app(NEBULA_PREMIUM_PROVIDER="mock") as app:
+        with TestClient(app) as client:
+            container = app.state.container
+            container.local_provider = StubProvider(
+                "ollama",
+                completion_result=CompletionResult(
+                    content="cut off mid-sent",
+                    model=container.settings.local_model,
+                    provider="ollama",
+                    finish_reason="length",
+                    usage=usage(),
+                ),
+            )
+            container.provider_registry.local_provider = container.local_provider
+            use_fake_cache(container)
+
+            response = client.post(
+                "/v1/chat/completions",
+                headers=auth_headers(),
+                json={"model": "nebula-auto", "messages": [{"role": "user", "content": "Hello"}]},
+            )
+
+    assert response.status_code == 200
+    assert response.json()["choices"][0]["finish_reason"] == "length"
+
+
+def test_premium_stream_with_unknown_finish_reason_does_not_break() -> None:
+    with fallback_client() as (client, container, premium):
+        premium.stream_chunks = [
+            CompletionChunk(delta="premium answer", model=container.settings.premium_model),
+            CompletionChunk(delta="", model=container.settings.premium_model, finish_reason="error"),
+        ]
+        with client.stream(
+            "POST",
+            "/v1/chat/completions",
+            headers=auth_headers(),
+            json={
+                "model": "nebula-auto",
+                "stream": True,
+                "messages": [{"role": "user", "content": "Hello streaming"}],
+            },
+        ) as response:
+            body = b"".join(response.iter_bytes()).decode()
+
+    events = [line.removeprefix("data: ") for line in body.splitlines() if line.startswith("data: ")]
+    assert events[-1] == "[DONE]"
+    final_chunk = json.loads(events[-2])
+    assert final_chunk["choices"][0]["finish_reason"] == "stop"
