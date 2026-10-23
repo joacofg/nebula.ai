@@ -2,19 +2,21 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import EvaluationPage from "@/app/(console)/evaluacion/page";
 import PlaygroundPage from "@/app/(console)/playground/page";
 import PolicyPage from "@/app/(console)/policy/page";
 import TenantsPage from "@/app/(console)/tenants/page";
-import { ApplyTarget } from "@/components/evaluation/apply-target";
 import * as adminApi from "@/lib/admin-api";
 import type { TenantPolicy, TenantRecord } from "@/lib/admin-api";
 import { SelectedTenantProvider, useSelectedTenant } from "@/lib/selected-tenant";
 import { renderWithProviders } from "@/test/render";
+import { routerReplayFixture } from "@/test/router-replay-fixture";
 
 vi.mock("@/lib/admin-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/admin-api")>("@/lib/admin-api");
   return {
     ...actual,
+    getRouterEvaluation: vi.fn(),
     listTenants: vi.fn(),
     getTenantPolicy: vi.fn(),
     getPolicyOptions: vi.fn(),
@@ -182,6 +184,14 @@ async function expectTenantSelect(value: string) {
 describe("pages that work on one tenant", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Keeps the Evaluación replay paused, as in its own page tests.
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: query.includes("reduce"),
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+    vi.mocked(adminApi.getRouterEvaluation).mockResolvedValue(routerReplayFixture);
     vi.mocked(adminApi.listTenants).mockResolvedValue([ALPHA, BRAVO]);
     vi.mocked(adminApi.getTenantPolicy).mockResolvedValue(POLICY);
     vi.mocked(adminApi.getPolicyOptions).mockResolvedValue({
@@ -204,7 +214,7 @@ describe("pages that work on one tenant", () => {
     view.rerender(<PlaygroundPage />);
     await expectTenantSelect("tenant-bravo");
 
-    view.rerender(<ApplyTarget adminKey="admin-key" target={0.9} />);
+    view.rerender(<EvaluationPage />);
     await expectTenantSelect("tenant-bravo");
   });
 
@@ -250,7 +260,7 @@ describe("pages that work on one tenant", () => {
     await user.selectOptions(tenantSelect(), "tenant-bravo");
 
     vi.mocked(adminApi.listTenants).mockResolvedValue([ALPHA]);
-    view.rerender(<ApplyTarget adminKey="admin-key" target={0.9} />);
+    view.rerender(<EvaluationPage />);
     await expectTenantSelect("tenant-alpha");
     expect(screen.getByRole("button", { name: "Aplicar al tenant" })).toBeEnabled();
   });

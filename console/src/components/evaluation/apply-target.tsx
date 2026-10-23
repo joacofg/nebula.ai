@@ -1,30 +1,27 @@
 "use client";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
-import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
-import { queryKeys } from "@/lib/query-keys";
-import { useSelectedTenant } from "@/lib/selected-tenant";
-import { formatTarget } from "@/lib/quality-target";
+import Link from "next/link";
+
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+
+import type { TenantTarget } from "@/components/evaluation/use-tenant-target";
 import { ErrorAlert, errorMessage } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { getTenantPolicy, updateTenantPolicy } from "@/lib/admin-api";
+import { formatTarget } from "@/lib/quality-target";
+import { queryKeys } from "@/lib/query-keys";
 
 type ApplyTargetProps = {
   adminKey: string;
-  target: number;
+  tenantTarget: TenantTarget;
 };
 
-export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
+export function ApplyTarget({ adminKey, tenantTarget }: ApplyTargetProps) {
   const queryClient = useQueryClient();
-
-  const tenantsQuery = useQuery({
-    queryKey: queryKeys.tenants,
-    queryFn: () => listTenants(adminKey),
-    enabled: Boolean(adminKey),
-  });
-
-  const { tenantId: selectedTenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const { tenants, tenantsError, tenantId: selectedTenantId, setTenantId, currentTarget, target } = tenantTarget;
   const tenantId = selectedTenantId ?? "";
 
   const mutation = useMutation({
@@ -38,13 +35,17 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
     },
   });
 
-  const tenantName = (id: string) => tenantsQuery.data?.find((t) => t.id === id)?.name ?? id;
+  // A saved (or failed) message describes the value that was applied: moving the slider retires it.
+  const { reset } = mutation;
+  useEffect(() => {
+    reset();
+  }, [target, reset]);
+
+  const tenantName = (id: string) => tenants?.find((t) => t.id === id)?.name ?? id;
 
   return (
     <div className="flex flex-col gap-3">
-      {tenantsQuery.isError ? (
-        <ErrorAlert error={tenantsQuery.error} fallback="No se pudieron cargar los tenants." />
-      ) : null}
+      {tenantsError ? <ErrorAlert error={tenantsError} fallback="No se pudieron cargar los tenants." /> : null}
       <div className="flex items-end gap-2">
         <div className="min-w-0 flex-1">
           <label htmlFor="evaluation-tenant" className="field-label">
@@ -56,12 +57,12 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
             value={tenantId}
             onChange={(event) => {
               setTenantId(event.target.value);
-              mutation.reset();
+              reset();
             }}
-            disabled={!tenantsQuery.data?.length}
+            disabled={!tenants?.length}
           >
-            {tenantsQuery.data?.length ? null : <option value="">Sin tenants</option>}
-            {tenantsQuery.data?.map((tenant) => (
+            {tenants?.length ? null : <option value="">Sin tenants</option>}
+            {tenants?.map((tenant) => (
               <option key={tenant.id} value={tenant.id}>
                 {tenant.name}
               </option>
@@ -76,6 +77,14 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
           {mutation.isPending ? "Guardando…" : "Aplicar al tenant"}
         </Button>
       </div>
+      {tenantId ? (
+        <div className="flex items-baseline justify-between gap-4 text-sm">
+          <p className="m-0 text-ink-2">{`Objetivo actual ${currentTarget === null ? "—" : formatTarget(currentTarget)}`}</p>
+          <Link href="/playground" className="font-semibold text-ink underline underline-offset-4 hover:text-mark">
+            Probar en Playground
+          </Link>
+        </div>
+      ) : null}
       {mutation.isSuccess ? (
         <Alert variant="success" role="status">
           <AlertDescription>

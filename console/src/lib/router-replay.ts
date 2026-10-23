@@ -69,6 +69,24 @@ export type RouterReplay = {
   latency: Record<string, LatencyFigure>;
 };
 
+// The replay's latency table is keyed by the role each model was captured under
+// (scripts/ground_truth/capture.py). Three roles are the router's tiers; the economy and frontier
+// ones are also the models that priced every row (scripts/router/data.py). The fourth, llama3b,
+// is the local candidate the thesis passed over, so it names no tier.
+const TIER_ROLES: Record<Tier, string> = { local: "qwen7b", economy: "haiku", frontier: "gpt41" };
+
+/** The model each tier ran, as the replay recorded it; a tier whose latency was not measured has none. */
+export function tierModels(latency: Record<string, LatencyFigure>): Partial<Record<Tier, string>> {
+  const models: Partial<Record<Tier, string>> = {};
+  for (const tier of TIERS) {
+    const figure = latency[TIER_ROLES[tier]];
+    if (figure) {
+      models[tier] = figure.model;
+    }
+  }
+  return models;
+}
+
 export type LangFigure = { n: number; costPerPrompt: number; quality: number };
 
 export type Evaluation = {

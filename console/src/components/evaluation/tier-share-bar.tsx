@@ -1,7 +1,13 @@
 import { TIER_COLORS, formatShare } from "@/components/evaluation/format";
-import { TIERS, type TierShare } from "@/lib/router-replay";
+import { TIERS, type Tier, type TierShare } from "@/lib/router-replay";
 
-export function TierShareBar({ share }: { share: TierShare }) {
+type TierShareBarProps = {
+  share: TierShare;
+  /** The model each tier ran; a tier without one shows its name only. */
+  models?: Partial<Record<Tier, string>>;
+};
+
+export function TierShareBar({ share, models = {} }: TierShareBarProps) {
   const visible = TIERS.filter((t) => share[t] > 0);
   return (
     <div className="flex flex-col gap-2">
@@ -15,11 +21,14 @@ export function TierShareBar({ share }: { share: TierShare }) {
           />
         ))}
       </div>
-      <ul className="m-0 flex list-none flex-wrap gap-x-5 gap-y-1 p-0 font-label text-[13px] font-medium text-ink-2" aria-label="Reparto por nivel">
+      <ul className="m-0 flex list-none flex-col gap-1 p-0 font-label text-[13px] font-medium text-ink-2" aria-label="Reparto por nivel">
         {TIERS.map((t) => (
-          <li key={t} className="inline-flex items-center gap-1.5">
-            <span aria-hidden className="inline-block size-2.5" style={{ backgroundColor: TIER_COLORS[t] }} />
-            {t}
+          <li key={t} className="flex items-center gap-2">
+            <span aria-hidden className="inline-block size-2.5 shrink-0" style={{ backgroundColor: TIER_COLORS[t] }} />
+            <span className="w-16 shrink-0">{t}</span>
+            <span className="min-w-0 flex-1 truncate font-mono text-xs font-normal text-ink-3" title={models[t]}>
+              {models[t]}
+            </span>
             <span className="font-sans text-sm font-semibold text-ink">{formatShare(share[t])}</span>
           </li>
         ))}

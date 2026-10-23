@@ -354,7 +354,12 @@ export function FrontierChart({ front, random, baselines, current }: FrontierCha
       </div>
 
       <div className="flex justify-end">
-        <button type="button" className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark" onClick={() => setShowTable((v) => !v)}>
+        <button
+          type="button"
+          aria-expanded={showTable}
+          className="text-sm font-semibold text-ink underline underline-offset-4 hover:text-mark"
+          onClick={() => setShowTable((v) => !v)}
+        >
           {showTable ? "Ocultar tabla" : "Ver tabla"}
         </button>
       </div>

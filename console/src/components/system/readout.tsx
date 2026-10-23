@@ -13,6 +13,7 @@ export function Readout({ items, className }: { items: ReadoutItem[]; className?
           <div className="flex items-baseline justify-between gap-4">
             <dt className="shrink-0 text-sm text-ink-2">{item.label}</dt>
             <dd
+              data-emphasis={item.emphasis ? "true" : undefined}
               className={cn(
                 "m-0 min-w-0 text-right font-semibold text-ink [overflow-wrap:anywhere]",
                 item.emphasis ? "text-[22px] leading-tight" : "text-base",

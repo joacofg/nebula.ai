@@ -80,6 +80,28 @@ describe("FrontierChart", () => {
     expect(table).not.toHaveTextContent("$");
   });
 
+  it("tells assistive technology whether the table is open", () => {
+    render(
+      <FrontierChart
+        front={paretoFront(routerReplayFixture.operating_points)}
+        random={randomFrontier(routerReplayFixture.baselines)}
+        baselines={routerReplayFixture.baselines}
+        current={{ cost: 0.0025, quality: 1 }}
+      />,
+    );
+
+    const toggle = screen.getByRole("button", { name: "Ver tabla" });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("table", { name: "Valores del gráfico" })).toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(screen.queryByRole("table")).not.toBeInTheDocument();
+  });
+
   it("writes every cost as USD, never with a dollar sign", () => {
     render(
       <FrontierChart

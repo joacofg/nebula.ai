@@ -16,13 +16,14 @@ import { FrontierChart } from "@/components/evaluation/frontier-chart";
 import { QualitySlider } from "@/components/evaluation/quality-slider";
 import { ReplayFeed } from "@/components/evaluation/replay-feed";
 import { TierShareBar } from "@/components/evaluation/tier-share-bar";
+import { useTenantTarget, type TenantTarget } from "@/components/evaluation/use-tenant-target";
 import { Figure } from "@/components/system/figure";
 import { PageHeader } from "@/components/system/page-header";
 import { Readout } from "@/components/system/readout";
 import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { getRouterEvaluation } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
-import { formatUsd } from "@/lib/format";
+import { formatUsd, formatUsdPer1000 } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import {
   evaluate,
@@ -32,10 +33,10 @@ import {
   randomCostAtQuality,
   randomFrontier,
   replayOrder,
+  tierModels,
   type RouterReplay,
 } from "@/lib/router-replay";
 
-const DEFAULT_TARGET = 0.95;
 const REPLAY_SEED = 20260930;
 const LANG_LABELS: Record<string, string> = { es: "Español", en: "Inglés" };
 
@@ -105,8 +106,16 @@ function CharacteristicsTable({ replay }: { replay: RouterReplay }) {
   );
 }
 
-function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: string }) {
-  const [target, setTarget] = useState(DEFAULT_TARGET);
+function EvaluationBody({
+  replay,
+  adminKey,
+  tenantTarget,
+}: {
+  replay: RouterReplay;
+  adminKey: string;
+  tenantTarget: TenantTarget;
+}) {
+  const { target, setTarget } = tenantTarget;
   const [initialPlaying] = useState(() => !prefersReducedMotion());
 
   const front = useMemo(() => paretoFront(replay.operating_points), [replay]);
@@ -129,6 +138,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
         : `mezcla a la misma calidad: ${formatUsd(randomCost * 1000)}`;
 
   const langs = Object.entries(result.byLang).sort(([a], [b]) => b.localeCompare(a));
+  const models = useMemo(() => tierModels(replay.latency), [replay]);
 
   return (
     <div className="flex flex-col gap-10 px-6 py-6">
@@ -147,25 +157,30 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
           <QualitySlider value={target} onChange={setTarget} />
           <Readout
             items={[
-              { label: "Costo por 1000 pedidos", value: formatUsd(result.costPerPrompt * 1000), emphasis: true },
-              { label: "Calidad medida", value: formatQuality(result.quality), emphasis: true },
-              { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier) },
+              { label: "Ahorro vs todo frontier", value: formatAhorro(vsFrontier), emphasis: true },
+              { label: "Costo por 1000 pedidos", value: formatUsd(result.costPerPrompt * 1000) },
+              { label: "Calidad medida", value: formatQuality(result.quality) },
               { label: "Ahorro vs mezcla aleatoria", value: formatAhorro(vsRandom), detail: randomDetail },
               {
                 label: "Umbrales τ local · economy",
                 value: allFrontier ? "todo frontier (∞ · ∞)" : `${formatTau(point.tau_local)} · ${formatTau(point.tau_economy)}`,
               },
               ...langs.map(([lang, figure]) => ({
-                label: `${LANG_LABELS[lang] ?? lang} · ${figure.n}`,
-                value: `${formatQuality(figure.quality)} · ${formatUsd(figure.costPerPrompt * 1000)}`,
+                label: `${LANG_LABELS[lang] ?? lang} · ${figure.n} pedidos`,
+                // Two figures with their units must stay on one line in the 380 px panel.
+                value: (
+                  <span className="whitespace-nowrap text-sm font-medium">
+                    {`calidad ${formatQuality(figure.quality)} · ${formatUsdPer1000(figure.costPerPrompt)}`}
+                  </span>
+                ),
               })),
             ]}
           />
           <div className="flex flex-col gap-2">
             <div className="font-label text-[13px] font-medium text-ink-2">Reparto por nivel</div>
-            <TierShareBar share={result.share} />
+            <TierShareBar share={result.share} models={models} />
           </div>
-          <ApplyTarget adminKey={adminKey} target={target} />
+          <ApplyTarget adminKey={adminKey} tenantTarget={tenantTarget} />
         </div>
       </div>
 
@@ -175,7 +190,7 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
         <h2 id="replay-heading" className="m-0 text-lg font-semibold text-ink">
           Replay acelerado · {replay.rows.length} pedidos, {formatShare(result.share.local)} local
         </h2>
-        <Figure caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si los jueces aceptaron la respuesta de ese nivel.">
+        <Figure caption="Cada pedido se rutea con el punto elegido; ✓ / ✗ indica si el ensamble de jueces aceptó la respuesta de ese nivel.">
           <ReplayFeed rows={replay.rows} order={order} point={point} initialPlaying={initialPlaying} />
         </Figure>
       </section>
@@ -190,6 +205,8 @@ function EvaluationBody({ replay, adminKey }: { replay: RouterReplay; adminKey: 
 
 export default function EvaluationPage() {
   const { adminKey } = useAdminSession();
+  // Fetched next to the replay, not inside it, so the slider opens at the tenant's target.
+  const tenantTarget = useTenantTarget(adminKey ?? "");
   const replayQuery = useQuery({
     queryKey: queryKeys.routerEvaluation,
     queryFn: () => getRouterEvaluation(adminKey ?? ""),
@@ -222,7 +239,7 @@ export default function EvaluationPage() {
           <ErrorAlert error={replayQuery.error} fallback="No se pudo cargar el replay del router." />
         </div>
       ) : replay ? (
-        <EvaluationBody replay={replay} adminKey={adminKey ?? ""} />
+        <EvaluationBody replay={replay} adminKey={adminKey ?? ""} tenantTarget={tenantTarget} />
       ) : (
         <div className="px-6 py-8">
           <p className="m-0 text-lg font-semibold text-ink">No hay replay del router.</p>
