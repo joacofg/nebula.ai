@@ -9,6 +9,7 @@ from typing import Any, AsyncIterator, Literal, NoReturn
 from uuid import uuid4
 
 from fastapi import HTTPException, status
+from starlette.concurrency import run_in_threadpool
 
 from nebula.core.config import Settings
 from nebula.models.governance import TerminalStatus, UsageLedgerRecord
@@ -195,7 +196,7 @@ class ChatService:
             return CompletionResponseEnvelope(response=response, metadata=metadata)
         if policy_resolution.spend_denial is not None:
             # A cached answer would have cost nothing; with none, the guardrail denies.
-            self._deny_spend(
+            await self._deny_spend(
                 request=request,
                 tenant_id=tenant_context.tenant.id,
                 request_id=request_id,
@@ -368,7 +369,7 @@ class ChatService:
             )
             return StreamingCompletionEnvelope(stream=wrapped_stream, metadata=metadata)
         if policy_resolution.spend_denial is not None:
-            self._deny_spend(
+            await self._deny_spend(
                 request=request,
                 tenant_id=tenant_context.tenant.id,
                 request_id=request_id,
@@ -962,7 +963,7 @@ class ChatService:
         except HTTPException as exc:
             if exc.status_code == status.HTTP_403_FORBIDDEN:
                 headers = exc.headers or {}
-                self._record_policy_denial(
+                await self._record_policy_denial(
                     request=request,
                     tenant_id=tenant_context.tenant.id,
                     request_id=request_id,
@@ -971,7 +972,7 @@ class ChatService:
                 )
             raise
 
-    def _deny_spend(
+    async def _deny_spend(
         self,
         *,
         request: ChatCompletionRequest,
@@ -980,7 +981,7 @@ class ChatService:
         denial: SpendDenial,
     ) -> NoReturn:
         """After a cache miss, the 403 the spend guardrail held back and its policy_denied row."""
-        self._record_policy_denial(
+        await self._record_policy_denial(
             request=request,
             tenant_id=tenant_id,
             request_id=request_id,
@@ -993,7 +994,7 @@ class ChatService:
             headers=denial.headers,
         )
 
-    def _record_policy_denial(
+    async def _record_policy_denial(
         self,
         *,
         request: ChatCompletionRequest,
@@ -1002,25 +1003,24 @@ class ChatService:
         route_reason: str | None,
         policy_outcome: str | None,
     ) -> None:
-        self.governance_store.record_usage(
-            UsageLedgerRecord(
-                request_id=request_id or f"req-{uuid4().hex}",
-                tenant_id=tenant_id,
-                requested_model=request.model,
-                final_route_target="denied",
-                final_provider=None,
-                fallback_used=False,
-                cache_hit=False,
-                response_model=None,
-                estimated_cost=None,
-                latency_ms=None,
-                timestamp=datetime.now(UTC),
-                terminal_status="policy_denied",
-                route_reason=route_reason,
-                policy_outcome=policy_outcome,
-                route_signals=None,
-            )
+        record = UsageLedgerRecord(
+            request_id=request_id or f"req-{uuid4().hex}",
+            tenant_id=tenant_id,
+            requested_model=request.model,
+            final_route_target="denied",
+            final_provider=None,
+            fallback_used=False,
+            cache_hit=False,
+            response_model=None,
+            estimated_cost=None,
+            latency_ms=None,
+            timestamp=datetime.now(UTC),
+            terminal_status="policy_denied",
+            route_reason=route_reason,
+            policy_outcome=policy_outcome,
+            route_signals=None,
         )
+        await run_in_threadpool(self.governance_store.record_usage, record)
 
     async def _embed_for_routing(self, prompt: str) -> list[float] | None:
         """Embed the prompt once for the learned router; None when it is off or embedding fails."""
@@ -1119,7 +1119,11 @@ class ChatService:
     ) -> CompletionUsage:
         return usage or self.policy_service.estimate_usage(request, response_content)
 
-    async def _record_usage(
+    async def _record_usage(self, **fields: Any) -> None:
+        """Write one ledger row off the event loop; `fields` are `_write_usage`'s keywords."""
+        await run_in_threadpool(self._write_usage, **fields)
+
+    def _write_usage(
         self,
         *,
         request_id: str | None,
@@ -1131,9 +1135,11 @@ class ChatService:
         latency_ms: float | None,
         terminal_status: TerminalStatus,
     ) -> None:
-        # Must never await anything that can suspend: the stream wrapper calls this from a
-        # `finally` that runs during cancellation or generator close, where a suspension can
-        # be cut short before the row is written.
+        # Synchronous on purpose. Every non-stream caller reaches it through `_record_usage`
+        # (off the loop). The stream's `finally` calls it directly: that block runs while the
+        # generator is closing after a client disconnect or cancellation, where awaiting can be
+        # cut short before the row exists, and a lost row undercounts the hard budget (B5). The
+        # price is one SQLite insert of a few milliseconds on the loop per stream (spec B17).
         estimated_cost = 0.0
         if metadata.route_target == "premium":
             effective_model = response_model or request.model
@@ -1420,10 +1426,12 @@ class ChatService:
                 terminal_status = "provider_error"
                 raise
             finally:
-                # Exactly one row per stream, whichever way it ended. _record_usage never
-                # suspends (the store write is synchronous), so it is safe to run while the
-                # generator is being closed or the task is being cancelled.
-                await self._record_usage(
+                # Exactly one row per stream, whichever way it ended. This is the one governance
+                # store call that stays synchronous on the event loop (spec B17): awaiting here
+                # (e.g. run_in_threadpool) can be cut short when the generator is closed after
+                # a client disconnect or the task is cancelled, and a lost row would undercount
+                # the hard budget (B5). The cost is one SQLite insert of a few milliseconds.
+                self._write_usage(
                     request_id=request_id,
                     tenant_id=metadata.tenant_id,
                     request=request,

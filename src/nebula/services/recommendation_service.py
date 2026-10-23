@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
+from starlette.concurrency import run_in_threadpool
+
 from nebula.models.governance import (
     CacheControlSummary,
     CacheInsight,
@@ -92,13 +94,15 @@ class RecommendationService:
         tenant_context: AuthenticatedTenantContext,
     ) -> RecommendationBundle:
         policy = tenant_context.policy
-        ledger = self.governance_store.list_usage_records(
+        ledger = await run_in_threadpool(
+            self.governance_store.list_usage_records,
             tenant_id=tenant_context.tenant.id,
             limit=_LEDGER_WINDOW_LIMIT,
         )
         metrics = self._compute_metrics(ledger)
         cache_summary = await self._build_cache_summary(policy=policy, metrics=metrics)
-        calibration_summary = self.governance_store.summarize_calibration_evidence(
+        calibration_summary = await run_in_threadpool(
+            self.governance_store.summarize_calibration_evidence,
             tenant_id=tenant_context.tenant.id,
         )
         recommendations = self._build_recommendations(policy=policy, metrics=metrics, cache_summary=cache_summary)

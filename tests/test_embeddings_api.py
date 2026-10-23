@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
@@ -209,15 +210,17 @@ def test_embeddings_usage_record_generates_a_request_id_when_the_middleware_did_
         def record_usage(self, record: UsageLedgerRecord) -> None:
             recorded.append(record)
 
-    _record_usage(
-        container=SimpleNamespace(governance_store=_Store()),
-        tenant_context=SimpleNamespace(tenant=SimpleNamespace(id="default")),
-        request_id=None,
-        requested_model="nomic-embed-text",
-        response_model="nomic-embed-text",
-        terminal_status="completed",
-        route_reason="embeddings_request",
-        policy_outcome="embeddings=completed",
+    asyncio.run(
+        _record_usage(
+            container=SimpleNamespace(governance_store=_Store()),
+            tenant_context=SimpleNamespace(tenant=SimpleNamespace(id="default")),
+            request_id=None,
+            requested_model="nomic-embed-text",
+            response_model="nomic-embed-text",
+            terminal_status="completed",
+            route_reason="embeddings_request",
+            policy_outcome="embeddings=completed",
+        )
     )
 
     assert len(recorded) == 1

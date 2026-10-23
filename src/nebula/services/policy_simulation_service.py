@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 
+from starlette.concurrency import run_in_threadpool
+
 from nebula.models.governance import (
     CalibrationEvidenceSummary,
     PolicySimulationChangedRequest,
@@ -91,7 +93,8 @@ class PolicySimulationService:
         tenant_context: AuthenticatedTenantContext,
         payload: PolicySimulationRequest,
     ) -> PolicySimulationResponse:
-        records = self.governance_store.list_usage_records(
+        records = await run_in_threadpool(
+            self.governance_store.list_usage_records,
             tenant_id=tenant_context.tenant.id,
             from_timestamp=payload.from_timestamp,
             to_timestamp=payload.to_timestamp,
@@ -107,7 +110,8 @@ class PolicySimulationService:
         ]
 
         replay_inputs = [self._build_replay_input(record) for record in records]
-        calibration_summary = self.governance_store.summarize_calibration_evidence(
+        calibration_summary = await run_in_threadpool(
+            self.governance_store.summarize_calibration_evidence,
             tenant_id=tenant_context.tenant.id,
             from_timestamp=payload.from_timestamp,
             to_timestamp=payload.to_timestamp,
@@ -159,6 +163,10 @@ class PolicySimulationService:
                     route_decision=learned_decision,
                     before_timestamp=replay_input.record.timestamp,
                     evidence_summary=calibration_summary,
+                    tenant_spend_total=await self.policy_service.read_tenant_spend(
+                        tenant_context.tenant.id,
+                        before_timestamp=replay_input.record.timestamp,
+                    ),
                 )
             else:
                 decision_source = "heuristic"
