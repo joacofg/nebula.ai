@@ -1,6 +1,7 @@
 import { RefreshCw } from "lucide-react";
 
 import { routeLabel, statusLabel } from "@/components/system/labels";
+import { tierLabel } from "@/components/system/tier-badge";
 import { Button } from "@/components/ui/button";
 import type { TenantRecord } from "@/lib/admin-api";
 
@@ -8,11 +9,13 @@ type LedgerFiltersProps = {
   tenants: TenantRecord[];
   tenantId: string;
   routeTarget: string;
+  tier: string;
   terminalStatus: string;
   fromTimestamp: string;
   toTimestamp: string;
   onTenantIdChange: (value: string) => void;
   onRouteTargetChange: (value: string) => void;
+  onTierChange: (value: string) => void;
   onTerminalStatusChange: (value: string) => void;
   onFromTimestampChange: (value: string) => void;
   onToTimestampChange: (value: string) => void;
@@ -20,6 +23,7 @@ type LedgerFiltersProps = {
 };
 
 const ROUTE_TARGET_OPTIONS = ["cache", "local", "premium", "denied", "embeddings"];
+const TIER_OPTIONS = ["local", "economy", "frontier"];
 const TERMINAL_STATUS_OPTIONS = [
   "completed",
   "cache_hit",
@@ -27,17 +31,20 @@ const TERMINAL_STATUS_OPTIONS = [
   "policy_denied",
   "provider_error",
   "rate_limited",
+  "client_disconnected",
 ];
 
 export function LedgerFilters({
   tenants,
   tenantId,
   routeTarget,
+  tier,
   terminalStatus,
   fromTimestamp,
   toTimestamp,
   onTenantIdChange,
   onRouteTargetChange,
+  onTierChange,
   onTerminalStatusChange,
   onFromTimestampChange,
   onToTimestampChange,
@@ -68,6 +75,18 @@ export function LedgerFilters({
           {ROUTE_TARGET_OPTIONS.map((option) => (
             <option key={option} value={option}>
               {routeLabel(option)}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className={cell}>
+        <span className="font-label text-[13px] font-medium text-ink-3">Nivel</span>
+        <select className={control} value={tier} onChange={(event) => onTierChange(event.target.value)}>
+          <option value="">Todos</option>
+          {TIER_OPTIONS.map((option) => (
+            <option key={option} value={option}>
+              {tierLabel(option)}
             </option>
           ))}
         </select>

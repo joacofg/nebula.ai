@@ -1,8 +1,18 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
-import { formatTimestamp, titleCaseToken } from "@/components/observability/format";
+import { formatTimestamp } from "@/components/observability/format";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { ledgerReadout } from "@/components/playground/playground-recorded-outcome";
+import {
+  complexityLabel,
+  enforcementLabel,
+  governanceSourceLabel,
+  messageTypeLabel,
+  minimizationLabel,
+  retentionWindowLabel,
+  scoreModeLabel,
+  suppressedFieldLabel,
+} from "@/components/system/labels";
 import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { EmptyState } from "@/components/system/state";
 import { formatUsd } from "@/lib/format";
@@ -54,7 +64,7 @@ function budgetSection(policyOutcome: string | null | undefined): Section | null
     summary = "Presupuesto duro alcanzado";
     items.push({ label: "Gastado al decidir", value: usdFromOutcome(spentUsd) });
     items.push({ label: "Límite duro", value: usdFromOutcome(limitUsd) });
-    items.push({ label: "Aplicación", value: titleCaseToken(enforcement) });
+    items.push({ label: "Aplicación", value: enforcementLabel(enforcement) });
   }
   if (policyOutcome.includes("budget_action=downgraded_to_local")) {
     summary = "Premium degradado a local";
@@ -110,7 +120,7 @@ function heuristicSection(signals: RouteSignals | null, routeReason: string | nu
   const score = (components ? formatScore(components.total_score) : null) ?? formatScore(signals.route_score);
   const items: ReadoutItem[] = [{ label: "Estado del ruteo", value: routingState(signals, routeReason, score) }];
   if (typeof signals.route_mode === "string") {
-    items.push({ label: "Modo", value: signals.route_mode });
+    items.push({ label: "Modo", value: scoreModeLabel(signals.route_mode) });
   }
   if (score !== null) {
     items.push({ label: "Score", value: score });
@@ -140,7 +150,7 @@ function signalsSection(signals: RouteSignals | null): Section | null {
     items.push({ label: "Tokens contados", value: String(signals.token_count) });
   }
   if (signals.complexity_tier !== undefined) {
-    items.push({ label: "Complejidad", value: String(signals.complexity_tier) });
+    items.push({ label: "Complejidad", value: complexityLabel(String(signals.complexity_tier)) });
   }
   if (signals.keyword_match !== undefined) {
     items.push({ label: "Palabra clave", value: yesNo(Boolean(signals.keyword_match)) });
@@ -194,14 +204,14 @@ export function LedgerRequestDetail({ entry }: LedgerRequestDetailProps) {
             items={[
               { label: "Request ID", value: <span className="font-mono text-[12px] font-normal">{entry.request_id}</span> },
               { label: "Tenant", value: <span className="font-mono text-[13px]">{entry.tenant_id}</span> },
-              { label: "Tipo de mensaje", value: entry.message_type },
+              { label: "Tipo de mensaje", value: messageTypeLabel(entry.message_type) },
               { label: "Modelo pedido", value: <span className="font-mono text-[13px]">{entry.requested_model}</span> },
               { label: "Política", value: <span className="font-mono text-[12px] font-normal">{orDash(entry.policy_outcome)}</span> },
-              { label: "Retención", value: entry.evidence_retention_window },
+              { label: "Retención", value: retentionWindowLabel(entry.evidence_retention_window) },
               { label: "Vence", value: entry.evidence_expires_at ? formatTimestamp(entry.evidence_expires_at) : "—" },
-              { label: "Minimización", value: entry.metadata_minimization_level },
-              { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(titleCaseToken).join(", ") : "ninguno" },
-              { label: "Fuente de gobierno", value: entry.governance_source },
+              { label: "Minimización", value: minimizationLabel(entry.metadata_minimization_level) },
+              { label: "Campos suprimidos", value: suppressed.length ? suppressed.map(suppressedFieldLabel).join(", ") : "ninguno" },
+              { label: "Fuente de gobierno", value: governanceSourceLabel(entry.governance_source) },
             ]}
           />
           {sections.map((section) => (

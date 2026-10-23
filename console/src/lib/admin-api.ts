@@ -347,7 +347,10 @@ export type UsageLedgerRecord = {
 export type UsageLedgerFilters = {
   tenantId?: string;
   routeTarget?: string;
+  /** The tier the router chose (`route_signals.tier`): local, economy or frontier. */
+  tier?: string;
   terminalStatus?: string;
+  /** A UTC ISO instant, as `toISOString()` writes it. */
   fromTimestamp?: string;
   toTimestamp?: string;
   requestId?: string;
@@ -528,6 +531,9 @@ function buildUsageLedgerQuery(filters: UsageLedgerFilters) {
   }
   if (filters.routeTarget) {
     searchParams.set("route_target", filters.routeTarget);
+  }
+  if (filters.tier) {
+    searchParams.set("tier", filters.tier);
   }
   if (filters.terminalStatus) {
     searchParams.set("terminal_status", filters.terminalStatus);

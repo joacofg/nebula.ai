@@ -404,6 +404,7 @@ class GovernanceStore:
         tenant_id: str | None = None,
         terminal_status: str | None = None,
         route_target: str | None = None,
+        tier: str | None = None,
         from_timestamp: datetime | None = None,
         to_timestamp: datetime | None = None,
         limit: int = 100,
@@ -418,10 +419,20 @@ class GovernanceStore:
                 stmt = stmt.where(UsageLedgerModel.terminal_status == terminal_status)
             if route_target:
                 stmt = stmt.where(UsageLedgerModel.final_route_target == route_target)
+            if tier:
+                # Portable JSON access (SQLite json_extract, Postgres ->>); a row whose
+                # signals are absent, suppressed or carry no tier yields NULL and never matches.
+                stmt = stmt.where(UsageLedgerModel.route_signals["tier"].as_string() == tier)
+            # Rows are stored as UTC. SQLite drops the zone of a bound datetime, so a bound that
+            # carries an offset is converted first; one without a zone is UTC, as everywhere here.
             if from_timestamp:
-                stmt = stmt.where(UsageLedgerModel.timestamp >= from_timestamp)
+                stmt = stmt.where(
+                    UsageLedgerModel.timestamp >= self._normalize_comparable_datetime(from_timestamp)
+                )
             if to_timestamp:
-                stmt = stmt.where(UsageLedgerModel.timestamp <= to_timestamp)
+                stmt = stmt.where(
+                    UsageLedgerModel.timestamp <= self._normalize_comparable_datetime(to_timestamp)
+                )
             rows = session.scalars(stmt.order_by(UsageLedgerModel.timestamp.desc()).limit(limit)).all()
             return [self._usage_from_model(row) for row in rows]
 

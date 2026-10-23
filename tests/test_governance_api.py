@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 
 from nebula.db.models import UsageLedgerModel
-from nebula.models.governance import TenantPolicy
+from nebula.models.governance import TenantPolicy, UsageLedgerRecord
 from nebula.providers.base import CompletionResult
 from nebula.services.embeddings_service import EmbeddingsResult, EmbeddingVector
 from tests.support import (
@@ -1888,3 +1889,96 @@ def test_listing_api_keys_by_tenant_includes_keys_scoped_through_allowed_tenant_
     assert own_b.status_code == 201
     assert {key["name"] for key in for_b.json()} == {"shared", "own-b"}
     assert {key["name"] for key in for_c.json()} == {"own-c"}
+
+
+def _ledger_row(
+    request_id: str, route_signals: dict[str, object] | None, **overrides
+) -> UsageLedgerRecord:
+    fields = {
+        "request_id": request_id,
+        "tenant_id": "default",
+        "requested_model": "nebula-auto",
+        "final_route_target": "premium",
+        "fallback_used": False,
+        "cache_hit": False,
+        "timestamp": datetime(2026, 10, 22, 14, 5, 3, tzinfo=UTC),
+        "terminal_status": "completed",
+        "route_signals": route_signals,
+    }
+    return UsageLedgerRecord(**{**fields, **overrides})
+
+
+def test_usage_ledger_filters_by_tier_and_never_matches_rows_without_one() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            store = app.state.container.governance_store
+            store.record_usage(_ledger_row("economy-1", {"tier": "economy"}))
+            store.record_usage(_ledger_row("economy-2", {"tier": "economy", "p_local": 0.2}))
+            store.record_usage(_ledger_row("local-1", {"tier": "local"}))
+            store.record_usage(_ledger_row("frontier-1", {"tier": "frontier"}))
+            store.record_usage(_ledger_row("signals-without-tier", {"p_local": 0.9}))
+            store.record_usage(_ledger_row("no-signals", None))
+            store.record_usage(
+                _ledger_row("economy-other-tenant", {"tier": "economy"}, tenant_id="team-b")
+            )
+
+            economy = client.get("/v1/admin/usage/ledger?tier=economy", headers=admin_headers())
+            economy_in_tenant = client.get(
+                "/v1/admin/usage/ledger?tier=economy&tenant_id=default",
+                headers=admin_headers(),
+            )
+            local = client.get("/v1/admin/usage/ledger?tier=local", headers=admin_headers())
+            frontier = client.get("/v1/admin/usage/ledger?tier=frontier", headers=admin_headers())
+            everything = client.get("/v1/admin/usage/ledger", headers=admin_headers())
+
+    assert economy.status_code == 200
+    assert {row["request_id"] for row in economy.json()} == {
+        "economy-1",
+        "economy-2",
+        "economy-other-tenant",
+    }
+    assert {row["request_id"] for row in economy_in_tenant.json()} == {"economy-1", "economy-2"}
+    assert {row["request_id"] for row in local.json()} == {"local-1"}
+    assert {row["request_id"] for row in frontier.json()} == {"frontier-1"}
+    assert {row["request_id"] for row in everything.json()} >= {
+        "signals-without-tier",
+        "no-signals",
+    }
+
+
+def test_usage_ledger_date_filters_honor_the_utc_offset_they_carry() -> None:
+    # One row at 14:05:03 UTC, which is 11:05:03 at UTC-03:00.
+    with configured_app() as app:
+        with TestClient(app) as client:
+            app.state.container.governance_store.record_usage(_ledger_row("row", None))
+
+            def matching(**window: str) -> list[str]:
+                response = client.get("/v1/admin/usage/ledger", params=window, headers=admin_headers())
+                assert response.status_code == 200
+                return [entry["request_id"] for entry in response.json()]
+
+            from_utc = matching(from_timestamp="2026-10-22T14:05:03Z")
+            from_just_after_in_utc = matching(from_timestamp="2026-10-22T14:05:04Z")
+            from_just_after_with_offset = matching(from_timestamp="2026-10-22T11:05:04-03:00")
+            from_same_instant_with_offset = matching(from_timestamp="2026-10-22T11:05:03-03:00")
+            to_just_before_with_offset = matching(to_timestamp="2026-10-22T11:05:02-03:00")
+            to_same_instant_with_offset = matching(to_timestamp="2026-10-22T11:05:03-03:00")
+            naive_is_utc = matching(from_timestamp="2026-10-22T14:05:04")
+
+    assert from_utc == ["row"]
+    assert from_just_after_in_utc == []
+    assert from_just_after_with_offset == []
+    assert from_same_instant_with_offset == ["row"]
+    assert to_just_before_with_offset == []
+    assert to_same_instant_with_offset == ["row"]
+    assert naive_is_utc == []
+
+
+def test_usage_ledger_rejects_a_tier_that_is_not_local_economy_or_frontier() -> None:
+    with configured_app() as app:
+        with TestClient(app) as client:
+            invalid = client.get("/v1/admin/usage/ledger?tier=premium", headers=admin_headers())
+            empty = client.get("/v1/admin/usage/ledger?tier=", headers=admin_headers())
+
+    assert invalid.status_code == 422
+    assert empty.status_code == 422

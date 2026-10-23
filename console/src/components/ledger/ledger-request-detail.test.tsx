@@ -57,23 +57,68 @@ describe("ledger-request-detail", () => {
     expect(group("Tokens")).toHaveTextContent("24 + 0 = 24");
     expect(group("Modelo")).toHaveTextContent("text-embedding-3-small");
     expect(group("Proveedor")).toHaveTextContent("openai-compatible");
-    expect(group("Ruta")).toHaveTextContent("embeddings");
+    expect(group("Ruta")).toHaveTextContent("Embeddings");
     expect(group("Motivo")).toHaveTextContent("embeddings");
     expect(group("Estado")).toHaveTextContent("completado");
     expect(group("Latencia")).toHaveTextContent("82 ms");
 
     expect(screen.getByText("Evidencia completa")).toBeInTheDocument();
     expect(group("Tenant")).toHaveTextContent("tenant-embeddings");
-    expect(group("Tipo de mensaje")).toHaveTextContent("embeddings");
+    expect(group("Tipo de mensaje")).toHaveTextContent("Embeddings");
     expect(group("Modelo pedido")).toHaveTextContent("text-embedding-3-small");
+    // The gateway's own policy string is evidence and stays as written.
     expect(group("Política")).toHaveTextContent("allowed");
-    expect(group("Retención")).toHaveTextContent("30d");
-    expect(group("Minimización")).toHaveTextContent("strict");
+    expect(group("Retención")).toHaveTextContent("30 días");
+    expect(group("Minimización")).toHaveTextContent("estricta");
     expect(group("Campos suprimidos")).toHaveTextContent("ninguno");
-    expect(group("Fuente de gobierno")).toHaveTextContent("tenant_policy");
+    expect(group("Fuente de gobierno")).toHaveTextContent("política del tenant");
     expect(group("Fallback")).toHaveTextContent("sí");
     expect(group("Caché")).toHaveTextContent("no");
     expect(screen.queryByText(/authoritative/i)).not.toBeInTheDocument();
+  });
+
+  it("words the route and the governance values in Spanish and keeps a code it does not know", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          final_route_target: "denied",
+          message_type: "chat",
+          evidence_retention_window: "7d",
+          metadata_minimization_level: "standard",
+          metadata_fields_suppressed: ["route_signals", "request_body"],
+        }}
+      />,
+    );
+
+    expect(group("Ruta")).toHaveTextContent("Denegado");
+    expect(group("Tipo de mensaje")).toHaveTextContent("Chat");
+    expect(group("Retención")).toHaveTextContent("7 días");
+    expect(group("Minimización")).toHaveTextContent("estándar");
+    expect(group("Campos suprimidos")).toHaveTextContent("señales de ruteo, request_body");
+  });
+
+  it("keeps a retention window or minimization level it does not know as written", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{ ...mockEntry, evidence_retention_window: "1y" as never, metadata_minimization_level: "paranoid" as never }}
+      />,
+    );
+
+    expect(group("Retención")).toHaveTextContent("1y");
+    expect(group("Minimización")).toHaveTextContent("paranoid");
+  });
+
+  it("shows when the request happened on the viewer's clock, whether or not the gateway sent a zone", () => {
+    const stampOf = (timestamp: string) => {
+      const view = renderWithProviders(<LedgerRequestDetail entry={{ ...mockEntry, timestamp }} />);
+      const text = screen.getByRole("heading", { name: /Pedido/ }).nextElementSibling?.textContent;
+      view.unmount();
+      return text;
+    };
+
+    expect(stampOf("2026-10-22T14:05:03")).toBe(stampOf("2026-10-22T14:05:03Z"));
+    expect(stampOf("2026-10-22T14:05:03Z")).toMatch(/\d{2}:\d{2}:\d{2}/);
   });
 
   it("asks to pick a row when none is selected", () => {
@@ -133,13 +178,30 @@ describe("ledger-request-detail", () => {
     );
     expect(screen.getByText("Ruteo heurístico")).toBeInTheDocument();
     expect(group("Estado del ruteo")).toHaveTextContent("calibrado (score 1.00)");
-    expect(group("Modo")).toHaveTextContent("calibrated");
+    expect(group("Modo")).toHaveTextContent("calibrado");
+    expect(group("Modo")).not.toHaveTextContent("calibrated");
     expect(group("Score")).toHaveTextContent("1.00");
     expect(group("Score por tokens")).toHaveTextContent("1.00");
     expect(group("Bono por palabra clave")).toHaveTextContent("0.20");
     expect(group("Bono de política")).toHaveTextContent("0.10");
     expect(group("Tokens contados")).toHaveTextContent("842");
-    expect(group("Complejidad")).toHaveTextContent("medium");
+    expect(group("Complejidad")).toHaveTextContent("media");
+    expect(group("Complejidad")).not.toHaveTextContent("medium");
+  });
+
+  it("keeps a score mode or complexity it does not know as written", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          route_reason: "token_complexity",
+          route_signals: { ...heuristicSignals, route_mode: "experimental", complexity_tier: "extreme" },
+        }}
+      />,
+    );
+
+    expect(group("Modo")).toHaveTextContent("experimental");
+    expect(group("Complejidad")).toHaveTextContent("extreme");
   });
 
   it("ignores the retired budget keys that older ledger rows still carry", () => {
@@ -210,7 +272,19 @@ describe("ledger-request-detail", () => {
     expect(group("Acción")).toHaveTextContent("Degradado a local");
     expect(group("Límite duro")).toHaveTextContent("USD 0.0500");
     expect(group("Gastado al decidir")).toHaveTextContent("USD 0.1000");
-    expect(group("Aplicación")).toHaveTextContent("Downgrade");
+    expect(group("Aplicación")).toHaveTextContent("degradar a local");
+  });
+
+  it("keeps a budget enforcement it does not know as the gateway wrote it", () => {
+    renderWithProviders(
+      <LedgerRequestDetail
+        entry={{
+          ...mockEntry,
+          policy_outcome: "hard_budget=exceeded(limit_usd=0.05,spent_usd=0.1,enforcement=throttle)",
+        }}
+      />,
+    );
+    expect(group("Aplicación")).toHaveTextContent("throttle");
   });
 
   it("keeps an amount it cannot parse as the gateway wrote it", () => {

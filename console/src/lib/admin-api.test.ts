@@ -1,6 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { AdminApiError, createPlaygroundCompletion, getRouterEvaluation, listTenants } from "@/lib/admin-api";
+import {
+  AdminApiError,
+  createPlaygroundCompletion,
+  getRouterEvaluation,
+  listTenants,
+  listUsageLedger,
+} from "@/lib/admin-api";
 
 function jsonResponse(body: unknown, status: number, headers: Record<string, string> = {}) {
   return new Response(JSON.stringify(body), {
@@ -103,6 +109,46 @@ describe("admin-api router evaluation", () => {
     );
 
     await expect(getRouterEvaluation("bad")).rejects.toThrow("La clave de admin no es válida.");
+  });
+});
+
+describe("admin-api usage ledger query", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  async function requestedUrl(filters: Parameters<typeof listUsageLedger>[1]) {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([], 200));
+    vi.stubGlobal("fetch", fetchMock);
+    await listUsageLedger("nebula-admin-key", filters);
+    return new URL(String(fetchMock.mock.calls[0][0]), "http://console.test");
+  }
+
+  it("sends the tier filter next to the other filters", async () => {
+    const url = await requestedUrl({
+      tenantId: "acme",
+      routeTarget: "premium",
+      tier: "economy",
+      terminalStatus: "client_disconnected",
+      fromTimestamp: "2026-10-22T13:00:00.000Z",
+      toTimestamp: "2026-10-22T16:00:00.000Z",
+    });
+
+    expect(url.pathname).toBe("/api/admin/usage/ledger");
+    expect(Object.fromEntries(url.searchParams)).toEqual({
+      tenant_id: "acme",
+      route_target: "premium",
+      tier: "economy",
+      terminal_status: "client_disconnected",
+      from_timestamp: "2026-10-22T13:00:00.000Z",
+      to_timestamp: "2026-10-22T16:00:00.000Z",
+    });
+  });
+
+  it("sends no parameter for a filter left empty", async () => {
+    const url = await requestedUrl({ tenantId: "", routeTarget: "", tier: "", terminalStatus: "" });
+
+    expect(url.search).toBe("");
   });
 });
 

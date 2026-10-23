@@ -1,7 +1,7 @@
 import type { UsageLedgerRecord } from "@/lib/admin-api";
 
 import { formatLatency, rowTier } from "@/components/ledger/ledger-table";
-import { reasonLabel, statusLabel } from "@/components/system/labels";
+import { reasonLabel, routeLabel, statusLabel } from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { TierBadge } from "@/components/system/tier-badge";
 import { formatUsd } from "@/lib/format";
@@ -30,7 +30,7 @@ export function ledgerReadout(entry: UsageLedgerRecord) {
     { label: "Costo estimado", value: entry.estimated_cost === null ? "—" : formatUsd(entry.estimated_cost, 4) },
     { label: "Tokens", value: `${entry.prompt_tokens} + ${entry.completion_tokens} = ${entry.total_tokens}` },
     { label: "Proveedor", value: entry.final_provider || "—" },
-    { label: "Ruta", value: entry.final_route_target },
+    { label: "Ruta", value: routeLabel(entry.final_route_target) },
     { label: "Motivo", value: <span title={entry.route_reason ?? ""}>{reasonLabel(entry.route_reason)}</span> },
     { label: "Estado", value: <span title={entry.terminal_status}>{statusLabel(entry.terminal_status)}</span> },
     { label: "Caché", value: entry.cache_hit ? "sí" : "no" },

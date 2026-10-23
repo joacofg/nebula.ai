@@ -2,14 +2,27 @@ import { describe, expect, it } from "vitest";
 
 import {
   approximationNoteLabel,
+  cacheEvidenceLabel,
+  cacheInsightLabel,
+  complexityLabel,
+  dependencyClassLabel,
+  enforcementLabel,
+  governanceSourceLabel,
+  healthReasonLabel,
+  lastRunStatusLabel,
+  messageTypeLabel,
+  minimizationLabel,
   plural,
   reasonLabel,
+  retentionWindowLabel,
   routeLabel,
   routerLabel,
   routingModeLabel,
   runtimeStatusLabel,
   scoreModeLabel,
+  servingEffectLabel,
   statusLabel,
+  suppressedFieldLabel,
 } from "@/components/system/labels";
 
 describe("labels", () => {
@@ -53,6 +66,18 @@ describe("every label function", () => {
     ["routerLabel", routerLabel],
     ["runtimeStatusLabel", runtimeStatusLabel],
     ["scoreModeLabel", scoreModeLabel],
+    ["dependencyClassLabel", dependencyClassLabel],
+    ["servingEffectLabel", servingEffectLabel],
+    ["healthReasonLabel", healthReasonLabel],
+    ["lastRunStatusLabel", lastRunStatusLabel],
+    ["cacheEvidenceLabel", cacheEvidenceLabel],
+    ["messageTypeLabel", messageTypeLabel],
+    ["retentionWindowLabel", retentionWindowLabel],
+    ["minimizationLabel", minimizationLabel],
+    ["governanceSourceLabel", governanceSourceLabel],
+    ["suppressedFieldLabel", suppressedFieldLabel],
+    ["enforcementLabel", enforcementLabel],
+    ["complexityLabel", complexityLabel],
   ] as const;
 
   it.each(labelFunctions)("%s returns an unknown code as it came", (_name, label) => {
@@ -125,6 +150,104 @@ describe("runtimeStatusLabel", () => {
 
   it("returns an unknown status as it came", () => {
     expect(runtimeStatusLabel("on_fire")).toBe("on_fire");
+  });
+});
+
+describe("dependency labels", () => {
+  it.each([
+    ["serving_critical", "crítica para servir"],
+    ["serving_optional", "opcional"],
+    ["metadata_only", "solo metadatos"],
+  ])("labels the class %s as %s", (code, label) => {
+    expect(dependencyClassLabel(code)).toBe(label);
+  });
+
+  it.each([
+    ["fail_closed", "bloquea pedidos"],
+    ["continuity_limited", "continuidad limitada"],
+    ["unaffected", "sin efecto"],
+  ])("labels the serving effect %s as %s", (code, label) => {
+    expect(servingEffectLabel(code)).toBe(label);
+  });
+
+  it("says in Spanish every reason a dependency reports", () => {
+    for (const code of [
+      "governance_query_failed",
+      "governance_schema_incomplete",
+      "governance_ready",
+      "semantic_cache_ready",
+      "semantic_cache_unavailable",
+      "semantic_cache_collection_missing",
+      "premium_provider_mock",
+      "premium_provider_ready",
+      "premium_provider_unavailable",
+      "local_ollama_ready",
+      "local_ollama_unavailable",
+      "retention_disabled",
+      "retention_idle",
+      "retention_running",
+      "retention_failed",
+      "retention_ok",
+    ]) {
+      expect(healthReasonLabel(code), code).not.toBe(code);
+    }
+    expect(healthReasonLabel("semantic_cache_unavailable")).toBe("caché no disponible");
+    expect(healthReasonLabel("governance_query_failed")).toBe("falló la consulta al almacén");
+  });
+
+  it.each([
+    ["idle", "sin corridas"],
+    ["running", "en curso"],
+    ["failed", "fallida"],
+    ["ok", "correcta"],
+  ])("labels the last retention run %s as %s", (code, label) => {
+    expect(lastRunStatusLabel(code)).toBe(label);
+  });
+});
+
+describe("cache labels", () => {
+  it("titles each insight the gateway can send by its code", () => {
+    expect(cacheInsightLabel("cache_runtime_ready")).toBe("Caché semántico en buen estado");
+    expect(cacheInsightLabel("cache_runtime_degraded")).toBe("Caché semántico degradado");
+    expect(cacheInsightLabel("cache_policy_disabled")).toBe("Caché semántico desactivado");
+    expect(cacheInsightLabel("cache_effectiveness_window")).toBe("Efectividad reciente del caché");
+  });
+
+  it("answers nothing for an insight it does not know, so the caller keeps the gateway's own text", () => {
+    expect(cacheInsightLabel("cache-health-watch")).toBeNull();
+    expect(cacheInsightLabel("")).toBeNull();
+    expect(cacheInsightLabel("constructor")).toBeNull();
+  });
+
+  it("names the evidence rows of an insight", () => {
+    expect(cacheEvidenceLabel("runtime_status")).toBe("Estado en runtime");
+    expect(cacheEvidenceLabel("cache_enabled")).toBe("Caché activada");
+    expect(cacheEvidenceLabel("cache_hits")).toBe("Aciertos");
+    expect(cacheEvidenceLabel("window_requests")).toBe("Pedidos en la ventana");
+    expect(cacheEvidenceLabel("avoided_premium_cost_usd")).toBe("Premium evitado");
+  });
+});
+
+describe("ledger detail labels", () => {
+  it("words the governance values of a ledger row", () => {
+    expect(messageTypeLabel("chat")).toBe("Chat");
+    expect(messageTypeLabel("embeddings")).toBe("Embeddings");
+    expect(retentionWindowLabel("24h")).toBe("24 horas");
+    expect(retentionWindowLabel("7d")).toBe("7 días");
+    expect(retentionWindowLabel("30d")).toBe("30 días");
+    expect(retentionWindowLabel("90d")).toBe("90 días");
+    expect(minimizationLabel("standard")).toBe("estándar");
+    expect(minimizationLabel("strict")).toBe("estricta");
+    expect(governanceSourceLabel("tenant_policy")).toBe("política del tenant");
+    expect(suppressedFieldLabel("route_signals")).toBe("señales de ruteo");
+  });
+
+  it("words the budget enforcement and the complexity the router saw", () => {
+    expect(enforcementLabel("downgrade")).toBe("degradar a local");
+    expect(enforcementLabel("deny")).toBe("denegar");
+    expect(complexityLabel("low")).toBe("baja");
+    expect(complexityLabel("medium")).toBe("media");
+    expect(complexityLabel("high")).toBe("alta");
   });
 });
 

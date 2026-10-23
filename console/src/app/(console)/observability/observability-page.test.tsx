@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -176,7 +176,7 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByRole("heading", { level: 1, name: "Observabilidad" })).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "Filtros del ledger" })).toBeInTheDocument();
     const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
-    expect(within(table).getByRole("row", { selected: true })).toHaveTextContent("req-inte");
+    expect(within(table).getByRole("row", { current: true })).toHaveTextContent("req-inte");
     expect(await screen.findByRole("heading", { name: /Pedido/ })).toHaveTextContent("req-inte");
     expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0042");
     expectTextToAppearBefore(container, "req-inte", "Recomendaciones");
@@ -265,6 +265,151 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
   });
 
+  it("still loads the ledger when the tenant list fails", async () => {
+    listTenants.mockRejectedValue(new Error("Tenants unavailable."));
+    renderPage();
+
+    expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+    const table = await screen.findByRole("table", { name: "Ledger de pedidos" });
+    expect(within(table).getByRole("row", { name: /req-integrated-001/ })).toBeInTheDocument();
+    // With no tenant list there is no default tenant to read: every tenant's rows.
+    expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" }));
+  });
+
+  describe("ledger filters", () => {
+    beforeEach(() => {
+      listUsageLedger.mockClear();
+    });
+
+    async function settledFilters() {
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
+      return within(screen.getByRole("group", { name: "Filtros del ledger" }));
+    }
+
+    it("sends the tier the operator picks and none until then", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const filters = await settledFilters();
+      expect(listUsageLedger.mock.calls.every(([, sent]) => !sent.tier)).toBe(true);
+
+      await user.selectOptions(filters.getByLabelText("Nivel"), "economy");
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tier: "economy" })),
+      );
+    });
+
+    it("sends the status the gateway records for an abandoned stream", async () => {
+      const user = userEvent.setup();
+      renderPage();
+      const filters = await settledFilters();
+
+      await user.selectOptions(filters.getByLabelText("Estado"), "client_disconnected");
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith(
+          "nebula-admin-key",
+          expect.objectContaining({ terminalStatus: "client_disconnected" }),
+        ),
+      );
+    });
+
+    it("sends the dates as the UTC instants of the local times the operator typed", async () => {
+      renderPage();
+      const filters = await settledFilters();
+
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "2026-10-22T10:00" } });
+      fireEvent.change(filters.getByLabelText("Hasta"), { target: { value: "2026-10-22T18:30" } });
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith(
+          "nebula-admin-key",
+          expect.objectContaining({
+            fromTimestamp: new Date("2026-10-22T10:00").toISOString(),
+            toTimestamp: new Date("2026-10-22T18:30").toISOString(),
+          }),
+        ),
+      );
+      // The inputs keep what was typed, in the operator's clock.
+      expect(filters.getByLabelText("Desde")).toHaveValue("2026-10-22T10:00");
+      expect(filters.getByLabelText("Hasta")).toHaveValue("2026-10-22T18:30");
+    });
+
+    it("sends no date while the input is cleared", async () => {
+      renderPage();
+      const filters = await settledFilters();
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "2026-10-22T10:00" } });
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ fromTimestamp: expect.any(String) })),
+      );
+
+      fireEvent.change(filters.getByLabelText("Desde"), { target: { value: "" } });
+
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ fromTimestamp: "" })),
+      );
+    });
+  });
+
+  describe("cost summary", () => {
+    const row = (requestId: string, cost: number | null) => ({
+      request_id: requestId,
+      tenant_id: "tenant-alpha",
+      requested_model: "gpt-4o-mini",
+      final_route_target: "premium",
+      final_provider: "openai-compatible",
+      fallback_used: false,
+      cache_hit: false,
+      response_model: "gpt-4o-mini",
+      prompt_tokens: 1,
+      completion_tokens: 1,
+      total_tokens: 2,
+      estimated_cost: cost,
+      latency_ms: 100,
+      timestamp: "2026-03-23T18:00:00Z",
+      terminal_status: "completed",
+      route_reason: "learned_router",
+      policy_outcome: "allowed",
+      route_signals: null,
+      message_type: "chat",
+      evidence_retention_window: "30d",
+      evidence_expires_at: null,
+      metadata_minimization_level: "standard",
+      metadata_fields_suppressed: [],
+      governance_source: "tenant_policy",
+    });
+
+    it("says how many requests the cost adds up and what 1000 of them cost", async () => {
+      listUsageLedger.mockResolvedValue([row("req-a", 0.0042), row("req-b", 0.0018)]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0060 en 2 pedidos")).toBeInTheDocument();
+      expect(screen.getByText("USD 3.00 / 1000")).toBeInTheDocument();
+    });
+
+    it("counts a single request in the singular", async () => {
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0042 en 1 pedido")).toBeInTheDocument();
+      expect(screen.getByText("USD 4.20 / 1000")).toBeInTheDocument();
+    });
+
+    it("has no cost per 1000 when there are no requests to average", async () => {
+      listUsageLedger.mockResolvedValue([]);
+      renderPage();
+
+      expect(await screen.findByText("USD 0.0000 en 0 pedidos")).toBeInTheDocument();
+      expect(screen.queryByText(/\/ 1000/)).not.toBeInTheDocument();
+    });
+
+    it("shows a dash instead of a cost until the ledger arrives", () => {
+      listUsageLedger.mockReturnValue(new Promise(() => {}));
+      renderPage();
+
+      expect(screen.getByText("Costo").parentElement).toHaveTextContent(/^Costo—$/);
+    });
+  });
+
   describe("tenant scope", () => {
     beforeEach(() => {
       listUsageLedger.mockClear();
@@ -290,9 +435,11 @@ describe("ObservabilityPage", () => {
       await waitFor(() =>
         expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" })),
       );
+      // Settled: the all-tenants ledger has loaded and drawn, so every effect it triggered has run.
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
       // The default selection does not come back over the operator's choice.
-      await new Promise((resolve) => setTimeout(resolve, 50));
       expect(tenantFilter()).toHaveValue("");
+      expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" }));
     });
 
     it("keeps Todos los tenants when the page renders again", async () => {

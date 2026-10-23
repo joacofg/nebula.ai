@@ -77,6 +77,86 @@ const APPROXIMATION_NOTES: Record<string, string> = {
     "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
 };
 
+// How a dependency matters to serving (`dependency_class`) and what its failure does (`serving_effect`).
+const DEPENDENCY_CLASSES: Record<string, string> = {
+  serving_critical: "crítica para servir",
+  serving_optional: "opcional",
+  metadata_only: "solo metadatos",
+};
+
+const SERVING_EFFECTS: Record<string, string> = {
+  fail_closed: "bloquea pedidos",
+  continuity_limited: "continuidad limitada",
+  unaffected: "sin efecto",
+};
+
+// Why a dependency is in its state (`reason_code`): short, as the card shows the gateway's own detail too.
+const HEALTH_REASONS: Record<string, string> = {
+  governance_query_failed: "falló la consulta al almacén",
+  governance_schema_incomplete: "esquema incompleto",
+  governance_ready: "almacén conectado",
+  semantic_cache_ready: "colección alcanzable",
+  semantic_cache_unavailable: "caché no disponible",
+  semantic_cache_collection_missing: "falta la colección",
+  premium_provider_mock: "proveedor simulado",
+  premium_provider_ready: "proveedor responde",
+  premium_provider_unavailable: "proveedor no disponible",
+  local_ollama_ready: "Ollama alcanzable",
+  local_ollama_unavailable: "Ollama no disponible",
+  retention_disabled: "retención desactivada",
+  retention_idle: "sin limpiezas todavía",
+  retention_running: "limpieza en curso",
+  retention_failed: "falló la última limpieza",
+  retention_ok: "última limpieza correcta",
+};
+
+// The retention lifecycle's last cleanup run (`last_status`).
+const LAST_RUN_STATUSES: Record<string, string> = {
+  idle: "sin corridas",
+  running: "en curso",
+  failed: "fallida",
+  ok: "correcta",
+};
+
+// The cache insights the gateway builds, by `code`; their title and summary arrive in English.
+const CACHE_INSIGHTS: Record<string, string> = {
+  cache_runtime_ready: "Caché semántico en buen estado",
+  cache_runtime_degraded: "Caché semántico degradado",
+  cache_policy_disabled: "Caché semántico desactivado",
+  cache_effectiveness_window: "Efectividad reciente del caché",
+};
+
+// The `label` of each evidence row of a cache insight.
+const CACHE_EVIDENCE: Record<string, string> = {
+  runtime_status: "Estado en runtime",
+  cache_enabled: "Caché activada",
+  cache_hits: "Aciertos",
+  window_requests: "Pedidos en la ventana",
+  avoided_premium_cost_usd: "Premium evitado",
+};
+
+// The governance values a ledger row carries.
+const MESSAGE_TYPES: Record<string, string> = { chat: "Chat", embeddings: "Embeddings" };
+
+const RETENTION_WINDOWS: Record<string, string> = {
+  "24h": "24 horas",
+  "7d": "7 días",
+  "30d": "30 días",
+  "90d": "90 días",
+};
+
+const MINIMIZATION_LEVELS: Record<string, string> = { standard: "estándar", strict: "estricta" };
+
+const GOVERNANCE_SOURCES: Record<string, string> = { tenant_policy: "política del tenant" };
+
+const SUPPRESSED_FIELDS: Record<string, string> = { route_signals: "señales de ruteo" };
+
+// What a tenant's hard budget does when it is reached (`hard_budget_enforcement`).
+const ENFORCEMENTS: Record<string, string> = { downgrade: "degradar a local", deny: "denegar" };
+
+// How complex the heuristic found a prompt (`complexity_tier`).
+const COMPLEXITIES: Record<string, string> = { low: "baja", medium: "media", high: "alta" };
+
 /** A known code's label, the code itself when unknown, a dash when there is none. */
 function lookup(labels: Record<string, string>, code: string | null | undefined) {
   if (!code) {
@@ -113,6 +193,68 @@ export function scoreModeLabel(mode: string | null | undefined) {
 /** A simulation note in Spanish by its code; a code it does not know shows the note's own text. */
 export function approximationNoteLabel(code: string | null | undefined, text: string) {
   return code && Object.hasOwn(APPROXIMATION_NOTES, code) ? APPROXIMATION_NOTES[code] : text;
+}
+
+/** A dependency's class: critical for serving, optional or metadata only. */
+export function dependencyClassLabel(code: string | null | undefined) {
+  return lookup(DEPENDENCY_CLASSES, code);
+}
+
+/** What a dependency's failure does to serving. */
+export function servingEffectLabel(code: string | null | undefined) {
+  return lookup(SERVING_EFFECTS, code);
+}
+
+/** Why a dependency reports its state. */
+export function healthReasonLabel(code: string | null | undefined) {
+  return lookup(HEALTH_REASONS, code);
+}
+
+/** The retention lifecycle's last cleanup run. */
+export function lastRunStatusLabel(code: string | null | undefined) {
+  return lookup(LAST_RUN_STATUSES, code);
+}
+
+/** A cache insight's title by its code; null for a code it does not know, so the caller keeps the gateway's own text. */
+export function cacheInsightLabel(code: string | null | undefined) {
+  return code && Object.hasOwn(CACHE_INSIGHTS, code) ? CACHE_INSIGHTS[code] : null;
+}
+
+/** The name of one evidence row of a cache insight. */
+export function cacheEvidenceLabel(label: string | null | undefined) {
+  return lookup(CACHE_EVIDENCE, label);
+}
+
+export function messageTypeLabel(code: string | null | undefined) {
+  return lookup(MESSAGE_TYPES, code);
+}
+
+/** How long the evidence is kept: 24h / 7d / 30d / 90d. */
+export function retentionWindowLabel(code: string | null | undefined) {
+  return lookup(RETENTION_WINDOWS, code);
+}
+
+export function minimizationLabel(code: string | null | undefined) {
+  return lookup(MINIMIZATION_LEVELS, code);
+}
+
+export function governanceSourceLabel(code: string | null | undefined) {
+  return lookup(GOVERNANCE_SOURCES, code);
+}
+
+/** A metadata field the policy kept out of the ledger row. */
+export function suppressedFieldLabel(code: string | null | undefined) {
+  return lookup(SUPPRESSED_FIELDS, code);
+}
+
+/** What a tenant's hard budget does once it is reached. */
+export function enforcementLabel(code: string | null | undefined) {
+  return lookup(ENFORCEMENTS, code);
+}
+
+/** The complexity the heuristic saw in a prompt. */
+export function complexityLabel(code: string | null | undefined) {
+  return lookup(COMPLEXITIES, code);
 }
 
 export function reasonLabel(code: string | null | undefined) {

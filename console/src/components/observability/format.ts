@@ -1,3 +1,5 @@
+import { parseTimestamp } from "@/lib/format";
+
 export function titleCaseToken(value: string) {
   return value
     .split(/[_-]/g)
@@ -7,8 +9,8 @@ export function titleCaseToken(value: string) {
 }
 
 export function formatTimestamp(value: string) {
-  const timestamp = new Date(value);
-  if (Number.isNaN(timestamp.getTime())) {
+  const timestamp = parseTimestamp(value);
+  if (timestamp === null) {
     return value;
   }
   return timestamp.toLocaleString("es-AR", { dateStyle: "short", timeStyle: "medium", hourCycle: "h23" });

@@ -9,6 +9,7 @@ import { useQuery } from "@tanstack/react-query";
 import { CacheSummary } from "@/components/observability/cache-summary";
 import { CalibrationSummary } from "@/components/observability/calibration-summary";
 import { Recommendations } from "@/components/observability/recommendations";
+import { plural } from "@/components/system/labels";
 import { PageHeader } from "@/components/system/page-header";
 import { LoadingRows } from "@/components/system/state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -19,7 +20,7 @@ import { LedgerTable } from "@/components/ledger/ledger-table";
 import { getTenantRecommendations, listTenants, listUsageLedger, type RecommendationBundle } from "@/lib/admin-api";
 import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
 import { useAdminSession } from "@/lib/admin-session-provider";
-import { formatUsd } from "@/lib/format";
+import { formatUsd, formatUsdPer1000, localInputToIso } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
 import { useSelectedTenant } from "@/lib/selected-tenant";
 import { ErrorAlert } from "@/components/system/state";
@@ -29,6 +30,7 @@ export default function ObservabilityPage() {
   // null follows the shared tenant; "" is the "Todos los tenants" filter, which only this page knows.
   const [tenantFilter, setTenantFilter] = useState<string | null>(null);
   const [routeTarget, setRouteTarget] = useState("");
+  const [tier, setTier] = useState("");
   const [terminalStatus, setTerminalStatus] = useState("");
   const [fromTimestamp, setFromTimestamp] = useState("");
   const [toTimestamp, setToTimestamp] = useState("");
@@ -52,14 +54,16 @@ export default function ObservabilityPage() {
     setSharedTenantId(nextTenantId);
   }
 
+  // The inputs hold the operator's local time; the gateway compares UTC instants.
   const ledgerFilters = {
     tenantId,
     routeTarget,
+    tier,
     terminalStatus,
-    fromTimestamp,
-    toTimestamp,
+    fromTimestamp: localInputToIso(fromTimestamp),
+    toTimestamp: localInputToIso(toTimestamp),
   };
-  // terminal_status is encoded by the shared admin API client from this filter object.
+  // The query string is encoded by the shared admin API client from this filter object.
   const ledgerQuery = useQuery({
     queryKey: queryKeys.usageLedger(ledgerFilters),
     queryFn: () => listUsageLedger(adminKey ?? "", ledgerFilters),
@@ -103,6 +107,7 @@ export default function ObservabilityPage() {
 
   const tenantName = tenantsQuery.data?.find((tenant) => tenant.id === tenantId)?.name ?? "Todos los tenants";
   const rows = ledgerQuery.data ?? [];
+  // The ledger answers one page of rows (100 by default), so the sum says how many it adds up.
   const totalCost = rows.reduce((sum, row) => sum + (row.estimated_cost ?? 0), 0);
   const tabTrigger =
     "h-10 flex-none rounded-none border-0 px-4 text-[15px] font-semibold text-ink-3 data-active:text-ink after:bg-mark group-data-horizontal/tabs:after:bottom-[-1px]";
@@ -128,18 +133,32 @@ export default function ObservabilityPage() {
         cells={[
           { label: "Tenant", value: tenantName },
           { label: "Pedidos", value: ledgerQuery.data ? String(rows.length) : "—" },
-          { label: "Costo", value: ledgerQuery.data ? formatUsd(totalCost, 4) : "—" },
+          {
+            label: "Costo",
+            value: ledgerQuery.data ? (
+              <>
+                {`${formatUsd(totalCost, 4)} en ${plural(rows.length, "pedido", "pedidos")}`}
+                {rows.length > 0 ? (
+                  <span className="block text-[13px] font-medium text-ink-3">{formatUsdPer1000(totalCost / rows.length)}</span>
+                ) : null}
+              </>
+            ) : (
+              "—"
+            ),
+          },
         ]}
       />
       <LedgerFilters
         tenants={tenantsQuery.data ?? []}
         tenantId={tenantId}
         routeTarget={routeTarget}
+        tier={tier}
         terminalStatus={terminalStatus}
         fromTimestamp={fromTimestamp}
         toTimestamp={toTimestamp}
         onTenantIdChange={handleTenantChange}
         onRouteTargetChange={setRouteTarget}
+        onTierChange={setTier}
         onTerminalStatusChange={setTerminalStatus}
         onFromTimestampChange={setFromTimestamp}
         onToTimestampChange={setToTimestamp}

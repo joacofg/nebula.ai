@@ -1,4 +1,11 @@
 import { RuntimeHealthDependency } from "@/lib/admin-api";
+import {
+  dependencyClassLabel,
+  healthReasonLabel,
+  lastRunStatusLabel,
+  runtimeStatusLabel,
+  servingEffectLabel,
+} from "@/components/system/labels";
 import { Readout } from "@/components/system/readout";
 import { EmptyState, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -21,30 +28,40 @@ function formatHealthValue(value: unknown): string {
   return String(value);
 }
 
-function formatHealthLabel(value: string): string {
-  return value.replace(/_/g, " ");
-}
+/** One reading of a card; `code` words a gateway code in Spanish, keeping the code as the title. */
+type MetadataRow = { label: string; value: unknown; code?: (code: string) => string };
 
-function buildMetadata(dependency: RuntimeHealthDependency): Array<[string, unknown]> {
-  const metadata: Array<[string, unknown]> = [
-    ["Clase", dependency.dependency_class],
-    ["Ciclo de vida", dependency.lifecycle_state],
-    ["Efecto", dependency.serving_effect],
-    ["Código", dependency.reason_code],
-    ["Activada", dependency.enabled],
-    ["Recuperándose", dependency.recovering],
-    ["Última falla", dependency.last_failure_at],
-    ["Última recuperación", dependency.last_recovery_at],
-    ["Último estado", dependency.last_status],
-    ["Última corrida", dependency.last_run_at],
-    ["Último intento", dependency.last_attempted_run_at],
-    ["Filas borradas", dependency.last_deleted_count],
-    ["Filas elegibles", dependency.last_eligible_count],
-    ["Último corte", dependency.last_cutoff],
-    ["Último error", dependency.last_error],
+function buildMetadata(dependency: RuntimeHealthDependency): MetadataRow[] {
+  const metadata: MetadataRow[] = [
+    { label: "Clase", value: dependency.dependency_class, code: dependencyClassLabel },
+    { label: "Ciclo de vida", value: dependency.lifecycle_state, code: runtimeStatusLabel },
+    { label: "Efecto", value: dependency.serving_effect, code: servingEffectLabel },
+    { label: "Código", value: dependency.reason_code, code: healthReasonLabel },
+    { label: "Activada", value: dependency.enabled },
+    { label: "Recuperándose", value: dependency.recovering },
+    { label: "Última falla", value: dependency.last_failure_at },
+    { label: "Última recuperación", value: dependency.last_recovery_at },
+    { label: "Último estado", value: dependency.last_status, code: lastRunStatusLabel },
+    { label: "Última corrida", value: dependency.last_run_at },
+    { label: "Último intento", value: dependency.last_attempted_run_at },
+    { label: "Filas borradas", value: dependency.last_deleted_count },
+    { label: "Filas elegibles", value: dependency.last_eligible_count },
+    { label: "Último corte", value: dependency.last_cutoff },
+    { label: "Último error", value: dependency.last_error },
   ];
 
-  return metadata.filter(([, value]) => value !== undefined);
+  return metadata.filter(({ value }) => value !== undefined);
+}
+
+function MetadataValue({ row }: { row: MetadataRow }) {
+  if (typeof row.value === "string") {
+    return (
+      <span className="text-sm font-medium" title={row.code ? row.value : undefined}>
+        {row.code ? row.code(row.value) : row.value}
+      </span>
+    );
+  }
+  return <span className="text-sm font-medium">{formatHealthValue(row.value)}</span>;
 }
 
 export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCardsProps) {
@@ -78,23 +95,17 @@ export function RuntimeHealthCards({ dependencies, isLoading }: RuntimeHealthCar
             <article key={name} className="flex flex-col gap-2 border-r border-b border-line px-4 py-3">
               <div className="flex items-baseline justify-between gap-3">
                 <h3 className="m-0 font-mono text-[13px] font-medium text-ink">{name}</h3>
-                <span className="inline-flex items-center gap-1.5 font-label text-[13px] font-semibold text-ink">
+                <span
+                  className="inline-flex items-center gap-1.5 font-label text-[13px] font-semibold text-ink"
+                  title={dependency.status}
+                >
                   <span aria-hidden className={`size-2 rounded-full ${tone}`} />
-                  {formatHealthLabel(dependency.status)}
+                  {runtimeStatusLabel(dependency.status)}
                 </span>
               </div>
               <p className="m-0 text-sm text-ink-2">{dependency.detail}</p>
               {metrics.length > 0 ? (
-                <Readout
-                  items={metrics.map(([label, value]) => ({
-                    label,
-                    value: (
-                      <span className="text-sm font-medium">
-                        {typeof value === "string" ? formatHealthLabel(value) : formatHealthValue(value)}
-                      </span>
-                    ),
-                  }))}
-                />
+                <Readout items={metrics.map((row) => ({ label: row.label, value: <MetadataValue row={row} /> }))} />
               ) : null}
             </article>
           );
