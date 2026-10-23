@@ -6,12 +6,16 @@ import { AlertCircle, ArrowRight, LoaderCircle, RotateCcw, Save, Telescope } fro
 import type {
   PolicyOptionsResponse,
   PolicySimulationChangedRequest,
+  PolicySimulationOutcomeCounts,
   PolicySimulationResponse,
   TenantPolicy,
+  TierCounts,
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import {
   numberText,
+  parsePolicyNumber,
+  policyFormChanged,
   validatePolicyForm,
   type PolicyFormErrors,
   type PolicyFormField,
@@ -26,7 +30,7 @@ import {
   scoreModeLabel,
   statusLabel,
 } from "@/components/system/labels";
-import { Readout } from "@/components/system/readout";
+import { Readout, type ReadoutItem } from "@/components/system/readout";
 import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -64,6 +68,26 @@ const FIELD_LABELS: Record<PolicyFormField, string> = {
   allowedPremiumModels: "Modelos premium permitidos",
   evidenceRetentionWindow: "Retención de evidencia",
   metadataMinimizationLevel: "Minimización de metadatos",
+};
+
+// The runtime field that shows each form field: one the gateway does not enforce is not shown, so it
+// is neither checked nor written. `soft` marks a field the gateway only reports as a signal.
+const FIELD_GATES: Record<PolicyFormField, { field: string; soft?: true }> = {
+  routingQualityTarget: { field: "routing_quality_target" },
+  routingModeDefault: { field: "routing_mode_default" },
+  calibratedRoutingEnabled: { field: "calibrated_routing_enabled" },
+  fallbackEnabled: { field: "fallback_enabled" },
+  rateLimitRequestsPerMinute: { field: "rate_limit_requests_per_minute" },
+  maxPremiumCostPerRequest: { field: "max_premium_cost_per_request" },
+  hardBudgetLimitUsd: { field: "hard_budget_limit_usd" },
+  hardBudgetEnforcement: { field: "hard_budget_enforcement" },
+  softBudgetUsd: { field: "soft_budget_usd", soft: true },
+  semanticCacheEnabled: { field: "semantic_cache_enabled" },
+  semanticCacheSimilarityThreshold: { field: "semantic_cache_enabled" },
+  semanticCacheMaxEntryAgeHours: { field: "semantic_cache_enabled" },
+  allowedPremiumModels: { field: "allowed_premium_models" },
+  evidenceRetentionWindow: { field: "evidence_retention_window" },
+  metadataMinimizationLevel: { field: "metadata_minimization_level" },
 };
 
 // Gateway default (TenantPolicy.routing_quality_target) for policies saved before the field existed.
@@ -128,11 +152,30 @@ function formatRoutingState(
   return detail.length > 0 ? `${name} (${detail})` : name;
 }
 
+/**
+ * A policy outcome ("routing_mode=premium_only;denied=…;outcome_evidence=…") as the operator reads
+ * it: the routing mode and whether it denied. The rest is the gateway's bookkeeping, never shown.
+ */
+function policyOutcomeLabel(outcome: string | null) {
+  const parts: string[] = [];
+  for (const part of (outcome ?? "").split(";")) {
+    if (part.startsWith("routing_mode=")) {
+      parts.push(routingModeLabel(part.slice("routing_mode=".length)));
+    } else if (part.startsWith("denied=")) {
+      parts.push("denegado");
+    }
+  }
+  return parts.length > 0 ? parts.join(", ") : "ninguna";
+}
+
 function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
   const routeChanged = change.baseline_route_target !== change.simulated_route_target;
   const tierChanged = change.baseline_tier !== change.simulated_tier;
   const statusChanged = change.baseline_terminal_status !== change.simulated_terminal_status;
-  const outcomeChanged = change.baseline_policy_outcome !== change.simulated_policy_outcome;
+  // Compared as read: two outcomes that differ only in bookkeeping are no change to show.
+  const baselineOutcome = policyOutcomeLabel(change.baseline_policy_outcome);
+  const simulatedOutcome = policyOutcomeLabel(change.simulated_policy_outcome);
+  const outcomeChanged = baselineOutcome !== simulatedOutcome;
   const costChanged = change.baseline_estimated_cost !== change.simulated_estimated_cost;
 
   const highlights: string[] = [];
@@ -148,9 +191,7 @@ function renderChangedRequestSummary(change: PolicySimulationChangedRequest) {
     );
   }
   if (outcomeChanged) {
-    highlights.push(
-      `política ${(change.baseline_policy_outcome ?? "ninguna")} → ${(change.simulated_policy_outcome ?? "ninguna")}`,
-    );
+    highlights.push(`política ${baselineOutcome} → ${simulatedOutcome}`);
   }
   if (costChanged) {
     highlights.push(`costo ${formatUsd(change.baseline_estimated_cost, 4)} → ${formatUsd(change.simulated_estimated_cost, 4)}`);
@@ -173,6 +214,26 @@ function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
     change.simulated_route_score,
     change.simulated_route_reason,
   )}`;
+}
+
+/**
+ * Rows per tier, actual → draft. A row served from the cache or denied has no tier, so the last
+ * row holds the rest and each column adds up to the evaluated rows.
+ */
+function tierCountItems(summary: PolicySimulationOutcomeCounts): ReadoutItem[] {
+  const untiered = (counts: TierCounts) =>
+    summary.evaluated_rows - TIERS.reduce((total, tier) => total + counts[tier], 0);
+
+  return [
+    ...TIERS.map((tier) => ({
+      label: tier,
+      value: `${summary.baseline_tier_counts[tier]} → ${summary.simulated_tier_counts[tier]}`,
+    })),
+    {
+      label: "Caché o denegado",
+      value: `${untiered(summary.baseline_tier_counts)} → ${untiered(summary.simulated_tier_counts)}`,
+    },
+  ];
 }
 
 function getDecisionSummary(simulationResult: PolicySimulationResponse) {
@@ -250,13 +311,24 @@ export function PolicyForm({
     setSaveError(null);
   }, [initialPolicy]);
 
-  const baseline = useMemo(() => JSON.stringify(toFormState(initialPolicy)), [initialPolicy]);
-  const dirty = JSON.stringify(formState) !== baseline;
+  const storedState = useMemo(() => toFormState(initialPolicy), [initialPolicy]);
+  const dirty = policyFormChanged(formState, storedState);
   const runtimeEnforcedFields = useMemo(
     () => new Set(options.runtime_enforced_fields),
     [options.runtime_enforced_fields],
   );
   const softSignalFields = useMemo(() => new Set(options.soft_signal_fields), [options.soft_signal_fields]);
+  const hiddenFields = useMemo(
+    () =>
+      new Set(
+        (Object.keys(FIELD_GATES) as PolicyFormField[]).filter((field) => {
+          const gate = FIELD_GATES[field];
+          return !(gate.soft ? softSignalFields : runtimeEnforcedFields).has(gate.field);
+        }),
+      ),
+    [runtimeEnforcedFields, softSignalFields],
+  );
+  const shown = (field: PolicyFormField) => !hiddenFields.has(field);
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
   const invalidFields = (Object.keys(FIELD_LABELS) as PolicyFormField[]).filter((field) => fieldErrors[field]);
@@ -264,14 +336,22 @@ export function PolicyForm({
   // The one check behind Guardar and Simular: the policy to send, or null with the errors shown.
   function validate(): TenantPolicy | null {
     setSaveError(null);
-    const { errors, payload } = validatePolicyForm(formState);
+    const { errors, payload } = validatePolicyForm(formState, hiddenFields);
     setFieldErrors(errors);
     return payload === null ? null : toPolicy(payload);
   }
 
-  // The form edits some fields; the rest (the capture flags) stay as stored.
-  function toPolicy(payload: TenantPolicyPayload): TenantPolicy {
-    return { ...initialPolicy, ...payload };
+  // The form edits some fields; the rest (the capture flags, a field it does not show) stay as stored.
+  function toPolicy(payload: Partial<TenantPolicyPayload>): TenantPolicy {
+    const policy: TenantPolicy = { ...initialPolicy, ...payload };
+    // A stored target finer than a hundredth shows rounded: it stays as stored unless the operator
+    // changed the number.
+    const targetUntouched =
+      parsePolicyNumber(formState.routingQualityTarget) === parsePolicyNumber(storedState.routingQualityTarget);
+    if (targetUntouched && initialPolicy.routing_quality_target !== undefined) {
+      policy.routing_quality_target = initialPolicy.routing_quality_target;
+    }
+    return policy;
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -303,7 +383,7 @@ export function PolicyForm({
   }
 
   function discardChanges() {
-    setFormState(toFormState(initialPolicy));
+    setFormState(storedState);
     setFieldErrors({});
     setSaveError(null);
     setSaved(false);
@@ -322,14 +402,13 @@ export function PolicyForm({
       return next;
     });
   };
-  const has = (field: string) => runtimeEnforcedFields.has(field);
 
   return (
     <form onSubmit={handleSubmit} aria-label={`Política de ${tenantName}`}>
       <div className="grid xl:grid-cols-[minmax(0,1fr)_420px]">
         <div className="flex min-w-0 flex-col gap-8 px-6 py-6">
           <FormSection title="Ruteo">
-            {has("routing_quality_target") ? (
+            {shown("routingQualityTarget") ? (
               <Field
                 id="routing-quality-target"
                 label={FIELD_LABELS.routingQualityTarget}
@@ -347,7 +426,7 @@ export function PolicyForm({
                 )}
               </Field>
             ) : null}
-            {has("routing_mode_default") ? (
+            {shown("routingModeDefault") ? (
               <Field id="routing-mode-default" label={FIELD_LABELS.routingModeDefault}>
                 {(control) => (
                   <select
@@ -365,7 +444,7 @@ export function PolicyForm({
                 )}
               </Field>
             ) : null}
-            {has("calibrated_routing_enabled") ? (
+            {shown("calibratedRoutingEnabled") ? (
               <Check
                 label={FIELD_LABELS.calibratedRoutingEnabled}
                 hint="Si se apaga, el tráfico automático va a local."
@@ -373,7 +452,7 @@ export function PolicyForm({
                 onChange={(checked) => set("calibratedRoutingEnabled", checked)}
               />
             ) : null}
-            {has("fallback_enabled") ? (
+            {shown("fallbackEnabled") ? (
               <Check
                 label={FIELD_LABELS.fallbackEnabled}
                 checked={formState.fallbackEnabled}
@@ -383,7 +462,7 @@ export function PolicyForm({
           </FormSection>
 
           <FormSection title="Límites">
-            {has("rate_limit_requests_per_minute") ? (
+            {shown("rateLimitRequestsPerMinute") ? (
               <Field
                 id="rate-limit-rpm"
                 label={FIELD_LABELS.rateLimitRequestsPerMinute}
@@ -402,7 +481,7 @@ export function PolicyForm({
                 )}
               </Field>
             ) : null}
-            {has("max_premium_cost_per_request") ? (
+            {shown("maxPremiumCostPerRequest") ? (
               <Field
                 id="max-premium-cost"
                 label={FIELD_LABELS.maxPremiumCostPerRequest}
@@ -413,6 +492,7 @@ export function PolicyForm({
                     {...control}
                     className="field-input max-w-40"
                     inputMode="decimal"
+                    placeholder="Sin límite"
                     value={formState.maxPremiumCostPerRequest}
                     onChange={(event) => set("maxPremiumCostPerRequest", event.target.value)}
                   />
@@ -420,7 +500,7 @@ export function PolicyForm({
               </Field>
             ) : null}
             <div className="grid gap-4 sm:grid-cols-2">
-              {has("hard_budget_limit_usd") ? (
+              {shown("hardBudgetLimitUsd") ? (
                 <Field
                   id="hard-budget-limit-usd"
                   label={FIELD_LABELS.hardBudgetLimitUsd}
@@ -438,7 +518,7 @@ export function PolicyForm({
                   )}
                 </Field>
               ) : null}
-              {has("hard_budget_enforcement") ? (
+              {shown("hardBudgetEnforcement") ? (
                 <Field
                   id="hard-budget-enforcement"
                   label={FIELD_LABELS.hardBudgetEnforcement}
@@ -461,7 +541,7 @@ export function PolicyForm({
                 </Field>
               ) : null}
             </div>
-            {softSignalFields.has("soft_budget_usd") ? (
+            {shown("softBudgetUsd") ? (
               <Field
                 id="soft-budget-usd"
                 label={FIELD_LABELS.softBudgetUsd}
@@ -473,6 +553,7 @@ export function PolicyForm({
                     {...control}
                     className="field-input max-w-40"
                     inputMode="decimal"
+                    placeholder="Sin límite"
                     value={formState.softBudgetUsd}
                     onChange={(event) => set("softBudgetUsd", event.target.value)}
                   />
@@ -481,7 +562,7 @@ export function PolicyForm({
             ) : null}
           </FormSection>
 
-          {has("semantic_cache_enabled") ? (
+          {shown("semanticCacheEnabled") ? (
             <FormSection title="Caché semántico">
               <Check
                 label={FIELD_LABELS.semanticCacheEnabled}
@@ -525,23 +606,26 @@ export function PolicyForm({
             </FormSection>
           ) : null}
 
-          {has("allowed_premium_models") ? (
+          {shown("allowedPremiumModels") ? (
             <FormSection title={FIELD_LABELS.allowedPremiumModels}>
               <ModelAllowlistInput
                 knownModels={options.known_premium_models}
                 value={formState.allowedPremiumModels}
                 onChange={(nextValue) => set("allowedPremiumModels", nextValue)}
+                errorId={fieldErrors.allowedPremiumModels ? "allowed-premium-models-error" : undefined}
               />
               {fieldErrors.allowedPremiumModels ? (
-                <p className="m-0 text-[13px] font-medium text-danger">{fieldErrors.allowedPremiumModels}</p>
+                <p id="allowed-premium-models-error" className="m-0 text-[13px] font-medium text-danger">
+                  {fieldErrors.allowedPremiumModels}
+                </p>
               ) : null}
             </FormSection>
           ) : null}
 
-          {has("evidence_retention_window") || has("metadata_minimization_level") ? (
+          {shown("evidenceRetentionWindow") || shown("metadataMinimizationLevel") ? (
             <FormSection title="Evidencia">
               <div className="grid gap-4 sm:grid-cols-2">
-                {has("evidence_retention_window") ? (
+                {shown("evidenceRetentionWindow") ? (
                   <Field id="evidence-retention-window" label={FIELD_LABELS.evidenceRetentionWindow}>
                     {(control) => (
                       <select
@@ -560,7 +644,7 @@ export function PolicyForm({
                     )}
                   </Field>
                 ) : null}
-                {has("metadata_minimization_level") ? (
+                {shown("metadataMinimizationLevel") ? (
                   <Field
                     id="metadata-minimization-level"
                     label={FIELD_LABELS.metadataMinimizationLevel}
@@ -662,12 +746,7 @@ export function PolicyForm({
                     <h3 id="tier-counts-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
                       Pedidos por nivel: actual → borrador
                     </h3>
-                    <Readout
-                      items={TIERS.map((tier) => ({
-                        label: tier,
-                        value: `${simulationResult.summary.baseline_tier_counts[tier]} → ${simulationResult.summary.simulated_tier_counts[tier]}`,
-                      }))}
-                    />
+                    <Readout items={tierCountItems(simulationResult.summary)} />
                     <p className="m-0 text-[13px] text-ink-3">
                       {`${simulationResult.summary.learned_router_rows} con el router aprendido · ${simulationResult.summary.heuristic_rows} con la heurística`}
                     </p>

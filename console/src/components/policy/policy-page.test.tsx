@@ -285,7 +285,7 @@ describe("policy-page", () => {
       screen.getByText("paridad de ruteo: calibrado (puntaje 0.74) → degradado (puntaje 0.31)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo calibrado apagado"),
+      screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo automático apagado"),
     ).toBeInTheDocument();
     expect(screen.getByRole("group", { name: "frontier" })).toHaveTextContent("0 → 1");
     expect(screen.getByText("0 con el router aprendido · 2 con la heurística")).toBeInTheDocument();

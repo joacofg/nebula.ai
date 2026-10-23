@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { numberText, parsePolicyNumber, validatePolicyForm, type PolicyFormState } from "@/components/policy/policy-validation";
+import {
+  numberText,
+  parsePolicyNumber,
+  policyFormChanged,
+  validatePolicyForm,
+  type PolicyFormField,
+  type PolicyFormState,
+} from "@/components/policy/policy-validation";
 
 const validState: PolicyFormState = {
   routingModeDefault: "auto",
@@ -59,6 +66,24 @@ describe("numberText", () => {
     expect(numberText(undefined)).toBe("");
     expect(numberText(1e-7)).toBe("0.0000001");
     expect(parsePolicyNumber(numberText(1e-7))).toBe(1e-7);
+  });
+});
+
+describe("policyFormChanged", () => {
+  it("compares what the numbers mean, not how they are typed", () => {
+    expect(policyFormChanged(validState, { ...validState })).toBe(false);
+    expect(policyFormChanged({ ...validState, routingQualityTarget: "0.9" }, validState)).toBe(false);
+    expect(policyFormChanged({ ...validState, softBudgetUsd: "10,5" }, { ...validState, softBudgetUsd: "10.5" })).toBe(false);
+    expect(policyFormChanged({ ...validState, rateLimitRequestsPerMinute: " 3 " }, { ...validState, rateLimitRequestsPerMinute: "3" })).toBe(false);
+    expect(policyFormChanged({ ...validState, hardBudgetLimitUsd: "   " }, validState)).toBe(false);
+  });
+
+  it("sees a different number, a typo and any other field", () => {
+    expect(policyFormChanged({ ...validState, routingQualityTarget: "0.91" }, validState)).toBe(true);
+    expect(policyFormChanged({ ...validState, softBudgetUsd: "abc" }, validState)).toBe(true);
+    expect(policyFormChanged({ ...validState, softBudgetUsd: "abc" }, { ...validState, softBudgetUsd: "abd" })).toBe(true);
+    expect(policyFormChanged({ ...validState, fallbackEnabled: false }, validState)).toBe(true);
+    expect(policyFormChanged({ ...validState, allowedPremiumModels: [] }, validState)).toBe(true);
   });
 });
 
@@ -186,6 +211,34 @@ describe("validatePolicyForm", () => {
     const { errors, payload } = validatePolicyForm({ ...validState, allowedPremiumModels: [] });
 
     expect(errors.allowedPremiumModels).toBe("Elegir al menos un modelo premium.");
+    expect(payload).toBeNull();
+  });
+
+  it("does not validate a field the form does not show, and leaves it out of the payload", () => {
+    const hidden = new Set<PolicyFormField>(["routingQualityTarget", "rateLimitRequestsPerMinute", "allowedPremiumModels"]);
+
+    const { errors, payload } = validatePolicyForm(
+      { ...validState, routingQualityTarget: "0.60", rateLimitRequestsPerMinute: "abc", allowedPremiumModels: [] },
+      hidden,
+    );
+
+    expect(errors).toEqual({});
+    expect(payload).not.toBeNull();
+    expect(payload).not.toHaveProperty("routing_quality_target");
+    expect(payload).not.toHaveProperty("rate_limit_requests_per_minute");
+    expect(payload).not.toHaveProperty("allowed_premium_models");
+    expect(payload).toMatchObject({ semantic_cache_max_entry_age_hours: 168, routing_mode_default: "auto" });
+  });
+
+  it("still validates the fields it shows when others are hidden", () => {
+    const hidden = new Set<PolicyFormField>(["routingQualityTarget"]);
+
+    const { errors, payload } = validatePolicyForm(
+      { ...validState, routingQualityTarget: "0.60", rateLimitRequestsPerMinute: "abc" },
+      hidden,
+    );
+
+    expect(Object.keys(errors)).toEqual(["rateLimitRequestsPerMinute"]);
     expect(payload).toBeNull();
   });
 

@@ -39,17 +39,18 @@ const baseSimulationResult: PolicySimulationResponse = {
     evaluated_to: "2026-03-28T00:00:00Z",
     requested_limit: 50,
     changed_sample_limit: 5,
-    returned_rows: 2,
+    returned_rows: 10,
   },
   summary: {
-    evaluated_rows: 2,
+    evaluated_rows: 10,
     changed_routes: 1,
     newly_denied: 1,
     baseline_premium_cost: 0.2,
     simulated_premium_cost: 0.3,
     premium_cost_delta: 0.1,
-    baseline_tier_counts: { local: 5, economy: 3, frontier: 2 },
-    simulated_tier_counts: { local: 4, economy: 3, frontier: 3 },
+    // One row served from the cache in the baseline; the draft denies a local one too.
+    baseline_tier_counts: { local: 5, economy: 3, frontier: 1 },
+    simulated_tier_counts: { local: 4, economy: 3, frontier: 1 },
     learned_router_rows: 7,
     heuristic_rows: 3,
   },
@@ -256,8 +257,45 @@ describe("policy-form", () => {
     expect(preview.getByText(/costo USD 0\.0000 → USD 0\.1000/)).toBeInTheDocument();
     expect(preview.getByRole("group", { name: "Δ costo premium" })).toHaveTextContent("USD 0.1000");
     expect(preview.getByText("paridad de ruteo: calibrado (puntaje 0.61) → degradado (puntaje 0.31)")).toBeInTheDocument();
-    expect(preview.getByText("Comparado contra 2 pedidos recientes. No se guardó nada.")).toBeInTheDocument();
+    expect(preview.getByText("Comparado contra 10 pedidos recientes. No se guardó nada.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Guardar política" })).toBeInTheDocument();
+  });
+
+  it("writes the policy outcome of a changed request in Spanish, never its raw text", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    const row = within(screen.getByText("req-1").closest("li") as HTMLElement);
+    expect(row.getByText(/política ninguna → Solo premium, denegado/)).toBeInTheDocument();
+    expect(row.queryByText(/routing_mode|denied=|Request exceeds/)).not.toBeInTheDocument();
+  });
+
+  it("names only the routing mode and a denial of a policy outcome, and skips a change nobody can read", () => {
+    const row = baseSimulationResult.changed_requests[0];
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        changed_requests: [
+          {
+            ...row,
+            request_id: "req-mode",
+            baseline_policy_outcome: "routing_mode=local_only;fallback=disabled;outcome_evidence=sufficient(route_mode=calibrated)",
+            simulated_policy_outcome: "routing_mode=auto;soft_budget=exceeded",
+          },
+          {
+            ...row,
+            request_id: "req-noise",
+            baseline_policy_outcome: "outcome_evidence=sufficient(route_mode=calibrated)",
+            simulated_policy_outcome: "soft_budget=exceeded;budget_action=downgraded_to_local",
+          },
+        ],
+      },
+    });
+
+    const mode = within(screen.getByText("req-mode").closest("li") as HTMLElement);
+    expect(mode.getByText(/política Solo local → Automático/)).toBeInTheDocument();
+    const noise = within(screen.getByText("req-noise").closest("li") as HTMLElement);
+    expect(noise.queryByText(/(^|· )política /)).not.toBeInTheDocument();
+    expect(screen.queryByText(/outcome_evidence|soft_budget|fallback=disabled/)).not.toBeInTheDocument();
   });
 
   it("writes the route of each changed request with the Spanish route labels, not the codes", () => {
@@ -277,7 +315,39 @@ describe("policy-form", () => {
     expect(preview.getByRole("heading", { name: "Pedidos por nivel: actual → borrador" })).toBeInTheDocument();
     expect(preview.getByRole("group", { name: "local" })).toHaveTextContent("5 → 4");
     expect(preview.getByRole("group", { name: "economy" })).toHaveTextContent("3 → 3");
-    expect(preview.getByRole("group", { name: "frontier" })).toHaveTextContent("2 → 3");
+    expect(preview.getByRole("group", { name: "frontier" })).toHaveTextContent("1 → 1");
+  });
+
+  it("adds a 'Caché o denegado' row so each column of tier counts adds up to the evaluated rows", () => {
+    renderPolicyForm({ simulationResult: baseSimulationResult });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByRole("group", { name: "Caché o denegado" })).toHaveTextContent("1 → 2");
+
+    const evaluated = Number(preview.getByRole("group", { name: "Pedidos evaluados" }).textContent?.match(/\d+$/)?.[0]);
+    expect(evaluated).toBe(10);
+    const columns = [0, 0];
+    for (const name of ["local", "economy", "frontier", "Caché o denegado"]) {
+      const [before, after] = (preview.getByRole("group", { name }).textContent ?? "").match(/\d+/g)?.map(Number) ?? [];
+      columns[0] += before;
+      columns[1] += after;
+    }
+    expect(columns).toEqual([evaluated, evaluated]);
+  });
+
+  it("shows a zero remainder when every row has a tier", () => {
+    renderPolicyForm({
+      simulationResult: {
+        ...baseSimulationResult,
+        summary: {
+          ...baseSimulationResult.summary,
+          baseline_tier_counts: { local: 6, economy: 3, frontier: 1 },
+          simulated_tier_counts: { local: 6, economy: 2, frontier: 2 },
+        },
+      },
+    });
+
+    expect(screen.getByRole("group", { name: "Caché o denegado" })).toHaveTextContent("0 → 0");
   });
 
   it("says how many rows the learned router re-decided and how many the heuristic did", () => {
@@ -617,7 +687,9 @@ describe("policy-form", () => {
 
     expect(screen.getByText(/Este borrador cambiaría 1 pedido de la muestra\./i)).toBeInTheDocument();
     expect(screen.getByText(/req-degraded/i)).toBeInTheDocument();
-    expect(screen.getByText(/política outcome_evidence=sufficient\(route_mode=calibrated\) → outcome_evidence=degraded\(route_mode=unscored reason=missing_route_signals\)/i)).toBeInTheDocument();
+    // Both outcomes carry only evidence notes: nothing a reader could compare, and no raw text.
+    expect(screen.queryByText(/outcome_evidence/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/(^|· )política /)).not.toBeInTheDocument();
     expect(screen.getByText("paridad de ruteo: sin puntaje → sin puntaje")).toBeInTheDocument();
   });
 
@@ -656,7 +728,7 @@ describe("policy-form", () => {
       },
     });
 
-    expect(screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo calibrado apagado")).toBeInTheDocument();
+    expect(screen.getByText("paridad de ruteo: degradado (puntaje 0.28) → ruteo automático apagado")).toBeInTheDocument();
     expect(screen.getByText("paridad de ruteo: sin puntaje (calibrado, puntaje 0.40) → something_new")).toBeInTheDocument();
   });
 
@@ -794,6 +866,75 @@ describe("policy-form", () => {
 
     expect(await screen.findByText("El objetivo de calidad tiene que estar entre 0.75 y 1.00.")).toBeInTheDocument();
     expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it("keeps a stored target finer than a hundredth while the field is not edited", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave, policyOverrides: { routing_quality_target: 0.7544 } });
+
+    expect(screen.getByLabelText("Objetivo de calidad")).toHaveValue("0.75");
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.7544, fallback_enabled: false });
+  });
+
+  it("writes the target the operator types over a finer stored one", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({ onSave, policyOverrides: { routing_quality_target: 0.7544 } });
+
+    await userEvent.clear(screen.getByLabelText("Objetivo de calidad"));
+    await userEvent.type(screen.getByLabelText("Objetivo de calidad"), "0,8");
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.8 });
+  });
+
+  it("does not count retyping a number the same way as a change", async () => {
+    renderPolicyForm({ policyOverrides: { routing_quality_target: 0.9 } });
+
+    const field = screen.getByLabelText("Objetivo de calidad");
+    expect(field).toHaveValue("0.90");
+    await userEvent.clear(field);
+    await userEvent.type(field, "0.9");
+
+    expect(screen.queryByText("Cambios sin guardar")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar política" })).toBeDisabled();
+
+    await userEvent.type(field, "1");
+    expect(screen.getByText("Cambios sin guardar")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Guardar política" })).toBeEnabled();
+  });
+
+  it("says 'Sin límite' in every optional limit that is empty", () => {
+    renderPolicyForm();
+
+    for (const label of [
+      "Límite de pedidos por minuto",
+      "Costo premium máximo por pedido (USD)",
+      "Presupuesto blando (USD)",
+    ]) {
+      expect(screen.getByLabelText(label), label).toHaveAttribute("placeholder", "Sin límite");
+    }
+  });
+
+  it("does not validate a field the runtime does not enforce, and keeps it as it was stored", async () => {
+    const onSave = vi.fn().mockResolvedValue(undefined);
+    renderPolicyForm({
+      onSave,
+      runtimeEnforcedFields: ["routing_mode_default", "fallback_enabled", "allowed_premium_models"],
+      policyOverrides: { routing_quality_target: 0.6 },
+    });
+
+    expect(screen.queryByLabelText("Objetivo de calidad")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+    await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1));
+    expect(onSave.mock.calls[0][0]).toMatchObject({ routing_quality_target: 0.6, fallback_enabled: false });
+    expect(screen.queryByText(/Revisar los campos/)).not.toBeInTheDocument();
   });
 
   it("reads a decimal comma in the quality target", async () => {
@@ -981,6 +1122,22 @@ describe("policy-form", () => {
       expect(onSimulate).not.toHaveBeenCalled();
     });
 
+    it("links the missing-model error to the field that adds one", async () => {
+      renderPolicyForm();
+
+      await userEvent.click(screen.getByRole("button", { name: "Quitar openai/gpt-4o-mini" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      await screen.findByText("Elegir al menos un modelo premium.");
+      const input = screen.getByRole("textbox", { name: "Agregar modelo" });
+      expect(input).toBeInvalid();
+      expect(input).toHaveAccessibleDescription("Elegir al menos un modelo premium.");
+
+      await userEvent.click(screen.getByRole("button", { name: "openai/gpt-4o-mini" }));
+      expect(screen.queryByText("Elegir al menos un modelo premium.")).not.toBeInTheDocument();
+      expect(input).not.toBeInvalid();
+    });
+
     it("blocks simulate without a premium model", async () => {
       const onSimulate = vi.fn().mockResolvedValue(undefined);
       renderPolicyForm({ onSimulate });
@@ -1025,6 +1182,67 @@ describe("policy-form", () => {
 
       expect(await screen.findByText("El gateway devolvió un error (500).")).toBeInTheDocument();
       expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+    });
+
+    it("takes the confirmation away when the draft is discarded", async () => {
+      renderPolicyForm();
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await screen.findByText("Política guardada.");
+      // The harness keeps the stored policy as it was, so the draft is still a change to discard.
+      await userEvent.click(screen.getByRole("button", { name: "Descartar cambios" }));
+
+      expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+      expect(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" })).toBeChecked();
+    });
+
+    it("takes the field errors away when the draft is discarded", async () => {
+      renderPolicyForm();
+
+      await userEvent.clear(screen.getByLabelText("Umbral de similitud"));
+      await userEvent.type(screen.getByLabelText("Umbral de similitud"), "1.2");
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await screen.findByText("El umbral de similitud tiene que estar entre 0 y 1.");
+
+      await userEvent.click(screen.getByRole("button", { name: "Descartar cambios" }));
+
+      expect(screen.queryByText("El umbral de similitud tiene que estar entre 0 y 1.")).not.toBeInTheDocument();
+      expect(screen.queryByText(/Revisar los campos/)).not.toBeInTheDocument();
+      expect(screen.getByLabelText("Umbral de similitud")).toHaveValue("0.9");
+      expect(screen.getByLabelText("Umbral de similitud")).not.toBeInvalid();
+    });
+
+    it("clears a failed save's error when the operator tries again", async () => {
+      const onSave = vi
+        .fn()
+        .mockRejectedValueOnce(new Error("El gateway devolvió un error (500)."))
+        .mockResolvedValue(undefined);
+      renderPolicyForm({ onSave });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await screen.findByText("El gateway devolvió un error (500).");
+
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+
+      expect(await screen.findByText("Política guardada.")).toBeInTheDocument();
+      expect(screen.queryByText("El gateway devolvió un error (500).")).not.toBeInTheDocument();
+    });
+
+    it("clears a failed save's error when the next check finds a field to fix", async () => {
+      const onSave = vi.fn().mockRejectedValue(new Error("El gateway devolvió un error (500)."));
+      renderPolicyForm({ onSave });
+
+      await userEvent.click(screen.getByRole("checkbox", { name: "Fallback a premium si falla el local" }));
+      await userEvent.click(screen.getByRole("button", { name: "Guardar política" }));
+      await screen.findByText("El gateway devolvió un error (500).");
+
+      await userEvent.type(screen.getByLabelText("Límite de pedidos por minuto"), "abc");
+      await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+
+      expect(await screen.findByText("Número inválido.")).toBeInTheDocument();
+      expect(screen.queryByText("El gateway devolvió un error (500).")).not.toBeInTheDocument();
     });
 
     it("stops confirming when a model is added, not only when a field is typed in", async () => {

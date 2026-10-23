@@ -7,9 +7,11 @@ type ModelAllowlistInputProps = {
   knownModels: string[];
   value: string[];
   onChange: (nextValue: string[]) => void;
+  /** The id of the element that says why the list is invalid; it describes the field that adds a model. */
+  errorId?: string;
 };
 
-export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllowlistInputProps) {
+export function ModelAllowlistInput({ knownModels, value, onChange, errorId }: ModelAllowlistInputProps) {
   const [draftModel, setDraftModel] = useState("");
 
   function addModel(model: string) {
@@ -48,6 +50,8 @@ export function ModelAllowlistInput({ knownModels, value, onChange }: ModelAllow
           className="field-input font-mono text-[13px]"
           placeholder="proveedor/modelo"
           aria-label="Agregar modelo"
+          aria-describedby={errorId}
+          aria-invalid={errorId ? true : undefined}
           value={draftModel}
           onChange={(event) => setDraftModel(event.target.value)}
         />

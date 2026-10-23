@@ -19,7 +19,7 @@ const ROUTE_REASONS: Record<string, string> = {
   embeddings_upstream_error: "embeddings: error del proveedor",
   embeddings_empty_result: "embeddings: resultado vacío",
   hard_budget_downgrade: "degradado por presupuesto",
-  calibrated_routing_disabled: "ruteo calibrado apagado",
+  calibrated_routing_disabled: "ruteo automático apagado",
   rate_limited: "límite de pedidos",
   fallback: "fallback",
 };
@@ -190,9 +190,9 @@ export function scoreModeLabel(mode: string | null | undefined) {
   return lookup(SCORE_MODES, mode);
 }
 
-/** A simulation note in Spanish by its code; a code it does not know shows the note's own text. */
+/** A simulation note in Spanish by its code; a code it does not know shows the note's own text, a dash if it has none. */
 export function approximationNoteLabel(code: string | null | undefined, text: string) {
-  return code && Object.hasOwn(APPROXIMATION_NOTES, code) ? APPROXIMATION_NOTES[code] : text;
+  return code && Object.hasOwn(APPROXIMATION_NOTES, code) ? APPROXIMATION_NOTES[code] : text || "—";
 }
 
 /** A dependency's class: critical for serving, optional or metadata only. */

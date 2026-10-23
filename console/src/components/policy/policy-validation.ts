@@ -28,6 +28,27 @@ export type PolicyFormErrors = Partial<Record<PolicyFormField, string>>;
 /** The policy fields the form edits; the capture flags it does not show stay as they were stored. */
 export type TenantPolicyPayload = Omit<TenantPolicy, "prompt_capture_enabled" | "response_capture_enabled">;
 
+// The policy field each form field writes.
+const PAYLOAD_KEYS: Record<PolicyFormField, keyof TenantPolicyPayload> = {
+  routingModeDefault: "routing_mode_default",
+  calibratedRoutingEnabled: "calibrated_routing_enabled",
+  fallbackEnabled: "fallback_enabled",
+  semanticCacheEnabled: "semantic_cache_enabled",
+  semanticCacheSimilarityThreshold: "semantic_cache_similarity_threshold",
+  semanticCacheMaxEntryAgeHours: "semantic_cache_max_entry_age_hours",
+  allowedPremiumModels: "allowed_premium_models",
+  maxPremiumCostPerRequest: "max_premium_cost_per_request",
+  hardBudgetLimitUsd: "hard_budget_limit_usd",
+  hardBudgetEnforcement: "hard_budget_enforcement",
+  softBudgetUsd: "soft_budget_usd",
+  evidenceRetentionWindow: "evidence_retention_window",
+  metadataMinimizationLevel: "metadata_minimization_level",
+  routingQualityTarget: "routing_quality_target",
+  rateLimitRequestsPerMinute: "rate_limit_requests_per_minute",
+};
+
+const NO_FIELDS: ReadonlySet<PolicyFormField> = new Set();
+
 const INVALID_NUMBER = "Número inválido.";
 const NEGATIVE_AMOUNT = "No puede ser negativo.";
 const RATE_LIMIT_RANGE = "El límite tiene que ser un entero entre 1 y 100000 pedidos por minuto.";
@@ -81,14 +102,20 @@ type NumberRule = {
  * The one validation behind Guardar and Simular: either every field is valid and `payload` is the
  * policy to send, or `errors` names each invalid field and `payload` is null.
  */
-export function validatePolicyForm(state: PolicyFormState): {
+export function validatePolicyForm(
+  state: PolicyFormState,
+  hidden: ReadonlySet<PolicyFormField> = NO_FIELDS,
+): {
   errors: PolicyFormErrors;
-  payload: TenantPolicyPayload | null;
+  payload: Partial<TenantPolicyPayload> | null;
 } {
   const errors: PolicyFormErrors = {};
 
-  // Empty is "no limit"; a typo or a value out of the rule is an error.
+  // Empty is "no limit"; a typo or a value out of the rule is an error. A hidden field is not read.
   function optional(field: PolicyFormField, text: string, rule: NumberRule): number | null {
+    if (hidden.has(field)) {
+      return null;
+    }
     const value = parsePolicyNumber(text);
     if (value === "invalid") {
       errors[field] = INVALID_NUMBER;
@@ -111,7 +138,7 @@ export function validatePolicyForm(state: PolicyFormState): {
   // Empty is not "no limit" here: it is as wrong as a value out of the rule.
   function required(field: PolicyFormField, text: string, rule: NumberRule): number {
     const value = optional(field, text, rule);
-    if (value === null && errors[field] === undefined) {
+    if (value === null && errors[field] === undefined && !hidden.has(field)) {
       errors[field] = rule.message;
     }
     return value ?? Number.NaN;
@@ -143,7 +170,7 @@ export function validatePolicyForm(state: PolicyFormState): {
     integer: true,
     message: MAX_AGE_RANGE,
   });
-  if (state.allowedPremiumModels.length === 0) {
+  if (state.allowedPremiumModels.length === 0 && !hidden.has("allowedPremiumModels")) {
     errors.allowedPremiumModels = MODELS_REQUIRED;
   }
 
@@ -151,24 +178,51 @@ export function validatePolicyForm(state: PolicyFormState): {
     return { errors, payload: null };
   }
 
-  return {
-    errors,
-    payload: {
-      routing_mode_default: state.routingModeDefault,
-      calibrated_routing_enabled: state.calibratedRoutingEnabled,
-      fallback_enabled: state.fallbackEnabled,
-      semantic_cache_enabled: state.semanticCacheEnabled,
-      semantic_cache_similarity_threshold: similarityThreshold,
-      semantic_cache_max_entry_age_hours: maxEntryAgeHours,
-      allowed_premium_models: state.allowedPremiumModels,
-      max_premium_cost_per_request: maxPremiumCost,
-      hard_budget_limit_usd: hardBudget,
-      hard_budget_enforcement: hardBudget === null ? null : state.hardBudgetEnforcement,
-      soft_budget_usd: softBudget,
-      evidence_retention_window: state.evidenceRetentionWindow,
-      metadata_minimization_level: state.metadataMinimizationLevel,
-      routing_quality_target: routingQualityTarget,
-      rate_limit_requests_per_minute: rateLimit,
-    },
+  const payload: Partial<TenantPolicyPayload> = {
+    routing_mode_default: state.routingModeDefault,
+    calibrated_routing_enabled: state.calibratedRoutingEnabled,
+    fallback_enabled: state.fallbackEnabled,
+    semantic_cache_enabled: state.semanticCacheEnabled,
+    semantic_cache_similarity_threshold: similarityThreshold,
+    semantic_cache_max_entry_age_hours: maxEntryAgeHours,
+    allowed_premium_models: state.allowedPremiumModels,
+    max_premium_cost_per_request: maxPremiumCost,
+    hard_budget_limit_usd: hardBudget,
+    hard_budget_enforcement: state.hardBudgetLimitUsd.trim() === "" ? null : state.hardBudgetEnforcement,
+    soft_budget_usd: softBudget,
+    evidence_retention_window: state.evidenceRetentionWindow,
+    metadata_minimization_level: state.metadataMinimizationLevel,
+    routing_quality_target: routingQualityTarget,
+    rate_limit_requests_per_minute: rateLimit,
   };
+  // What the form does not show stays as stored: it is not in the payload.
+  for (const field of hidden) {
+    delete payload[PAYLOAD_KEYS[field]];
+  }
+  return { errors, payload };
+}
+
+const NUMBER_FIELDS = [
+  "semanticCacheSimilarityThreshold",
+  "semanticCacheMaxEntryAgeHours",
+  "maxPremiumCostPerRequest",
+  "hardBudgetLimitUsd",
+  "softBudgetUsd",
+  "routingQualityTarget",
+  "rateLimitRequestsPerMinute",
+] as const satisfies readonly PolicyFormField[];
+
+// The form with each number read as a number: "0.9" and "0.90", or "10,5" and "10.5", are one value.
+function comparable(state: PolicyFormState): string {
+  const copy: Record<string, unknown> = { ...state };
+  for (const field of NUMBER_FIELDS) {
+    const value = parsePolicyNumber(state[field]);
+    copy[field] = value === "invalid" ? state[field].trim() : value;
+  }
+  return JSON.stringify(copy);
+}
+
+/** Whether the operator changed anything: retyping a number the same way is not a change. */
+export function policyFormChanged(current: PolicyFormState, saved: PolicyFormState): boolean {
+  return comparable(current) !== comparable(saved);
 }

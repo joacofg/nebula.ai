@@ -273,4 +273,16 @@ describe("approximationNoteLabel", () => {
     expect(approximationNoteLabel(undefined, "Plain note.")).toBe("Plain note.");
     expect(approximationNoteLabel("constructor", "Plain note.")).toBe("Plain note.");
   });
+
+  it("shows a dash, never an empty line, for an unknown code with no text", () => {
+    expect(approximationNoteLabel("something_new", "")).toBe("—");
+    expect(approximationNoteLabel(undefined, "")).toBe("—");
+    expect(approximationNoteLabel("pricing_estimate", "")).toBe("El costo usa los precios actuales; no se llama a ningún proveedor.");
+  });
+});
+
+describe("the reason a tenant's automatic routing is off", () => {
+  it("is named like the Policy checkbox that turns it off", () => {
+    expect(reasonLabel("calibrated_routing_disabled")).toBe("ruteo automático apagado");
+  });
 });
