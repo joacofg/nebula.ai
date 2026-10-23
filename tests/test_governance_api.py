@@ -1908,9 +1908,14 @@ def _ledger_row(
     return UsageLedgerRecord(**{**fields, **overrides})
 
 
+ECONOMY_MODEL = "anthropic/claude-haiku-4.5"
+FRONTIER_MODEL = "openai/gpt-4.1"
+
+
 def test_usage_ledger_tier_filter_follows_the_tier_the_console_shows_for_a_row() -> None:
-    # Same rule as `rowTier` in console/src/components/ledger/ledger-table.tsx: a premium row's
-    # tier is its route signal, every other row's is where it was served.
+    # Same rule as `rowTier` in console/src/components/ledger/ledger-table.tsx: a row that was not
+    # premium is where it was served; a premium row is its route signal when that names a premium
+    # tier, and otherwise the model that answered (economy when it is the signals' economy model).
     with configured_app() as app:
         with TestClient(app) as client:
             store = app.state.container.governance_store
@@ -1927,9 +1932,35 @@ def test_usage_ledger_tier_filter_follows_the_tier_the_console_shows_for_a_row()
             )
             store.record_usage(_ledger_row("premium-economy", {"tier": "economy"}))
             store.record_usage(_ledger_row("premium-frontier", {"tier": "frontier"}))
-            store.record_usage(_ledger_row("premium-local-signal", {"tier": "local"}))
-            store.record_usage(_ledger_row("heuristic-premium", {"complexity_tier": "high"}))
-            store.record_usage(_ledger_row("heuristic-premium-no-signals", None))
+            # Decided local, the local model failed, a premium model answered: the premium row
+            # is the tier that served it, never "local".
+            learned_local = {"tier": "local", "economy_model": ECONOMY_MODEL}
+            store.record_usage(
+                _ledger_row(
+                    "fallback-economy",
+                    learned_local,
+                    response_model=ECONOMY_MODEL,
+                    fallback_used=True,
+                )
+            )
+            store.record_usage(
+                _ledger_row(
+                    "fallback-frontier",
+                    learned_local,
+                    response_model=FRONTIER_MODEL,
+                    fallback_used=True,
+                )
+            )
+            store.record_usage(
+                _ledger_row(
+                    "heuristic-premium",
+                    {"complexity_tier": "high"},
+                    response_model=FRONTIER_MODEL,
+                )
+            )
+            store.record_usage(
+                _ledger_row("heuristic-premium-no-signals", None, response_model=ECONOMY_MODEL)
+            )
             store.record_usage(
                 _ledger_row("cache-economy-signal", {"tier": "economy"}, final_route_target="cache")
             )
@@ -1946,16 +1977,16 @@ def test_usage_ledger_tier_filter_follows_the_tier_the_console_shows_for_a_row()
             economy = matching("economy")
             frontier = matching("frontier")
 
-    assert local == {
-        "heuristic-local",
-        "heuristic-local-signals",
-        "learned-local",
-        "premium-local-signal",
+    assert local == {"heuristic-local", "heuristic-local-signals", "learned-local"}
+    assert economy == {"premium-economy", "fallback-economy"}
+    # Without an economy model in its signals, a premium row cannot be told economy: frontier.
+    assert frontier == {
+        "premium-frontier",
+        "fallback-frontier",
+        "heuristic-premium",
+        "heuristic-premium-no-signals",
     }
-    assert economy == {"premium-economy"}
-    assert frontier == {"premium-frontier"}
-    unlabelled = {"heuristic-premium", "heuristic-premium-no-signals"}
-    assert not unlabelled & (local | economy | frontier)
+    assert not {"cache-economy-signal", "denied-frontier-signal"} & (local | economy | frontier)
 
 
 def test_usage_ledger_tier_filter_treats_strict_minimized_rows_by_the_same_rule() -> None:
@@ -1983,12 +2014,13 @@ def test_usage_ledger_tier_filter_treats_strict_minimized_rows_by_the_same_rule(
             economy = matching("economy")
             frontier = matching("frontier")
 
-    # The strict policy kept the signals out of both rows: where a row was served is all that is left.
+    # The strict policy kept the signals out of both rows: where a row was served is all that is
+    # left, and a premium row with no economy model to compare against reads frontier.
     assert stored["strict-local"].route_signals is None
     assert stored["strict-premium"].route_signals is None
     assert local == {"strict-local"}
     assert economy == set()
-    assert frontier == set()
+    assert frontier == {"strict-premium"}
 
 
 def test_usage_ledger_tier_filter_combines_with_route_target_and_limit() -> None:
@@ -1998,38 +2030,56 @@ def test_usage_ledger_tier_filter_combines_with_route_target_and_limit() -> None
     with configured_app() as app:
         with TestClient(app) as client:
             store = app.state.container.governance_store
-            store.record_usage(_ledger_row("premium-local-1", {"tier": "local"}, timestamp=at(10)))
-            store.record_usage(_ledger_row("premium-local-2", {"tier": "local"}, timestamp=at(11)))
+            # A local decision the frontier model answered after the local model failed.
+            store.record_usage(
+                _ledger_row(
+                    "fallback-frontier",
+                    {"tier": "local", "economy_model": ECONOMY_MODEL},
+                    response_model=FRONTIER_MODEL,
+                    fallback_used=True,
+                    timestamp=at(10),
+                )
+            )
+            store.record_usage(_ledger_row("premium-frontier-1", {"tier": "frontier"}, timestamp=at(11)))
             store.record_usage(
                 _ledger_row("served-local", None, final_route_target="local", timestamp=at(12))
             )
             store.record_usage(_ledger_row("premium-economy", {"tier": "economy"}, timestamp=at(13)))
+            store.record_usage(_ledger_row("premium-frontier-2", {"tier": "frontier"}, timestamp=at(14)))
 
             def ids(query: str) -> list[str]:
                 response = client.get(f"/v1/admin/usage/ledger?{query}", headers=admin_headers())
                 assert response.status_code == 200
                 return [row["request_id"] for row in response.json()]
 
+            frontier_and_premium = ids("tier=frontier&route_target=premium")
             local_and_premium = ids("tier=local&route_target=premium")
             local_and_local = ids("tier=local&route_target=local")
-            local_newest_two = ids("tier=local&limit=2")
+            frontier_newest_two = ids("tier=frontier&limit=2")
             economy_and_local = ids("tier=economy&route_target=local")
 
-    assert local_and_premium == ["premium-local-2", "premium-local-1"]
+    assert frontier_and_premium == ["premium-frontier-2", "premium-frontier-1", "fallback-frontier"]
+    assert local_and_premium == []
     assert local_and_local == ["served-local"]
-    assert local_newest_two == ["served-local", "premium-local-2"]
+    assert frontier_newest_two == ["premium-frontier-2", "premium-frontier-1"]
     assert economy_and_local == []
 
 
-def test_usage_ledger_filters_by_tier_and_never_matches_rows_without_one() -> None:
+def test_usage_ledger_filters_by_tier_and_reads_a_premium_row_without_one_by_its_model() -> None:
     with configured_app() as app:
         with TestClient(app) as client:
             store = app.state.container.governance_store
             store.record_usage(_ledger_row("economy-1", {"tier": "economy"}))
             store.record_usage(_ledger_row("economy-2", {"tier": "economy", "p_local": 0.2}))
-            store.record_usage(_ledger_row("local-1", {"tier": "local"}))
+            store.record_usage(_ledger_row("local-1", {"tier": "local"}, final_route_target="local"))
             store.record_usage(_ledger_row("frontier-1", {"tier": "frontier"}))
-            store.record_usage(_ledger_row("signals-without-tier", {"p_local": 0.9}))
+            store.record_usage(
+                _ledger_row(
+                    "signals-without-tier",
+                    {"p_local": 0.9, "economy_model": ECONOMY_MODEL},
+                    response_model=ECONOMY_MODEL,
+                )
+            )
             store.record_usage(_ledger_row("no-signals", None))
             store.record_usage(
                 _ledger_row("economy-other-tenant", {"tier": "economy"}, tenant_id="team-b")
@@ -2048,11 +2098,16 @@ def test_usage_ledger_filters_by_tier_and_never_matches_rows_without_one() -> No
     assert {row["request_id"] for row in economy.json()} == {
         "economy-1",
         "economy-2",
+        "signals-without-tier",
         "economy-other-tenant",
     }
-    assert {row["request_id"] for row in economy_in_tenant.json()} == {"economy-1", "economy-2"}
+    assert {row["request_id"] for row in economy_in_tenant.json()} == {
+        "economy-1",
+        "economy-2",
+        "signals-without-tier",
+    }
     assert {row["request_id"] for row in local.json()} == {"local-1"}
-    assert {row["request_id"] for row in frontier.json()} == {"frontier-1"}
+    assert {row["request_id"] for row in frontier.json()} == {"frontier-1", "no-signals"}
     assert {row["request_id"] for row in everything.json()} >= {
         "signals-without-tier",
         "no-signals",

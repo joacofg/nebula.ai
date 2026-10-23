@@ -420,18 +420,7 @@ class GovernanceStore:
             if route_target:
                 stmt = stmt.where(UsageLedgerModel.final_route_target == route_target)
             if tier:
-                # The tier of a row is the one the console's "Nivel" column shows (`rowTier` in
-                # console/src/components/ledger/ledger-table.tsx): the route signal for a premium
-                # row, where it was served (local) for any other. Portable JSON access (SQLite
-                # json_extract, Postgres ->>); a premium row whose signals are absent, suppressed
-                # or carry no tier yields NULL and matches none.
-                signal_tier = UsageLedgerModel.route_signals["tier"].as_string()
-                stmt = stmt.where(
-                    or_(
-                        UsageLedgerModel.final_route_target == tier,
-                        and_(UsageLedgerModel.final_route_target == "premium", signal_tier == tier),
-                    )
-                )
+                stmt = stmt.where(self._served_tier_is(tier))
             # Rows are stored as UTC. SQLite drops the zone of a bound datetime, so a bound that
             # carries an offset is converted first; one without a zone is UTC, as everywhere here.
             if from_timestamp:
@@ -444,6 +433,34 @@ class GovernanceStore:
                 )
             rows = session.scalars(stmt.order_by(UsageLedgerModel.timestamp.desc()).limit(limit)).all()
             return [self._usage_from_model(row) for row in rows]
+
+    @staticmethod
+    def _served_tier_is(tier: str):
+        """Rows served at `tier`: the tier the console's "Nivel" column shows for each row.
+
+        Same rule as `rowTier` in console/src/components/ledger/ledger-table.tsx. A row that was
+        not premium is where it was served, so only `final_route_target == "local"` is local. A
+        premium row is its route signal when that names a premium tier; otherwise (a local
+        decision that fell back to premium, a heuristic decision, signals absent or suppressed)
+        it is economy when the model that answered is the signals' `economy_model`, else frontier.
+        Portable JSON access (SQLite json_extract, Postgres ->>): an absent key reads NULL, and
+        every comparison below is guarded so a NULL never drops a premium row from both tiers.
+        """
+        if tier == "local":
+            return UsageLedgerModel.final_route_target == "local"
+        signal_tier = UsageLedgerModel.route_signals["tier"].as_string()
+        economy_model = UsageLedgerModel.route_signals["economy_model"].as_string()
+        no_premium_signal = or_(signal_tier.is_(None), signal_tier.not_in(("economy", "frontier")))
+        served_economy_model = and_(
+            economy_model.is_not(None),
+            UsageLedgerModel.response_model.is_not(None),
+            UsageLedgerModel.response_model == economy_model,
+        )
+        by_model = served_economy_model if tier == "economy" else ~served_economy_model
+        return and_(
+            UsageLedgerModel.final_route_target == "premium",
+            or_(signal_tier == tier, and_(no_premium_signal, by_model)),
+        )
 
     def delete_expired_usage_records(self, *, now: datetime | None = None) -> dict[str, object]:
         cleanup_time = self._normalize_comparable_datetime(now or self._now())

@@ -47,4 +47,39 @@ describe("playground-recorded-outcome", () => {
     expect(screen.getByRole("group", { name: "Caché" })).toHaveTextContent("no");
     expect(screen.getByRole("group", { name: "Costo estimado" })).toHaveTextContent("USD 0.0180");
   });
+
+  it("reads the Nivel of a local decision the economy model answered as economy, not local", () => {
+    renderWithProviders(
+      <PlaygroundRecordedOutcome
+        entry={{
+          request_id: "req-fallback",
+          tenant_id: "default",
+          requested_model: "nebula-auto",
+          final_route_target: "premium",
+          final_provider: "openai-compatible",
+          fallback_used: true,
+          cache_hit: false,
+          response_model: "anthropic/claude-haiku-4.5",
+          prompt_tokens: 21,
+          completion_tokens: 12,
+          total_tokens: 33,
+          estimated_cost: 0.0004,
+          latency_ms: 201,
+          timestamp: "2026-03-16T22:00:00Z",
+          terminal_status: "fallback_completed",
+          route_reason: "local_provider_error_fallback",
+          policy_outcome: "default",
+          route_signals: { tier: "local", learned_router: "v1", economy_model: "anthropic/claude-haiku-4.5" },
+          message_type: "chat",
+          evidence_retention_window: "30d",
+          evidence_expires_at: null,
+          metadata_minimization_level: "standard",
+          metadata_fields_suppressed: [],
+          governance_source: "tenant_policy",
+        }}
+      />,
+    );
+
+    expect(screen.getByRole("group", { name: "Nivel" })).toHaveTextContent(/^Nivel\s*economy$/);
+  });
 });

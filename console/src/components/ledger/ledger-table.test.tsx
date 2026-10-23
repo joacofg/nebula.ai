@@ -85,6 +85,35 @@ describe("ledger-table", () => {
     expect(screen.getAllByRole("row", { current: true })).toHaveLength(1);
   });
 
+  it("shows a premium row without a premium tier signal at the tier of the model that answered", () => {
+    const learnedLocal = { tier: "local", learned_router: "v1", economy_model: "anthropic/claude-haiku-4.5" };
+    const premium = (request_id: string, response_model: string | null, route_signals: Record<string, unknown> | null) => ({
+      ...baseRow,
+      request_id,
+      final_route_target: "premium",
+      response_model,
+      route_signals,
+    });
+    const tiered = [
+      // Decided local, the local model failed, a premium model answered: never "local".
+      { ...premium("req-fallback-economy", "anthropic/claude-haiku-4.5", learnedLocal), fallback_used: true },
+      { ...premium("req-fallback-frontier", "openai/gpt-4.1", learnedLocal), fallback_used: true },
+      // No tier and no economy model to compare against (heuristic, or signals suppressed): frontier.
+      premium("req-heuristic", "anthropic/claude-haiku-4.5", { complexity_tier: "high" }),
+      premium("req-suppressed", "anthropic/claude-haiku-4.5", null),
+      // A premium tier signal is the tier, whatever the model.
+      premium("req-signal", "openai/gpt-4.1", { tier: "economy", economy_model: "anthropic/claude-haiku-4.5" }),
+    ];
+    renderWithProviders(<LedgerTable rows={tiered} selectedRequestId={null} onSelectRow={vi.fn()} isLoading={false} />);
+
+    const nivel = (id: string) => within(screen.getByRole("row", { name: new RegExp(id) })).getAllByRole("cell")[2];
+    expect(nivel("req-fallback-economy")).toHaveTextContent(/^economy$/);
+    expect(nivel("req-fallback-frontier")).toHaveTextContent(/^frontier$/);
+    expect(nivel("req-heuristic")).toHaveTextContent(/^frontier$/);
+    expect(nivel("req-suppressed")).toHaveTextContent(/^frontier$/);
+    expect(nivel("req-signal")).toHaveTextContent(/^economy$/);
+  });
+
   it("titles the Estado cell with the Spanish label, never the gateway's code", () => {
     const statuses = [
       ["fallback_completed", "completado con fallback"],

@@ -21,15 +21,22 @@ type LedgerTableProps = {
 };
 
 /**
- * The level a row was served at: the learned router's tier for premium traffic, the route otherwise.
- * The ledger's `tier` filter applies this same rule (`list_usage_records` in governance_store.py).
+ * The level a row was served at. A row that was not premium is its route (local, cache, denied).
+ * A premium row is its tier signal when that names a premium tier; otherwise (a local decision the
+ * premium fallback answered, a heuristic decision, signals suppressed) it is economy when the model
+ * that answered is the signals' `economy_model`, else frontier. The ledger's `tier` filter applies
+ * this same rule (`_served_tier_is` in src/nebula/services/governance_store.py).
  */
 export function rowTier(row: UsageLedgerRecord) {
+  if (row.final_route_target !== "premium") {
+    return row.final_route_target;
+  }
   const signals = row.route_signals as Record<string, unknown> | null;
-  if (row.final_route_target === "premium" && typeof signals?.tier === "string") {
+  if (signals?.tier === "economy" || signals?.tier === "frontier") {
     return signals.tier;
   }
-  return row.final_route_target;
+  const economyModel = signals?.economy_model;
+  return typeof economyModel === "string" && row.response_model === economyModel ? "economy" : "frontier";
 }
 
 function formatCost(value: number | null) {
