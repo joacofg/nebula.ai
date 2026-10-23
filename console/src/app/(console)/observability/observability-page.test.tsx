@@ -1,7 +1,11 @@
+import type { ReactNode } from "react";
+
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+
+import { SelectedTenantProvider } from "@/lib/selected-tenant";
 
 import ObservabilityPage from "./page";
 
@@ -28,11 +32,15 @@ function renderPage() {
     },
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <ObservabilityPage />
-    </QueryClientProvider>,
-  );
+  function Wrapper({ children }: { children: ReactNode }) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SelectedTenantProvider>{children}</SelectedTenantProvider>
+      </QueryClientProvider>
+    );
+  }
+
+  return render(<ObservabilityPage />, { wrapper: Wrapper });
 }
 
 function expectTextToAppearBefore(container: HTMLElement, first: string, second: string) {
@@ -255,5 +263,80 @@ describe("ObservabilityPage", () => {
     listTenants.mockRejectedValue(new Error("Tenants unavailable."));
     renderPage();
     expect(await screen.findByText("Tenants unavailable.")).toBeInTheDocument();
+  });
+
+  describe("tenant scope", () => {
+    beforeEach(() => {
+      listUsageLedger.mockClear();
+      getTenantRecommendations.mockClear();
+      listTenants.mockResolvedValue([
+        { id: "tenant-alpha", name: "Tenant Alpha" },
+        { id: "tenant-bravo", name: "Tenant Bravo" },
+      ]);
+    });
+
+    function tenantFilter() {
+      return within(screen.getByRole("group", { name: "Filtros del ledger" })).getByLabelText("Tenant");
+    }
+
+    it("starts on the shared tenant and lets the operator pick Todos los tenants", async () => {
+      const user = userEvent.setup();
+      renderPage();
+
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "");
+
+      expect(tenantFilter()).toHaveValue("");
+      await waitFor(() =>
+        expect(listUsageLedger).toHaveBeenLastCalledWith("nebula-admin-key", expect.objectContaining({ tenantId: "" })),
+      );
+      // The default selection does not come back over the operator's choice.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      expect(tenantFilter()).toHaveValue("");
+    });
+
+    it("keeps Todos los tenants when the page renders again", async () => {
+      const user = userEvent.setup();
+      const view = renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "");
+
+      view.rerender(<ObservabilityPage />);
+
+      expect(tenantFilter()).toHaveValue("");
+    });
+
+    it("shares the tenant picked here with the other pages, and starts on the one picked there", async () => {
+      const user = userEvent.setup();
+      const view = renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await user.selectOptions(tenantFilter(), "tenant-bravo");
+
+      view.rerender(<div />);
+      view.rerender(<ObservabilityPage />);
+
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-bravo"));
+      await waitFor(() =>
+        expect(getTenantRecommendations).toHaveBeenLastCalledWith("nebula-admin-key", "tenant-bravo"),
+      );
+    });
+
+    it("does not read the ledger of every tenant while the tenant list loads", async () => {
+      renderPage();
+      await waitFor(() => expect(tenantFilter()).toHaveValue("tenant-alpha"));
+      await screen.findByRole("table", { name: "Ledger de pedidos" });
+      for (const call of listUsageLedger.mock.calls) {
+        expect(call[1]).toEqual(expect.objectContaining({ tenantId: "tenant-alpha" }));
+      }
+    });
+
+    it("asks for no tenant context and shows the empty ledger when there are no tenants", async () => {
+      listTenants.mockResolvedValue([]);
+      listUsageLedger.mockResolvedValue([]);
+      renderPage();
+
+      await waitFor(() => expect(screen.getByText("No hay pedidos en este rango.")).toBeInTheDocument());
+      expect(getTenantRecommendations).not.toHaveBeenCalled();
+    });
   });
 });

@@ -1,17 +1,22 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 
 import type { TenantInput, TenantRecord } from "@/lib/admin-api";
 import { ErrorAlert } from "@/components/system/state";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
-
-type TenantEditorDrawerProps = {
-  mode: "create" | "edit";
-  tenant: TenantRecord | null;
+type TenantEditorDrawerProps = (
+  | { mode: "create"; tenant: null }
+  | { mode: "edit"; tenant: TenantRecord }
+) & {
   isSaving: boolean;
+  /** What just happened to the tenant, shown as a status line. */
+  notice?: string | null;
+  /** Each increase moves focus to the first field; 0 leaves it alone. */
+  focusRequest?: number;
   onClose: () => void;
   onSubmit: (payload: TenantInput) => Promise<void>;
 };
@@ -49,22 +54,33 @@ export function TenantEditorDrawer({
   mode,
   tenant,
   isSaving,
+  notice = null,
+  focusRequest = 0,
   onClose,
   onSubmit,
 }: TenantEditorDrawerProps) {
   const [formState, setFormState] = useState<FormState>(toFormState(tenant));
   const [error, setError] = useState<string | null>(null);
+  const firstFieldRef = useRef<HTMLInputElement>(null);
   const isEditMode = mode === "edit";
 
-  useEffect(() => {
+  // The form follows which tenant is open, not each fresh copy of its record: a background refetch
+  // must not discard what the operator is typing.
+  const openKey = `${mode}:${tenant?.id ?? ""}`;
+  const [shownKey, setShownKey] = useState(openKey);
+  if (shownKey !== openKey) {
+    setShownKey(openKey);
     setFormState(toFormState(tenant));
     setError(null);
-  }, [mode, tenant]);
+  }
 
-  const heading = useMemo(
-    () => (isEditMode ? `Editar ${tenant?.name ?? "tenant"}` : "Nuevo tenant"),
-    [isEditMode, tenant?.name],
-  );
+  useEffect(() => {
+    if (focusRequest > 0) {
+      firstFieldRef.current?.focus();
+    }
+  }, [focusRequest]);
+
+  const heading = tenant ? `Editar ${tenant.name}` : "Nuevo tenant";
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -107,6 +123,11 @@ export function TenantEditorDrawer({
       </div>
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
+        {notice ? (
+          <Alert variant="success" role="status">
+            <AlertDescription>{notice}</AlertDescription>
+          </Alert>
+        ) : null}
         {error ? <ErrorAlert error={error} fallback="No se pudo guardar el tenant." /> : null}
 
         <div>
@@ -115,6 +136,7 @@ export function TenantEditorDrawer({
           </label>
           <input
             id="tenant-id"
+            ref={firstFieldRef}
             className="field-input font-mono text-[13px] read-only:bg-canvas read-only:text-ink-2"
             value={formState.id}
             readOnly={isEditMode}

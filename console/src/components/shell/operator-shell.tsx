@@ -6,11 +6,10 @@ import type { ReactNode } from "react";
 import { useState } from "react";
 import { Activity, ChartLine, FlaskConical, KeyRound, LogOut, Menu, Orbit, ShieldEllipsis } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "cn";
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
-import { useAdminSession } from "@/lib/admin-session-provider";
 
 type NavItem = { href: string; label: string; icon: LucideIcon };
 
@@ -90,16 +89,15 @@ function SessionFooter({ onSignOut }: { onSignOut: () => void }) {
   );
 }
 
-export function OperatorShell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const { signOut } = useAdminSession();
-  const [menuOpen, setMenuOpen] = useState(false);
+type OperatorShellProps = {
+  children: ReactNode;
+  /** Ends the session; the layout that owns it decides where the operator lands. */
+  onSignOut: () => void;
+};
 
-  function handleSignOut() {
-    signOut();
-    router.push("/?reason=signed_out");
-  }
+export function OperatorShell({ children, onSignOut }: OperatorShellProps) {
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
 
   return (
     <div className="grid min-h-screen bg-surface lg:grid-cols-[216px_minmax(0,1fr)]">
@@ -107,7 +105,7 @@ export function OperatorShell({ children }: { children: ReactNode }) {
         <div className="sticky top-0 flex h-screen flex-col">
           <Brand />
           <NavLinks pathname={pathname} />
-          <SessionFooter onSignOut={handleSignOut} />
+          <SessionFooter onSignOut={onSignOut} />
         </div>
       </aside>
 
@@ -126,7 +124,7 @@ export function OperatorShell({ children }: { children: ReactNode }) {
               <SheetDescription className="sr-only">Navegación de la consola</SheetDescription>
               <Brand />
               <NavLinks pathname={pathname} onNavigate={() => setMenuOpen(false)} />
-              <SessionFooter onSignOut={handleSignOut} />
+              <SessionFooter onSignOut={onSignOut} />
             </SheetContent>
           </Sheet>
         </div>

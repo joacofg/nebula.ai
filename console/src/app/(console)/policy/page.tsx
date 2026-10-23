@@ -20,11 +20,11 @@ import Link from "next/link";
 import { EmptyState, ErrorAlert, errorMessage, LoadingRows } from "@/components/system/state";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
+import { useSelectedTenant } from "@/lib/selected-tenant";
 
 export default function PolicyPage() {
   const queryClient = useQueryClient();
   const { adminKey } = useAdminSession();
-  const [selectedTenantId, setSelectedTenantId] = useState<string>("");
   const [latestSimulation, setLatestSimulation] = useState<PolicySimulationResponse | null>(null);
 
   const tenantsQuery = useQuery({
@@ -33,11 +33,8 @@ export default function PolicyPage() {
     enabled: Boolean(adminKey),
   });
 
-  useEffect(() => {
-    if (!selectedTenantId && tenantsQuery.data?.length) {
-      setSelectedTenantId(tenantsQuery.data[0].id);
-    }
-  }, [selectedTenantId, tenantsQuery.data]);
+  const { tenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const selectedTenantId = tenantId ?? "";
 
   useEffect(() => {
     setLatestSimulation(null);
@@ -90,7 +87,7 @@ export default function PolicyPage() {
       aria-label="Tenant"
       className="h-9 min-w-56 rounded-[2px] border border-line bg-surface px-2 text-[15px] font-semibold text-ink"
       value={selectedTenantId}
-      onChange={(event) => setSelectedTenantId(event.target.value)}
+      onChange={(event) => setTenantId(event.target.value)}
     >
       {tenantsQuery.data?.map((tenant) => (
         <option key={tenant.id} value={tenant.id}>

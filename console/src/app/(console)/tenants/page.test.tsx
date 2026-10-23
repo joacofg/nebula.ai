@@ -1,5 +1,5 @@
 import userEvent from "@testing-library/user-event";
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/admin-session-provider", async (importOriginal) => {
@@ -25,6 +25,17 @@ import { renderWithProviders } from "@/test/render";
 const mockedUseAdminSession = vi.mocked(useAdminSession);
 const mockedListTenants = vi.mocked(listTenants);
 
+const TENANT_A = {
+  id: "tenant-a",
+  name: "Tenant A",
+  description: "Primary tenant",
+  metadata: {},
+  active: true,
+  created_at: "2026-03-16T12:00:00Z",
+  updated_at: "2026-03-16T12:00:00Z",
+};
+const TENANT_B = { ...TENANT_A, id: "tenant-b", name: "Tenant B", description: "Second tenant" };
+
 beforeEach(() => {
   mockedUseAdminSession.mockReturnValue({
     adminKey: "admin-key",
@@ -35,17 +46,7 @@ beforeEach(() => {
     clearSession: vi.fn(),
   });
 
-  mockedListTenants.mockResolvedValue([
-    {
-      id: "tenant-a",
-      name: "Tenant A",
-      description: "Primary tenant",
-      metadata: {},
-      active: true,
-      created_at: "2026-03-16T12:00:00Z",
-      updated_at: "2026-03-16T12:00:00Z",
-    },
-  ]);
+  mockedListTenants.mockResolvedValue([TENANT_A]);
 });
 
 describe("tenants page", () => {
@@ -95,4 +96,94 @@ describe("tenants page", () => {
     expect(screen.queryByRole("table", { name: "Tenants" })).not.toBeInTheDocument();
   });
 
+  it("opens the first tenant for editing and closes the drawer with Cerrar", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TenantsPage />);
+
+    expect(await screen.findByRole("heading", { name: "Editar Tenant A" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.queryByRole("heading", { name: /Editar|Nuevo tenant/ })).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Id")).not.toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Tenants" })).toBeInTheDocument();
+  });
+
+  it("closes a drawer opened to create a tenant without leaving an empty editor behind", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.click(screen.getByRole("button", { name: "Crear tenant" }));
+    expect(screen.getByRole("heading", { name: "Nuevo tenant" })).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    expect(screen.queryByRole("heading", { name: /Editar|Nuevo tenant/ })).not.toBeInTheDocument();
+    expect(screen.queryByText("Editar tenant")).not.toBeInTheDocument();
+  });
+
+  it("opens a tenant again from the table after closing the drawer", async () => {
+    const user = userEvent.setup();
+    mockedListTenants.mockResolvedValue([TENANT_A, TENANT_B]);
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+
+    await user.click(screen.getByRole("row", { name: /Tenant B/ }));
+
+    expect(screen.getByRole("heading", { name: "Editar Tenant B" })).toBeInTheDocument();
+    expect(screen.getByRole("row", { name: /Tenant B/ })).toHaveAttribute("aria-selected", "true");
+    expect(screen.getByRole("row", { name: /Tenant A/ })).toHaveAttribute("aria-selected", "false");
+  });
+
+  it("moves focus to the first field when Crear tenant is pressed, also after closing", async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.click(screen.getByRole("button", { name: "Crear tenant" }));
+    expect(screen.getByLabelText("Id")).toHaveFocus();
+
+    await user.click(screen.getByRole("button", { name: "Cerrar" }));
+    await user.click(screen.getByRole("button", { name: "Crear tenant" }));
+    expect(screen.getByLabelText("Id")).toHaveFocus();
+
+    await user.click(screen.getByLabelText("Nombre"));
+    await user.click(screen.getAllByRole("button", { name: "Crear tenant" })[0]);
+    expect(screen.getByLabelText("Id")).toHaveFocus();
+  });
+
+  it("confirms the new tenant and opens it for editing", async () => {
+    const user = userEvent.setup();
+    vi.mocked(createTenant).mockImplementation(async () => {
+      mockedListTenants.mockResolvedValue([TENANT_A, TENANT_B]);
+      return TENANT_B;
+    });
+    renderWithProviders(<TenantsPage />);
+    await screen.findByRole("heading", { name: "Editar Tenant A" });
+
+    await user.click(screen.getByRole("button", { name: "Crear tenant" }));
+    await user.type(screen.getByLabelText("Id"), "tenant-b");
+    await user.type(screen.getByLabelText("Nombre"), "Tenant B");
+    await user.click(screen.getAllByRole("button", { name: "Crear tenant" })[1]);
+
+    expect(await screen.findByRole("status")).toHaveTextContent("Tenant creado.");
+    expect(screen.getByRole("heading", { name: "Editar Tenant B" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Id")).toHaveValue("tenant-b");
+    expect(screen.getByLabelText("Id")).toHaveAttribute("readonly");
+    expect(screen.getByRole("button", { name: "Guardar tenant" })).toBeInTheDocument();
+    expect(await screen.findByRole("row", { name: /Tenant B/ })).toHaveAttribute("aria-selected", "true");
+
+    // The confirmation belongs to that save: picking another tenant clears it.
+    await user.click(within(screen.getByRole("table", { name: "Tenants" })).getByRole("row", { name: /Tenant A/ }));
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+  });
+
+  it("shows no drawer while the tenants load, and a new-tenant form when there are none", async () => {
+    mockedListTenants.mockResolvedValue([]);
+    renderWithProviders(<TenantsPage />);
+
+    expect(screen.queryByLabelText("Id")).not.toBeInTheDocument();
+    expect(await screen.findByText("Todavía no hay tenants.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Nuevo tenant" })).toBeInTheDocument();
+  });
 });

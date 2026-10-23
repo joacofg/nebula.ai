@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render } from "@testing-library/react";
 
 import { AdminSessionProvider } from "@/lib/admin-session-provider";
+import { SelectedTenantProvider } from "@/lib/selected-tenant";
 
 type WrapperProps = {
   children: ReactNode;
@@ -25,7 +26,9 @@ export function renderWithProviders(ui: ReactElement, options: RenderOptions = {
   function Wrapper({ children }: WrapperProps) {
     return (
       <QueryClientProvider client={queryClient}>
-        <AdminSessionProvider initialAdminKey={options.adminKey ?? null}>{children}</AdminSessionProvider>
+        <AdminSessionProvider initialAdminKey={options.adminKey ?? null}>
+          <SelectedTenantProvider>{children}</SelectedTenantProvider>
+        </AdminSessionProvider>
       </QueryClientProvider>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
@@ -22,11 +22,11 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
+import { useSelectedTenant } from "@/lib/selected-tenant";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PlaygroundPage() {
   const { adminKey } = useAdminSession();
-  const [selectedTenantId, setSelectedTenantId] = useState("");
   const [model, setModel] = useState("nebula-auto");
   const [prompt, setPrompt] = useState("");
 
@@ -36,11 +36,8 @@ export default function PlaygroundPage() {
     enabled: Boolean(adminKey),
   });
 
-  useEffect(() => {
-    if (!selectedTenantId && tenantsQuery.data?.length) {
-      setSelectedTenantId(tenantsQuery.data[0].id);
-    }
-  }, [selectedTenantId, tenantsQuery.data]);
+  const { tenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const selectedTenantId = tenantId ?? "";
 
   const mutation = useMutation({
     mutationFn: async (payload: PlaygroundInput) => {
@@ -92,7 +89,7 @@ export default function PlaygroundPage() {
               disabled={sessionMissing || mutation.isPending || (tenantsQuery.data ?? []).length === 0}
               isSubmitting={mutation.isPending}
               sessionMissing={sessionMissing}
-              onSelectedTenantIdChange={setSelectedTenantId}
+              onSelectedTenantIdChange={setTenantId}
               onModelChange={setModel}
               onPromptChange={setPrompt}
               onSubmit={async () => {

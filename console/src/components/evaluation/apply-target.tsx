@@ -1,11 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { getTenantPolicy, listTenants, updateTenantPolicy } from "@/lib/admin-api";
 import { queryKeys } from "@/lib/query-keys";
+import { useSelectedTenant } from "@/lib/selected-tenant";
 import { formatTarget } from "@/lib/quality-target";
 import { ErrorAlert, errorMessage } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
@@ -18,7 +17,6 @@ type ApplyTargetProps = {
 
 export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
   const queryClient = useQueryClient();
-  const [tenantId, setTenantId] = useState("");
 
   const tenantsQuery = useQuery({
     queryKey: queryKeys.tenants,
@@ -26,11 +24,8 @@ export function ApplyTarget({ adminKey, target }: ApplyTargetProps) {
     enabled: Boolean(adminKey),
   });
 
-  useEffect(() => {
-    if (!tenantId && tenantsQuery.data?.length) {
-      setTenantId(tenantsQuery.data[0].id);
-    }
-  }, [tenantId, tenantsQuery.data]);
+  const { tenantId: selectedTenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
+  const tenantId = selectedTenantId ?? "";
 
   const mutation = useMutation({
     mutationFn: async ({ id, value }: { id: string; value: number }) => {

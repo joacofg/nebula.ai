@@ -21,11 +21,13 @@ import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { formatUsd } from "@/lib/format";
 import { queryKeys } from "@/lib/query-keys";
+import { useSelectedTenant } from "@/lib/selected-tenant";
 import { ErrorAlert } from "@/components/system/state";
 
 export default function ObservabilityPage() {
   const { adminKey } = useAdminSession();
-  const [tenantId, setTenantId] = useState("");
+  // null follows the shared tenant; "" is the "Todos los tenants" filter, which only this page knows.
+  const [tenantFilter, setTenantFilter] = useState<string | null>(null);
   const [routeTarget, setRouteTarget] = useState("");
   const [terminalStatus, setTerminalStatus] = useState("");
   const [fromTimestamp, setFromTimestamp] = useState("");
@@ -38,11 +40,17 @@ export default function ObservabilityPage() {
     enabled: Boolean(adminKey),
   });
 
-  useEffect(() => {
-    if (!tenantId && tenantsQuery.data?.length) {
-      setTenantId(tenantsQuery.data[0].id);
+  const { tenantId: sharedTenantId, setTenantId: setSharedTenantId } = useSelectedTenant(tenantsQuery.data);
+  const tenantId = tenantFilter ?? sharedTenantId ?? "";
+
+  function handleTenantChange(nextTenantId: string) {
+    if (nextTenantId === "") {
+      setTenantFilter("");
+      return;
     }
-  }, [tenantId, tenantsQuery.data]);
+    setTenantFilter(null);
+    setSharedTenantId(nextTenantId);
+  }
 
   const ledgerFilters = {
     tenantId,
@@ -55,7 +63,9 @@ export default function ObservabilityPage() {
   const ledgerQuery = useQuery({
     queryKey: queryKeys.usageLedger(ledgerFilters),
     queryFn: () => listUsageLedger(adminKey ?? "", ledgerFilters),
-    enabled: Boolean(adminKey),
+    // Until the tenant list settles the default tenant is unknown, and reading every tenant's ledger
+    // meanwhile would flash rows the page is not going to show.
+    enabled: Boolean(adminKey) && (tenantFilter !== null || !tenantsQuery.isPending),
   });
   const runtimeHealthQuery = useQuery({
     queryKey: queryKeys.runtimeHealth,
@@ -128,7 +138,7 @@ export default function ObservabilityPage() {
         terminalStatus={terminalStatus}
         fromTimestamp={fromTimestamp}
         toTimestamp={toTimestamp}
-        onTenantIdChange={setTenantId}
+        onTenantIdChange={handleTenantChange}
         onRouteTargetChange={setRouteTarget}
         onTerminalStatusChange={setTerminalStatus}
         onFromTimestampChange={setFromTimestamp}
