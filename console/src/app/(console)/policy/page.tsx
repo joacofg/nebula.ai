@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -28,7 +28,6 @@ const SIMULATION_WINDOW = 50;
 export default function PolicyPage() {
   const queryClient = useQueryClient();
   const { adminKey } = useAdminSession();
-  const [latestSimulation, setLatestSimulation] = useState<PolicySimulationResponse | null>(null);
 
   const tenantsQuery = useQuery({
     queryKey: queryKeys.tenants,
@@ -39,9 +38,30 @@ export default function PolicyPage() {
   const { tenantId, setTenantId } = useSelectedTenant(tenantsQuery.data);
   const selectedTenantId = tenantId ?? "";
 
+  const simulationMutation = useMutation({
+    mutationFn: async ({ tenantId: simulatedTenantId, policy }: { tenantId: string; policy: TenantPolicy }) => {
+      if (!adminKey) {
+        throw new Error("Falta la sesión de admin.");
+      }
+      // Every changed row of the window comes back (the gateway returns at most 50 changed rows),
+      // so the preview's headline counts all of them; the preview lists the first few.
+      return simulateTenantPolicy(adminKey, simulatedTenantId, {
+        candidate_policy: policy,
+        limit: SIMULATION_WINDOW,
+        changed_sample_limit: SIMULATION_WINDOW,
+      });
+    },
+  });
+  // A simulation belongs to the tenant it ran for. Switching tenant drops it (once reset, an answer
+  // still on its way never reaches this page); until the reset lands, nothing of another tenant's
+  // simulation (running, failed or answered) shows.
+  const resetSimulation = simulationMutation.reset;
   useEffect(() => {
-    setLatestSimulation(null);
-  }, [selectedTenantId]);
+    resetSimulation();
+  }, [selectedTenantId, resetSimulation]);
+  const simulationIsCurrent = simulationMutation.variables?.tenantId === selectedTenantId;
+  const simulationResult: PolicySimulationResponse | null =
+    simulationIsCurrent && simulationMutation.data?.tenant_id === selectedTenantId ? simulationMutation.data : null;
 
   const policyQuery = useQuery({
     queryKey: queryKeys.tenantPolicy(selectedTenantId || "unselected"),
@@ -63,26 +83,9 @@ export default function PolicyPage() {
       return updateTenantPolicy(adminKey, selectedTenantId, payload);
     },
     onSuccess: async () => {
-      setLatestSimulation(null);
+      // The preview compared the draft that is now saved: it no longer describes a change.
+      resetSimulation();
       await queryClient.invalidateQueries({ queryKey: queryKeys.tenantPolicy(selectedTenantId) });
-    },
-  });
-
-  const simulationMutation = useMutation({
-    mutationFn: async (payload: TenantPolicy) => {
-      if (!adminKey) {
-        throw new Error("Falta la sesión de admin.");
-      }
-      // Every changed row of the window comes back (the gateway returns at most 50 changed rows),
-      // so the preview's headline counts all of them; the preview lists the first few.
-      return simulateTenantPolicy(adminKey, selectedTenantId, {
-        candidate_policy: payload,
-        limit: SIMULATION_WINDOW,
-        changed_sample_limit: SIMULATION_WINDOW,
-      });
-    },
-    onSuccess: (result) => {
-      setLatestSimulation(result);
     },
   });
 
@@ -164,15 +167,15 @@ export default function PolicyPage() {
         initialPolicy={policyQuery.data}
         options={optionsQuery.data}
         isSaving={saveMutation.isPending}
-        isSimulating={simulationMutation.isPending}
-        simulationResult={latestSimulation}
+        isSimulating={simulationIsCurrent && simulationMutation.isPending}
+        simulationResult={simulationResult}
         simulationError={
-          simulationMutation.isError
+          simulationIsCurrent && simulationMutation.isError
             ? errorMessage(simulationMutation.error, "No se pudo simular el borrador.")
             : null
         }
         onSimulate={async (payload) => {
-          await simulationMutation.mutateAsync(payload);
+          await simulationMutation.mutateAsync({ tenantId: selectedTenantId, policy: payload });
         }}
         onSave={async (payload) => {
           await saveMutation.mutateAsync(payload);

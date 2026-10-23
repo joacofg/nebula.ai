@@ -83,6 +83,8 @@ const APPROXIMATION_NOTES: Record<string, string> = {
   pricing_estimate: "El costo usa los precios actuales; no se llama a ningún proveedor.",
   heuristic_fallback_rows:
     "Los pedidos sin probabilidades guardadas, o que el borrador saca del router aprendido, usan la heurística.",
+  cache_rows_held:
+    "Los pedidos que respondió la caché siguen en caché: se asume que la respuesta guardada sirve al nivel que elegiría el borrador.",
 };
 
 // How a dependency matters to serving (`dependency_class`) and what its failure does (`serving_effect`).

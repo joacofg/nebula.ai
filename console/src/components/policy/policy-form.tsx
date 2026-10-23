@@ -208,21 +208,20 @@ function renderChangedRequestParity(change: PolicySimulationChangedRequest) {
 
 /**
  * Rows per tier, actual → draft. A row served from the cache or denied has no tier, so the last
- * row holds the rest and each column adds up to the evaluated rows.
+ * row holds the rest and each column adds up to the evaluated rows. Null when the gateway sent no
+ * counts (an older gateway): the preview then shows none rather than made-up zeros.
  */
-function tierCountItems(summary: PolicySimulationOutcomeCounts): ReadoutItem[] {
+function tierCountItems(summary: PolicySimulationOutcomeCounts): ReadoutItem[] | null {
+  const { baseline_tier_counts: baseline, simulated_tier_counts: simulated } = summary;
+  if (!baseline || !simulated) {
+    return null;
+  }
   const untiered = (counts: TierCounts) =>
     summary.evaluated_rows - TIERS.reduce((total, tier) => total + counts[tier], 0);
 
   return [
-    ...TIERS.map((tier) => ({
-      label: tier,
-      value: `${summary.baseline_tier_counts[tier]} → ${summary.simulated_tier_counts[tier]}`,
-    })),
-    {
-      label: "Caché o denegado",
-      value: `${untiered(summary.baseline_tier_counts)} → ${untiered(summary.simulated_tier_counts)}`,
-    },
+    ...TIERS.map((tier) => ({ label: tier, value: `${baseline[tier]} → ${simulated[tier]}` })),
+    { label: "Caché o denegado", value: `${untiered(baseline)} → ${untiered(simulated)}` },
   ];
 }
 
@@ -332,6 +331,7 @@ export function PolicyForm({
   const shown = (field: PolicyFormField) => !hiddenFields.has(field);
   const hardBudgetConfigured = formState.hardBudgetLimitUsd.trim().length > 0;
   const previewDecision = simulationResult ? getDecisionSummary(simulationResult) : null;
+  const tierCounts = simulationResult ? tierCountItems(simulationResult.summary) : null;
   const invalidFields = (Object.keys(FIELD_LABELS) as PolicyFormField[]).filter((field) => fieldErrors[field]);
 
   // The one check behind Guardar and Simular: the policy to send, or null with the errors shown.
@@ -743,16 +743,17 @@ export function PolicyForm({
                   ]}
                 />
                 {simulationResult.summary.evaluated_rows > 0 ? (
-                  <section aria-labelledby="tier-counts-heading" className="flex flex-col gap-2">
-                    <h3 id="tier-counts-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
-                      Pedidos por nivel: actual → borrador
-                    </h3>
-                    <Readout items={tierCountItems(simulationResult.summary)} />
-                    <p className="m-0 text-[13px] text-ink-3">
-                      {`${simulationResult.summary.learned_router_rows} con el router aprendido · ${simulationResult.summary.heuristic_rows} con la heurística`}
-                      {simulationResult.summary.cache_rows ? ` · ${simulationResult.summary.cache_rows} siguen en caché` : ""}
-                    </p>
-                  </section>
+                  tierCounts ? (
+                    <section aria-labelledby="tier-counts-heading" className="flex flex-col gap-2">
+                      <h3 id="tier-counts-heading" className="m-0 font-label text-[13px] font-semibold text-ink-2">
+                        Pedidos por nivel: actual → borrador
+                      </h3>
+                      <Readout items={tierCounts} />
+                      <DecisionSources summary={simulationResult.summary} />
+                    </section>
+                  ) : (
+                    <DecisionSources summary={simulationResult.summary} />
+                  )
                 ) : null}
                 <p className="m-0 text-[13px] text-ink-3">
                   {`Comparado contra ${simulationResult.window.returned_rows} pedidos recientes. No se guardó nada.`}
@@ -799,8 +800,8 @@ export function PolicyForm({
                     <div className="font-semibold text-ink-2">Notas de la simulación</div>
                     <ul className="mt-1 list-disc pl-5">
                       {simulationResult.approximation_notes.map((note, index) => (
-                        <li key={simulationResult.approximation_note_codes[index] ?? note}>
-                          {approximationNoteLabel(simulationResult.approximation_note_codes[index], note)}
+                        <li key={simulationResult.approximation_note_codes?.[index] ?? note}>
+                          {approximationNoteLabel(simulationResult.approximation_note_codes?.[index], note)}
                         </li>
                       ))}
                     </ul>
@@ -812,6 +813,16 @@ export function PolicyForm({
         </aside>
       </div>
     </form>
+  );
+}
+
+/** Which router re-decided the rows, and how many the cache keeps: "37 con el router aprendido · …". */
+function DecisionSources({ summary }: { summary: PolicySimulationOutcomeCounts }) {
+  return (
+    <p className="m-0 text-[13px] text-ink-3">
+      {`${summary.learned_router_rows} con el router aprendido · ${summary.heuristic_rows} con la heurística`}
+      {summary.cache_rows ? ` · ${summary.cache_rows} siguen en caché` : ""}
+    </p>
   );
 }
 

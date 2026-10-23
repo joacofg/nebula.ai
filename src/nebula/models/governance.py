@@ -252,9 +252,10 @@ class PolicySimulationChangedRequest(BaseModel):
 class PolicySimulationResponse(BaseModel):
     tenant_id: str
     candidate_policy: TenantPolicy
-    approximation_notes: list[str] = Field(default_factory=list, max_length=4)
+    # At most the five notes policy_simulation_service.py can add.
+    approximation_notes: list[str] = Field(default_factory=list, max_length=5)
     # One stable code per note, in the same order, for clients that word the notes themselves.
-    approximation_note_codes: list[str] = Field(default_factory=list, max_length=4)
+    approximation_note_codes: list[str] = Field(default_factory=list, max_length=5)
     window: PolicySimulationWindow
     summary: PolicySimulationOutcomeCounts
     calibration_summary: CalibrationEvidenceSummary

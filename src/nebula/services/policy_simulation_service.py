@@ -43,6 +43,11 @@ HEURISTIC_FALLBACK_NOTE = (
     "candidate policy keeps off the learned router, are replayed with the token-complexity "
     "heuristic.",
 )
+CACHE_ROWS_HELD_NOTE = (
+    "cache_rows_held",
+    "Rows the cache answered stay cache hits: the replay assumes the stored answer still serves "
+    "the tier the candidate policy would choose.",
+)
 
 
 @dataclass(slots=True, frozen=True)
@@ -63,7 +68,9 @@ class PolicySimulationService:
     token-count and keyword-match route signals from the original decision are reused when present;
     otherwise a synthetic prompt based on token volume is used to approximate complexity routing.
     A row the cache answered stays a cache hit while the candidate keeps the cache on (the replay
-    cannot know the cache would miss); with the cache off it is re-decided like any other row.
+    cannot know whether the candidate's tier would find the stored answer, so it assumes it would);
+    with the cache off it is re-decided like any other row. Embeddings and rate-limited rows are
+    left out: neither is a chat request the router decided.
     No provider execution, policy writes, or usage writes occur during simulation.
     """
 
@@ -91,8 +98,13 @@ class PolicySimulationService:
             limit=payload.limit,
         )
         # Store returns newest first; replay oldest-first for deterministic windows and sampling.
-        # Rate-limited rows never ran, so replaying them would invent traffic.
-        records = [r for r in reversed(records) if r.terminal_status != "rate_limited"]
+        # Rate-limited rows never ran, so replaying them would invent traffic; an embeddings row
+        # has no chat route to re-decide. Neither is in the window or its counts.
+        records = [
+            r
+            for r in reversed(records)
+            if r.terminal_status != "rate_limited" and r.message_type != "embeddings"
+        ]
 
         replay_inputs = [self._build_replay_input(record) for record in records]
         calibration_summary = self.governance_store.summarize_calibration_evidence(
@@ -124,9 +136,10 @@ class PolicySimulationService:
         for replay_input in replay_inputs:
             evaluated_count += 1
             if self._held_by_cache(replay_input.record, payload.candidate_policy):
-                # The replay cannot tell whether the cache would answer again, and the live
-                # gateway serves a stored answer before routing: the row stays a cache hit, with
-                # no tier and no cost on either side, and is not a change.
+                # Live, routing resolves first and the cache lookup is scoped to the chosen tier.
+                # The replay cannot tell whether the candidate's tier would find the same stored
+                # answer, so it assumes it would (note `cache_rows_held`): the row stays a cache
+                # hit, with no tier and no cost on either side, and is not a change.
                 cache_rows += 1
                 continue
             baseline_target = self._baseline_target(replay_input.record)
@@ -216,6 +229,8 @@ class PolicySimulationService:
         notes = list(APPROXIMATION_NOTES)
         if decision_source_counts["heuristic"] > 0:
             notes.append(HEURISTIC_FALLBACK_NOTE)
+        if cache_rows > 0:
+            notes.append(CACHE_ROWS_HELD_NOTE)
         return PolicySimulationResponse(
             tenant_id=tenant_context.tenant.id,
             candidate_policy=payload.candidate_policy,

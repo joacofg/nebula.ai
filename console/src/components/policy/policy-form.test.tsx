@@ -426,6 +426,28 @@ describe("policy-form", () => {
     expect(screen.getByRole("group", { name: "Caché o denegado" })).toHaveTextContent("0 → 0");
   });
 
+  it("shows the preview of an older gateway that sends no tier counts and no note codes, without throwing", () => {
+    // What a gateway from before the tier counts and the note codes answers.
+    const { approximation_note_codes: _codes, ...withoutCodes } = baseSimulationResult;
+    const { baseline_tier_counts: _baseline, simulated_tier_counts: _simulated, ...olderSummary } =
+      baseSimulationResult.summary;
+    renderPolicyForm({
+      simulationResult: { ...withoutCodes, summary: olderSummary } as unknown as PolicySimulationResponse,
+    });
+
+    const preview = within(screen.getByRole("heading", { name: "Vista previa" }).closest("aside") as HTMLElement);
+    expect(preview.getByRole("group", { name: "Pedidos evaluados" })).toHaveTextContent("10");
+    // No counts, no tier rows: nothing is made up.
+    expect(preview.queryByRole("heading", { name: "Pedidos por nivel: actual → borrador" })).not.toBeInTheDocument();
+    expect(preview.queryByRole("group", { name: "local" })).not.toBeInTheDocument();
+    expect(preview.queryByRole("group", { name: "Caché o denegado" })).not.toBeInTheDocument();
+    expect(preview.getByText("7 con el router aprendido · 3 con la heurística")).toBeInTheDocument();
+    // Without codes, each note keeps the gateway's own text.
+    expect(
+      preview.getByText("Replay uses persisted ledger request metadata and route signals instead of raw prompt text."),
+    ).toBeInTheDocument();
+  });
+
   it("says how many rows the learned router re-decided and how many the heuristic did", () => {
     renderPolicyForm({ simulationResult: baseSimulationResult });
 

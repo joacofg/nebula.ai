@@ -12,16 +12,23 @@ type WrapperProps = {
 
 type RenderOptions = {
   adminKey?: string | null;
+  /** A client the test prepared (with data already cached, say); a fresh one otherwise. */
+  queryClient?: QueryClient;
 };
 
-export function renderWithProviders(ui: ReactElement, options: RenderOptions = {}) {
-  const queryClient = new QueryClient({
+/** The query client the tests render with: no retries, so a failure shows at once. */
+export function createTestQueryClient() {
+  return new QueryClient({
     defaultOptions: {
       queries: {
         retry: false,
       },
     },
   });
+}
+
+export function renderWithProviders(ui: ReactElement, options: RenderOptions = {}) {
+  const queryClient = options.queryClient ?? createTestQueryClient();
 
   function Wrapper({ children }: WrapperProps) {
     return (

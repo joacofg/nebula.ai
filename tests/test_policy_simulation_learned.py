@@ -545,6 +545,19 @@ async def test_a_cache_row_stays_cache_while_the_candidate_keeps_the_cache() -> 
     # No tier on either side, and no cost: the cache answers it again.
     assert summary.baseline_tier_counts == summary.simulated_tier_counts == _counts(frontier=1)
     assert summary.simulated_premium_cost == pytest.approx(summary.baseline_premium_cost)
+    # Holding the row is an assumption, and the notes say so.
+    assert "cache_rows_held" in response.approximation_note_codes
+    assert len(response.approximation_note_codes) == len(response.approximation_notes)
+
+
+async def test_a_window_without_held_cache_rows_has_no_cache_note() -> None:
+    response = await _simulate(
+        [_row("req-learned", route_signals=_learned_signals(0.62, 0.91))],
+        TenantPolicy(routing_quality_target=0.95),
+    )
+
+    assert response.summary.cache_rows == 0
+    assert "cache_rows_held" not in response.approximation_note_codes
 
 
 async def test_a_cache_row_is_redecided_when_the_candidate_turns_the_cache_off() -> None:
@@ -562,6 +575,33 @@ async def test_a_cache_row_is_redecided_when_the_candidate_turns_the_cache_off()
     assert summary.changed_routes == 1
     assert (summary.learned_router_rows, summary.heuristic_rows, summary.cache_rows) == (1, 0, 0)
     assert summary.simulated_tier_counts == _counts(frontier=1)
+    assert "cache_rows_held" not in response.approximation_note_codes
+
+
+async def test_embeddings_rows_are_not_replayed_as_chat() -> None:
+    # An embeddings call has no chat route to re-decide; like a rate-limited row, it is left out
+    # of the window instead of being replayed as a chat request.
+    embeddings = _row(
+        "req-embeddings",
+        seconds=1,
+        route_signals=None,
+        final_route_target="embeddings",
+        requested_model="nomic-embed-text",
+        response_model="nomic-embed-text",
+        route_reason="embeddings_request",
+        estimated_cost=0.0,
+    ).model_copy(update={"message_type": "embeddings"})
+    rows = [_row("req-learned", seconds=0, route_signals=_learned_signals(0.62, 0.91)), embeddings]
+
+    response = await _simulate(rows, TenantPolicy(routing_quality_target=0.95))
+
+    summary = response.summary
+    assert response.window.returned_rows == 1
+    assert summary.evaluated_rows == 1
+    assert (summary.learned_router_rows, summary.heuristic_rows, summary.cache_rows) == (1, 0, 0)
+    assert summary.learned_router_rows + summary.heuristic_rows + summary.cache_rows == summary.evaluated_rows
+    assert [item.request_id for item in response.changed_requests] == []
+    assert "heuristic_fallback_rows" not in response.approximation_note_codes
 
 
 async def test_mixed_window_counts_add_up() -> None:

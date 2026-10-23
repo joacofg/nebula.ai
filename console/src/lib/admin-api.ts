@@ -109,9 +109,12 @@ export type PolicySimulationOutcomeCounts = {
   baseline_premium_cost: number;
   simulated_premium_cost: number;
   premium_cost_delta: number;
-  /** A row with no tier (denied, or served from the cache in the baseline) counts in none. */
-  baseline_tier_counts: TierCounts;
-  simulated_tier_counts: TierCounts;
+  /**
+   * A row with no tier (denied, or served from the cache in the baseline) counts in none. Absent
+   * from older gateways.
+   */
+  baseline_tier_counts?: TierCounts;
+  simulated_tier_counts?: TierCounts;
   /** With `cache_rows`, add up to `evaluated_rows`. */
   learned_router_rows: number;
   heuristic_rows: number;
@@ -176,8 +179,8 @@ export type PolicySimulationResponse = {
   tenant_id: string;
   candidate_policy: TenantPolicy;
   approximation_notes: string[];
-  /** One stable code per note, in the same order, for wording the notes in Spanish. */
-  approximation_note_codes: string[];
+  /** One stable code per note, in the same order, for wording the notes in Spanish; absent from older gateways. */
+  approximation_note_codes?: string[];
   window: PolicySimulationWindow;
   summary: PolicySimulationOutcomeCounts;
   calibration_summary: CalibrationEvidenceSummary;

@@ -5,7 +5,8 @@ import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 
 import PolicyPage from "@/app/(console)/policy/page";
 import * as adminApi from "@/lib/admin-api";
-import { renderWithProviders } from "@/test/render";
+import { queryKeys } from "@/lib/query-keys";
+import { createTestQueryClient, renderWithProviders } from "@/test/render";
 
 vi.mock("@/lib/admin-api", async () => {
   const actual = await vi.importActual<typeof import("@/lib/admin-api")>("@/lib/admin-api");
@@ -318,8 +319,18 @@ describe("policy-page", () => {
     }
 
     it("keeps the loading rows while the selected tenant's policy has not arrived", async () => {
-      // The connection drops right after the tenant list arrives, so the policy query starts paused.
+      // The options and the tenant list arrive; the connection drops right after, so only the
+      // policy query starts paused.
+      const answerOptions = getPolicyOptionsMock.getMockImplementation()!;
+      let optionsArrived!: () => void;
+      const optionsDone = new Promise<void>((resolve) => (optionsArrived = resolve));
+      getPolicyOptionsMock.mockImplementation(async (...args) => {
+        const options = await answerOptions(...args);
+        optionsArrived();
+        return options;
+      });
       listTenantsMock.mockImplementation(async () => {
+        await optionsDone;
         onlineManager.setOnline(false);
         return [
           {
@@ -338,14 +349,19 @@ describe("policy-page", () => {
       await waitFor(() => expect(screen.getByRole("combobox", { name: "Tenant" })).toHaveValue("tenant-a"));
       await letQueriesSettle();
 
+      expect(getPolicyOptionsMock).toHaveBeenCalledTimes(1);
       expect(getTenantPolicyMock).not.toHaveBeenCalled();
       expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
       expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
     });
 
     it("does not claim there are no tenants while the list has not arrived", async () => {
+      // The options are already known; only the tenant list waits for the connection.
+      const queryClient = createTestQueryClient();
+      queryClient.setQueryData(queryKeys.policyOptions, await getPolicyOptionsMock("admin-key"));
+      getPolicyOptionsMock.mockClear();
       onlineManager.setOnline(false);
-      renderPolicyPage();
+      renderWithProviders(<PolicyPage />, { adminKey: "admin-key", queryClient });
 
       await letQueriesSettle();
 
@@ -353,6 +369,24 @@ describe("policy-page", () => {
       expect(screen.getByRole("status", { name: "Cargando la política" })).toBeInTheDocument();
       expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
     });
+  });
+
+  it("shows the Spanish message when the tenant list cannot be read", async () => {
+    listTenantsMock.mockRejectedValue(new adminApi.AdminApiError(401, "Invalid admin key."));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("La clave de admin no es válida.");
+    expect(screen.queryByText("No hay tenants.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
+  });
+
+  it("shows the Spanish message when the selected tenant's policy cannot be read", async () => {
+    getTenantPolicyMock.mockRejectedValue(new adminApi.AdminApiError(404, "Tenant not found."));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se encontró el recurso.");
+    expect(screen.queryByText("Elegir un tenant.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
   });
 
   it("shows preview errors from the simulation mutation", async () => {
@@ -598,6 +632,52 @@ describe("policy-page", () => {
 
     expect(await screen.findByText("El gateway devolvió un error (500).")).toBeInTheDocument();
     expect(screen.queryByText("Política guardada.")).not.toBeInTheDocument();
+  });
+
+  it("does not show a failed simulation of one tenant under the next", async () => {
+    simulateTenantPolicyMock.mockRejectedValueOnce(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+    expect(await screen.findByText(/La simulación falló/)).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Tenant"), "tenant-b");
+
+    expect(await screen.findByRole("form", { name: "Política de Tenant B" })).toBeInTheDocument();
+    expect(screen.queryByText(/La simulación falló/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
+    ).toBeInTheDocument();
+  });
+
+  it("does not show under the next tenant a simulation that was still running for the last one", async () => {
+    let finishSimulation!: (result: adminApi.PolicySimulationResponse) => void;
+    const tenantAResult = await simulateTenantPolicyMock("admin-key", "tenant-a", {} as never);
+    simulateTenantPolicyMock.mockClear();
+    simulateTenantPolicyMock.mockImplementationOnce(
+      () => new Promise<adminApi.PolicySimulationResponse>((resolve) => (finishSimulation = resolve)),
+    );
+    renderPolicyPage();
+
+    await screen.findByRole("heading", { name: "Vista previa" });
+    await userEvent.click(screen.getByRole("button", { name: "Simular" }));
+    expect(await screen.findByRole("status", { name: "Simulando el borrador" })).toBeInTheDocument();
+
+    await userEvent.selectOptions(screen.getByLabelText("Tenant"), "tenant-b");
+    expect(await screen.findByRole("form", { name: "Política de Tenant B" })).toBeInTheDocument();
+    // Tenant B has nothing running: its preview is idle and its buttons work.
+    expect(screen.queryByRole("status", { name: "Simulando el borrador" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Simular" })).toBeEnabled();
+
+    // Tenant A's answer lands late: it is not Tenant B's preview.
+    finishSimulation(tenantAResult);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    expect(screen.queryByText("Pedidos que cambian")).not.toBeInTheDocument();
+    expect(
+      screen.getByText("Simular para comparar el borrador con el tráfico reciente antes de guardar."),
+    ).toBeInTheDocument();
   });
 
   it("clears stale preview evidence when switching tenants", async () => {
