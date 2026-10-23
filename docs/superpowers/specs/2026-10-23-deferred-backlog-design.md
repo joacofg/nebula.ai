@@ -59,9 +59,6 @@ failure. No paid API calls (premium runs use `NEBULA_PREMIUM_PROVIDER=mock`).
   when no route matched, never the raw URL.
 
 ### PR 2 cache deferred
-- **Re-init off the request path:** when the cache is down, a lookup, store or health check schedules one background
-  `initialize()` (one in-flight task, the existing 30 s throttle) and answers as "disabled" without waiting.
-  `close()` cancels the task.
 - **Retention per tenant:** one tenant's purge failure is logged with its tenant id and the sweep continues.
 - **Embedding model names:** `nomic-embed-text` and `nomic-embed-text:latest` are the same model wherever Nebula
   compares embedding model names (learned-router artifact check in `core/container.py`).
@@ -81,6 +78,11 @@ failure. No paid API calls (premium runs use `NEBULA_PREMIUM_PROVIDER=mock`).
   `CreateApiKeyDialog` instances get distinct input ids (`useId`).
 
 ## Dropped (with reason)
+- **Cache re-init in the background (deferred, not abandoned):** the pre-registered cache measurement
+  (`benchmarks/cache/v1/report.json`) pins `semantic_cache_service.py` by SHA-256, and a test fails when the file
+  changes. The report is frozen until Joaquín labels the cache sets and reruns `make cache-eval`, which records new
+  hashes. Land this change after that rerun. Until then a cache outage costs at most one inline `initialize()` per
+  30 s, because of the existing throttle.
 - **TIERS vs ROUTES casing ("Caché" / "caché"):** the split is deliberate (routes are sentence-case labels, tiers are
   the thesis terms; the comment in `labels.ts` says so). Either way of unifying changes figure 10.7's Ruta value or
   figure 11.1's tier badge.
