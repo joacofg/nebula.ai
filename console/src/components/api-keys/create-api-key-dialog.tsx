@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, Plus } from "lucide-react";
 
 import type { ApiKeyCreateInput, TenantRecord } from "@/lib/admin-api";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/system/state";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
@@ -83,11 +83,7 @@ export function CreateApiKeyDialog({
         </DialogHeader>
 
         <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-          {error ? (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          ) : null}
+          {error ? <ErrorAlert error={error} fallback="No se pudo crear la clave." /> : null}
 
           <div>
             <label className="field-label" htmlFor="api-key-name">

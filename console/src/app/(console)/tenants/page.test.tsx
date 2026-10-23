@@ -19,7 +19,7 @@ vi.mock("@/lib/admin-api", () => ({
 
 import TenantsPage from "@/app/(console)/tenants/page";
 import { useAdminSession } from "@/lib/admin-session-provider";
-import { listTenants } from "@/lib/admin-api";
+import { createTenant, listTenants } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
 
 const mockedUseAdminSession = vi.mocked(useAdminSession);
@@ -68,6 +68,21 @@ describe("tenants page", () => {
     mockedListTenants.mockResolvedValue([]);
     renderWithProviders(<TenantsPage />);
     expect(await screen.findByText("Todavía no hay tenants.")).toBeInTheDocument();
+  });
+
+  it("keeps the editor open and shows why creating a tenant failed", async () => {
+    vi.mocked(createTenant).mockRejectedValue(new Error("Ya existe un recurso con ese identificador."));
+    const user = userEvent.setup();
+    renderWithProviders(<TenantsPage />);
+    await screen.findByText("Tenant A");
+
+    await user.click(screen.getByRole("button", { name: "Crear tenant" }));
+    await user.type(screen.getByLabelText("Id"), "tenant-a");
+    await user.type(screen.getByLabelText("Nombre"), "Tenant A");
+    await user.click(screen.getAllByRole("button", { name: "Crear tenant" })[1]);
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Ya existe un recurso con ese identificador.");
+    expect(screen.getByLabelText("Id")).toHaveValue("tenant-a");
   });
 
   it("says when the search matches no tenant", async () => {

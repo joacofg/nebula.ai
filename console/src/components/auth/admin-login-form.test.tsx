@@ -46,13 +46,12 @@ describe("AdminLoginForm", () => {
     await waitFor(() => expect(replace).toHaveBeenCalledWith("/evaluacion"));
   });
 
-  it("renders backend validation errors", async () => {
+  it("tells a wrong key apart: 401 shows the invalid-key message", async () => {
     vi.stubGlobal(
       "fetch",
-      vi.fn().mockResolvedValue({
-        ok: false,
-        json: async () => ({ detail: "Missing or invalid admin API key." }),
-      }),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ detail: "Missing or invalid admin API key." }), { status: 401 }),
+      ),
     );
 
     renderWithProviders(<AdminLoginForm reason="session-expired" />);
@@ -62,8 +61,33 @@ describe("AdminLoginForm", () => {
     await userEvent.type(screen.getByLabelText("Clave de admin"), "bad-key");
     await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
 
-    await waitFor(() => {
-      expect(screen.getByText("Missing or invalid admin API key.")).toBeInTheDocument();
-    });
+    expect(await screen.findByText("La clave de admin no es válida.")).toBeInTheDocument();
+    expect(screen.queryByText("Missing or invalid admin API key.")).not.toBeInTheDocument();
+  });
+
+  it("tells a gateway that is down apart from a wrong key", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "gateway_unreachable" }), { status: 503 })),
+    );
+
+    renderWithProviders(<AdminLoginForm />);
+
+    await userEvent.type(screen.getByLabelText("Clave de admin"), "valid-admin-key");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByText("No se pudo conectar con el gateway.")).toBeInTheDocument();
+    expect(screen.queryByText("La clave de admin no es válida.")).not.toBeInTheDocument();
+  });
+
+  it("shows the unreachable message when the console server itself does not answer", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+
+    renderWithProviders(<AdminLoginForm />);
+
+    await userEvent.type(screen.getByLabelText("Clave de admin"), "valid-admin-key");
+    await userEvent.click(screen.getByRole("button", { name: "Entrar" }));
+
+    expect(await screen.findByText("No se pudo conectar con el gateway.")).toBeInTheDocument();
   });
 });

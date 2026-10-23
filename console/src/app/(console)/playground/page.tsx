@@ -7,7 +7,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { PageHeader } from "@/components/system/page-header";
-import { EmptyState, LoadingRows } from "@/components/system/state";
+import { EmptyState, ErrorAlert, errorMessage, LoadingRows } from "@/components/system/state";
 import { PlaygroundDecision } from "@/components/playground/playground-decision";
 import { PlaygroundForm } from "@/components/playground/playground-form";
 import { PlaygroundMetadata } from "@/components/playground/playground-metadata";
@@ -22,7 +22,6 @@ import {
 } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
-import { ErrorAlert } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PlaygroundPage() {
@@ -150,20 +149,14 @@ function PlaygroundResponseCard({
 
   return (
     <div className="flex flex-col gap-8">
-      {result.errorDetail ? (
-        <Alert variant="destructive">
-          <AlertDescription>{result.errorDetail}</AlertDescription>
-        </Alert>
-      ) : null}
+      {result.errorDetail ? <ErrorAlert error={result.errorDetail} fallback="No se pudo completar el pedido." /> : null}
       {result.body ? <PlaygroundResponse content={result.body.choices[0]?.message.content ?? ""} /> : null}
       {recordedOutcomeQuery.isLoading ? (
         <LoadingRows rows={3} label="Esperando el registro del ledger" />
       ) : recordedOutcomeQuery.isError ? (
         <Alert variant="warning">
           <AlertDescription>
-            {recordedOutcomeQuery.error instanceof Error
-              ? recordedOutcomeQuery.error.message
-              : "No se pudo leer el registro del ledger."}
+            {errorMessage(recordedOutcomeQuery.error, "No se pudo leer el registro del ledger.")}
           </AlertDescription>
         </Alert>
       ) : recordedOutcomeQuery.data ? (

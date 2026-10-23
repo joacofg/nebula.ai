@@ -17,10 +17,9 @@ import { useAdminSession } from "@/lib/admin-session-provider";
 import { PageHeader } from "@/components/system/page-header";
 import Link from "next/link";
 
-import { EmptyState, LoadingRows } from "@/components/system/state";
+import { EmptyState, ErrorAlert, errorMessage, LoadingRows } from "@/components/system/state";
 import { PolicyForm } from "@/components/policy/policy-form";
 import { queryKeys } from "@/lib/query-keys";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function PolicyPage() {
   const queryClient = useQueryClient();
@@ -114,18 +113,14 @@ export default function PolicyPage() {
   }
 
   if (tenantsQuery.isError || optionsQuery.isError || policyQuery.isError) {
-    const error =
-      (tenantsQuery.error as Error | undefined)?.message ||
-      (optionsQuery.error as Error | undefined)?.message ||
-      (policyQuery.error as Error | undefined)?.message ||
-      "No se pudo cargar la política.";
     return (
       <section>
         {header}
         <div className="px-6 py-6">
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
+          <ErrorAlert
+            error={tenantsQuery.error ?? optionsQuery.error ?? policyQuery.error}
+            fallback="No se pudo cargar la política."
+          />
         </div>
       </section>
     );
@@ -167,7 +162,7 @@ export default function PolicyPage() {
         simulationResult={latestSimulation}
         simulationError={
           simulationMutation.isError
-            ? (simulationMutation.error as Error | undefined)?.message ?? "No se pudo simular el borrador."
+            ? errorMessage(simulationMutation.error, "No se pudo simular el borrador.")
             : null
         }
         onSimulate={async (payload) => {

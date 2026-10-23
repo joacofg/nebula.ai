@@ -1,6 +1,9 @@
 "use client";
 
+import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
 import type { RouterReplay } from "@/lib/router-replay";
+
+export { AdminApiError } from "@/lib/admin-errors";
 
 export type RoutingMode = "auto" | "local_only" | "premium_only";
 export type EvidenceRetentionWindow = "24h" | "7d" | "30d" | "90d";
@@ -339,7 +342,7 @@ type RequestOptions = {
 };
 
 async function adminRequest<T>(path: string, options: RequestOptions): Promise<T> {
-  const response = await fetch(path, {
+  const response = await gatewayFetch(path, {
     method: options.method ?? "GET",
     headers: {
       "Content-Type": "application/json",
@@ -350,8 +353,7 @@ async function adminRequest<T>(path: string, options: RequestOptions): Promise<T
   });
 
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
-    throw new Error(body.detail ?? "Nebula admin request failed.");
+    throw await adminErrorFromResponse(response);
   }
 
   return (await response.json()) as T;
@@ -436,7 +438,7 @@ export const ADMIN_ROUTER_EVALUATION_ENDPOINT = "/api/admin/evaluation/router";
 
 /** The learned router's out-of-fold replay; `null` when the gateway has none (404). */
 export async function getRouterEvaluation(adminKey: string): Promise<RouterReplay | null> {
-  const response = await fetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
+  const response = await gatewayFetch(ADMIN_ROUTER_EVALUATION_ENDPOINT, {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
@@ -445,13 +447,13 @@ export async function getRouterEvaluation(adminKey: string): Promise<RouterRepla
     cache: "no-store",
   });
   if (!response.ok) {
-    const body = (await response.json().catch(() => ({}))) as { detail?: string };
+    const error = await adminErrorFromResponse(response);
     // Only the gateway's "no replay file" 404 means "nothing to show"; any other 404
     // (an older gateway without the endpoint, a proxy miss) is a real error.
-    if (response.status === 404 && body.detail?.startsWith("No router replay")) {
+    if (error.status === 404 && typeof error.detail === "string" && error.detail.startsWith("No router replay")) {
       return null;
     }
-    throw new Error(body.detail ?? "Nebula admin request failed.");
+    throw error;
   }
   return (await response.json()) as RouterReplay;
 }
@@ -464,7 +466,7 @@ export async function createPlaygroundCompletion(
   adminKey: string,
   payload: PlaygroundInput,
 ): Promise<PlaygroundCompletionResult> {
-  const response = await fetch("/api/playground/completions", {
+  const response = await gatewayFetch("/api/playground/completions", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -479,13 +481,14 @@ export async function createPlaygroundCompletion(
     cache: "no-store",
   });
 
-  const responseBody = (await response.json().catch(() => ({}))) as PlaygroundResponse & {
-    detail?: string;
-  };
+  // A failed completion still carries the request metadata, so it resolves with the Spanish
+  // message in `errorDetail` instead of throwing.
+  const failure = response.ok ? null : await adminErrorFromResponse(response.clone());
+  const responseBody = (await response.json().catch(() => ({}))) as PlaygroundResponse;
   const isSuccess = response.ok;
   return {
     body: isSuccess ? responseBody : null,
-    errorDetail: isSuccess ? null : responseBody.detail ?? "Nebula playground request failed.",
+    errorDetail: failure?.message ?? null,
     status: response.status,
     requestId: response.headers.get("X-Request-ID") ?? responseBody.request_id ?? "",
     tenantId: response.headers.get("X-Nebula-Tenant-ID") ?? payload.tenantId,

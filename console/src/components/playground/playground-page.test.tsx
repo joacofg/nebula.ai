@@ -241,7 +241,7 @@ describe("playground-page", () => {
     const user = userEvent.setup();
     adminApi.createPlaygroundCompletion.mockResolvedValue({
       body: null,
-      errorDetail: "Local provider failed.",
+      errorDetail: "El gateway devolvió un error (502).",
       status: 502,
       requestId: "req-failed-123",
       tenantId: "default",
@@ -281,7 +281,7 @@ describe("playground-page", () => {
     await user.type(screen.getByLabelText("Prompt"), "Recover failed response metadata");
     await user.click(screen.getByRole("button", { name: "Enviar" }));
 
-    expect(await screen.findByText("Local provider failed.")).toBeInTheDocument();
+    expect(await screen.findByText("El gateway devolvió un error (502).")).toBeInTheDocument();
     expect(await screen.findByText("Detalle de la respuesta")).toBeInTheDocument();
     expect(await screen.findByText("Request ID")).toBeInTheDocument();
     expect(await screen.findByText("req-failed-123")).toBeInTheDocument();

@@ -8,6 +8,8 @@ import {
   type ReactNode,
 } from "react";
 
+import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
+
 let inMemoryAdminKey: string | null = null;
 
 type AdminSessionContextValue = {
@@ -41,14 +43,13 @@ export function AdminSessionProvider({
       async signIn(nextAdminKey: string) {
         setIsSigningIn(true);
         try {
-          const response = await fetch("/api/admin/session", {
+          const response = await gatewayFetch("/api/admin/session", {
             headers: {
               "X-Nebula-Admin-Key": nextAdminKey,
             },
           });
           if (!response.ok) {
-            const body = (await response.json().catch(() => ({}))) as { detail?: string };
-            throw new Error(body.detail ?? "No se pudo validar la clave de admin.");
+            throw await adminErrorFromResponse(response);
           }
           inMemoryAdminKey = nextAdminKey;
           setAdminKey(nextAdminKey);

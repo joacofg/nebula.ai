@@ -17,6 +17,7 @@ import { LedgerFilters } from "@/components/ledger/ledger-filters";
 import { LedgerRequestDetail } from "@/components/ledger/ledger-request-detail";
 import { LedgerTable } from "@/components/ledger/ledger-table";
 import { getTenantRecommendations, listTenants, listUsageLedger, type RecommendationBundle } from "@/lib/admin-api";
+import { adminErrorFromResponse, gatewayFetch } from "@/lib/admin-errors";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { queryKeys } from "@/lib/query-keys";
 import { ErrorAlert } from "@/components/system/state";
@@ -58,14 +59,14 @@ export default function ObservabilityPage() {
   const runtimeHealthQuery = useQuery({
     queryKey: queryKeys.runtimeHealth,
     queryFn: async () => {
-      const response = await fetch("/api/runtime/health", {
+      const response = await gatewayFetch("/api/runtime/health", {
         cache: "no-store",
         headers: {
           "X-Nebula-Admin-Key": adminKey ?? "",
         },
       });
       if (!response.ok) {
-        throw new Error("No se pudo cargar la salud de las dependencias.");
+        throw await adminErrorFromResponse(response);
       }
       return (await response.json()) as {
         dependencies: Record<string, import("@/lib/admin-api").RuntimeHealthDependency>;

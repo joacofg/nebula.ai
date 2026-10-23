@@ -200,6 +200,18 @@ describe("ObservabilityPage", () => {
     expect(await screen.findByText("postgres")).toBeInTheDocument();
   });
 
+  it("says the gateway is unreachable in the dependencies tab", async () => {
+    const user = userEvent.setup();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response(JSON.stringify({ detail: "gateway_unreachable" }), { status: 503 })),
+    );
+    renderPage();
+
+    await user.click(await screen.findByRole("tab", { name: "Dependencias" }));
+    expect(await screen.findByText("No se pudo conectar con el gateway.")).toBeInTheDocument();
+  });
+
   it("names stale tenant calibration in its tab", async () => {
     const user = userEvent.setup();
     const base = await getTenantRecommendations();

@@ -283,6 +283,14 @@ describe("policy-page", () => {
     expect(screen.queryByText(/analytics product/i)).not.toBeInTheDocument();
   });
 
+  it("shows the Spanish message of the first query that fails instead of the form", async () => {
+    getPolicyOptionsMock.mockRejectedValue(new adminApi.AdminApiError(500, "Internal Server Error"));
+    renderPolicyPage();
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("El gateway devolvió un error (500).");
+    expect(screen.queryByRole("button", { name: "Guardar política" })).not.toBeInTheDocument();
+  });
+
   it("shows preview errors from the simulation mutation", async () => {
     simulateTenantPolicyMock.mockRejectedValueOnce(new Error("from_timestamp must be less than or equal to to_timestamp."));
     renderPolicyPage();

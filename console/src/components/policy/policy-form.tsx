@@ -11,7 +11,7 @@ import type {
 } from "@/lib/admin-api";
 import { ModelAllowlistInput } from "@/components/policy/model-allowlist-input";
 import { Readout } from "@/components/system/readout";
-import { LoadingRows } from "@/components/system/state";
+import { ErrorAlert, LoadingRows } from "@/components/system/state";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 
@@ -560,17 +560,11 @@ export function PolicyForm({
               </Button>
             </div>
 
-            {error ? (
-              <Alert variant="destructive">
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            ) : null}
+            {error ? <ErrorAlert error={error} fallback="No se pudo guardar la política." /> : null}
 
             {isSimulating ? <LoadingRows rows={3} label="Simulando el borrador" /> : null}
             {simulationError ? (
-              <Alert variant="destructive">
-                <AlertDescription>La simulación falló: {simulationError}</AlertDescription>
-              </Alert>
+              <ErrorAlert error={`La simulación falló: ${simulationError}`} fallback="La simulación falló." />
             ) : null}
             {!isSimulating && !simulationError && !simulationResult ? (
               <p className="m-0 border border-dashed border-line px-4 py-4 text-sm text-ink-3">

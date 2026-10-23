@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import EvaluationPage from "@/app/(console)/evaluacion/page";
-import type { TenantPolicy } from "@/lib/admin-api";
+import { AdminApiError, type TenantPolicy } from "@/lib/admin-api";
 import { renderWithProviders } from "@/test/render";
 import { routerReplayFixture } from "@/test/router-replay-fixture";
 
@@ -159,6 +159,18 @@ describe("evaluation page", () => {
       }),
     );
     expect(await screen.findByText("Objetivo 0.90 guardado en Default Workspace.")).toBeInTheDocument();
+  });
+
+  it("says why applying the target failed, in Spanish by status", async () => {
+    const user = userEvent.setup();
+    adminApi.getTenantPolicy.mockResolvedValue(policy);
+    adminApi.updateTenantPolicy.mockRejectedValue(new AdminApiError(403, "Tenant policy denied."));
+    renderWithProviders(<EvaluationPage />, { adminKey: "nebula-admin-key" });
+
+    await screen.findByRole("option", { name: "Default Workspace" });
+    await user.click(await screen.findByRole("button", { name: "Aplicar al tenant" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo aplicar: Acción no permitida.");
   });
 
   it("does not write when the tenant policy cannot be read", async () => {

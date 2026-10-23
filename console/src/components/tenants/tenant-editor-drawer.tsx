@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { LoaderCircle, X } from "lucide-react";
 
 import type { TenantInput, TenantRecord } from "@/lib/admin-api";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ErrorAlert } from "@/components/system/state";
 import { Button } from "@/components/ui/button";
 
 
@@ -107,11 +107,7 @@ export function TenantEditorDrawer({
       </div>
 
       <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-        {error ? (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
+        {error ? <ErrorAlert error={error} fallback="No se pudo guardar el tenant." /> : null}
 
         <div>
           <label className="field-label" htmlFor="tenant-id">

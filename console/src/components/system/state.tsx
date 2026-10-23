@@ -5,8 +5,15 @@ import { AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 
+/**
+ * The text to show for a failure. Gateway failures (`AdminApiError`) already carry their Spanish
+ * message; a plain text is a message written by the caller (form validation, say).
+ */
 export function errorMessage(error: unknown, fallback: string) {
-  return error instanceof Error && error.message ? error.message : fallback;
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+  return typeof error === "string" && error ? error : fallback;
 }
 
 export function ErrorAlert({ error, fallback }: { error: unknown; fallback: string }) {

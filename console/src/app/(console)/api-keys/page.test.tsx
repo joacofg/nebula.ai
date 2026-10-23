@@ -16,7 +16,7 @@ vi.mock("@/lib/admin-api", () => ({
 }));
 
 import ApiKeysPage from "@/app/(console)/api-keys/page";
-import { listApiKeys, listTenants, revokeApiKey } from "@/lib/admin-api";
+import { createApiKey, listApiKeys, listTenants, revokeApiKey } from "@/lib/admin-api";
 import { useAdminSession } from "@/lib/admin-session-provider";
 import { renderWithProviders } from "@/test/render";
 
@@ -59,6 +59,32 @@ describe("api keys page", () => {
   });
 });
 
+describe("api keys page create flow", () => {
+  it("keeps the dialog open and shows why creating a key failed", async () => {
+    vi.mocked(listTenants).mockResolvedValue([
+      {
+        id: "tenant-a",
+        name: "Tenant A",
+        description: "",
+        metadata: {},
+        active: true,
+        created_at: "2026-09-30T12:00:00Z",
+        updated_at: "2026-09-30T12:00:00Z",
+      },
+    ]);
+    vi.mocked(createApiKey).mockRejectedValue(new Error("Revisar los campos: name."));
+    const user = userEvent.setup();
+    renderWithProviders(<ApiKeysPage />);
+
+    await user.click(await screen.findByRole("button", { name: "Crear clave" }));
+    const dialog = await screen.findByRole("dialog");
+    await user.type(within(dialog).getByLabelText("Nombre"), "ci-bot");
+    await user.click(within(dialog).getByRole("button", { name: "Crear clave" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Revisar los campos: name.");
+  });
+});
+
 describe("api keys page revoke flow", () => {
   it("asks for confirmation in an alert dialog and revokes on confirm", async () => {
     const confirmSpy = vi.spyOn(window, "confirm");
@@ -72,6 +98,26 @@ describe("api keys page revoke flow", () => {
 
     await user.click(within(dialog).getByRole("button", { name: "Revocar clave" }));
     await waitFor(() => expect(revokeApiKey).toHaveBeenCalledWith("admin-key", "key-1"));
+  });
+
+  it("shows the failure and lets the key be revoked again when the revoke is rejected", async () => {
+    vi.mocked(revokeApiKey).mockRejectedValueOnce(new Error("No se pudo conectar con el gateway."));
+    const user = userEvent.setup();
+    renderWithProviders(<ApiKeysPage />);
+
+    await user.click(await screen.findByRole("button", { name: /Revocar/ }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Revocar clave" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("No se pudo conectar con el gateway.");
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument());
+    expect(screen.getByRole("button", { name: "Revocar" })).toBeEnabled();
+
+    await user.click(screen.getByRole("button", { name: "Revocar" }));
+    await user.click(within(await screen.findByRole("alertdialog")).getByRole("button", { name: "Revocar clave" }));
+
+    await waitFor(() => expect(revokeApiKey).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
   });
 
   it("does not revoke when the dialog is cancelled", async () => {
